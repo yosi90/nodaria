@@ -1,0 +1,11 @@
+import { useRef } from 'react';
+import { useApp } from '../../state/AppContext';
+import { parseProject } from '../../services/storage';
+import { Button } from '../common/Button';
+export function Topbar({view,onView}:{view:'map'|'schema';onView:(v:'map'|'schema')=>void}) { const {state,project,dispatch}=useApp();const file=useRef<HTMLInputElement>(null);
+ const create=()=>{const name=prompt('Nombre del proyecto');if(name?.trim())dispatch({type:'add-project',name:name.trim()});};
+ const rename=()=>{const name=prompt('Nuevo nombre',project.name);if(name?.trim())dispatch({type:'rename-project',name:name.trim()});};
+ const download=()=>{const blob=new Blob([JSON.stringify({app:'Nodaria',version:2,exportedAt:new Date().toISOString(),project},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${project.name.replace(/[^a-z0-9]+/gi,'_')}.nodaria.json`;a.click();URL.revokeObjectURL(a.href);};
+ const upload=async(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;try{dispatch({type:'import-project',project:parseProject(await f.text())});}catch{alert('El archivo no contiene un proyecto Nodaria válido.');}e.target.value='';};
+ return <header className="topbar"><div className="brand"><span className="brand-mark">N</span><b>Nodaria</b></div><div className="project-tools"><select value={project.id} onChange={e=>dispatch({type:'set-project',id:e.target.value})}>{state.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><Button title="Nuevo proyecto" onClick={create}>＋</Button><Button title="Renombrar proyecto" onClick={rename}>✎</Button></div><nav className="tabs"><button className={view==='map'?'active':''} onClick={()=>onView('map')}>Mapa</button><button className={view==='schema'?'active':''} onClick={()=>onView('schema')}>Tipos y propiedades</button></nav><div className="spacer"/><Button className="ghost" onClick={()=>file.current?.click()}>Importar JSON</Button><Button onClick={download}>Descargar JSON</Button><Button className="danger" title="Eliminar proyecto" onClick={()=>confirm(`¿Eliminar “${project.name}”?`)&&dispatch({type:'delete-project'})}>🗑</Button><input ref={file} hidden type="file" accept="application/json,.json" onChange={upload}/></header>;
+}
