@@ -414,3 +414,18 @@ label.check {
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }
+
+/* Tooltips anchos (varias líneas) y botones que parecen desactivados pero reciben el ratón */
+.segmented button {
+  position: relative;
+}
+[data-tooltip-wide]::after {
+  width: 240px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.35;
+}
+.segmented button.looks-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

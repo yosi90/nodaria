@@ -404,9 +404,21 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                 key={mode}
                 type="button"
                 aria-pressed={view.layout === mode}
-                title={mode === 'radial' && !selectedNode ? 'Selecciona un nodo para centrar la vista radial' : hint}
-                disabled={mode === 'radial' && !selectedNode}
-                onClick={() => setView({ layout: mode })}
+                aria-disabled={mode === 'radial' && !selectedNode ? true : undefined}
+                className={mode === 'radial' && !selectedNode ? 'looks-disabled' : undefined}
+                data-tooltip={
+                  mode === 'radial' && !selectedNode
+                    ? 'Vista radial: coloca un nodo en el centro y el resto en anillos según los saltos de distancia. Selecciona primero un nodo para centrarla en él.'
+                    : hint
+                }
+                data-tooltip-wide
+                onClick={() => {
+                  if (mode === 'radial' && !selectedNode) {
+                    toast({ message: 'Selecciona un nodo para centrar en él la vista radial.' });
+                    return;
+                  }
+                  setView({ layout: mode });
+                }}
               >
                 <Icon size={14} aria-hidden />
                 <span className="label">{label}</span>

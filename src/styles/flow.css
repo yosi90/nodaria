@@ -222,6 +222,8 @@
   margin: 10px;
 }
 .workspace-toolbar.flow-toolbar {
+  position: relative;
+  z-index: 6;
   flex-wrap: wrap;
   gap: 8px;
   min-height: var(--panel-head-height);
