@@ -32,7 +32,7 @@ export function KinshipEditor() {
       ...terms,
       {
         id,
-        neutral: 'Nuevo parentesco',
+        neutral: '',
         masculine: '',
         feminine: '',
         counterpartId: id,
@@ -87,6 +87,12 @@ export function KinshipEditor() {
           ))}
         </ul>
       )}
+      <p className="muted-note" style={{ marginBottom: 'var(--space-3)' }}>
+        <strong>Árbol</strong>: marca los términos de ascendencia directa (Progenitor/a ↔ Hijo/a, Padrastro ↔ Hijastro).
+        Solo esos cuelgan a un nodo de otro en «Ver por» y en la disposición Genealogía. Tío/a o Padrino/a están a una
+        generación pero no son ascendencia, por eso van sin marcar; Hermano/a o Abuelo/a no pueden marcarse porque no
+        distan exactamente una generación.
+      </p>
       <div className="kinship-table">
         <div className="kinship-head">
           <span>Neutro</span>
@@ -94,7 +100,7 @@ export function KinshipEditor() {
           <span>Femenino</span>
           <span>Contraparte</span>
           <span>Generación</span>
-          <span title="Ascendencia directa: forma el árbol genealógico">Árbol</span>
+          <span title="Solo los términos de una generación de distancia pueden formar el árbol">Árbol</span>
           <span />
         </div>
         {terms.map(t => (
@@ -102,6 +108,8 @@ export function KinshipEditor() {
             <input
               value={t.neutral}
               aria-label="Nombre neutro"
+              placeholder="Nombre neutro"
+              autoFocus={!t.neutral}
               onChange={e => update(t.id, { neutral: e.target.value })}
             />
             <input
@@ -119,7 +127,14 @@ export function KinshipEditor() {
             <Select
               compact
               aria-label="Contraparte"
-              options={terms.map(x => ({ value: x.id, label: x.neutral }))}
+              options={terms.map(x => ({
+                value: x.id,
+                label: x.neutral || 'Sin nombre',
+                hint:
+                  x.masculine && x.feminine && x.masculine !== x.feminine
+                    ? `${x.masculine} / ${x.feminine}`
+                    : undefined,
+              }))}
               value={t.counterpartId}
               onChange={id => id && update(t.id, { counterpartId: id })}
             />

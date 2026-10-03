@@ -137,8 +137,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     view.layout,
     structure.id,
     view.layout === 'radial' ? selectedNodeId : null,
-    project.nodes.map(n => [n.id, n.parentId]),
+    project.nodes.map(n => [n.id, n.typeId, n.parentId]),
     links,
+    // Cambiar el tipo o el parentesco de una relación altera la estructura sin cambiar sus extremos.
+    structureLinks(project, structure.id),
   ]);
   const autoPositions = useMemo(
     () => autoLayout(project, view.layout, structure.id, links, selectedNodeId),
@@ -250,6 +252,15 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       const key = [l.sourceId, l.targetId].sort().join('|');
       pairs.set(key, [...(pairs.get(key) ?? []), refId(l)]);
     });
+    // Aristas que salen del mismo nodo: sus etiquetas se reparten a lo largo de la línea para no solaparse.
+    const bySource = new Map<string, string[]>();
+    shown.forEach(r => bySource.set(r.sourceId, [...(bySource.get(r.sourceId) ?? []), r.id]));
+    const labelT = (sourceId: string, id: string) => {
+      const siblings = bySource.get(sourceId) ?? [id];
+      if (siblings.length < 2) return 0.5;
+      const i = siblings.indexOf(id);
+      return 0.3 + (0.4 * i) / (siblings.length - 1);
+    };
     shownRefs.forEach(l => {
       const field = refFields.get(l.fieldId);
       const targetSchema = getSchema(project, getNode(project, l.targetId)?.typeId ?? '');
@@ -295,6 +306,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           relationStyle: schema?.relationStyle,
           index: group.indexOf(r.id),
           count: group.length,
+          labelT: labelT(r.sourceId, r.id),
           onSelect: () => onSelect({ kind: 'relation', id: r.id }),
         },
       });

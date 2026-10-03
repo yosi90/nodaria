@@ -24,6 +24,8 @@ export interface FloatingEdgeData extends Record<string, unknown> {
   /** Índice y total de relaciones entre el mismo par de nodos, para abrirlas en abanico. */
   index: number;
   count: number;
+  /** Posición de la etiqueta a lo largo de la curva (0–1); 0,5 = punto medio. */
+  labelT?: number;
   /** Seleccionar la relación al pulsar su etiqueta. */
   onSelect?: () => void;
 }
@@ -106,6 +108,15 @@ export const FloatingEdge = memo(function FloatingEdge({
     .filter(Boolean)
     .join(' ');
   const labelShift = route.anchor === 'start' ? 8 : route.anchor === 'end' ? -8 : 0;
+  const t = data.labelT ?? 0.5;
+  const u = 1 - t;
+  const labelPos =
+    t === 0.5
+      ? route.labelPos
+      : {
+          x: u * u * route.start.x + 2 * u * t * route.control.x + t * t * route.end.x,
+          y: u * u * route.start.y + 2 * u * t * route.control.y + t * t * route.end.y,
+        };
   const translateX = route.anchor === 'start' ? '0%' : route.anchor === 'end' ? '-100%' : '-50%';
   return (
     <>
@@ -128,7 +139,7 @@ export const FloatingEdge = memo(function FloatingEdge({
             onClick={data.onSelect}
             style={
               {
-                transform: `translate(${translateX}, -50%) translate(${route.labelPos.x + labelShift}px, ${route.labelPos.y + (route.anchor === 'middle' ? -12 : 0)}px)`,
+                transform: `translate(${translateX}, -50%) translate(${labelPos.x + labelShift}px, ${labelPos.y + (route.anchor === 'middle' ? -12 : 0)}px)`,
                 '--edge-color': data.color,
               } as React.CSSProperties
             }

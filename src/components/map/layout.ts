@@ -68,11 +68,42 @@ export function treeLayout(p: Project, structureId: string | null, vertical = fa
   return result;
 }
 
+/** Profundidad de cada nodo en la estructura (raíces = 0), cortando ciclos. */
+function structureDepths(p: Project, structureId: string | null): Map<string, number> {
+  const children = structureChildren(p, structureId);
+  const depths = new Map<string, number>();
+  const walk = (id: string | null, depth: number, path: Set<string>) => {
+    (children.get(id) ?? []).forEach(n => {
+      if (path.has(n.id)) return;
+      if (!depths.has(n.id) || depths.get(n.id)! < depth) depths.set(n.id, depth);
+      walk(n.id, depth + 1, new Set([...path, n.id]));
+    });
+  };
+  walk(null, 0, new Set());
+  return depths;
+}
+
 /** Disposición por fuerzas: los nodos conectados se atraen y todos se repelen. Parte de `seed`. */
-export function forceLayout(p: Project, links: Link[], seed: Map<string, Position>): Map<string, Position> {
+export function forceLayout(
+  p: Project,
+  links: Link[],
+  seed: Map<string, Position>,
+  structureId: string | null = null,
+): Map<string, Position> {
+  // Profundidad en la estructura: los nodos más generales (raíces) arriba y, en cascada, sus dependientes.
+  const depths = structureDepths(p, structureId);
+  const maxDepth = Math.max(0, ...depths.values());
+  // Tipos ordenados por su profundidad media, para agrupar horizontalmente los del mismo tipo.
+  const typeDepth = new Map<string, number[]>();
+  p.nodes.forEach(n => typeDepth.set(n.typeId, [...(typeDepth.get(n.typeId) ?? []), depths.get(n.id) ?? 0]));
+  const typeOrder = [...typeDepth.entries()]
+    .map(([typeId, ds]) => ({ typeId, mean: ds.reduce((a, b) => a + b, 0) / ds.length }))
+    .sort((a, b) => a.mean - b.mean)
+    .map(t => t.typeId);
+  const typeX = (typeId: string) => (typeOrder.indexOf(typeId) - (typeOrder.length - 1) / 2) * (NODE_W + 160);
   const nodes = p.nodes.map(n => {
     const s = seed.get(n.id);
-    return { id: n.id, x: (s?.x ?? 0) + NODE_W / 2, y: (s?.y ?? 0) + NODE_H / 2 };
+    return { id: n.id, typeId: n.typeId, x: (s?.x ?? 0) + NODE_W / 2, y: (s?.y ?? 0) + NODE_H / 2 };
   });
   const ids = new Set(nodes.map(n => n.id));
   const simulation = forceSimulation(nodes)
@@ -84,11 +115,17 @@ export function forceLayout(p: Project, links: Link[], seed: Map<string, Positio
         .strength(0.6),
     )
     .force('charge', forceManyBody().strength(-1400).distanceMax(900))
-    .force('collide', forceCollide(Math.hypot(NODE_W, NODE_H) / 2 + 18).iterations(2))
-    .force('x', forceX(0).strength(0.03))
-    .force('y', forceY(0).strength(0.03))
+    // Radio algo mayor que la media diagonal de la tarjeta: las tarjetas son anchas y no deben pisarse.
+    .force('collide', forceCollide(NODE_W * 0.62).iterations(3))
+    .force('x', forceX<(typeof nodes)[number]>(d => typeX(d.typeId)).strength(0.08))
+    .force(
+      'y',
+      forceY<(typeof nodes)[number]>(d => ((depths.get(d.id) ?? maxDepth) - maxDepth / 2) * (NODE_H + 150)).strength(
+        0.3,
+      ),
+    )
     .stop();
-  simulation.tick(200);
+  simulation.tick(300);
   return normalize(new Map(nodes.map(n => [n.id, { x: n.x - NODE_W / 2, y: n.y - NODE_H / 2 }])));
 }
 
@@ -145,7 +182,7 @@ export function autoLayout(
   links: Link[],
   focusId: string | null,
 ) {
-  if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId));
+  if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId), structureId);
   if (mode === 'genealogy') return treeLayout(p, structureId, true);
   if (mode === 'radial' && focusId) return radialLayout(p, focusId, links);
   return treeLayout(p, structureId);

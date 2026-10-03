@@ -285,6 +285,14 @@ Objetivo: un segundo lector del mundo, nunca imprescindible.
 
 Criterio: todas las funciones son opcionales, desactivables y no modifican datos sin confirmación.
 
+### Pendientes señalados por el usuario (2026-10-03, tercera ronda)
+
+- [ ] Árbol de estructura: arrastrar y soltar para anidar un nodo en otro, sacarlo a la raíz o reordenar hermanos (reabre el punto pospuesto de la Fase 3).
+- [x] Etiquetas de aristas hermanas (mismo origen, destinos a distancia parecida) repartidas a lo largo de la línea para no pisarse.
+- [x] Fuerzas: radio de colisión acorde al ancho de la tarjeta, cascada por profundidad en la estructura (generales arriba) y agrupación horizontal por tipo.
+- [x] El lienzo recalcula la disposición al cambiar el tipo o el parentesco de una relación (antes solo al añadir o quitar nodos o relaciones).
+- [x] Vocabulario de parentesco: término nuevo vacío y enfocado; contraparte con sus formas; explicación de «Árbol».
+
 ### Fase 9 — Tutorial y primeros pasos
 
 Objetivo: que alguien que llega a https://nodaria.yosiftware.es sin contexto entienda en cinco minutos qué es y cómo empezar.
