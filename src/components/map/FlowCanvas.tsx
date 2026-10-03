@@ -394,8 +394,9 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     return (
       <section className="workspace">
         <EmptyState icon={Network} title="Un lienzo para tu mundo">
-          Define tipos de entidad en «Tipos y propiedades» y crea el primer nodo desde el panel de estructura, o haz
-          doble clic aquí.
+          Aquí verás tus personajes, lugares y todo lo que los une. Primero define en «Tipos» qué clase de cosas existen
+          (Personaje, Ciudad, Deidad…) y en «Relaciones» cómo se conectan; después crea el primer nodo con el botón «+»
+          de la estructura o con doble clic aquí. Para aprender los atajos, pulsa «?».
         </EmptyState>
         <div className="react-flow-empty" onDoubleClick={onDoubleClick} />
       </section>

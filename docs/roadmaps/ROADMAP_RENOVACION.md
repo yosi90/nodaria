@@ -285,6 +285,19 @@ Objetivo: un segundo lector del mundo, nunca imprescindible.
 
 Criterio: todas las funciones son opcionales, desactivables y no modifican datos sin confirmación.
 
+### Fase 9 — Tutorial y primeros pasos
+
+Objetivo: que alguien que llega a https://nodaria.yosiftware.es sin contexto entienda en cinco minutos qué es y cómo empezar.
+
+- [ ] Mensaje de bienvenida que explique el flujo (tipos → relaciones → nodos) y enlace a los atajos. _Primera versión hecha el 2026-10-03._
+- [ ] **Proyecto de ejemplo** cargable desde la bienvenida y desde el menú de proyecto («Abrir mundo de ejemplo»): un mundo de fantasía pequeño con tipos, preformas, relaciones genealógicas, referencias, notas y una vista guardada.
+- [ ] **Recorrido guiado** (tour) la primera vez: 5–7 pasos que señalan la estructura, el lienzo, el inspector, «Ver por», el foco y la leyenda; se puede saltar y volver a lanzar desde la ayuda («?»).
+- [ ] **Ayuda contextual** en los puntos difíciles: qué es una estructura, cuándo usar atributo de referencia o relación, qué es una preforma, cómo funciona el parentesco con género.
+- [ ] Página de ayuda («?») ampliada: además de atajos, los conceptos clave con un párrafo cada uno.
+- [ ] Textos vacíos de cada vista (Tipos, Relaciones, Propiedades) con el siguiente paso sugerido.
+
+Criterio: una persona nueva crea un tipo, dos nodos y una relación sin ayuda externa; el proyecto de ejemplo muestra todas las funciones principales.
+
 ## Orden recomendado y primer hito
 
 1. **Fase 0** completa (urgente: B1 y B2 pueden dejar la app inutilizable con los datos guardados).
@@ -308,6 +321,7 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 | 6 — Análisis                   | Pendiente               |
 | 7 — Persistencia y exportación | Pendiente               |
 | 8 — Asistente IA               | Pendiente               |
+| 9 — Tutorial y primeros pasos  | Pendiente               |
 
 ## Criterios de finalización del roadmap
 

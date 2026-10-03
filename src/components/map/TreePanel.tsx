@@ -253,7 +253,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
               ? 'Ningún nodo coincide con el filtro.'
               : entityTypes.length
                 ? 'Aún no hay nodos. Usa ＋ para añadir el primero.'
-                : 'Empieza creando un tipo de entidad en «Tipos y propiedades».'}
+                : 'Empieza creando un tipo de entidad en «Tipos».'}
           </p>
         )}
       </div>

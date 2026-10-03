@@ -23,8 +23,8 @@ export function NodeTypeMenu({ anchor, schemas, parentLabel, onSelect, onClose }
         onPick={onSelect}
         emptyLabel={
           parentLabel
-            ? 'Este tipo no admite subnodos. Configúralos en «Tipos y propiedades».'
-            : 'Crea primero un tipo de entidad en «Tipos y propiedades».'
+            ? 'Este tipo no admite subnodos. Configúralos en «Tipos».'
+            : 'Crea primero un tipo de entidad en «Tipos».'
         }
       />
     </Popover>
