@@ -35,3 +35,13 @@ npm run preview
 - `src/styles`: estilos globales y diseño adaptable.
 
 Los proyectos siguen almacenándose en `localStorage` bajo la clave histórica `nodaria_state_v1`, por lo que la actualización conserva los datos existentes. Los proyectos se migran al formato actual (`src/services/migrations.ts`) y se reparan al cargarlos. La importación acepta tanto exportaciones antiguas como las de la versión actual.
+
+## Despliegue
+
+La web se publica en Firebase Hosting (proyecto `yosiftware-nodaria`): https://yosiftware-nodaria.web.app, con dominio propio https://nodaria.yosiftware.es (DNS en Cloudflare).
+
+```bash
+npm run deploy
+```
+
+Requiere `firebase-tools` con sesión iniciada (`firebase login`). La configuración está en `firebase.json` (carpeta `dist`, reescritura a `index.html` y caché inmutable de `assets/`).

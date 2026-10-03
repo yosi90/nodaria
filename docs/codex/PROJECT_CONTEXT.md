@@ -76,6 +76,10 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - La persistencia sigue siendo exclusivamente local.
 - No quedan diálogos nativos: confirmaciones y peticiones de texto usan `useDialogs()`, y los borrados ofrecen "Deshacer" mediante un toast.
 
+## Despliegue
+
+- Firebase Hosting, proyecto `yosiftware-nodaria` (creado el 2026-10-03): https://yosiftware-nodaria.web.app y dominio propio https://nodaria.yosiftware.es (DNS en Cloudflare, gestionado por el usuario). `npm run deploy` compila y publica. Los datos siguen siendo locales del navegador: hostear no cambia la persistencia.
+
 ## Roadmap activo
 
 `docs/roadmaps/ROADMAP_RENOVACION.md` (creado el 2026-10-03): renovación completa en fases (estabilidad, diseño, lienzo, fichas y navegación, modelo, vistas, análisis, persistencia, IA opcional). Incluye los bugs críticos detectados: ciclos de jerarquía que cuelgan la app, hijos huérfanos al borrar un tipo y pérdida de valores al renombrar la clave de un atributo. Las prioridades de abajo quedan integradas en él.
