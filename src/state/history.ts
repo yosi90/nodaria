@@ -29,6 +29,7 @@ function groupOf(action: Action) {
   if (action.type === 'update-relation') return `relation:${action.relation.id}`;
   if (action.type === 'update-schema') return `schema:${action.schema.id}`;
   if (action.type === 'rename-project') return 'project-name';
+  if (action.type === 'move-nodes') return `move:${Object.keys(action.positions).sort().join(',')}`;
   return null;
 }
 
@@ -52,8 +53,9 @@ export function historyReducer(history: History, action: HistoryAction): History
 
   const present = appReducer(history.present, action.action);
   if (present === history.present) return history;
-  // Cambiar de proyecto es navegación, no una edición: no ocupa un paso de deshacer.
-  if (action.action.type === 'set-project') return { ...history, present, lastGroup: null };
+  // Cambiar de proyecto o de vista es navegación, no una edición: no ocupa un paso de deshacer.
+  if (action.action.type === 'set-project' || action.action.type === 'update-view')
+    return { ...history, present, lastGroup: null };
 
   const group = groupOf(action.action);
   const coalesce = group !== null && group === history.lastGroup && action.at - history.lastAt < COALESCE_MS;

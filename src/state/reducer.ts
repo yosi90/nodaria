@@ -1,6 +1,16 @@
 import { createProject, now, uid } from '../domain/factories';
 import * as ops from '../domain/operations';
-import type { AppState, FieldValue, OrphanStrategy, Project, Relation, Schema, SchemaKind } from '../domain/types';
+import type {
+  AppState,
+  FieldValue,
+  OrphanStrategy,
+  Position,
+  Project,
+  ProjectView,
+  Relation,
+  Schema,
+  SchemaKind,
+} from '../domain/types';
 
 export type Action =
   | { type: 'set-project'; id: string }
@@ -14,7 +24,17 @@ export type Action =
   | { type: 'delete-schema'; id: string; strategy: OrphanStrategy }
   | { type: 'add-field'; schemaId: string }
   | { type: 'delete-field'; schemaId: string; fieldId: string }
-  | { type: 'add-node'; typeId: string; parentId: string | null; id?: string }
+  | {
+      type: 'add-node';
+      typeId: string;
+      parentId: string | null;
+      id?: string;
+      /** Estructura en la que `parentId` es el superior; `null` o ausente = jerarquía base. */
+      structureId?: string | null;
+      position?: Position | null;
+    }
+  | { type: 'move-nodes'; positions: Record<string, Position | null> }
+  | { type: 'update-view'; view: Partial<ProjectView> }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
   | { type: 'add-relation'; typeId: string; sourceId: string; targetId: string }
@@ -76,7 +96,18 @@ function projectReducer(p: Project, action: Action): Project {
     case 'delete-field':
       return ops.deleteField(p, action.schemaId, action.fieldId);
     case 'add-node':
-      return ops.addNode(p, action.typeId, action.parentId, action.id).project;
+      return ops.addNodeUnder(
+        p,
+        action.typeId,
+        action.structureId ?? null,
+        action.parentId,
+        action.id,
+        action.position,
+      );
+    case 'move-nodes':
+      return ops.moveNodes(p, action.positions);
+    case 'update-view':
+      return ops.updateView(p, action.view);
     case 'update-node':
       return ops.updateNode(p, action.id, action.values, action.parentId);
     case 'delete-node':

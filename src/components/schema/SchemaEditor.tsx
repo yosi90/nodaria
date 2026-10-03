@@ -162,6 +162,40 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
                   />
                   Relación dirigida <span className="field-hint">(con flecha, de origen a destino)</span>
                 </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={schema.structural}
+                    onChange={event => update({ structural: event.target.checked })}
+                  />
+                  Forma estructura <span className="field-hint">(se puede ver como árbol en «Ver por»)</span>
+                </label>
+                {schema.structural && (
+                  <div className="field">
+                    El superior es
+                    <div className="segmented" role="group" aria-label="Extremo superior">
+                      <button
+                        type="button"
+                        aria-pressed={schema.parentEnd === 'source'}
+                        onClick={() => update({ parentEnd: 'source' })}
+                      >
+                        El origen
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={schema.parentEnd === 'target'}
+                        onClick={() => update({ parentEnd: 'target' })}
+                      >
+                        El destino
+                      </button>
+                    </div>
+                    <small>
+                      {schema.parentEnd === 'target'
+                        ? `En «A ${schema.name || '…'} B», A cuelga de B. Ejemplo: «vive en», «hijo de».`
+                        : `En «A ${schema.name || '…'} B», B cuelga de A. Ejemplo: «contiene», «gobierna».`}
+                    </small>
+                  </div>
+                )}
                 <div className="field">
                   Estilo de línea
                   <div className="segmented" role="group" aria-label="Estilo de línea">

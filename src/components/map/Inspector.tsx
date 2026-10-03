@@ -1,4 +1,4 @@
-import { GitFork, Plus, Trash2, X } from 'lucide-react';
+import { GitFork, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
 import {
   allFields,
   creatableTypes,
@@ -107,6 +107,30 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
                   onChange={parentId => dispatch({ type: 'update-node', id: node.id, values: node.values, parentId })}
                 />
                 <small>Solo aparecen nodos cuyo tipo admite este como subnodo.</small>
+              </div>
+              <div className="field">
+                Posición en el lienzo
+                <div className="check-row">
+                  {node.position ? (
+                    <>
+                      <span className="badge">
+                        <Pin size={10} aria-hidden /> Fijada
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={PinOff}
+                        onClick={() => dispatch({ type: 'move-nodes', positions: { [node.id]: null } })}
+                      >
+                        Volver a automática
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="field-hint">
+                      Automática: la coloca la disposición elegida. Arrástralo para fijarla.
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </section>

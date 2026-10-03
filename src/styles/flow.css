@@ -1,0 +1,348 @@
+/* ---------- Lienzo (React Flow) ---------- */
+.workspace.flow {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.react-flow-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.workspace .empty-state {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+.react-flow {
+  background: var(--canvas-bg);
+}
+.react-flow__pane {
+  cursor: default;
+}
+.react-flow__pane.dragging {
+  cursor: grabbing;
+}
+.react-flow__node {
+  cursor: grab;
+}
+.react-flow__node.dragging {
+  cursor: grabbing;
+}
+.react-flow__node:focus-visible {
+  outline: none;
+}
+.react-flow__attribution {
+  display: none;
+}
+
+/* Tarjeta */
+.node-card-flow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 200px;
+  height: 58px;
+  padding: 0 10px 0 11px;
+  border: 1.2px solid var(--node-border);
+  border-radius: 13px;
+  background: var(--node-bg);
+  box-shadow: 0 1px 2px #0000001f;
+  transition:
+    border-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease),
+    opacity 0.15s var(--ease);
+}
+.node-card-flow:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+.node-card-flow.selected,
+.react-flow__node:focus-visible .node-card-flow {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.node-card-flow.dimmed {
+  opacity: 0.28;
+}
+.node-card-flow .node-texts {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+}
+.node-card-flow strong,
+.node-card-flow small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.node-card-flow strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.node-card-flow small {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+.node-marks {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.node-mark {
+  display: grid;
+  place-items: center;
+  color: var(--text-subtle);
+}
+.node-mark.warning {
+  color: var(--warning);
+}
+.node-degree {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+/* Asas: el destino cubre toda la tarjeta; el origen es un punto a la derecha */
+.react-flow__handle.node-target {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  transform: none;
+  opacity: 0;
+  pointer-events: none;
+}
+.react-flow.connecting .react-flow__handle.node-target,
+.react-flow__connection-in-progress .react-flow__handle.node-target {
+  pointer-events: all;
+}
+.react-flow__handle.node-source {
+  right: -7px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--surface-2);
+  background: var(--accent);
+  opacity: 0;
+  cursor: crosshair;
+  transition: opacity 0.15s var(--ease);
+}
+.react-flow__node:hover .node-source,
+.node-card-flow.selected .node-source,
+.react-flow__handle.node-source.connectingfrom {
+  opacity: 1;
+}
+.react-flow__connection-path {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+/* Aristas */
+.react-flow__edge-path.edge-flow {
+  stroke-width: 2;
+  transition: opacity 0.15s var(--ease);
+}
+.react-flow__edge-path.edge-flow.hierarchy {
+  stroke: var(--edge);
+  stroke-width: 1.6;
+}
+.react-flow__edge-path.edge-flow.strong {
+  stroke-width: 3.4;
+}
+.react-flow__edge-path.edge-flow.hidden {
+  stroke-dasharray: 7 6;
+}
+.react-flow__edge-path.edge-flow.selected,
+.react-flow__edge.selected .react-flow__edge-path.edge-flow {
+  stroke-width: 3.6;
+}
+.react-flow__edge:hover .react-flow__edge-path.edge-flow.relation {
+  stroke-width: 3.2;
+}
+.react-flow__edge-path.edge-flow.dimmed {
+  opacity: 0.15;
+}
+.edge-label {
+  position: absolute;
+  max-width: 180px;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--canvas-bg) 92%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: all;
+  transition: opacity 0.15s var(--ease);
+}
+.edge-label.named {
+  color: var(--text);
+  font-weight: 600;
+}
+.edge-label:hover,
+.edge-label.selected {
+  border-color: var(--edge-color, var(--accent));
+  background: var(--surface-2);
+}
+.edge-label.dimmed {
+  opacity: 0.15;
+}
+
+/* Barra de herramientas y paneles del lienzo */
+.react-flow__panel {
+  margin: 10px;
+}
+.workspace-toolbar.flow-toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: var(--panel-head-height);
+  padding: 8px 12px;
+}
+.flow-toolbar .segmented {
+  background: var(--surface-2);
+}
+.flow-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.flow-toolbar-label,
+.field-inline .flow-toolbar-label {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.field-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+.field-inline .select-trigger {
+  flex: 1;
+}
+.flow-counts {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.legend-panel {
+  width: 240px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(6px);
+}
+.legend-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.legend-panel h3 {
+  font-size: var(--fs-sm);
+}
+.legend-group + .legend-group {
+  margin-top: 8px;
+}
+.legend-title {
+  margin: 6px 0 2px;
+  color: var(--text-subtle);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.legend-row .label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.legend-row .count {
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+}
+.legend-line {
+  flex: none;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--edge);
+}
+.legend-line.hierarchy {
+  height: 2px;
+}
+.legend-line.strong {
+  height: 5px;
+}
+.legend-line.hidden {
+  height: 0;
+  border-top: 3px dashed;
+  background: transparent !important;
+}
+
+/* Controles y minimapa con el tema */
+.react-flow__controls {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  width: 30px;
+  height: 30px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.react-flow__controls-button:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+  max-width: 14px;
+  max-height: 14px;
+}
+.react-flow__minimap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.react-flow__minimap-mask {
+  fill: var(--scrim);
+}

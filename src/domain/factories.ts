@@ -1,5 +1,5 @@
 import { COLORS, PROJECT_FORMAT_VERSION } from './constants';
-import type { AppState, FieldDefinition, Project, Schema, SchemaKind } from './types';
+import type { AppState, FieldDefinition, Project, ProjectView, Schema, SchemaKind } from './types';
 export const uid = (prefix = 'id') => `${prefix}_${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
 export const now = () => new Date().toISOString();
 export const slugify = (value: string) =>
@@ -21,6 +21,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     schemas: [],
     nodes: [],
     relations: [],
+    view: createView(),
   };
 }
 export function createInitialState(): AppState {
@@ -43,6 +44,8 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     targetTypeIds: [],
     directed: false,
     relationStyle: 'normal',
+    structural: false,
+    parentEnd: 'target',
   };
 }
 export function createField(): FieldDefinition {
@@ -58,5 +61,15 @@ export function createField(): FieldDefinition {
     options: [],
     referenceTypeIds: [],
     formula: '',
+  };
+}
+export function createView(): ProjectView {
+  return {
+    structureId: null,
+    layout: 'tree',
+    hiddenRelationTypeIds: [],
+    hiddenEntityTypeIds: [],
+    showHierarchy: true,
+    focusDepth: 0,
   };
 }

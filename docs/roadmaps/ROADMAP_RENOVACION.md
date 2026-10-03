@@ -158,19 +158,26 @@ Correcciones tras la revisión del usuario (2026-10-03):
 
 Objetivo: ver el mundo y moverse por él.
 
-- [ ] Migrar el lienzo a React Flow: zoom, paneo, arrastre de nodos, selección múltiple, minimapa y controles.
-- [ ] Posiciones persistentes por proyecto (y por vista, ver Fase 5).
-- [ ] Disposiciones automáticas: jerárquica (árbol), de fuerzas (relaciones transversales), radial alrededor de un nodo. Botón "reordenar" que solo mueve los nodos no fijados.
-- [ ] Nodos rediseñados: icono o retrato, nombre completo con ajuste de línea, tipo, insignia con el número de conexiones, estado (ficha incompleta).
-- [ ] Aristas: flechas en relaciones dirigidas, estilos claramente distintos (continua, gruesa, discontinua para secretas), color por tipo de relación, etiqueta legible al pasar por encima, varias aristas entre el mismo par sin solaparse.
-- [ ] Crear relación arrastrando de un nodo a otro: menú con los tipos de relación compatibles con ese par.
-- [ ] Crear nodo con doble clic en el lienzo.
-- [ ] Al pasar por encima de un nodo, resaltar sus vecinos y atenuar el resto.
-- [ ] **Modo foco**: mostrar solo un nodo y sus conexiones a 1, 2 o 3 saltos.
-- [ ] Filtros visibles en el lienzo: por tipo de entidad, tipo de relación, etiqueta; mostrar u ocultar jerarquía y relaciones secretas.
-- [ ] Leyenda de colores y estilos generada a partir de los tipos.
-- [ ] Agrupar visualmente los hijos dentro del padre (contenedores plegables), opcional.
-- [ ] Rendimiento verificado con un proyecto de prueba de ~500 nodos y ~1500 relaciones.
+- [x] Lienzo migrado a React Flow (`src/components/map/FlowCanvas.tsx`): zoom, paneo, arrastre, minimapa y controles. _La selección múltiple se deja para más adelante: el inspector y el historial trabajan con un elemento._
+- [x] Posiciones persistentes por proyecto (`Node.position`). Un nodo arrastrado queda fijado (chincheta); «Volver a automática» en el inspector o «Recolocar» en la barra lo sueltan. Las posiciones entran en el historial de deshacer, agrupadas por arrastre.
+- [x] Disposiciones automáticas (`layout.ts`, probadas): jerárquica según la estructura elegida (`d3-hierarchy`), de fuerzas (`d3-force`, determinista) y radial alrededor del nodo seleccionado. Solo mueven los nodos no fijados.
+- [x] Nodos rediseñados: icono y color del tipo, nombre, tipo, número de relaciones, aviso de ficha incompleta y chincheta. _Sin retrato hasta la Fase 7 (imágenes)._
+- [x] Aristas: flechas en dirigidas con el color del tipo, estilos continua/gruesa/discontinua, etiqueta con el nombre propio de la relación, paralelas en abanico, borde a borde y esquivando tarjetas (hasta 200 nodos).
+- [x] Crear relación arrastrando desde el asa derecha de un nodo hasta otro: menú con los tipos compatibles.
+- [x] Crear nodo raíz con doble clic en el lienzo, en esa posición.
+- [x] Resaltado de vecinos al pasar el ratón (sobre el DOM, sin rerender).
+- [x] Modo foco a 1, 2 o 3 saltos del nodo seleccionado.
+- [x] Filtros y leyenda: mostrar u ocultar cada tipo de entidad y de relación y la jerarquía «Dentro de», con recuentos. _El filtro por etiqueta espera a que existan etiquetas (Fase 3)._
+- [ ] Agrupar visualmente los hijos dentro del padre (contenedores plegables): descartado por ahora, las estructuras alternativas lo cubren mejor.
+- [x] Rendimiento con 500 nodos y 1500 relaciones (Chromium sin interfaz): carga 1,3 s; arrastre 20 ms por paso; disposición jerárquica 1,3 s y de fuerzas 2,5 s (una vez); resaltado al pasar el ratón 0,22 s. Mejorable, pero usable; en mundos de cientos de nodos es instantáneo.
+
+**Relaciones estructurales (añadido en esta fase a petición del usuario):**
+
+- [x] Un tipo de relación puede marcarse «Forma estructura» e indicar qué extremo es el superior (`Schema.structural`, `Schema.parentEnd`).
+- [x] El panel de estructura tiene «Ver por»: Dentro de o cualquier relación estructural (`src/domain/structure.ts`). Un nodo con varios superiores aparece bajo cada uno; los ciclos se cortan.
+- [x] «Añadir dentro de» en una estructura relacional crea el nodo y la relación que lo cuelga; los tipos ofrecidos respetan «Desde/Hacia» del tipo de relación.
+- [x] La disposición jerárquica del lienzo usa la estructura elegida.
+- [x] La vista del mapa (estructura, disposición, filtros, foco) se guarda con el proyecto (`Project.view`) sin pasar por el historial.
 
 Criterio: con el mundo real del libro cargado, se puede localizar un personaje, ver sus conexiones y aislarlas sin perderse.
 
@@ -283,7 +290,7 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 | ------------------------------ | ----------------------- |
 | 0 — Estabilidad e integridad   | Completada (2026-10-03) |
 | 1 — Sistema de diseño          | Pendiente               |
-| 2 — Lienzo de grafo            | Pendiente               |
+| 2 — Lienzo de grafo            | Completada (2026-10-03) |
 | 3 — Fichas y navegación        | Pendiente               |
 | 4 — Modelo enriquecido         | Pendiente               |
 | 5 — Vistas y lentes            | Pendiente               |

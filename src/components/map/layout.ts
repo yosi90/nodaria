@@ -1,0 +1,146 @@
+import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
+import { hierarchy, tree } from 'd3-hierarchy';
+import { structureChildren } from '../../domain/structure';
+import type { LayoutMode, Position, Project } from '../../domain/types';
+
+/*
+ * Disposiciones automáticas del lienzo. Devuelven la esquina superior izquierda de cada nodo.
+ * Son deterministas: con el mismo proyecto producen el mismo resultado.
+ */
+
+export const NODE_W = 200;
+export const NODE_H = 58;
+const COL_GAP = 110;
+const ROW_GAP = 34;
+const RING_GAP = 240;
+
+export interface Link {
+  a: string;
+  b: string;
+}
+
+interface TreeDatum {
+  id: string | null;
+  children?: TreeDatum[];
+}
+
+/**
+ * Árbol de la estructura con cada nodo una sola vez: un nodo con varios superiores cuelga del
+ * primero que lo alcanza en orden de profundidad, y los ciclos se cortan.
+ */
+function structureTree(p: Project, structureId: string | null): TreeDatum {
+  const children = structureChildren(p, structureId);
+  const placed = new Set<string>();
+  const build = (id: string | null): TreeDatum[] =>
+    (children.get(id) ?? [])
+      .filter(n => !placed.has(n.id) && placed.add(n.id))
+      .map(n => ({ id: n.id, children: build(n.id) }));
+  const roots = build(null);
+  // Nodos que solo son alcanzables dentro de un ciclo: se añaden como raíces para no perderlos.
+  p.nodes
+    .filter(n => !placed.has(n.id))
+    .forEach(n => {
+      placed.add(n.id);
+      roots.push({ id: n.id, children: build(n.id) });
+    });
+  return { id: null, children: roots };
+}
+
+/** Disposición jerárquica de izquierda a derecha según la estructura indicada. */
+export function treeLayout(p: Project, structureId: string | null): Map<string, Position> {
+  const root = tree<TreeDatum>().nodeSize([NODE_H + ROW_GAP, NODE_W + COL_GAP])(
+    hierarchy(structureTree(p, structureId)),
+  );
+  const result = new Map<string, Position>();
+  let minY = Infinity;
+  root.each(n => {
+    if (n.data.id) minY = Math.min(minY, n.x);
+  });
+  root.each(n => {
+    if (n.data.id)
+      result.set(n.data.id, { x: (n.depth - 1) * (NODE_W + COL_GAP), y: n.x - (minY === Infinity ? 0 : minY) });
+  });
+  return result;
+}
+
+/** Disposición por fuerzas: los nodos conectados se atraen y todos se repelen. Parte de `seed`. */
+export function forceLayout(p: Project, links: Link[], seed: Map<string, Position>): Map<string, Position> {
+  const nodes = p.nodes.map(n => {
+    const s = seed.get(n.id);
+    return { id: n.id, x: (s?.x ?? 0) + NODE_W / 2, y: (s?.y ?? 0) + NODE_H / 2 };
+  });
+  const ids = new Set(nodes.map(n => n.id));
+  const simulation = forceSimulation(nodes)
+    .force(
+      'link',
+      forceLink(links.filter(l => ids.has(l.a) && ids.has(l.b)).map(l => ({ source: l.a, target: l.b })))
+        .id(d => (d as { id: string }).id)
+        .distance(NODE_W + 70)
+        .strength(0.6),
+    )
+    .force('charge', forceManyBody().strength(-1400).distanceMax(900))
+    .force('collide', forceCollide(Math.hypot(NODE_W, NODE_H) / 2 + 18).iterations(2))
+    .force('x', forceX(0).strength(0.03))
+    .force('y', forceY(0).strength(0.03))
+    .stop();
+  simulation.tick(200);
+  return normalize(new Map(nodes.map(n => [n.id, { x: n.x - NODE_W / 2, y: n.y - NODE_H / 2 }])));
+}
+
+/** Disposición radial: anillos por distancia (en saltos) al nodo de foco. */
+export function radialLayout(p: Project, focusId: string, links: Link[]): Map<string, Position> {
+  const adjacency = new Map<string, string[]>();
+  links.forEach(({ a, b }) => {
+    adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
+    adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
+  });
+  const ids = new Set(p.nodes.map(n => n.id));
+  const start = ids.has(focusId) ? focusId : p.nodes[0]?.id;
+  if (!start) return new Map();
+  const visited = new Set([start]);
+  const build = (id: string): TreeDatum => ({
+    id,
+    children: (adjacency.get(id) ?? []).filter(n => ids.has(n) && !visited.has(n) && visited.add(n)).map(build),
+  });
+  const unlaid = hierarchy(build(start));
+  const depth = unlaid.height || 1;
+  const root = tree<TreeDatum>()
+    .size([2 * Math.PI, depth * RING_GAP])
+    .separation((a, b) => (a.parent === b.parent ? 1 : 2) / Math.max(1, a.depth))(unlaid);
+  const result = new Map<string, Position>();
+  root.each(n => {
+    if (!n.data.id) return;
+    const radius = n.depth * RING_GAP;
+    result.set(n.data.id, { x: Math.cos(n.x - Math.PI / 2) * radius, y: Math.sin(n.x - Math.PI / 2) * radius });
+  });
+  // Los nodos no conectados con el foco se alinean debajo de los anillos.
+  const unreached = p.nodes.filter(n => !result.has(n.id));
+  const bottom = depth * RING_GAP + NODE_H + 80;
+  unreached.forEach((n, i) => result.set(n.id, { x: (i - (unreached.length - 1) / 2) * (NODE_W + 40), y: bottom }));
+  return normalize(result);
+}
+
+function normalize(positions: Map<string, Position>) {
+  let minX = Infinity;
+  let minY = Infinity;
+  positions.forEach(pos => {
+    minX = Math.min(minX, pos.x);
+    minY = Math.min(minY, pos.y);
+  });
+  if (!Number.isFinite(minX)) return positions;
+  positions.forEach((pos, id) => positions.set(id, { x: Math.round(pos.x - minX), y: Math.round(pos.y - minY) }));
+  return positions;
+}
+
+/** Disposición automática según el modo. `links` son las conexiones visibles (relaciones y jerarquía). */
+export function autoLayout(
+  p: Project,
+  mode: LayoutMode,
+  structureId: string | null,
+  links: Link[],
+  focusId: string | null,
+) {
+  if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId));
+  if (mode === 'radial' && focusId) return radialLayout(p, focusId, links);
+  return treeLayout(p, structureId);
+}

@@ -1,31 +1,51 @@
 import { PanelLeftOpen } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { uid } from '../../domain/factories';
-import { creatableTypes, getNode, nodeLabel } from '../../domain/selectors';
-import type { Selection } from '../../domain/types';
+import { compatibleRelationTypes, getNode, nodeLabel } from '../../domain/selectors';
+import { creatableTypesIn } from '../../domain/structure';
+import type { Position, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { usePreferences } from '../../state/preferences';
+import type { Anchor } from '../common/anchor';
 import { IconButton } from '../common/Button';
 import { isTypingTarget } from '../common/keyboard';
-import type { Anchor } from '../common/anchor';
 import { Splitter } from '../common/Splitter';
+import { useToast } from '../common/toasts';
 import { CreateRelationModal } from './CreateRelationModal';
-import { GraphCanvas } from './GraphCanvas';
+import { FlowCanvas } from './FlowCanvas';
 import { Inspector } from './Inspector';
 import { NodeTypeMenu } from './NodeTypeMenu';
+import { RelationTypeMenu } from './RelationTypeMenu';
 import { TreePanel } from './TreePanel';
 import { useDeleteSelection } from './useDeleteSelection';
 
 const RAIL_WIDTH = 44;
 
+interface AddNodeMenu {
+  parentId: string | null;
+  anchor: Anchor;
+  /** Posición del lienzo en la que se creó (doble clic); si falta, la coloca la disposición automática. */
+  position?: Position;
+}
+
+interface ConnectMenu {
+  sourceId: string;
+  targetId: string;
+  anchor: Anchor;
+}
+
 export function MapView() {
   const { project, dispatch } = useApp();
   const { preferences, setPreference } = usePreferences();
+  const toast = useToast();
   const [selection, setSelection] = useState<Selection>(null);
-  const [addNodeMenu, setAddNodeMenu] = useState<{ parentId: string | null; anchor: Anchor } | null>(null);
+  const [addNodeMenu, setAddNodeMenu] = useState<AddNodeMenu | null>(null);
+  const [connectMenu, setConnectMenu] = useState<ConnectMenu | null>(null);
   const [relationSourceId, setRelationSourceId] = useState<string | null>(null);
   const closeAddNodeMenu = useCallback(() => setAddNodeMenu(null), []);
+  const closeConnectMenu = useCallback(() => setConnectMenu(null), []);
   const deleteSelection = useDeleteSelection();
+  const structureId = project.view.structureId;
 
   // La selección puede quedar huérfana tras deshacer o borrar desde otro sitio.
   const selectionExists =
@@ -57,9 +77,33 @@ export function MapView() {
   const createNode = (typeId: string) => {
     if (!addNodeMenu) return;
     const id = uid('node');
-    dispatch({ type: 'add-node', typeId, parentId: addNodeMenu.parentId, id });
+    dispatch({
+      type: 'add-node',
+      typeId,
+      parentId: addNodeMenu.parentId,
+      structureId,
+      position: addNodeMenu.position ?? null,
+      id,
+    });
     setAddNodeMenu(null);
     setSelection({ kind: 'node', id });
+  };
+
+  const onConnectNodes = useCallback(
+    (sourceId: string, targetId: string, anchor: Anchor) => {
+      if (!compatibleRelationTypes(project, sourceId, targetId).length) {
+        toast({ message: 'Ningún tipo de relación admite estos dos nodos. Revisa «Desde» y «Hacia» en el tipo.' });
+        return;
+      }
+      setConnectMenu({ sourceId, targetId, anchor });
+    },
+    [project, toast],
+  );
+
+  const createRelation = (typeId: string) => {
+    if (!connectMenu) return;
+    dispatch({ type: 'add-relation', typeId, sourceId: connectMenu.sourceId, targetId: connectMenu.targetId });
+    setConnectMenu(null);
   };
 
   const columns = [
@@ -91,7 +135,12 @@ export function MapView() {
           />
         </aside>
       )}
-      <GraphCanvas selection={activeSelection} onSelect={setSelection} />
+      <FlowCanvas
+        selection={activeSelection}
+        onSelect={setSelection}
+        onAddNode={(anchor, position) => setAddNodeMenu({ parentId: null, anchor, position })}
+        onConnectNodes={onConnectNodes}
+      />
       {activeSelection && (
         <aside className="side-panel right" aria-label="Inspector">
           <Splitter
@@ -113,10 +162,20 @@ export function MapView() {
       {addNodeMenu && (
         <NodeTypeMenu
           anchor={addNodeMenu.anchor}
-          schemas={creatableTypes(project, addNodeMenu.parentId)}
+          schemas={creatableTypesIn(project, structureId, addNodeMenu.parentId)}
           parentLabel={menuParent ? nodeLabel(project, menuParent) : undefined}
           onSelect={createNode}
           onClose={closeAddNodeMenu}
+        />
+      )}
+      {connectMenu && (
+        <RelationTypeMenu
+          project={project}
+          sourceId={connectMenu.sourceId}
+          targetId={connectMenu.targetId}
+          anchor={connectMenu.anchor}
+          onSelect={createRelation}
+          onClose={closeConnectMenu}
         />
       )}
       {relationSourceId && (

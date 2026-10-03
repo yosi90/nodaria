@@ -7,11 +7,13 @@ import { DialogProvider } from './components/common/dialogs';
 import { ToastProvider } from './components/common/toasts';
 import { AppProvider } from './state/AppContext';
 import { PreferencesProvider } from './state/preferences';
+import '@xyflow/react/dist/style.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/components.css';
 import './styles/overlays.css';
 import './styles/layout.css';
+import './styles/flow.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

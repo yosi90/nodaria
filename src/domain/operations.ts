@@ -7,7 +7,19 @@ import {
   getSchema,
   inheritanceCandidates,
 } from './selectors';
-import type { FieldDefinition, FieldValue, Node, OrphanStrategy, Project, Relation, Schema, SchemaKind } from './types';
+import { structureEndpoints } from './structure';
+import type {
+  FieldDefinition,
+  FieldValue,
+  Node,
+  OrphanStrategy,
+  Position,
+  Project,
+  ProjectView,
+  Relation,
+  Schema,
+  SchemaKind,
+} from './types';
 
 /*
  * Operaciones puras sobre un proyecto. Nunca mutan la entrada: devuelven un proyecto nuevo
@@ -115,7 +127,7 @@ export function addNode(
     const value = typedDefault(f);
     if (value !== undefined) values[f.id] = value;
   });
-  const node: Node = { id, typeId, parentId, values, createdAt: now() };
+  const node: Node = { id, typeId, parentId, values, createdAt: now(), position: null };
   return { project: { ...p, nodes: [...p.nodes, node] }, nodeId: node.id };
 }
 
@@ -216,4 +228,47 @@ function removeTypeReferences(schemas: Schema[], typeIds: Set<string>, exceptSch
       next.fields = s.fields.map(f => ({ ...f, referenceTypeIds: f.referenceTypeIds.filter(id => !typeIds.has(id)) }));
     return next;
   });
+}
+
+/** Fija (o suelta, con `null`) la posición de varios nodos en el lienzo. */
+export function moveNodes(p: Project, positions: Record<string, Position | null>): Project {
+  let changed = false;
+  const nodes = p.nodes.map(n => {
+    if (!(n.id in positions)) return n;
+    const next = positions[n.id];
+    if (next === n.position || (next && n.position && next.x === n.position.x && next.y === n.position.y)) return n;
+    changed = true;
+    return { ...n, position: next ? { x: Math.round(next.x), y: Math.round(next.y) } : null };
+  });
+  return changed ? { ...p, nodes } : p;
+}
+
+export function updateView(p: Project, patch: Partial<ProjectView>): Project {
+  return { ...p, view: { ...p.view, ...patch } };
+}
+
+/**
+ * Crea un nodo colgando de `parentId` en la estructura indicada: en la jerarquía base fija su
+ * padre; en una relación estructural lo crea en la raíz y añade la relación que lo enlaza.
+ */
+export function addNodeUnder(
+  p: Project,
+  typeId: string,
+  structureId: string | null,
+  parentId: string | null,
+  id?: string,
+  position: Position | null = null,
+): Project {
+  if (structureId === null || parentId === null) {
+    const created = addNode(p, typeId, parentId, id);
+    return position ? moveNodes(created.project, { [created.nodeId]: position }) : created.project;
+  }
+  const schema = getSchema(p, structureId);
+  const created = addNode(p, typeId, null, id);
+  let next = position ? moveNodes(created.project, { [created.nodeId]: position }) : created.project;
+  if (schema?.structural) {
+    const { sourceId, targetId } = structureEndpoints(schema, parentId, created.nodeId);
+    next = addRelation(next, schema.id, sourceId, targetId);
+  }
+  return next;
 }

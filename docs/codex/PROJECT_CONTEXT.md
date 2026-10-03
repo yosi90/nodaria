@@ -44,18 +44,20 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - Estado: `src/state/reducer.ts` (acciones a operaciones de dominio), `src/state/history.ts` (deshacer/rehacer con agrupación de ediciones) y `src/state/AppContext.tsx` (provider, guardado con retardo y volcado al ocultar o cerrar la página).
 - Migraciones versionadas en `src/services/migrations.ts`; `src/services/storage.ts` migra y repara todo lo que se carga o importa.
 - Pruebas con Vitest junto al código (`*.test.ts`) y constructores comunes en `src/test/fixtures.ts`. Formato con Prettier (`.prettierrc.json`).
-- Dependencias de desarrollo añadidas en la Fase 0: `vitest@5.0.3` y `prettier@3.9.9`. Dependencias de la Fase 1: `lucide-react@1.51.0`, `@fontsource-variable/inter@5.3.0` y `@fontsource-variable/fraunces@5.3.0`.
+- Dependencias de desarrollo añadidas en la Fase 0: `vitest@5.0.3` y `prettier@3.9.9`. Dependencias de la Fase 1: `lucide-react@1.51.0`, `@fontsource-variable/inter@5.3.0` y `@fontsource-variable/fraunces@5.3.0`. Fase 2: `@xyflow/react@12.12.0` (lienzo), `d3-force@3.0.0` y `d3-hierarchy@3.1.2` (disposiciones), con sus `@types`.
+- Lienzo en `src/components/map/FlowCanvas.tsx` (React Flow) con tarjeta `NodeCard`, arista `FloatingEdge` (geometría en `edgeGeometry.ts`), disposiciones puras en `layout.ts`, leyenda y menú de relación al conectar. Las posiciones del lienzo y la vista viven en el proyecto; el resaltado de vecinos se aplica sobre el DOM por rendimiento.
 
 ## Modelo de dominio actual
 
-- `Project`: agrupa esquemas, nodos y relaciones.
+- `Project`: agrupa esquemas, nodos, relaciones y `view` (estructura elegida, disposición, filtros y modo foco del mapa; se guarda y exporta, pero no entra en el historial de deshacer).
 - `Schema`: define una entidad o una relación, sus atributos, herencia y restricciones, además de su color e icono (`icon` es un nombre del catálogo de la interfaz; si falta, la migración pone uno por defecto).
 - `FieldDefinition`: describe un atributo tipado, requerido, calculado o usado como título.
-- `Node`: instancia un esquema de entidad y puede pertenecer a un padre jerárquico. La jerarquía nunca puede tener ciclos y el padre debe admitir el tipo del hijo (`allowedChildTypeIds`, con herencia).
+- `Node`: instancia un esquema de entidad, puede pertenecer a un padre jerárquico y guarda `position` (fijada por el usuario) o `null` (la coloca la disposición automática). La jerarquía nunca puede tener ciclos y el padre debe admitir el tipo del hijo (`allowedChildTypeIds`, con herencia).
 - Los valores de nodos y relaciones se indexan por `FieldDefinition.id` (formato v3). `key` es un alias legible que usan las fórmulas.
 - Un tipo con instancias o subtipos no puede cambiar de clase. La herencia no admite ciclos ni padres de otra clase.
 - Borrar un tipo hace que sus subtipos hereden del abuelo, limpia las restricciones que lo citaban y sube o borra (a elección) los subnodos de otros tipos. Borrar nodos vacía las referencias `nodeRef`/`nodeRefs` que apuntaban a ellos.
 - `Relation`: conecta un nodo de origen con uno de destino e instancia un esquema de relación.
+- **Estructuras** (`src/domain/structure.ts`): la jerarquía «Dentro de» (`parentId`) es la estructura base. Un tipo de relación con `structural: true` define otra, con `parentEnd` indicando qué extremo es el superior; en ellas un nodo puede colgar de varios superiores. El árbol («Ver por») y la disposición jerárquica usan la estructura elegida en `Project.view.structureId`.
 
 `Project.formatVersion` indica la versión del formato (actual: 3; los datos sin versión se tratan como v2). `AppState.version` es 3. La clave histórica de persistencia es `nodaria_state_v1`. Debe mantenerse mientras sea posible para conservar los proyectos creados con la versión monolítica anterior.
 

@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, PanelLeftClose, Plus, Search } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
+import { resolveStructure, structureChildren, structureLenses } from '../../domain/structure';
 import type { Node, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { IconButton } from '../common/Button';
@@ -10,6 +11,8 @@ import { anchorOf, type Anchor } from '../common/anchor';
 import { Select } from '../common/Select';
 
 interface Row {
+  /** Ruta de ids hasta el nodo; un nodo con varios superiores aparece una vez por ruta. */
+  key: string;
   node: Node;
   depth: number;
   hasChildren: boolean;
@@ -26,8 +29,9 @@ interface TreePanelProps {
 }
 
 export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelProps) {
-  const { project } = useApp();
+  const { project, dispatch } = useApp();
   const treeId = useId();
+  const structure = resolveStructure(project, project.view.structureId);
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -35,15 +39,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
   const treeRef = useRef<HTMLDivElement>(null);
   const selectedNodeId = selection?.kind === 'node' ? selection.id : null;
 
-  const children = useMemo(() => {
-    const map = new Map<string | null, Node[]>();
-    const ids = new Set(project.nodes.map(n => n.id));
-    project.nodes.forEach(n => {
-      const parent = n.parentId && ids.has(n.parentId) ? n.parentId : null;
-      map.set(parent, [...(map.get(parent) ?? []), n]);
-    });
-    return map;
-  }, [project.nodes]);
+  const children = useMemo(() => structureChildren(project, structure.id), [project, structure.id]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -69,18 +65,19 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
       return self || below;
     };
     const result: Row[] = [];
-    const walk = (parent: string | null, depth: number, seen: Set<string>) => {
+    // Se evita repetir un nodo dentro de su propia rama (ciclos), pero sí puede aparecer bajo varios superiores.
+    const walk = (parent: string | null, depth: number, path: string[]) => {
       for (const node of children.get(parent) ?? []) {
-        if (seen.has(node.id)) continue;
-        seen.add(node.id);
+        if (path.includes(node.id)) continue;
         if (filtering && !visit(node, new Set())) continue;
-        const hasChildren = (children.get(node.id) ?? []).length > 0;
-        const expanded = filtering || !collapsed.has(node.id);
-        result.push({ node, depth, hasChildren, expanded, contextOnly: filtering && !matches(node) });
-        if (expanded) walk(node.id, depth + 1, seen);
+        const key = [...path, node.id].join('/');
+        const hasChildren = (children.get(node.id) ?? []).some(c => !path.includes(c.id) && c.id !== node.id);
+        const expanded = filtering || !collapsed.has(key);
+        result.push({ key, node, depth, hasChildren, expanded, contextOnly: filtering && !matches(node) });
+        if (expanded) walk(node.id, depth + 1, [...path, node.id]);
       }
     };
-    walk(null, 0, new Set());
+    walk(null, 0, []);
     return result;
   }, [children, collapsed, project, query, typeFilter]);
 
@@ -119,13 +116,18 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
         break;
       case 'ArrowRight':
         if (!row?.hasChildren) break;
-        if (!row.expanded) toggle(row.node.id, true);
+        if (!row.expanded) toggle(row.key, true);
         else focusAt(index + 1);
         break;
-      case 'ArrowLeft':
-        if (row?.hasChildren && row.expanded && !query && !typeFilter) toggle(row.node.id, false);
-        else if (row?.node.parentId) setFocusedId(row.node.parentId);
+      case 'ArrowLeft': {
+        if (row?.hasChildren && row.expanded && !query && !typeFilter) toggle(row.key, false);
+        else if (row) {
+          const parentKey = row.key.split('/').slice(0, -1).join('/');
+          const parentRow = rows.find(r => r.key === parentKey);
+          if (parentRow) setFocusedId(parentRow.node.id);
+        }
         break;
+      }
       case 'Enter':
       case ' ':
         if (row) onSelect({ kind: 'node', id: row.node.id });
@@ -152,6 +154,16 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
         <IconButton icon={PanelLeftClose} label="Ocultar panel ([)" size="sm" onClick={onCollapse} />
       </div>
       <div className="tree-filters">
+        <div className="field-inline">
+          <span className="flow-toolbar-label">Ver por</span>
+          <Select
+            compact
+            aria-label="Estructura"
+            options={structureLenses(project).map(l => ({ value: l.id ?? '', label: l.name }))}
+            value={structure.id ?? ''}
+            onChange={id => dispatch({ type: 'update-view', view: { structureId: id || null } })}
+          />
+        </div>
         <div className="search-input">
           <Search size={14} aria-hidden />
           <input
@@ -186,7 +198,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
           const isSelected = selectedNodeId === row.node.id;
           return (
             <div
-              key={row.node.id}
+              key={row.key}
               id={`${treeId}-${row.node.id}`}
               data-node={row.node.id}
               role="treeitem"
@@ -208,7 +220,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
                 style={{ visibility: row.hasChildren ? 'visible' : 'hidden' }}
                 onClick={event => {
                   event.stopPropagation();
-                  toggle(row.node.id);
+                  toggle(row.key);
                 }}
               >
                 {row.expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}

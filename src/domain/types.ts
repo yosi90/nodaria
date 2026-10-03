@@ -33,7 +33,12 @@ export interface Schema {
   targetTypeIds: string[];
   directed: boolean;
   relationStyle: RelationStyle;
+  /** Una relación estructural puede usarse como jerarquía alternativa en el árbol y en la disposición. */
+  structural: boolean;
+  /** En una relación estructural, qué extremo es el superior (el "padre"). */
+  parentEnd: 'source' | 'target';
 }
+export type Position = { x: number; y: number };
 /** Los valores de nodos y relaciones se indexan por `FieldDefinition.id`, no por su clave. */
 export interface Node {
   id: string;
@@ -41,6 +46,8 @@ export interface Node {
   parentId: string | null;
   values: Record<string, FieldValue>;
   createdAt: string;
+  /** Posición fijada por el usuario en el lienzo; `null` deja que la disposición automática la coloque. */
+  position: Position | null;
 }
 export interface Relation {
   id: string;
@@ -60,6 +67,19 @@ export interface Project {
   schemas: Schema[];
   nodes: Node[];
   relations: Relation[];
+  view: ProjectView;
+}
+export type LayoutMode = 'tree' | 'force' | 'radial';
+/** Estado de la vista del mapa. Se guarda con el proyecto pero no entra en el historial de deshacer. */
+export interface ProjectView {
+  /** `null` = jerarquía "Dentro de"; si no, id de un tipo de relación estructural. */
+  structureId: string | null;
+  layout: LayoutMode;
+  hiddenRelationTypeIds: string[];
+  hiddenEntityTypeIds: string[];
+  showHierarchy: boolean;
+  /** Modo foco: saltos visibles alrededor del nodo seleccionado; 0 = desactivado. */
+  focusDepth: number;
 }
 export interface AppState {
   version: 3;

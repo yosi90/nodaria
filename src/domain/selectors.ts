@@ -156,3 +156,16 @@ export function fieldValue(field: FieldDefinition, values: Record<string, FieldV
     return Array.isArray(value) ? value.join(', ') : String(value ?? '');
   });
 }
+
+/** Tipos de relación válidos entre dos nodos concretos (al soltar una conexión arrastrada). */
+export function compatibleRelationTypes(project: Project, sourceId: string, targetId: string) {
+  const source = project.nodes.find(n => n.id === sourceId);
+  const target = project.nodes.find(n => n.id === targetId);
+  if (!source || !target) return [];
+  return project.schemas.filter(
+    s =>
+      s.kind === 'relationship' &&
+      typeMatches(project, source.typeId, s.sourceTypeIds) &&
+      typeMatches(project, target.typeId, s.targetTypeIds),
+  );
+}

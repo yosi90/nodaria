@@ -16,7 +16,7 @@ export function node(
   parentId: string | null = null,
   values: Record<string, FieldValue> = {},
 ): Node {
-  return { id, typeId, parentId, values, createdAt: '2026-01-01T00:00:00.000Z' };
+  return { id, typeId, parentId, values, createdAt: '2026-01-01T00:00:00.000Z', position: null };
 }
 
 export function relation(id: string, typeId: string, sourceId: string, targetId: string): Relation {

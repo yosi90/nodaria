@@ -1,5 +1,5 @@
 import { PROJECT_FORMAT_VERSION } from '../domain/constants';
-import { uid } from '../domain/factories';
+import { createView, uid } from '../domain/factories';
 import { allFields } from '../domain/selectors';
 import type { FieldValue, Project } from '../domain/types';
 
@@ -52,9 +52,17 @@ function normalizeProject(project: RawProject): Project {
       targetTypeIds: s.targetTypeIds || [],
       directed: s.directed || false,
       relationStyle: s.relationStyle || 'normal',
+      structural: s.structural || false,
+      parentEnd: s.parentEnd || 'target',
     })),
-    nodes: (project.nodes || []).map(n => ({ ...n, parentId: n.parentId || null, values: n.values || {} })),
+    nodes: (project.nodes || []).map(n => ({
+      ...n,
+      parentId: n.parentId || null,
+      values: n.values || {},
+      position: n.position && Number.isFinite(n.position.x) && Number.isFinite(n.position.y) ? n.position : null,
+    })),
     relations: (project.relations || []).map(r => ({ ...r, values: r.values || {} })),
+    view: { ...createView(), ...(project.view ?? {}) },
   };
 }
 
