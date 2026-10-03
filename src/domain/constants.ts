@@ -10,6 +10,14 @@ export const FIELD_TYPES: ReadonlyArray<[FieldType, string]> = [
   ['nodeRefs', 'Referencias múltiples'],
   ['computed', 'Calculado'],
   ['image', 'Imagen'],
+  ['gender', 'Género'],
+];
+/** Valores del atributo de género y su etiqueta. */
+export const GENDERS: ReadonlyArray<[string, string]> = [
+  ['', 'Sin definir'],
+  ['m', 'Masculino'],
+  ['f', 'Femenino'],
+  ['n', 'Neutro / otro'],
 ];
 export const RELATION_STYLES: Record<RelationStyle, { label: string; dash?: string }> = {
   normal: { label: 'Normal' },

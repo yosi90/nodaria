@@ -20,7 +20,17 @@ export function node(
 }
 
 export function relation(id: string, typeId: string, sourceId: string, targetId: string): Relation {
-  return { id, typeId, sourceId, targetId, values: {}, createdAt: '2026-01-01T00:00:00.000Z', reverseName: '' };
+  return {
+    id,
+    typeId,
+    sourceId,
+    targetId,
+    values: {},
+    createdAt: '2026-01-01T00:00:00.000Z',
+    reverseName: '',
+    kinshipId: null,
+    kinshipNeutral: false,
+  };
 }
 
 export function project(patch: Partial<Project> = {}): Project {

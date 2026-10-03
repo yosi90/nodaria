@@ -11,6 +11,7 @@ import { TypeIcon } from '../common/icons';
 import { nodeOption, schemaOption } from '../common/options';
 import { Select } from '../common/Select';
 import { useToast } from '../common/toasts';
+import { KinshipFields } from './KinshipFields';
 
 /**
  * Relaciones de un nodo dentro de su ficha: lista editable y un editor desplegable para crear
@@ -147,6 +148,8 @@ function RelationForm({
   );
   const [values, setValues] = useState<Record<string, FieldValue>>(relation?.values ?? {});
   const [reverseName, setReverseName] = useState(relation?.reverseName ?? '');
+  const [kinshipId, setKinshipId] = useState<string | null>(relation?.kinshipId ?? null);
+  const [kinshipNeutral, setKinshipNeutral] = useState(relation?.kinshipNeutral ?? false);
   const schema = getSchema(project, typeId);
   const fields = schema ? allFields(project, schema.id) : [];
   const me = getNode(project, nodeId);
@@ -158,7 +161,7 @@ function RelationForm({
     : [];
   const myTypeOk = schema && me ? typeMatches(project, me.typeId, schema[myEnd]) : false;
   const validOther = otherId && candidates.some(n => n.id === otherId) ? otherId : null;
-  const canSave = Boolean(schema && validOther && myTypeOk);
+  const canSave = Boolean(schema && validOther && myTypeOk && (!schema.genealogical || kinshipId));
 
   const save = () => {
     if (!schema || !validOther) return;
@@ -167,12 +170,36 @@ function RelationForm({
     if (relation) {
       dispatch({
         type: 'update-relation',
-        relation: { ...relation, typeId: schema.id, sourceId, targetId, values, reverseName },
+        relation: {
+          ...relation,
+          typeId: schema.id,
+          sourceId,
+          targetId,
+          values,
+          reverseName,
+          kinshipId,
+          kinshipNeutral,
+        },
       });
       onDone(relation.id);
     } else {
       const id = uid('rel');
-      dispatch({ type: 'add-relation', typeId: schema.id, sourceId, targetId, id, values, reverseName });
+      dispatch({ type: 'add-relation', typeId: schema.id, sourceId, targetId, id, values, reverseName, kinshipId });
+      if (kinshipNeutral)
+        dispatch({
+          type: 'update-relation',
+          relation: {
+            id,
+            typeId: schema.id,
+            sourceId,
+            targetId,
+            values,
+            reverseName,
+            kinshipId,
+            kinshipNeutral,
+            createdAt: '',
+          },
+        });
       onDone(id);
     }
   };
@@ -227,23 +254,37 @@ function RelationForm({
             </small>
           )}
         </div>
-        {fields.map(f => (
-          <label className="field" key={f.id}>
-            {f.label}
-            {f.type === 'longText' ? (
-              <textarea
-                value={String(values[f.id] ?? '')}
-                onChange={e => setValues({ ...values, [f.id]: e.target.value })}
-              />
-            ) : (
-              <input
-                value={String(values[f.id] ?? '')}
-                onChange={e => setValues({ ...values, [f.id]: e.target.value })}
-              />
-            )}
-          </label>
-        ))}
-        {schema?.directed && (
+        {schema?.genealogical && (
+          <KinshipFields
+            sourceId={iAmSource ? nodeId : validOther}
+            targetId={iAmSource ? validOther : nodeId}
+            kinshipId={kinshipId}
+            neutral={kinshipNeutral}
+            onChange={patch => {
+              if (patch.kinshipId !== undefined) setKinshipId(patch.kinshipId);
+              if (patch.neutral !== undefined) setKinshipNeutral(patch.neutral);
+            }}
+          />
+        )}
+        {fields
+          .filter(f => !(schema?.genealogical && f.isTitle))
+          .map(f => (
+            <label className="field" key={f.id}>
+              {f.label}
+              {f.type === 'longText' ? (
+                <textarea
+                  value={String(values[f.id] ?? '')}
+                  onChange={e => setValues({ ...values, [f.id]: e.target.value })}
+                />
+              ) : (
+                <input
+                  value={String(values[f.id] ?? '')}
+                  onChange={e => setValues({ ...values, [f.id]: e.target.value })}
+                />
+              )}
+            </label>
+          ))}
+        {schema?.directed && !schema.genealogical && (
           <label className="field">
             <span>
               <ArrowLeftRight size={12} aria-hidden /> Visto desde el destino

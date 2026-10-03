@@ -283,7 +283,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         selected: selection?.kind === 'relation' && selection.id === r.id,
         markerEnd: schema?.directed ? { type: MarkerType.ArrowClosed, color, width: 16, height: 16 } : undefined,
         markerStart:
-          schema?.directed && schema.reciprocal
+          schema?.directed && (schema.reciprocal || schema.genealogical)
             ? { type: MarkerType.ArrowClosed, color, width: 16, height: 16 }
             : undefined,
         data: {

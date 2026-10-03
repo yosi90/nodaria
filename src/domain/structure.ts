@@ -1,3 +1,4 @@
+import { kinshipStructureLink } from './kinship';
 import { referenceFields, referencedIds, typesWithField } from './references';
 import { allFields, getSchema, typeMatches } from './selectors';
 import type { FieldDefinition, Node, Project, Schema } from './types';
@@ -26,7 +27,7 @@ export function structureLenses(p: Project): StructureLens[] {
   return [
     { id: HIERARCHY, name: 'Dentro de' },
     ...p.schemas
-      .filter(s => s.kind === 'relationship' && s.structural)
+      .filter(s => s.kind === 'relationship' && (s.structural || s.genealogical))
       .map(s => ({ id: s.id, name: s.name, schema: s })),
     ...referenceFields(p).map(r => ({ id: FIELD_LENS + r.field.id, name: r.name, field: r.field })),
   ];
@@ -60,6 +61,11 @@ export function structureLinks(p: Project, structureId: string | null): { parent
     return links;
   }
   const schema = getSchema(p, structureId);
+  if (schema?.genealogical)
+    return p.relations
+      .filter(r => r.typeId === structureId)
+      .map(r => kinshipStructureLink(p, r))
+      .filter((l): l is { parentId: string; childId: string } => Boolean(l));
   if (!schema?.structural) return [];
   return p.relations
     .filter(r => r.typeId === structureId && r.sourceId !== r.targetId)
@@ -122,6 +128,11 @@ export function creatableTypesIn(p: Project, structureId: string | null, parentI
     return typesWithField(p, field.id);
   }
   const schema = getSchema(p, structureId);
+  if (schema?.genealogical) {
+    // El nuevo nodo será descendiente (origen) del superior (destino).
+    if (!typeMatches(p, parent.typeId, schema.targetTypeIds)) return [];
+    return concrete.filter(s => typeMatches(p, s.id, schema.sourceTypeIds));
+  }
   if (!schema?.structural) return [];
   const upper = schema.parentEnd === 'source' ? schema.sourceTypeIds : schema.targetTypeIds;
   const lower = schema.parentEnd === 'source' ? schema.targetTypeIds : schema.sourceTypeIds;

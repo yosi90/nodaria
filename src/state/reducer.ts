@@ -5,6 +5,7 @@ import type {
   AppState,
   FieldDefinition,
   FieldValue,
+  KinshipTerm,
   OrphanStrategy,
   Position,
   Project,
@@ -24,7 +25,7 @@ export type Action =
   | { type: 'add-schema'; name: string; kind: SchemaKind; id?: string }
   | { type: 'update-schema'; schema: Schema }
   | { type: 'delete-schema'; id: string; strategy: OrphanStrategy }
-  | { type: 'add-field'; schemaId: string }
+  | { type: 'add-field'; schemaId: string; preset?: Partial<FieldDefinition> }
   | { type: 'add-library-field'; id?: string }
   | { type: 'update-library-field'; field: FieldDefinition }
   | { type: 'delete-library-field'; id: string }
@@ -48,6 +49,7 @@ export type Action =
   | { type: 'rename-lens'; id: string; name: string }
   | { type: 'delete-lens'; id: string }
   | { type: 'apply-lens'; id: string }
+  | { type: 'update-kinship'; kinship: KinshipTerm[] }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
   | {
@@ -58,6 +60,7 @@ export type Action =
       id?: string;
       values?: Record<string, FieldValue>;
       reverseName?: string;
+      kinshipId?: string | null;
     }
   | { type: 'update-relation'; relation: Relation }
   | { type: 'delete-relation'; id: string };
@@ -113,7 +116,7 @@ function projectReducer(p: Project, action: Action): Project {
     case 'delete-schema':
       return ops.deleteSchema(p, action.id, action.strategy);
     case 'add-field':
-      return ops.addField(p, action.schemaId);
+      return ops.addField(p, action.schemaId, action.preset);
     case 'add-library-field':
       return lib.addLibraryField(p, action.id);
     case 'update-library-field':
@@ -152,6 +155,8 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.deleteLens(p, action.id);
     case 'apply-lens':
       return ops.applyLens(p, action.id);
+    case 'update-kinship':
+      return ops.updateKinship(p, action.kinship);
     case 'update-node':
       return ops.updateNode(p, action.id, action.values, action.parentId);
     case 'delete-node':
@@ -161,6 +166,7 @@ function projectReducer(p: Project, action: Action): Project {
         id: action.id,
         values: action.values,
         reverseName: action.reverseName,
+        kinshipId: action.kinshipId,
       });
     case 'update-relation':
       return ops.updateRelation(p, action.relation);

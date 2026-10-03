@@ -30,6 +30,7 @@ function groupOf(action: Action) {
   if (action.type === 'update-relation') return `relation:${action.relation.id}`;
   if (action.type === 'update-schema') return `schema:${action.schema.id}`;
   if (action.type === 'update-library-field') return `library:${action.field.id}`;
+  if (action.type === 'update-kinship') return 'kinship';
   if (action.type === 'rename-project') return 'project-name';
   if (action.type === 'move-nodes') return `move:${Object.keys(action.positions).sort().join(',')}`;
   return null;

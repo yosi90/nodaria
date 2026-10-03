@@ -1,5 +1,15 @@
 export type FieldType =
-  'text' | 'longText' | 'number' | 'boolean' | 'date' | 'select' | 'nodeRef' | 'nodeRefs' | 'computed' | 'image';
+  | 'text'
+  | 'longText'
+  | 'number'
+  | 'boolean'
+  | 'date'
+  | 'select'
+  | 'nodeRef'
+  | 'nodeRefs'
+  | 'computed'
+  | 'image'
+  | 'gender';
 export type SchemaKind = 'entity' | 'relationship';
 export type RelationStyle = 'normal' | 'strong' | 'hidden';
 export type FieldValue = string | number | boolean | string[] | null;
@@ -47,6 +57,23 @@ export interface Schema {
   inverseName: string;
   /** Dirigida y además recíproca: flecha en los dos extremos, con un papel por lado. */
   reciprocal: boolean;
+  /** Sus relaciones eligen un parentesco del vocabulario del proyecto en lugar de un nombre libre. */
+  genealogical: boolean;
+}
+/** Género de un nodo: masculino, femenino, neutro u otro, o sin definir. */
+export type Gender = 'm' | 'f' | 'n' | '';
+/** Término del vocabulario de parentesco de un proyecto. */
+export interface KinshipTerm {
+  id: string;
+  neutral: string;
+  masculine: string;
+  feminine: string;
+  /** Término que describe al otro extremo («Progenitor/a» ↔ «Hijo/a»). */
+  counterpartId: string;
+  /** +1 ascendiente, −1 descendiente, 0 misma generación (±2 abuelos, etc.). */
+  generation: number;
+  /** Ascendencia directa: estas relaciones forman el árbol genealógico. */
+  lineage: boolean;
 }
 export type Position = { x: number; y: number };
 /** Los valores de nodos y relaciones se indexan por `FieldDefinition.id`, no por su clave. */
@@ -70,6 +97,10 @@ export interface Relation {
   createdAt: string;
   /** Papel del destino, cuando difiere del nombre propio («Sobrina» frente a «Tía»); vacío = no se distingue. */
   reverseName: string;
+  /** En relaciones genealógicas, término de parentesco del origen respecto al destino. */
+  kinshipId: string | null;
+  /** Usar el nombre neutro del parentesco aunque los nodos tengan género. */
+  kinshipNeutral: boolean;
 }
 export interface Project {
   /** Versión del formato de datos del proyecto; ver `src/services/migrations.ts`. */
@@ -86,6 +117,8 @@ export interface Project {
   view: ProjectView;
   /** Vistas guardadas del mapa. */
   lenses: Lens[];
+  /** Vocabulario de parentesco para las relaciones genealógicas. */
+  kinship: KinshipTerm[];
 }
 /** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
 export interface Lens {

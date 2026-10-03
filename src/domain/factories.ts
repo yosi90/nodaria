@@ -1,4 +1,5 @@
 import { COLORS, PROJECT_FORMAT_VERSION } from './constants';
+import { defaultKinship } from './kinship';
 import type { AppState, FieldDefinition, Project, ProjectView, Schema, SchemaKind } from './types';
 export const uid = (prefix = 'id') => `${prefix}_${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
 export const now = () => new Date().toISOString();
@@ -24,6 +25,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     relations: [],
     view: createView(),
     lenses: [],
+    kinship: defaultKinship(),
   };
 }
 export function createInitialState(): AppState {
@@ -50,6 +52,7 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     parentEnd: 'target',
     inverseName: '',
     reciprocal: false,
+    genealogical: false,
   };
 }
 export function createField(): FieldDefinition {

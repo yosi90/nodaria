@@ -45,7 +45,7 @@ export function FieldEditor({
     onChange({ ...field, label, key: keyWasAutomatic ? slugify(label) : field.key });
   };
   const typeLabel = FIELD_TYPES.find(item => item[0] === field.type)?.[1];
-  const hasDefault = !['computed', 'nodeRef', 'nodeRefs', 'image'].includes(field.type);
+  const hasDefault = !['computed', 'nodeRef', 'nodeRefs', 'image', 'gender'].includes(field.type);
 
   const drop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();

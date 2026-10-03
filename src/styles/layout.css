@@ -971,3 +971,47 @@ button.mention:hover {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---------- Vocabulario de parentesco ---------- */
+.kinship-table {
+  display: grid;
+  gap: 6px;
+  overflow-x: auto;
+}
+.kinship-head,
+.kinship-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1.2fr 1.1fr 44px 32px;
+  gap: 6px;
+  align-items: center;
+  min-width: 720px;
+}
+.kinship-head {
+  padding: 0 2px;
+  color: var(--text-subtle);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.kinship-head span:nth-child(6) {
+  text-align: center;
+}
+.kinship-row input[type='text'],
+.kinship-row input:not([type]) {
+  min-height: 32px;
+  font-size: var(--fs-sm);
+}
+.kinship-row input[type='checkbox'] {
+  justify-self: center;
+}
+.gender-offer {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}

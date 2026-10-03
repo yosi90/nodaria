@@ -133,6 +133,8 @@ describe('títulos de nodos y relaciones', () => {
     values: {},
     createdAt: '2026-01-01',
     reverseName: '',
+    kinshipId: null,
+    kinshipNeutral: false,
   });
 
   it('sin campo título, se usa el primer campo de texto con valor', () => {
@@ -183,6 +185,8 @@ describe('papeles de una relación', () => {
     values: {},
     createdAt: '2026',
     reverseName: '',
+    kinshipId: null,
+    kinshipNeutral: false,
   });
 
   it('usa el nombre inverso del tipo, el de la relación o el mismo nombre', () => {

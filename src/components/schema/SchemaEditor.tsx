@@ -1,7 +1,7 @@
-import { Lock, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { RELATION_STYLES } from '../../domain/constants';
-import { canChangeSchemaKind, inheritanceCandidates, schemaUsage } from '../../domain/selectors';
+import { inheritanceCandidates, schemaUsage } from '../../domain/selectors';
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { Button } from '../common/Button';
@@ -10,12 +10,12 @@ import { schemaOption } from '../common/options';
 import { MultiSelect, Select } from '../common/Select';
 import { AppearancePicker } from './AppearancePicker';
 import { DeleteSchemaModal } from './DeleteSchemaModal';
+import { KinshipEditor } from './KinshipEditor';
 import { AttributesCard } from './AttributesCard';
 
 export function SchemaEditor({ schema }: { schema: Schema }) {
   const { project, dispatch } = useApp();
   const [deleting, setDeleting] = useState(false);
-  const kindLocked = !canChangeSchemaKind(project, schema.id);
   const update = (patch: Partial<Schema>) => dispatch({ type: 'update-schema', schema: { ...schema, ...patch } });
   const entities = project.schemas.filter(item => item.kind === 'entity');
   const usage = schemaUsage(project, schema.id);
@@ -53,24 +53,6 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
               <div className="field">
                 Apariencia
                 <AppearancePicker icon={schema.icon} color={schema.color} onChange={patch => update(patch)} />
-              </div>
-              <div className="field">
-                Clase
-                <div className="segmented" role="group" aria-label="Clase de tipo">
-                  {(['entity', 'relationship'] as const).map(kind => (
-                    <button
-                      key={kind}
-                      type="button"
-                      aria-pressed={schema.kind === kind}
-                      disabled={kindLocked && schema.kind !== kind}
-                      onClick={() => update({ kind })}
-                    >
-                      {kindLocked && schema.kind !== kind && <Lock size={12} aria-hidden />}
-                      {kind === 'entity' ? 'Entidad' : 'Relación'}
-                    </button>
-                  ))}
-                </div>
-                {kindLocked && <small>No se puede cambiar mientras tenga instancias o subtipos.</small>}
               </div>
               <div className="field">
                 Hereda de
@@ -141,40 +123,65 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
                     emptyText="Cualquier tipo."
                   />
                 </div>
-                <div className="field">
-                  Sentido
-                  <div className="segmented" role="group" aria-label="Sentido de la relación">
-                    <button
-                      type="button"
-                      aria-pressed={!schema.directed}
-                      onClick={() => update({ directed: false, reciprocal: false })}
-                    >
-                      Sin sentido
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={schema.directed && !schema.reciprocal}
-                      onClick={() => update({ directed: true, reciprocal: false })}
-                    >
-                      Dirigida
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={schema.directed && schema.reciprocal}
-                      onClick={() => update({ directed: true, reciprocal: true })}
-                    >
-                      Bidireccional
-                    </button>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={schema.genealogical}
+                    onChange={event =>
+                      update(
+                        event.target.checked
+                          ? { genealogical: true, directed: true, reciprocal: true, structural: false }
+                          : { genealogical: false },
+                      )
+                    }
+                  />
+                  Genealógica{' '}
+                  <span className="field-hint">
+                    (sus relaciones eligen un parentesco con género en vez de un nombre)
+                  </span>
+                </label>
+                {!schema.genealogical && (
+                  <div className="field">
+                    Sentido
+                    <div className="segmented" role="group" aria-label="Sentido de la relación">
+                      <button
+                        type="button"
+                        aria-pressed={!schema.directed}
+                        onClick={() => update({ directed: false, reciprocal: false })}
+                      >
+                        Sin sentido
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={schema.directed && !schema.reciprocal}
+                        onClick={() => update({ directed: true, reciprocal: false })}
+                      >
+                        Dirigida
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={schema.directed && schema.reciprocal}
+                        onClick={() => update({ directed: true, reciprocal: true })}
+                      >
+                        Bidireccional
+                      </button>
+                    </div>
+                    <small>
+                      {!schema.directed
+                        ? 'Un mismo nombre para los dos lados: «aliado de», «hermanos».'
+                        : schema.reciprocal
+                          ? 'Recíproca con un papel por lado y flecha en ambos extremos: «tía» / «sobrina».'
+                          : 'De origen a destino, con flecha: «venera a», «gobierna».'}
+                    </small>
                   </div>
-                  <small>
-                    {!schema.directed
-                      ? 'Un mismo nombre para los dos lados: «aliado de», «hermanos».'
-                      : schema.reciprocal
-                        ? 'Recíproca con un papel por lado y flecha en ambos extremos: «tía» / «sobrina».'
-                        : 'De origen a destino, con flecha: «venera a», «gobierna».'}
-                  </small>
-                </div>
-                {schema.directed && (
+                )}
+                {schema.genealogical && (
+                  <p className="muted-note">
+                    Bidireccional: cada extremo recibe su parentesco y su contraparte. Forma estructura con la
+                    ascendencia directa, así que «Ver por» y la disposición Genealogía la usan.
+                  </p>
+                )}
+                {schema.directed && !schema.genealogical && (
                   <label className="field">
                     Nombre visto desde el destino
                     <input
@@ -185,14 +192,16 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
                     <small>Para «Venera a», el destino lo ve como «Venerado por». Cada relación puede afinarlo.</small>
                   </label>
                 )}
-                <label className="check">
-                  <input
-                    type="checkbox"
-                    checked={schema.structural}
-                    onChange={event => update({ structural: event.target.checked })}
-                  />
-                  Forma estructura <span className="field-hint">(se puede ver como árbol en «Ver por»)</span>
-                </label>
+                {!schema.genealogical && (
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={schema.structural}
+                      onChange={event => update({ structural: event.target.checked })}
+                    />
+                    Forma estructura <span className="field-hint">(se puede ver como árbol en «Ver por»)</span>
+                  </label>
+                )}
                 {schema.structural && (
                   <div className="field">
                     El superior es
@@ -239,6 +248,11 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
           </div>
         </div>
         <AttributesCard schema={schema} />
+        {schema.kind === 'relationship' && schema.genealogical && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <KinshipEditor />
+          </div>
+        )}
       </div>
       {deleting && <DeleteSchemaModal schema={schema} onClose={() => setDeleting(false)} />}
     </section>

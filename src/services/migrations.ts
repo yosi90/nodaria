@@ -1,5 +1,6 @@
 import { PROJECT_FORMAT_VERSION } from '../domain/constants';
 import { createView, uid } from '../domain/factories';
+import { defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
 import type { FieldValue, Project } from '../domain/types';
 
@@ -60,6 +61,7 @@ function normalizeProject(project: RawProject): Project {
       parentEnd: s.parentEnd || 'target',
       inverseName: s.inverseName || '',
       reciprocal: s.reciprocal || false,
+      genealogical: s.genealogical || false,
     })),
     fieldLibrary: (project.fieldLibrary || []).map(f => ({
       ...f,
@@ -75,7 +77,16 @@ function normalizeProject(project: RawProject): Project {
       position: n.position && Number.isFinite(n.position.x) && Number.isFinite(n.position.y) ? n.position : null,
       notes: typeof n.notes === 'string' ? n.notes : '',
     })),
-    relations: (project.relations || []).map(r => ({ ...r, values: r.values || {}, reverseName: r.reverseName || '' })),
+    relations: (project.relations || []).map(r => ({
+      ...r,
+      values: r.values || {},
+      reverseName: r.reverseName || '',
+      kinshipId: r.kinshipId ?? null,
+      kinshipNeutral: r.kinshipNeutral || false,
+    })),
+    kinship: project.kinship?.length
+      ? project.kinship.map(t => ({ ...t, lineage: t.lineage || false }))
+      : defaultKinship(),
     view: { ...createView(), ...(project.view ?? {}) },
     lenses: (project.lenses || []).map(l => ({
       ...l,

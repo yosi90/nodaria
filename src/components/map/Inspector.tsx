@@ -27,6 +27,8 @@ import { ImageControl } from './ImageControl';
 import { isImageValue } from './images';
 import { ReferenceControl } from './ReferenceControl';
 import { RelationsSection } from './RelationsSection';
+import { KinshipFields } from './KinshipFields';
+import { GENDERS } from '../../domain/constants';
 
 type Tab = 'fields' | 'connections' | 'notes';
 
@@ -49,6 +51,16 @@ function FieldControl({
   if (field.type === 'nodeRef' || field.type === 'nodeRefs')
     return <ReferenceControl field={field} value={value} ownerId={ownerId} onChange={onChange} />;
   if (field.type === 'image') return <ImageControl value={value} label={field.label} onChange={onChange} />;
+  if (field.type === 'gender')
+    return (
+      <select value={String(value ?? '')} onChange={e => onChange(e.target.value)}>
+        {GENDERS.map(([v, label]) => (
+          <option key={v} value={v}>
+            {label}
+          </option>
+        ))}
+      </select>
+    );
   if (field.type === 'boolean')
     return (
       <label className="check">
@@ -198,7 +210,27 @@ export function Inspector({ selection, onClose, onAddChild, onDelete }: Inspecto
                   relation={relation}
                   onChange={r => dispatch({ type: 'update-relation', relation: r })}
                 />
-                {schema?.directed && (
+                {schema?.genealogical && (
+                  <div className="form-grid" style={{ marginTop: 'var(--space-3)' }}>
+                    <KinshipFields
+                      sourceId={relation.sourceId}
+                      targetId={relation.targetId}
+                      kinshipId={relation.kinshipId}
+                      neutral={relation.kinshipNeutral}
+                      onChange={patch =>
+                        dispatch({
+                          type: 'update-relation',
+                          relation: {
+                            ...relation,
+                            kinshipId: patch.kinshipId === undefined ? relation.kinshipId : patch.kinshipId,
+                            kinshipNeutral: patch.neutral ?? relation.kinshipNeutral,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                )}
+                {schema?.directed && !schema.genealogical && (
                   <label className="field" style={{ marginTop: 'var(--space-3)' }}>
                     Visto desde el destino
                     <input
@@ -216,25 +248,27 @@ export function Inspector({ selection, onClose, onAddChild, onDelete }: Inspecto
             {fields.length > 0 && (
               <section className="inspector-section">
                 <div className="form-grid">
-                  {fields.map(f => {
-                    // Un checkbox o un selector ya llevan su propia etiqueta: no se anidan dentro de otro <label>.
-                    const Wrapper = ['boolean', 'nodeRef', 'nodeRefs', 'image'].includes(f.type) ? 'div' : 'label';
-                    return (
-                      <Wrapper className="field" key={f.id}>
-                        <span>
-                          {fieldText(f.label, schema?.name)}
-                          {f.required && <span className="required"> *</span>}
-                        </span>
-                        <FieldControl
-                          field={f}
-                          value={fieldValue(f, item.values, fields)}
-                          ownerId={item.id}
-                          onChange={v => updateValue(f.id, v)}
-                        />
-                        {f.description && <small>{fieldText(f.description, schema?.name)}</small>}
-                      </Wrapper>
-                    );
-                  })}
+                  {fields
+                    .filter(f => !(relation && schema?.genealogical && f.isTitle))
+                    .map(f => {
+                      // Un checkbox o un selector ya llevan su propia etiqueta: no se anidan dentro de otro <label>.
+                      const Wrapper = ['boolean', 'nodeRef', 'nodeRefs', 'image'].includes(f.type) ? 'div' : 'label';
+                      return (
+                        <Wrapper className="field" key={f.id}>
+                          <span>
+                            {fieldText(f.label, schema?.name)}
+                            {f.required && <span className="required"> *</span>}
+                          </span>
+                          <FieldControl
+                            field={f}
+                            value={fieldValue(f, item.values, fields)}
+                            ownerId={item.id}
+                            onChange={v => updateValue(f.id, v)}
+                          />
+                          {f.description && <small>{fieldText(f.description, schema?.name)}</small>}
+                        </Wrapper>
+                      );
+                    })}
                 </div>
               </section>
             )}

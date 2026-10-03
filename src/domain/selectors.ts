@@ -1,3 +1,4 @@
+import { kinshipRoles } from './kinship';
 import { declaredFields } from './library';
 import type { FieldDefinition, FieldValue, Node, Project, Relation, Schema } from './types';
 
@@ -153,6 +154,8 @@ export function nodeLabel(p: Project, n: Node) {
 
 /** Nombre de una relación: su título propio («Hermanos») o, en su defecto, el de su tipo («Parentesco»). */
 export function relationLabel(p: Project, r: Relation) {
+  const kin = kinshipRoles(p, r);
+  if (kin) return kin.source;
   return ownTitle(p, r) ?? getSchema(p, r.typeId)?.name ?? 'Relación';
 }
 
@@ -162,6 +165,8 @@ export function relationLabel(p: Project, r: Relation) {
  * En relaciones no dirigidas ambos extremos comparten nombre.
  */
 export function relationRole(p: Project, r: Relation, end: 'source' | 'target') {
+  const kin = kinshipRoles(p, r);
+  if (kin) return kin[end];
   const forward = relationLabel(p, r);
   const schema = getSchema(p, r.typeId);
   if (end === 'source' || !schema?.directed) return forward;

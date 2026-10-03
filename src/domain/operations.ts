@@ -8,9 +8,11 @@ import {
   inheritanceCandidates,
 } from './selectors';
 import { isFieldLink, ownFields } from './library';
+import { defaultChildTerm } from './kinship';
 import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
   FieldDefinition,
+  KinshipTerm,
   Lens,
   FieldValue,
   Node,
@@ -94,12 +96,12 @@ export function deleteSchema(p: Project, schemaId: string, strategy: OrphanStrat
   return next;
 }
 
-export function addField(p: Project, schemaId: string): Project {
+export function addField(p: Project, schemaId: string, preset: Partial<FieldDefinition> = {}): Project {
   return {
     ...p,
     schemas: p.schemas.map(s => {
       if (s.id !== schemaId) return s;
-      const field = createField();
+      const field = { ...createField(), ...preset };
       let i = 2;
       const taken = [...ownFields(s).map(x => x.key), ...p.fieldLibrary.map(x => x.key)];
       while (taken.includes(field.key)) field.key = `nuevo_campo_${i++}`;
@@ -158,7 +160,7 @@ export function addRelation(
   typeId: string,
   sourceId: string,
   targetId: string,
-  extra: { id?: string; values?: Record<string, FieldValue>; reverseName?: string } = {},
+  extra: { id?: string; values?: Record<string, FieldValue>; reverseName?: string; kinshipId?: string | null } = {},
 ): Project {
   const relation: Relation = {
     id: extra.id ?? uid('rel'),
@@ -168,6 +170,8 @@ export function addRelation(
     values: extra.values ?? {},
     createdAt: now(),
     reverseName: extra.reverseName ?? '',
+    kinshipId: extra.kinshipId ?? null,
+    kinshipNeutral: false,
   };
   return { ...p, relations: [...p.relations, relation] };
 }
@@ -294,7 +298,11 @@ export function addNodeUnder(
     return next;
   }
   const schema = getSchema(p, structureId);
-  if (schema?.structural) {
+  if (schema?.genealogical) {
+    // Crear «dentro de» un ascendiente: el nuevo nodo es su descendiente directo.
+    const child = defaultChildTerm(p);
+    if (child) next = addRelation(next, schema.id, created.nodeId, parentId, { kinshipId: child.id });
+  } else if (schema?.structural) {
     const { sourceId, targetId } = structureEndpoints(schema, parentId, created.nodeId);
     next = addRelation(next, schema.id, sourceId, targetId);
   }
@@ -355,4 +363,14 @@ export function applyLens(p: Project, id: string): Project {
     next = moveNodes(next, positions);
   }
   return next;
+}
+
+/** Sustituye el vocabulario de parentesco; las relaciones con términos borrados quedan sin término. */
+export function updateKinship(p: Project, kinship: KinshipTerm[]): Project {
+  const ids = new Set(kinship.map(t => t.id));
+  return {
+    ...p,
+    kinship,
+    relations: p.relations.map(r => (r.kinshipId && !ids.has(r.kinshipId) ? { ...r, kinshipId: null } : r)),
+  };
 }
