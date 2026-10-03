@@ -63,7 +63,7 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
-.node-card-flow.dimmed {
+.react-flow__node.dimmed .node-card-flow {
   opacity: 0.28;
 }
 .node-portrait {
@@ -185,7 +185,7 @@
 .react-flow__edge:hover .react-flow__edge-path.edge-flow.relation {
   stroke-width: 3.2;
 }
-.react-flow__edge-path.edge-flow.dimmed {
+.react-flow__edge.dimmed .react-flow__edge-path.edge-flow {
   opacity: 0.15;
 }
 .edge-label {
@@ -378,4 +378,12 @@
 }
 .react-flow__edge.hide-end .react-flow__edge-path {
   marker-end: none;
+}
+
+/* Con etiquetas solo al pasar el ratón, las relaciones ajenas al nodo desaparecen del todo */
+.workspace[data-labels='hover'] .react-flow__edge.dimmed .react-flow__edge-path.edge-flow {
+  opacity: 0;
+}
+.workspace[data-labels='hover'] .react-flow__node.dimmed .node-card-flow {
+  opacity: 0.18;
 }
