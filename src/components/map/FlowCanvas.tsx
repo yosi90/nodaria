@@ -16,7 +16,7 @@ import {
 } from '@xyflow/react';
 import { Crosshair, LayoutGrid, Network, Orbit, SlidersHorizontal, Sparkles, Tag } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationEdgeLabel } from '../../domain/selectors';
+import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
 import { referenceFields, referenceLinks } from '../../domain/references';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project, Selection } from '../../domain/types';
@@ -281,7 +281,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             : undefined,
         data: {
           kind: 'relation',
-          label: relationEdgeLabel(project, r, selectedNodeId),
+          label: relationRole(project, r, 'source'),
+          labelFromTarget: relationRole(project, r, 'target'),
           named: ownTitle(project, r) !== undefined,
           color,
           relationStyle: schema?.relationStyle,
@@ -292,17 +293,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       });
     });
     return result;
-  }, [
-    project,
-    view.showHierarchy,
-    visibleIds,
-    hiddenRelations,
-    selection,
-    selectedNodeId,
-    onSelect,
-    refLinks,
-    refFields,
-  ]);
+  }, [project, view.showHierarchy, visibleIds, hiddenRelations, selection, onSelect, refLinks, refFields]);
 
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
   // volver a renderizar los componentes: con cientos de nodos y miles de aristas eso costaría casi un segundo.
@@ -319,6 +310,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       const [a, b] = ends.get(id) ?? [];
       el.classList.toggle('dimmed', Boolean(hoveredId && a !== hoveredId && b !== hoveredId));
       el.classList.toggle('lit', Boolean(hoveredId && (a === hoveredId || b === hoveredId)));
+      // El texto de la arista es el papel del otro extremo respecto al nodo bajo el puntero.
+      if (el.dataset.edge) {
+        const fromTarget = hoveredId === a && b !== a;
+        el.textContent = fromTarget ? (el.dataset.roleTarget ?? '') : (el.dataset.roleSource ?? '');
+      }
     });
   }, [hoveredId, links, edges]);
 

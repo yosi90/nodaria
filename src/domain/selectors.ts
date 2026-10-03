@@ -170,16 +170,6 @@ export function relationRole(p: Project, r: Relation, end: 'source' | 'target') 
   return forward;
 }
 
-/**
- * Etiqueta para el lienzo. Con un nodo seleccionado en uno de sus extremos, muestra el papel del
- * otro extremo (en Kunoa se lee «Tía»; en Obkea, «Sobrina»); si no, el papel del origen.
- */
-export function relationEdgeLabel(p: Project, r: Relation, viewpointId: string | null = null) {
-  if (viewpointId === r.targetId) return relationRole(p, r, 'source');
-  if (viewpointId === r.sourceId) return relationRole(p, r, 'target');
-  return relationRole(p, r, 'source');
-}
-
 /** Valor efectivo de un campo. Los calculados sustituyen `{clave}` por el valor del campo con esa clave. */
 export function fieldValue(field: FieldDefinition, values: Record<string, FieldValue>, fields: FieldDefinition[]) {
   if (field.type !== 'computed') return values[field.id];

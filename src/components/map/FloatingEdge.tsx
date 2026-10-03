@@ -16,6 +16,8 @@ import { NODE_H, NODE_W } from './layout';
 export interface FloatingEdgeData extends Record<string, unknown> {
   kind: 'relation' | 'hierarchy' | 'reference';
   label?: string;
+  /** Papel del destino, mostrado al pasar el ratón por el origen. */
+  labelFromTarget?: string;
   named?: boolean;
   color?: string;
   relationStyle?: RelationStyle;
@@ -121,6 +123,8 @@ export const FloatingEdge = memo(function FloatingEdge({
           <div
             className={`edge-label nodrag nopan ${data.named ? 'named' : ''} ${selected ? 'selected' : ''}`}
             data-edge={id}
+            data-role-source={data.label}
+            data-role-target={data.labelFromTarget ?? data.label}
             onClick={data.onSelect}
             style={
               {

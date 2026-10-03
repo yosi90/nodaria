@@ -12,7 +12,6 @@ import {
   nodeDepths,
   nodeLabel,
   parentCandidates,
-  relationEdgeLabel,
   relationLabel,
   relationRole,
 } from './selectors';
@@ -193,13 +192,5 @@ describe('papeles de una relación', () => {
     expect(relationRole(w, w.relations[1], 'target')).toBe('Sobrina');
     expect(relationRole(w, w.relations[2], 'target')).toBe('Hermanos');
     expect(relationRole(w, w.relations[3], 'target')).toBe('amistad');
-  });
-
-  it('la etiqueta del lienzo muestra el papel del otro extremo según el nodo seleccionado', () => {
-    const w = p();
-    expect(relationEdgeLabel(w, w.relations[1])).toBe('Tía');
-    expect(relationEdgeLabel(w, w.relations[1], 'b')).toBe('Tía');
-    expect(relationEdgeLabel(w, w.relations[1], 'a')).toBe('Sobrina');
-    expect(relationEdgeLabel(w, w.relations[2], 'a')).toBe('Hermanos');
   });
 });
