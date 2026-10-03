@@ -150,9 +150,9 @@ Notas de cierre (2026-10-03):
 
 Correcciones tras la revisión del usuario (2026-10-03):
 
-- Las relaciones ahora usan su título propio () en el lienzo, el inspector y los avisos, y el nombre del tipo solo si no tienen uno. Sin campo marcado como título, se usa el primer campo de texto con valor; esto también vale para los nodos ().
-- Las líneas de relación unían los bordes inferiores de los nodos y cruzaban por detrás de los nodos apilados. Ahora van de borde a borde (), las paralelas se abren en abanico, se curvan para esquivar las tarjetas que hay en medio, las etiquetas se apartan de la línea y el lienzo se dimensiona incluyendo curvas y etiquetas.
-- Firefox con siempre informa de tema claro, así que el modo «sistema» no puede detectar el oscuro. Se puede fijar el tema a mano.
+- Las relaciones ahora usan su título propio (`relationLabel`) en el lienzo, el inspector y los avisos, y el nombre del tipo solo si no tienen uno. Sin campo marcado como título, se usa el primer campo de texto con valor; esto también vale para los nodos (`ownTitle`).
+- Las líneas de relación unían los bordes inferiores de los nodos y cruzaban por detrás de los nodos apilados. Ahora van de borde a borde (`src/components/map/edgeGeometry.ts`), las paralelas se abren en abanico, se curvan para esquivar las tarjetas que hay en medio, las etiquetas se apartan de la línea y el lienzo se dimensiona incluyendo curvas y etiquetas.
+- Firefox con `privacy.resistFingerprinting` siempre informa de tema claro, así que el modo «sistema» no puede detectar el oscuro. Se puede fijar el tema a mano.
 
 ### Fase 2 — Lienzo de grafo de verdad
 
