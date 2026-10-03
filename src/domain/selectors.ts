@@ -1,4 +1,4 @@
-import type { FieldDefinition, FieldValue, Node, Project, Schema } from './types';
+import type { FieldDefinition, FieldValue, Node, Project, Relation, Schema } from './types';
 
 export const getSchema = (p: Project, id: string) => p.schemas.find(x => x.id === id);
 export const getNode = (p: Project, id: string) => p.nodes.find(x => x.id === id);
@@ -127,10 +127,24 @@ export function nodeDepths(p: Project) {
   return depths;
 }
 
+/**
+ * Título propio de un nodo o relación: el campo marcado como título o, si no hay ninguno,
+ * el primer campo de texto con valor. `undefined` si el elemento no tiene nombre propio.
+ */
+export function ownTitle(p: Project, item: Node | Relation) {
+  const fields = allFields(p, item.typeId);
+  const title = fields.find(f => f.isTitle) ?? fields.find(f => f.type === 'text' && item.values[f.id]);
+  const value = title ? item.values[title.id] : undefined;
+  return value === undefined || value === null || value === '' ? undefined : String(value);
+}
+
 export function nodeLabel(p: Project, n: Node) {
-  const title = allFields(p, n.typeId).find(f => f.isTitle);
-  const value = title ? n.values[title.id] : undefined;
-  return String(value || getSchema(p, n.typeId)?.name || 'Nodo');
+  return ownTitle(p, n) ?? getSchema(p, n.typeId)?.name ?? 'Nodo';
+}
+
+/** Nombre de una relación: su título propio («Hermanos») o, en su defecto, el de su tipo («Parentesco»). */
+export function relationLabel(p: Project, r: Relation) {
+  return ownTitle(p, r) ?? getSchema(p, r.typeId)?.name ?? 'Relación';
 }
 
 /** Valor efectivo de un campo. Los calculados sustituyen `{clave}` por el valor del campo con esa clave. */

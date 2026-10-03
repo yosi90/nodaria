@@ -7,6 +7,7 @@ import {
   getSchema,
   nodeLabel,
   parentCandidates,
+  relationLabel,
   typeMatches,
 } from '../../domain/selectors';
 import type { FieldDefinition, FieldValue, Relation, Selection } from '../../domain/types';
@@ -79,7 +80,7 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
     else dispatch({ type: 'update-relation', relation: { ...relation!, values } });
   };
 
-  const title = node ? nodeLabel(project, node) : (schema?.name ?? 'Relación');
+  const title = node ? nodeLabel(project, node) : relationLabel(project, relation!);
   const subtitle = node ? (schema?.name ?? 'Sin tipo') : relationSummary(relation!);
 
   return (
@@ -165,7 +166,8 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
     const source = getNode(project, r.sourceId);
     const target = getNode(project, r.targetId);
     const arrow = schema?.directed ? '→' : '↔';
-    return `${source ? nodeLabel(project, source) : '?'} ${arrow} ${target ? nodeLabel(project, target) : '?'}`;
+    const ends = `${source ? nodeLabel(project, source) : '?'} ${arrow} ${target ? nodeLabel(project, target) : '?'}`;
+    return title === schema?.name ? ends : `${schema?.name ?? 'Relación'} · ${ends}`;
   }
 }
 

@@ -11,6 +11,7 @@ import {
   nodeDepths,
   nodeLabel,
   parentCandidates,
+  relationLabel,
 } from './selectors';
 
 const world = () =>
@@ -104,5 +105,43 @@ describe('valores', () => {
     ];
     expect(fieldValue(fields[2], { f1: 'Aria', f2: 30 }, fields)).toBe('Aria (30)');
     expect(fieldValue(fields[0], { f1: 'Aria' }, fields)).toBe('Aria');
+  });
+});
+
+describe('títulos de nodos y relaciones', () => {
+  const p = () =>
+    project({
+      schemas: [
+        schema('personaje', { fields: [field('nombre'), field('apodo')] }),
+        schema('parentesco', { fields: [field('rnombre', { isTitle: true })] }, 'relationship'),
+        schema('alianza', {}, 'relationship'),
+      ],
+      nodes: [node('a', 'personaje', null, { nombre: 'Achamán' }), node('b', 'personaje', null, { apodo: 'Guayota' })],
+      relations: [
+        { ...relationOf('r1', 'parentesco'), values: { rnombre: 'Hermanos' } },
+        relationOf('r2', 'parentesco'),
+        relationOf('r3', 'alianza'),
+      ],
+    });
+  const relationOf = (id: string, typeId: string) => ({
+    id,
+    typeId,
+    sourceId: 'a',
+    targetId: 'b',
+    values: {},
+    createdAt: '2026-01-01',
+  });
+
+  it('sin campo título, se usa el primer campo de texto con valor', () => {
+    const world = p();
+    expect(nodeLabel(world, world.nodes[0])).toBe('Achamán');
+    expect(nodeLabel(world, world.nodes[1])).toBe('Guayota');
+  });
+
+  it('una relación muestra su nombre propio y, si no tiene, el de su tipo', () => {
+    const world = p();
+    expect(relationLabel(world, world.relations[0])).toBe('Hermanos');
+    expect(relationLabel(world, world.relations[1])).toBe('parentesco');
+    expect(relationLabel(world, world.relations[2])).toBe('alianza');
   });
 });

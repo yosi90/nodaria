@@ -292,8 +292,27 @@
   stroke: var(--canvas-bg);
   stroke-width: 4px;
 }
-.relation-line:hover .edge {
+.relation-line .edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  cursor: pointer;
+}
+.relation-line text {
+  cursor: pointer;
+}
+.relation-line text.named {
+  fill: var(--text);
+  font-weight: 600;
+}
+.relation-line:hover .edge.relation {
   stroke-width: 3;
+}
+.relation-line:focus-visible {
+  outline: none;
+}
+.relation-line:focus-visible .edge.relation {
+  stroke-width: 3.4;
 }
 .svg-node {
   cursor: pointer;

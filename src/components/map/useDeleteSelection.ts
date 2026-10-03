@@ -1,4 +1,4 @@
-import { descendants, getNode, getSchema, nodeLabel } from '../../domain/selectors';
+import { descendants, getNode, nodeLabel, relationLabel } from '../../domain/selectors';
 import type { Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useDialogs } from '../common/dialogs';
@@ -18,7 +18,7 @@ export function useDeleteSelection() {
     if (selection.kind === 'relation') {
       const relation = project.relations.find(r => r.id === selection.id);
       if (!relation) return false;
-      toast({ message: `Relación «${getSchema(project, relation.typeId)?.name ?? ''}» eliminada`, undoable: true });
+      toast({ message: `Relación «${relationLabel(project, relation)}» eliminada`, undoable: true });
       dispatch({ type: 'delete-relation', id: relation.id });
       return true;
     }
