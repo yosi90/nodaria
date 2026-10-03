@@ -141,14 +141,39 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
                     emptyText="Cualquier tipo."
                   />
                 </div>
-                <label className="check">
-                  <input
-                    type="checkbox"
-                    checked={schema.directed}
-                    onChange={event => update({ directed: event.target.checked })}
-                  />
-                  Relación dirigida <span className="field-hint">(con flecha, de origen a destino)</span>
-                </label>
+                <div className="field">
+                  Sentido
+                  <div className="segmented" role="group" aria-label="Sentido de la relación">
+                    <button
+                      type="button"
+                      aria-pressed={!schema.directed}
+                      onClick={() => update({ directed: false, reciprocal: false })}
+                    >
+                      Sin sentido
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={schema.directed && !schema.reciprocal}
+                      onClick={() => update({ directed: true, reciprocal: false })}
+                    >
+                      Dirigida
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={schema.directed && schema.reciprocal}
+                      onClick={() => update({ directed: true, reciprocal: true })}
+                    >
+                      Bidireccional
+                    </button>
+                  </div>
+                  <small>
+                    {!schema.directed
+                      ? 'Un mismo nombre para los dos lados: «aliado de», «hermanos».'
+                      : schema.reciprocal
+                        ? 'Recíproca con un papel por lado y flecha en ambos extremos: «tía» / «sobrina».'
+                        : 'De origen a destino, con flecha: «venera a», «gobierna».'}
+                  </small>
+                </div>
                 {schema.directed && (
                   <label className="field">
                     Nombre visto desde el destino

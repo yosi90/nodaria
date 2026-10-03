@@ -253,7 +253,11 @@ function RelationForm({
               placeholder={schema.inverseName || 'Igual que el nombre'}
               onChange={e => setReverseName(e.target.value)}
             />
-            <small>Si el papel cambia según el lado: «Tía» desde el origen, «Sobrina» desde el destino.</small>
+            <small>
+              {schema.reciprocal
+                ? 'Papel del otro lado: «Tía» desde el origen, «Sobrina» desde el destino.'
+                : 'Opcional: cómo se llama la relación vista desde el destino.'}
+            </small>
           </label>
         )}
         <div className="inspector-actions">

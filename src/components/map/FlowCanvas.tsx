@@ -275,9 +275,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         target: r.targetId,
         selected: selection?.kind === 'relation' && selection.id === r.id,
         markerEnd: schema?.directed ? { type: MarkerType.ArrowClosed, color, width: 16, height: 16 } : undefined,
+        markerStart:
+          schema?.directed && schema.reciprocal
+            ? { type: MarkerType.ArrowClosed, color, width: 16, height: 16 }
+            : undefined,
         data: {
           kind: 'relation',
-          label: relationEdgeLabel(project, r),
+          label: relationEdgeLabel(project, r, selectedNodeId),
           named: ownTitle(project, r) !== undefined,
           color,
           relationStyle: schema?.relationStyle,
@@ -288,7 +292,17 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       });
     });
     return result;
-  }, [project, view.showHierarchy, visibleIds, hiddenRelations, selection, onSelect, refLinks, refFields]);
+  }, [
+    project,
+    view.showHierarchy,
+    visibleIds,
+    hiddenRelations,
+    selection,
+    selectedNodeId,
+    onSelect,
+    refLinks,
+    refFields,
+  ]);
 
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
   // volver a renderizar los componentes: con cientos de nodos y miles de aristas eso costaría casi un segundo.
@@ -395,6 +409,12 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
               </button>
             ))}
           </div>
+          <span
+            className="flow-toolbar-label"
+            title="Con un nodo seleccionado, muestra solo lo que está a 1, 2 o 3 saltos"
+          >
+            Foco
+          </span>
           <div className="segmented" role="group" aria-label="Modo foco">
             <button
               type="button"

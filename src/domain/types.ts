@@ -45,6 +45,8 @@ export interface Schema {
   parentEnd: 'source' | 'target';
   /** Nombre del tipo visto desde el destino («Venerado por» para «Venera a»); vacío = el mismo nombre. */
   inverseName: string;
+  /** Dirigida y además recíproca: flecha en los dos extremos, con un papel por lado. */
+  reciprocal: boolean;
 }
 export type Position = { x: number; y: number };
 /** Los valores de nodos y relaciones se indexan por `FieldDefinition.id`, no por su clave. */

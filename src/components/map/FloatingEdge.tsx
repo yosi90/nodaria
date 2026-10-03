@@ -48,6 +48,7 @@ export const FloatingEdge = memo(function FloatingEdge({
   data,
   selected,
   markerEnd,
+  markerStart,
 }: EdgeProps<FloatingEdgeType>) {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
@@ -111,6 +112,7 @@ export const FloatingEdge = memo(function FloatingEdge({
         path={route.d}
         className={classes}
         markerEnd={markerEnd}
+        markerStart={markerStart}
         style={{ stroke: isHierarchy ? undefined : data.color }}
         interactionWidth={16}
       />

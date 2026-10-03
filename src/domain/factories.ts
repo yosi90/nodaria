@@ -48,6 +48,7 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     structural: false,
     parentEnd: 'target',
     inverseName: '',
+    reciprocal: false,
   };
 }
 export function createField(): FieldDefinition {

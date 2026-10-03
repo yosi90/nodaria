@@ -59,6 +59,7 @@ function normalizeProject(project: RawProject): Project {
       structural: s.structural || false,
       parentEnd: s.parentEnd || 'target',
       inverseName: s.inverseName || '',
+      reciprocal: s.reciprocal || false,
     })),
     fieldLibrary: (project.fieldLibrary || []).map(f => ({
       ...f,
