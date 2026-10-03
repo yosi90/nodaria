@@ -1,5 +1,5 @@
 import { ChevronsUpDown, Plus, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { OptionList, type Option } from './OptionList';
 import { Popover } from './Popover';
 import { anchorOf, type Anchor } from './anchor';
@@ -30,6 +30,7 @@ export function Select({
   ...aria
 }: SelectProps) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setAnchor(null), []);
   const allOptions = nullLabel ? [{ value: '', label: nullLabel }, ...options] : options;
   const current = allOptions.find(o => o.value === (value ?? ''));
@@ -37,6 +38,7 @@ export function Select({
   return (
     <>
       <button
+        ref={trigger}
         id={id}
         type="button"
         className={`select-trigger ${compact ? 'compact' : ''}`}
@@ -58,6 +60,8 @@ export function Select({
             onPick={picked => {
               onChange(picked === '' && nullLabel ? null : picked);
               close();
+              // El popover se desmonta antes de poder devolver el foco: se devuelve aquí.
+              trigger.current?.focus();
             }}
           />
         </Popover>

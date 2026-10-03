@@ -135,14 +135,26 @@ function RelationForm({
   onDone: (id?: string) => void;
 }) {
   const { project, dispatch } = useApp();
-  const relationTypes = project.schemas.filter(s => s.kind === 'relationship');
-  const initialType = relation
-    ? relation.typeId
-    : (relationTypes.find(s => typeMatches(project, getNode(project, nodeId)?.typeId ?? '', s.sourceTypeIds))?.id ??
-      relationTypes[0]?.id ??
-      '');
+  const me = getNode(project, nodeId);
+  const myTypeId = me?.typeId ?? '';
+  // Lados en los que este nodo encaja en cada tipo de relación.
+  const sidesFor = (s: Schema) => ({
+    source: typeMatches(project, myTypeId, s.sourceTypeIds),
+    target: typeMatches(project, myTypeId, s.targetTypeIds),
+  });
+  // Solo los tipos que admiten a este nodo en algún extremo.
+  const relationTypes = project.schemas.filter(s => {
+    if (s.kind !== 'relationship') return false;
+    const sides = sidesFor(s);
+    return sides.source || sides.target;
+  });
+  const initialType = relation ? relation.typeId : (relationTypes[0]?.id ?? '');
   const [typeId, setTypeId] = useState(initialType);
-  const [iAmSource, setIAmSource] = useState(relation ? relation.sourceId === nodeId : true);
+  const [iAmSource, setIAmSource] = useState(() => {
+    if (relation) return relation.sourceId === nodeId;
+    const first = relationTypes[0];
+    return first ? sidesFor(first).source : true;
+  });
   const [otherId, setOtherId] = useState<string | null>(
     relation ? (relation.sourceId === nodeId ? relation.targetId : relation.sourceId) : null,
   );
@@ -152,7 +164,6 @@ function RelationForm({
   const [kinshipNeutral, setKinshipNeutral] = useState(relation?.kinshipNeutral ?? false);
   const schema = getSchema(project, typeId);
   const fields = schema ? allFields(project, schema.id) : [];
-  const me = getNode(project, nodeId);
 
   const otherEnd: 'sourceTypeIds' | 'targetTypeIds' = iAmSource ? 'targetTypeIds' : 'sourceTypeIds';
   const myEnd: 'sourceTypeIds' | 'targetTypeIds' = iAmSource ? 'sourceTypeIds' : 'targetTypeIds';
@@ -205,28 +216,44 @@ function RelationForm({
   };
 
   const typeOptions = relationTypes.map(s => schemaOption(s));
-  const applicable = (s: Schema) =>
-    me && (typeMatches(project, me.typeId, s.sourceTypeIds) || typeMatches(project, me.typeId, s.targetTypeIds));
+  const sides = schema ? sidesFor(schema) : { source: true, target: true };
+  // El sentido solo se elige cuando este nodo encaja en los dos extremos.
+  const canChooseSide = Boolean(schema?.directed && sides.source && sides.target);
+
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    const target = event.target as HTMLElement;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onDone();
+    } else if (event.key === 'Enter' && target.tagName !== 'TEXTAREA' && !target.closest('.popover')) {
+      event.preventDefault();
+      if (canSave) save();
+    }
+  };
 
   return (
-    <div className="relation-form">
+    <div className="relation-form" onKeyDown={onKeyDown}>
       <div className="form-grid">
         <div className="field">
           Tipo de relación
           <Select
             aria-label="Tipo de relación"
-            options={typeOptions.map(o => ({
-              ...o,
-              disabled: !applicable(relationTypes.find(s => s.id === o.value)!),
-            }))}
+            options={typeOptions}
             value={typeId || null}
+            placeholder={relationTypes.length ? 'Elegir tipo…' : 'Ningún tipo de relación admite este nodo'}
             onChange={id => {
               setTypeId(id ?? '');
               setOtherId(null);
+              const next = relationTypes.find(s => s.id === id);
+              // Si este nodo solo encaja en un extremo, se coloca ahí sin preguntar.
+              if (next) {
+                const s = sidesFor(next);
+                setIAmSource(s.source ? true : !s.target ? true : false);
+              }
             }}
           />
         </div>
-        {schema?.directed && (
+        {canChooseSide && (
           <div className="field">
             Sentido
             <div className="segmented" role="group" aria-label="Sentido">

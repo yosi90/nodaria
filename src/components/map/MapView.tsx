@@ -43,6 +43,7 @@ export function MapView() {
   const selectAndReveal = useCallback((s: Selection) => select(s, { reveal: true }), [select]);
   const [addNodeMenu, setAddNodeMenu] = useState<AddNodeMenu | null>(null);
   const [connectMenu, setConnectMenu] = useState<ConnectMenu | null>(null);
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const closeAddNodeMenu = useCallback(() => setAddNodeMenu(null), []);
   const closeConnectMenu = useCallback(() => setConnectMenu(null), []);
   const deleteSelection = useDeleteSelection();
@@ -63,8 +64,21 @@ export function MapView() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || isTypingTarget(event.target) || event.ctrlKey || event.metaKey || event.altKey)
+      if (isTypingTarget(event.target) || event.ctrlKey || event.metaKey || event.altKey) return;
+      // Teclear con un nodo seleccionado escribe directamente en su título (aunque el lienzo haya
+      // tratado la tecla: React Flow usa espacio e Intro sobre el nodo enfocado).
+      if (activeSelection?.kind === 'node' && event.key.length === 1 && event.key !== '[' && event.key !== '?') {
+        const title = document.querySelector<HTMLInputElement>('.side-panel.right [data-title-field]');
+        if (title) {
+          event.preventDefault();
+          title.focus();
+          title.setSelectionRange(title.value.length, title.value.length);
+          // Insertar la tecla pulsada como si se hubiera escrito en el campo (dispara onChange).
+          document.execCommand('insertText', false, event.key);
+        }
         return;
+      }
+      if (event.defaultPrevented) return;
       if (event.key === '[') toggleTree();
       else if (event.key === 'Escape' && activeSelection) setSelection(null);
       else if ((event.key === 'Delete' || event.key === 'Supr') && activeSelection) void removeSelected();
@@ -88,6 +102,7 @@ export function MapView() {
     });
     setAddNodeMenu(null);
     selectAndReveal({ kind: 'node', id });
+    setCreatedId(id);
   };
 
   const onConnectNodes = useCallback(
@@ -154,6 +169,7 @@ export function MapView() {
           <Inspector
             key={`${activeSelection.kind}-${activeSelection.id}`}
             selection={activeSelection}
+            focusTitle={createdId === activeSelection.id}
             onClose={() => setSelection(null)}
             onAddChild={(parentId, anchor) => setAddNodeMenu({ parentId, anchor })}
             onDelete={removeSelected}

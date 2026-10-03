@@ -37,13 +37,19 @@ function FieldControl({
   value,
   ownerId,
   onChange,
+  titleField,
+  autoFocus,
 }: {
   field: FieldDefinition;
   value: FieldValue | undefined;
   ownerId: string;
   onChange: (v: FieldValue) => void;
+  titleField?: boolean;
+  autoFocus?: boolean;
 }) {
   const common = {
+    'data-title-field': titleField ? 'true' : undefined,
+    autoFocus,
     value: String(value ?? ''),
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       onChange(field.type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value),
@@ -84,12 +90,14 @@ function FieldControl({
 
 interface InspectorProps {
   selection: Selection;
+  /** Enfocar el campo título al abrir (nodo recién creado). */
+  focusTitle?: boolean;
   onClose: () => void;
   onAddChild: (parentId: string, anchor: Anchor) => void;
   onDelete: () => void;
 }
 
-export function Inspector({ selection, onClose, onAddChild, onDelete }: InspectorProps) {
+export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete }: InspectorProps) {
   const { project, dispatch } = useApp();
   const { select, back, forward, canBack, canForward } = useNavigation();
   const [tab, setTab] = useState<Tab>('fields');
@@ -112,6 +120,8 @@ export function Inspector({ selection, onClose, onAddChild, onDelete }: Inspecto
   };
 
   const title = node ? nodeLabel(project, node) : relationLabel(project, relation!);
+  // El campo que da nombre al nodo: el marcado como título o, en su defecto, el primer texto.
+  const titleField = fields.find(f => f.isTitle) ?? fields.find(f => f.type === 'text');
   const subtitle = node ? (schema?.name ?? 'Sin tipo') : relationSummary(relation!);
   const crumbs = node ? ancestors(project, node) : [];
   const portrait = fields
@@ -264,6 +274,8 @@ export function Inspector({ selection, onClose, onAddChild, onDelete }: Inspecto
                             value={fieldValue(f, item.values, fields)}
                             ownerId={item.id}
                             onChange={v => updateValue(f.id, v)}
+                            titleField={f === titleField}
+                            autoFocus={Boolean(focusTitle && f === titleField)}
                           />
                           {f.description && <small>{fieldText(f.description, schema?.name)}</small>}
                         </Wrapper>
