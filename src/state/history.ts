@@ -56,7 +56,7 @@ export function historyReducer(history: History, action: HistoryAction): History
   const present = appReducer(history.present, action.action);
   if (present === history.present) return history;
   // Cambiar de proyecto o de vista es navegación, no una edición: no ocupa un paso de deshacer.
-  if (action.action.type === 'set-project' || action.action.type === 'update-view')
+  if (['set-project', 'update-view', 'apply-lens'].includes(action.action.type))
     return { ...history, present, lastGroup: null };
 
   const group = groupOf(action.action);

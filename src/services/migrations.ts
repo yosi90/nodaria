@@ -77,6 +77,11 @@ function normalizeProject(project: RawProject): Project {
     })),
     relations: (project.relations || []).map(r => ({ ...r, values: r.values || {}, reverseName: r.reverseName || '' })),
     view: { ...createView(), ...(project.view ?? {}) },
+    lenses: (project.lenses || []).map(l => ({
+      ...l,
+      view: { ...createView(), ...(l.view ?? {}) },
+      positions: l.positions ?? null,
+    })),
   };
 }
 

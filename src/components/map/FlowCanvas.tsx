@@ -14,7 +14,7 @@ import {
   type OnConnectEnd,
   type OnNodeDrag,
 } from '@xyflow/react';
-import { Crosshair, LayoutGrid, Network, Orbit, SlidersHorizontal, Sparkles, Tag } from 'lucide-react';
+import { Crosshair, GitBranch, LayoutGrid, Network, Orbit, SlidersHorizontal, Sparkles, Tag } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
 import { referenceFields, referenceLinks } from '../../domain/references';
@@ -29,6 +29,7 @@ import { FloatingEdge, type FloatingEdgeType } from './FloatingEdge';
 import { CanvasSettingsContext } from './canvasSettings';
 import { autoLayout, NODE_H, NODE_W, type Link } from './layout';
 import { LegendPanel } from './LegendPanel';
+import { LensMenu } from './LensMenu';
 import { isImageValue } from './images';
 import { NodeCard, type CardNode } from './NodeCard';
 
@@ -41,6 +42,12 @@ const edgeTypes = { floating: FloatingEdge };
 
 const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: string }[] = [
   { mode: 'tree', label: 'Jerárquica', icon: LayoutGrid, hint: 'Columnas según la estructura elegida' },
+  {
+    mode: 'genealogy',
+    label: 'Genealogía',
+    icon: GitBranch,
+    hint: 'Generaciones en filas, de arriba abajo, según la estructura elegida',
+  },
   { mode: 'force', label: 'Fuerzas', icon: Sparkles, hint: 'Los nodos relacionados se acercan' },
   { mode: 'radial', label: 'Radial', icon: Orbit, hint: 'Anillos alrededor del nodo seleccionado' },
 ];
@@ -398,6 +405,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     <CanvasSettingsContext.Provider value={settings}>
       <section ref={container} className="workspace flow" data-labels={view.edgeLabels} onDoubleClick={onDoubleClick}>
         <div className="workspace-toolbar flow-toolbar">
+          <LensMenu />
           <div className="segmented" role="group" aria-label="Disposición">
             {LAYOUTS.map(({ mode, label, icon: Icon, hint }) => (
               <button

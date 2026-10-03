@@ -23,6 +23,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     nodes: [],
     relations: [],
     view: createView(),
+    lenses: [],
   };
 }
 export function createInitialState(): AppState {
@@ -75,6 +76,7 @@ export function createView(): ProjectView {
     hiddenReferenceFieldIds: [],
     showHierarchy: true,
     edgeLabels: 'always',
+    lensId: null,
     focusDepth: 0,
   };
 }

@@ -115,3 +115,24 @@ describe('tipos y campos', () => {
     expect(typedDefault(field('a', { type: 'computed', defaultValue: 'x' }))).toBeUndefined();
   });
 });
+
+describe('vistas guardadas', () => {
+  it('guardar, aplicar y borrar una lente', async () => {
+    const { applyLens, deleteLens, moveNodes, saveLens, updateView } = await import('./operations');
+    let p = updateView(world(), { layout: 'force', hiddenRelationTypeIds: ['venera'] });
+    p = moveNodes(p, { aria: { x: 10, y: 20 } });
+    p = saveLens(p, 'Fuerzas sin cultos', true, 'l1');
+    expect(p.lenses[0].positions).toEqual({ aria: { x: 10, y: 20 } });
+    expect(p.view.lensId).toBe('l1');
+    p = updateView(p, { layout: 'tree' });
+    p = moveNodes(p, { aria: null, hijo: { x: 5, y: 5 } });
+    p = applyLens(p, 'l1');
+    expect(p.view.layout).toBe('force');
+    expect(p.view.hiddenRelationTypeIds).toEqual(['venera']);
+    expect(p.nodes.find(n => n.id === 'aria')!.position).toEqual({ x: 10, y: 20 });
+    expect(p.nodes.find(n => n.id === 'hijo')!.position).toBeNull();
+    p = deleteLens(p, 'l1');
+    expect(p.lenses).toEqual([]);
+    expect(p.view.lensId).toBeNull();
+  });
+});

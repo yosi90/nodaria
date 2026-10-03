@@ -58,3 +58,13 @@ describe('disposiciones', () => {
     expect(pos.get('suelto')!.y).toBeGreaterThan(reino.y);
   });
 });
+
+describe('genealogía', () => {
+  it('la disposición vertical pone cada generación en una fila', () => {
+    const pos = treeLayout(world(), null, true);
+    expect(pos.get('reino')!.y).toBe(0);
+    expect(pos.get('ciudad')!.y).toBeGreaterThan(pos.get('reino')!.y);
+    expect(pos.get('a')!.y).toBe(pos.get('b')!.y);
+    expect(pos.get('a')!.x).not.toBe(pos.get('b')!.x);
+  });
+});

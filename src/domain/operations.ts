@@ -11,6 +11,7 @@ import { isFieldLink, ownFields } from './library';
 import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
   FieldDefinition,
+  Lens,
   FieldValue,
   Node,
   OrphanStrategy,
@@ -311,4 +312,47 @@ export function updateNodeValue(p: Project, nodeId: string, fieldId: string, val
 export function updateNotes(p: Project, nodeId: string, notes: string): Project {
   if (!p.nodes.some(n => n.id === nodeId)) return p;
   return { ...p, nodes: p.nodes.map(n => (n.id === nodeId ? { ...n, notes } : n)) };
+}
+
+/** Guarda la configuración actual del mapa como vista nueva (o sobrescribe `id`). */
+export function saveLens(p: Project, name: string, includePositions: boolean, id: string = uid('lens')): Project {
+  const positions: Record<string, Position> = {};
+  if (includePositions) p.nodes.forEach(n => n.position && (positions[n.id] = n.position));
+  const lens: Lens = {
+    id,
+    name,
+    view: { ...p.view, lensId: id },
+    positions: includePositions ? positions : null,
+  };
+  const exists = p.lenses.some(l => l.id === id);
+  return {
+    ...p,
+    lenses: exists ? p.lenses.map(l => (l.id === id ? lens : l)) : [...p.lenses, lens],
+    view: { ...p.view, lensId: id },
+  };
+}
+
+export function renameLens(p: Project, id: string, name: string): Project {
+  return { ...p, lenses: p.lenses.map(l => (l.id === id ? { ...l, name } : l)) };
+}
+
+export function deleteLens(p: Project, id: string): Project {
+  return {
+    ...p,
+    lenses: p.lenses.filter(l => l.id !== id),
+    view: p.view.lensId === id ? { ...p.view, lensId: null } : p.view,
+  };
+}
+
+/** Aplica una vista guardada: su configuración y, si las guardó, las posiciones de los nodos. */
+export function applyLens(p: Project, id: string): Project {
+  const lens = p.lenses.find(l => l.id === id);
+  if (!lens) return p;
+  let next: Project = { ...p, view: { ...lens.view, lensId: id } };
+  if (lens.positions) {
+    const positions: Record<string, Position | null> = {};
+    p.nodes.forEach(n => (positions[n.id] = lens.positions![n.id] ?? null));
+    next = moveNodes(next, positions);
+  }
+  return next;
 }

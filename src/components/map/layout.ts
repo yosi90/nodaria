@@ -46,19 +46,24 @@ function structureTree(p: Project, structureId: string | null): TreeDatum {
   return { id: null, children: roots };
 }
 
-/** Disposición jerárquica de izquierda a derecha según la estructura indicada. */
-export function treeLayout(p: Project, structureId: string | null): Map<string, Position> {
-  const root = tree<TreeDatum>().nodeSize([NODE_H + ROW_GAP, NODE_W + COL_GAP])(
-    hierarchy(structureTree(p, structureId)),
-  );
+/**
+ * Disposición jerárquica según la estructura indicada: de izquierda a derecha, o de arriba abajo
+ * (`vertical`, útil para genealogías: cada generación en una fila).
+ */
+export function treeLayout(p: Project, structureId: string | null, vertical = false): Map<string, Position> {
+  const breadth = vertical ? NODE_W + 40 : NODE_H + ROW_GAP;
+  const depthGap = vertical ? NODE_H + 90 : NODE_W + COL_GAP;
+  const root = tree<TreeDatum>().nodeSize([breadth, depthGap])(hierarchy(structureTree(p, structureId)));
   const result = new Map<string, Position>();
-  let minY = Infinity;
+  let min = Infinity;
   root.each(n => {
-    if (n.data.id) minY = Math.min(minY, n.x);
+    if (n.data.id) min = Math.min(min, n.x);
   });
   root.each(n => {
-    if (n.data.id)
-      result.set(n.data.id, { x: (n.depth - 1) * (NODE_W + COL_GAP), y: n.x - (minY === Infinity ? 0 : minY) });
+    if (!n.data.id) return;
+    const along = n.x - (min === Infinity ? 0 : min);
+    const deep = (n.depth - 1) * depthGap;
+    result.set(n.data.id, vertical ? { x: along, y: deep } : { x: deep, y: along });
   });
   return result;
 }
@@ -141,6 +146,7 @@ export function autoLayout(
   focusId: string | null,
 ) {
   if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId));
+  if (mode === 'genealogy') return treeLayout(p, structureId, true);
   if (mode === 'radial' && focusId) return radialLayout(p, focusId, links);
   return treeLayout(p, structureId);
 }

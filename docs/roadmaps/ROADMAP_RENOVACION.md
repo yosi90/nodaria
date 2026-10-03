@@ -234,10 +234,10 @@ Criterio: el mundo del libro se puede modelar sin trucos ni duplicaciones, y la 
 
 Objetivo: mirar el mismo mundo desde ángulos distintos.
 
-- [ ] **Vistas guardadas (lentes)**: combinación con nombre de filtros, disposición, posiciones y nodos visibles ("Panteón", "Genealogía de la casa X", "Geopolítica"). Cambiar de lente desde la barra superior.
+- [x] **Vistas guardadas** (`Project.lenses`): nombre + configuración del mapa (estructura, disposición, foco, etiquetas, tipos ocultos) y, opcionalmente, las posiciones fijadas. Menú «Vista» en la barra del lienzo: aplicar, guardar la actual, actualizar, renombrar, eliminar. Cualquier cambio manual desliga la vista activa (`view.lensId`). Aplicar una vista no entra en el historial; guardar, renombrar y borrar sí.
 - [ ] **Tabla** por tipo: hoja de cálculo editable, columnas configurables, orden y filtros, edición rápida de muchas fichas.
 - [ ] **Matriz de relaciones**: tipo A × tipo B (p. ej. personaje × personaje), celdas con el tipo de relación; deja a la vista huecos y concentraciones.
-- [ ] **Genealogía**: árbol familiar a partir de los tipos de relación marcados como parentesco.
+- [x] **Genealogía**: disposición «Genealogía» (árbol vertical, una generación por fila) sobre la estructura elegida en «Ver por». Recomendación de modelado: un tipo de relación «Progenitor de» estructural (el superior es el origen) separado de «Hermanos» o «Pareja», para que el árbol solo siga la descendencia.
 - [ ] **Mapa**: subir una imagen del mapa del mundo y colocar sobre ella los nodos de tipo lugar (y ver quién pertenece a cada uno).
 - [ ] **Línea temporal**: acontecimientos y nodos con fechas, con calendario del mundo configurable (eras, años, meses propios) además del calendario real.
 - [ ] Exportar cualquier vista a PNG / SVG.

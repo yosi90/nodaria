@@ -44,6 +44,10 @@ export type Action =
   | { type: 'move-nodes'; positions: Record<string, Position | null> }
   | { type: 'update-notes'; id: string; notes: string }
   | { type: 'update-view'; view: Partial<ProjectView> }
+  | { type: 'save-lens'; name: string; includePositions: boolean; id?: string }
+  | { type: 'rename-lens'; id: string; name: string }
+  | { type: 'delete-lens'; id: string }
+  | { type: 'apply-lens'; id: string }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
   | {
@@ -138,7 +142,16 @@ function projectReducer(p: Project, action: Action): Project {
     case 'update-notes':
       return ops.updateNotes(p, action.id, action.notes);
     case 'update-view':
-      return ops.updateView(p, action.view);
+      // Cualquier cambio manual desliga la configuración de la vista guardada.
+      return ops.updateView(p, { ...action.view, lensId: action.view.lensId ?? null });
+    case 'save-lens':
+      return ops.saveLens(p, action.name, action.includePositions, action.id);
+    case 'rename-lens':
+      return ops.renameLens(p, action.id, action.name);
+    case 'delete-lens':
+      return ops.deleteLens(p, action.id);
+    case 'apply-lens':
+      return ops.applyLens(p, action.id);
     case 'update-node':
       return ops.updateNode(p, action.id, action.values, action.parentId);
     case 'delete-node':

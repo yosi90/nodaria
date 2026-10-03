@@ -50,7 +50,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Modelo de dominio actual
 
-- `Project`: agrupa esquemas, nodos, relaciones y `view` (estructura elegida, disposición, filtros y modo foco del mapa; se guarda y exporta, pero no entra en el historial de deshacer).
+- `Project`: agrupa esquemas, nodos, relaciones, `lenses` (vistas guardadas: configuración del mapa y posiciones opcionales) y `view` (estructura elegida, disposición, filtros y modo foco del mapa; se guarda y exporta, pero no entra en el historial de deshacer).
 - `Schema`: define una entidad o una relación, sus atributos, herencia y restricciones, además de su color e icono (`icon` es un nombre del catálogo de la interfaz; si falta, la migración pone uno por defecto).
 - `FieldDefinition`: describe un atributo tipado, requerido, calculado o usado como título. Tipos: texto, texto largo, número, sí/no, fecha, lista, referencia (uno o varios nodos), calculado e imagen (data URL reducida a 384 px).
 - **Biblioteca de atributos** («Propiedades» o preformas en la interfaz; `Project.fieldLibrary`, `src/domain/library.ts`): `Schema.fields` es una lista de `SchemaField`, que puede ser una definición propia o un vínculo `{ ref }` a un atributo compartido. `declaredFields` resuelve los vínculos; `allFields` añade los heredados, sustituyendo por clave solo entre niveles de herencia. Compartir o desvincular no cambia el id del atributo, así que los valores de los nodos se conservan.

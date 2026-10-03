@@ -84,8 +84,17 @@ export interface Project {
   nodes: Node[];
   relations: Relation[];
   view: ProjectView;
+  /** Vistas guardadas del mapa. */
+  lenses: Lens[];
 }
-export type LayoutMode = 'tree' | 'force' | 'radial';
+/** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
+export interface Lens {
+  id: string;
+  name: string;
+  view: ProjectView;
+  positions: Record<string, Position> | null;
+}
+export type LayoutMode = 'tree' | 'genealogy' | 'force' | 'radial';
 /** Estado de la vista del mapa. Se guarda con el proyecto pero no entra en el historial de deshacer. */
 export interface ProjectView {
   /** `null` = jerarquía "Dentro de"; si no, id de un tipo de relación estructural. */
@@ -97,6 +106,8 @@ export interface ProjectView {
   hiddenReferenceFieldIds: string[];
   /** Cuándo mostrar las etiquetas de las aristas. */
   edgeLabels: 'always' | 'hover' | 'never';
+  /** Vista guardada activa; `null` cuando la configuración es libre. */
+  lensId: string | null;
   showHierarchy: boolean;
   /** Modo foco: saltos visibles alrededor del nodo seleccionado; 0 = desactivado. */
   focusDepth: number;
