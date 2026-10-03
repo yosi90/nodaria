@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, GitFork, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { nodeConnections } from '../../domain/connections';
 import {
@@ -26,6 +26,7 @@ import { NotesTab } from './NotesTab';
 import { ImageControl } from './ImageControl';
 import { isImageValue } from './images';
 import { ReferenceControl } from './ReferenceControl';
+import { RelationsSection } from './RelationsSection';
 
 type Tab = 'fields' | 'connections' | 'notes';
 
@@ -72,12 +73,11 @@ function FieldControl({
 interface InspectorProps {
   selection: Selection;
   onClose: () => void;
-  onRelation: (source: string) => void;
   onAddChild: (parentId: string, anchor: Anchor) => void;
   onDelete: () => void;
 }
 
-export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete }: InspectorProps) {
+export function Inspector({ selection, onClose, onAddChild, onDelete }: InspectorProps) {
   const { project, dispatch } = useApp();
   const { select, back, forward, canBack, canForward } = useNavigation();
   const [tab, setTab] = useState<Tab>('fields');
@@ -198,6 +198,19 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
                   relation={relation}
                   onChange={r => dispatch({ type: 'update-relation', relation: r })}
                 />
+                {schema?.directed && (
+                  <label className="field" style={{ marginTop: 'var(--space-3)' }}>
+                    Visto desde el destino
+                    <input
+                      value={relation.reverseName}
+                      placeholder={schema.inverseName || 'Igual que el nombre'}
+                      onChange={e =>
+                        dispatch({ type: 'update-relation', relation: { ...relation, reverseName: e.target.value } })
+                      }
+                    />
+                    <small>«Tía» desde el origen y «Sobrina» desde el destino, por ejemplo.</small>
+                  </label>
+                )}
               </section>
             )}
             {fields.length > 0 && (
@@ -225,16 +238,12 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
                 </div>
               </section>
             )}
+            {node && <RelationsSection nodeId={node.id} />}
             <section className="inspector-section">
               <div className="inspector-actions">
                 {node && canHaveChildren && (
                   <Button icon={Plus} size="sm" onClick={event => onAddChild(node.id, anchorOf(event.currentTarget))}>
                     Añadir subnodo
-                  </Button>
-                )}
-                {node && (
-                  <Button icon={GitFork} size="sm" onClick={() => onRelation(node.id)}>
-                    Crear relación
                   </Button>
                 )}
                 <div className="spacer" />

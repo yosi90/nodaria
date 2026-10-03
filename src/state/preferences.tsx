@@ -11,7 +11,7 @@ export interface Preferences {
 }
 
 const PREFERENCES_KEY = 'nodaria_ui_v1';
-export const PANEL_LIMITS = { min: 220, max: 560 } as const;
+export const PANEL_LIMITS = { min: 220, max: 820 } as const;
 
 const DEFAULTS: Preferences = {
   theme: 'system',

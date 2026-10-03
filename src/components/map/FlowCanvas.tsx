@@ -14,9 +14,9 @@ import {
   type OnConnectEnd,
   type OnNodeDrag,
 } from '@xyflow/react';
-import { Crosshair, LayoutGrid, Network, Orbit, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Crosshair, LayoutGrid, Network, Orbit, SlidersHorizontal, Sparkles, Tag } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationLabel } from '../../domain/selectors';
+import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationEdgeLabel } from '../../domain/selectors';
 import { referenceFields, referenceLinks } from '../../domain/references';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project, Selection } from '../../domain/types';
@@ -277,7 +277,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         markerEnd: schema?.directed ? { type: MarkerType.ArrowClosed, color, width: 16, height: 16 } : undefined,
         data: {
           kind: 'relation',
-          label: relationLabel(project, r),
+          label: relationEdgeLabel(project, r),
           named: ownTitle(project, r) !== undefined,
           color,
           relationStyle: schema?.relationStyle,
@@ -304,6 +304,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       const id = el.dataset.id ?? el.dataset.edge ?? '';
       const [a, b] = ends.get(id) ?? [];
       el.classList.toggle('dimmed', Boolean(hoveredId && a !== hoveredId && b !== hoveredId));
+      el.classList.toggle('lit', Boolean(hoveredId && (a === hoveredId || b === hoveredId)));
     });
   }, [hoveredId, links, edges]);
 
@@ -377,7 +378,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   return (
     <CanvasSettingsContext.Provider value={settings}>
-      <section ref={container} className="workspace flow" onDoubleClick={onDoubleClick}>
+      <section ref={container} className="workspace flow" data-labels={view.edgeLabels} onDoubleClick={onDoubleClick}>
         <div className="workspace-toolbar flow-toolbar">
           <div className="segmented" role="group" aria-label="Disposición">
             {LAYOUTS.map(({ mode, label, icon: Icon, hint }) => (
@@ -430,6 +431,22 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           >
             Recolocar{pinnedCount ? ` (${pinnedCount})` : ''}
           </Button>
+          <IconButton
+            icon={Tag}
+            label={
+              view.edgeLabels === 'always'
+                ? 'Etiquetas: siempre (pulsa para mostrarlas solo al pasar el ratón)'
+                : view.edgeLabels === 'hover'
+                  ? 'Etiquetas: al pasar el ratón (pulsa para ocultarlas)'
+                  : 'Etiquetas: ocultas (pulsa para mostrarlas siempre)'
+            }
+            active={view.edgeLabels !== 'always'}
+            onClick={() =>
+              setView({
+                edgeLabels: view.edgeLabels === 'always' ? 'hover' : view.edgeLabels === 'hover' ? 'never' : 'always',
+              })
+            }
+          />
           <IconButton
             icon={SlidersHorizontal}
             label="Leyenda y filtros"

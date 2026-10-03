@@ -12,7 +12,6 @@ import { IconButton } from '../common/Button';
 import { isTypingTarget } from '../common/keyboard';
 import { Splitter } from '../common/Splitter';
 import { useToast } from '../common/toasts';
-import { CreateRelationModal } from './CreateRelationModal';
 import { FlowCanvas } from './FlowCanvas';
 import { Inspector } from './Inspector';
 import { NodeTypeMenu } from './NodeTypeMenu';
@@ -44,7 +43,6 @@ export function MapView() {
   const selectAndReveal = useCallback((s: Selection) => select(s, { reveal: true }), [select]);
   const [addNodeMenu, setAddNodeMenu] = useState<AddNodeMenu | null>(null);
   const [connectMenu, setConnectMenu] = useState<ConnectMenu | null>(null);
-  const [relationSourceId, setRelationSourceId] = useState<string | null>(null);
   const closeAddNodeMenu = useCallback(() => setAddNodeMenu(null), []);
   const closeConnectMenu = useCallback(() => setConnectMenu(null), []);
   const deleteSelection = useDeleteSelection();
@@ -89,7 +87,7 @@ export function MapView() {
       id,
     });
     setAddNodeMenu(null);
-    setSelection({ kind: 'node', id });
+    selectAndReveal({ kind: 'node', id });
   };
 
   const onConnectNodes = useCallback(
@@ -157,7 +155,6 @@ export function MapView() {
             key={`${activeSelection.kind}-${activeSelection.id}`}
             selection={activeSelection}
             onClose={() => setSelection(null)}
-            onRelation={setRelationSourceId}
             onAddChild={(parentId, anchor) => setAddNodeMenu({ parentId, anchor })}
             onDelete={removeSelected}
           />
@@ -181,9 +178,6 @@ export function MapView() {
           onSelect={createRelation}
           onClose={closeConnectMenu}
         />
-      )}
-      {relationSourceId && (
-        <CreateRelationModal initialSourceId={relationSourceId} onClose={() => setRelationSourceId(null)} />
       )}
     </main>
   );

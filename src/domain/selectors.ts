@@ -156,6 +156,27 @@ export function relationLabel(p: Project, r: Relation) {
   return ownTitle(p, r) ?? getSchema(p, r.typeId)?.name ?? 'Relación';
 }
 
+/**
+ * Papel de uno de los extremos: el del origen es el nombre propio de la relación (o el del tipo);
+ * el del destino es `reverseName`, el nombre inverso del tipo o, si no hay, el mismo nombre.
+ * En relaciones no dirigidas ambos extremos comparten nombre.
+ */
+export function relationRole(p: Project, r: Relation, end: 'source' | 'target') {
+  const forward = relationLabel(p, r);
+  const schema = getSchema(p, r.typeId);
+  if (end === 'source' || !schema?.directed) return forward;
+  if (r.reverseName.trim()) return r.reverseName.trim();
+  if (ownTitle(p, r) === undefined && schema.inverseName.trim()) return schema.inverseName.trim();
+  return forward;
+}
+
+/** Etiqueta para el lienzo: «Tía · Sobrina» cuando los dos papeles difieren. */
+export function relationEdgeLabel(p: Project, r: Relation) {
+  const a = relationRole(p, r, 'source');
+  const b = relationRole(p, r, 'target');
+  return a === b ? a : `${a} · ${b}`;
+}
+
 /** Valor efectivo de un campo. Los calculados sustituyen `{clave}` por el valor del campo con esa clave. */
 export function fieldValue(field: FieldDefinition, values: Record<string, FieldValue>, fields: FieldDefinition[]) {
   if (field.type !== 'computed') return values[field.id];

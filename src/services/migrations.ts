@@ -58,6 +58,7 @@ function normalizeProject(project: RawProject): Project {
       relationStyle: s.relationStyle || 'normal',
       structural: s.structural || false,
       parentEnd: s.parentEnd || 'target',
+      inverseName: s.inverseName || '',
     })),
     fieldLibrary: (project.fieldLibrary || []).map(f => ({
       ...f,
@@ -73,7 +74,7 @@ function normalizeProject(project: RawProject): Project {
       position: n.position && Number.isFinite(n.position.x) && Number.isFinite(n.position.y) ? n.position : null,
       notes: typeof n.notes === 'string' ? n.notes : '',
     })),
-    relations: (project.relations || []).map(r => ({ ...r, values: r.values || {} })),
+    relations: (project.relations || []).map(r => ({ ...r, values: r.values || {}, reverseName: r.reverseName || '' })),
     view: { ...createView(), ...(project.view ?? {}) },
   };
 }

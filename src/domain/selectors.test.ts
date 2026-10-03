@@ -12,7 +12,9 @@ import {
   nodeDepths,
   nodeLabel,
   parentCandidates,
+  relationEdgeLabel,
   relationLabel,
+  relationRole,
 } from './selectors';
 
 const world = () =>
@@ -131,6 +133,7 @@ describe('títulos de nodos y relaciones', () => {
     targetId: 'b',
     values: {},
     createdAt: '2026-01-01',
+    reverseName: '',
   });
 
   it('sin campo título, se usa el primer campo de texto con valor', () => {
@@ -153,5 +156,48 @@ describe('textos de atributo por tipo', () => {
     expect(fieldText('Nombre del { Tipo }', 'Lugar')).toBe('Nombre del Lugar');
     expect(fieldText('Sin marcador', 'Lugar')).toBe('Sin marcador');
     expect(fieldText('Nombre del {tipo}', undefined)).toBe('Nombre del');
+  });
+});
+
+describe('papeles de una relación', () => {
+  const p = () =>
+    project({
+      schemas: [
+        schema('t', { fields: [field('nombre', { isTitle: true })] }),
+        schema('venera', { directed: true, inverseName: 'Venerado por' }, 'relationship'),
+        schema('parentesco', { directed: true, fields: [field('rnombre', { isTitle: true })] }, 'relationship'),
+        schema('amistad', {}, 'relationship'),
+      ],
+      nodes: [node('a', 't'), node('b', 't')],
+      relations: [
+        { ...relationOf('r1', 'venera'), reverseName: '' },
+        { ...relationOf('r2', 'parentesco'), values: { rnombre: 'Tía' }, reverseName: 'Sobrina' },
+        { ...relationOf('r3', 'parentesco'), values: { rnombre: 'Hermanos' } },
+        relationOf('r4', 'amistad'),
+      ],
+    });
+  const relationOf = (id: string, typeId: string) => ({
+    id,
+    typeId,
+    sourceId: 'a',
+    targetId: 'b',
+    values: {},
+    createdAt: '2026',
+    reverseName: '',
+  });
+
+  it('usa el nombre inverso del tipo, el de la relación o el mismo nombre', () => {
+    const w = p();
+    expect(relationRole(w, w.relations[0], 'source')).toBe('venera');
+    expect(relationRole(w, w.relations[0], 'target')).toBe('Venerado por');
+    expect(relationRole(w, w.relations[1], 'target')).toBe('Sobrina');
+    expect(relationRole(w, w.relations[2], 'target')).toBe('Hermanos');
+    expect(relationRole(w, w.relations[3], 'target')).toBe('amistad');
+  });
+
+  it('la etiqueta del lienzo combina los dos papeles solo si difieren', () => {
+    const w = p();
+    expect(relationEdgeLabel(w, w.relations[1])).toBe('Tía · Sobrina');
+    expect(relationEdgeLabel(w, w.relations[2])).toBe('Hermanos');
   });
 });

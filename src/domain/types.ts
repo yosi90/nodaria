@@ -43,6 +43,8 @@ export interface Schema {
   structural: boolean;
   /** En una relación estructural, qué extremo es el superior (el "padre"). */
   parentEnd: 'source' | 'target';
+  /** Nombre del tipo visto desde el destino («Venerado por» para «Venera a»); vacío = el mismo nombre. */
+  inverseName: string;
 }
 export type Position = { x: number; y: number };
 /** Los valores de nodos y relaciones se indexan por `FieldDefinition.id`, no por su clave. */
@@ -64,6 +66,8 @@ export interface Relation {
   targetId: string;
   values: Record<string, FieldValue>;
   createdAt: string;
+  /** Papel del destino, cuando difiere del nombre propio («Sobrina» frente a «Tía»); vacío = no se distingue. */
+  reverseName: string;
 }
 export interface Project {
   /** Versión del formato de datos del proyecto; ver `src/services/migrations.ts`. */
@@ -89,6 +93,8 @@ export interface ProjectView {
   hiddenEntityTypeIds: string[];
   /** Atributos de referencia que no se dibujan como vínculos en el lienzo. */
   hiddenReferenceFieldIds: string[];
+  /** Cuándo mostrar las etiquetas de las aristas. */
+  edgeLabels: 'always' | 'hover' | 'never';
   showHierarchy: boolean;
   /** Modo foco: saltos visibles alrededor del nodo seleccionado; 0 = desactivado. */
   focusDepth: number;

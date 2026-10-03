@@ -46,7 +46,15 @@ export type Action =
   | { type: 'update-view'; view: Partial<ProjectView> }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
-  | { type: 'add-relation'; typeId: string; sourceId: string; targetId: string }
+  | {
+      type: 'add-relation';
+      typeId: string;
+      sourceId: string;
+      targetId: string;
+      id?: string;
+      values?: Record<string, FieldValue>;
+      reverseName?: string;
+    }
   | { type: 'update-relation'; relation: Relation }
   | { type: 'delete-relation'; id: string };
 
@@ -136,7 +144,11 @@ function projectReducer(p: Project, action: Action): Project {
     case 'delete-node':
       return ops.deleteNode(p, action.id);
     case 'add-relation':
-      return ops.addRelation(p, action.typeId, action.sourceId, action.targetId);
+      return ops.addRelation(p, action.typeId, action.sourceId, action.targetId, {
+        id: action.id,
+        values: action.values,
+        reverseName: action.reverseName,
+      });
     case 'update-relation':
       return ops.updateRelation(p, action.relation);
     case 'delete-relation':

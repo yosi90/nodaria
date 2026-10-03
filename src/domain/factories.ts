@@ -47,6 +47,7 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     relationStyle: 'normal',
     structural: false,
     parentEnd: 'target',
+    inverseName: '',
   };
 }
 export function createField(): FieldDefinition {
@@ -72,6 +73,7 @@ export function createView(): ProjectView {
     hiddenEntityTypeIds: [],
     hiddenReferenceFieldIds: [],
     showHierarchy: true,
+    edgeLabels: 'always',
     focusDepth: 0,
   };
 }

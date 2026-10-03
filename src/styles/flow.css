@@ -364,3 +364,10 @@
 .react-flow__minimap-mask {
   fill: var(--scrim);
 }
+
+/* Etiquetas solo al pasar el ratón o al seleccionar */
+.workspace[data-labels='hover'] .edge-label:not(.lit):not(.selected),
+.workspace[data-labels='never'] .edge-label:not(.selected) {
+  opacity: 0;
+  pointer-events: none;
+}

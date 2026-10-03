@@ -4,6 +4,7 @@ import {
   Copy,
   Download,
   FolderOpen,
+  GitFork,
   Library,
   Monitor,
   Moon,
@@ -161,6 +162,10 @@ export function Topbar({
         <button type="button" aria-pressed={view === 'schema'} onClick={() => onView('schema')}>
           <Shapes size={15} aria-hidden />
           <span className="label">Tipos</span>
+        </button>
+        <button type="button" aria-pressed={view === 'relations'} onClick={() => onView('relations')}>
+          <GitFork size={15} aria-hidden />
+          <span className="label">Relaciones</span>
         </button>
         <button type="button" aria-pressed={view === 'properties'} onClick={() => onView('properties')}>
           <Library size={15} aria-hidden />

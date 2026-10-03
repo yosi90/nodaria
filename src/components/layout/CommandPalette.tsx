@@ -1,4 +1,4 @@
-import { Library, Moon, Network, Plus, Search, Shapes, Sun, type LucideIcon } from 'lucide-react';
+import { GitFork, Library, Moon, Network, Plus, Search, Shapes, Sun, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
@@ -79,7 +79,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       leading: <TypeIcon icon={s.icon} color={s.color} size="sm" />,
       keywords: 'tipo esquema',
       run: () => {
-        setView('schema');
+        setView(s.kind === 'entity' ? 'schema' : 'relations');
         window.setTimeout(() => document.querySelector<HTMLButtonElement>(`[data-type-id="${s.id}"]`)?.click(), 0);
       },
     }));
@@ -114,6 +114,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(Shapes),
         keywords: 'vista esquema tipos',
         run: () => setView('schema'),
+      },
+      {
+        id: 'view:relations',
+        label: 'Ir a relaciones',
+        group: 'Acciones',
+        leading: icon(GitFork),
+        keywords: 'vista tipos de relación',
+        run: () => setView('relations'),
       },
       {
         id: 'view:properties',

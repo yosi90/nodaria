@@ -886,3 +886,88 @@ button.mention:hover {
   min-height: 0;
   overflow: auto;
 }
+
+/* ---------- Relaciones en la ficha ---------- */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-2);
+}
+.section-head h3 {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.relation-list {
+  display: grid;
+  gap: 4px;
+}
+.relation-item {
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+}
+.relation-item.open {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+.relation-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.relation-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  text-align: left;
+}
+.relation-toggle:hover {
+  background: var(--hover);
+}
+.relation-toggle > svg {
+  flex: none;
+  color: var(--text-subtle);
+}
+.relation-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.relation-other {
+  color: var(--accent);
+  cursor: pointer;
+}
+.relation-other:hover {
+  text-decoration: underline;
+}
+.relation-form {
+  padding: 10px 10px 12px;
+  border-top: 1px solid var(--border);
+}
+.relations-section > .relation-form {
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.relation-item,
+.relation-row {
+  min-width: 0;
+}
+.relation-toggle .badge {
+  flex: none;
+  max-width: 38%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -152,8 +152,22 @@ export function deleteNode(p: Project, id: string): Project {
   return removeNodes(p, descendants(p, id));
 }
 
-export function addRelation(p: Project, typeId: string, sourceId: string, targetId: string): Project {
-  const relation: Relation = { id: uid('rel'), typeId, sourceId, targetId, values: {}, createdAt: now() };
+export function addRelation(
+  p: Project,
+  typeId: string,
+  sourceId: string,
+  targetId: string,
+  extra: { id?: string; values?: Record<string, FieldValue>; reverseName?: string } = {},
+): Project {
+  const relation: Relation = {
+    id: extra.id ?? uid('rel'),
+    typeId,
+    sourceId,
+    targetId,
+    values: extra.values ?? {},
+    createdAt: now(),
+    reverseName: extra.reverseName ?? '',
+  };
   return { ...p, relations: [...p.relations, relation] };
 }
 

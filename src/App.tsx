@@ -19,7 +19,15 @@ export default function App() {
   return (
     <div className="app">
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} />
-      {view === 'map' ? <MapView /> : view === 'schema' ? <SchemaView /> : <PropertiesView />}
+      {view === 'map' ? (
+        <MapView />
+      ) : view === 'schema' ? (
+        <SchemaView kind="entity" />
+      ) : view === 'relations' ? (
+        <SchemaView kind="relationship" />
+      ) : (
+        <PropertiesView />
+      )}
       <RepairNotice />
       {help && <ShortcutsHelp onClose={() => setHelp(false)} />}
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
@@ -48,8 +56,8 @@ function useGlobalShortcuts(
       if (event.defaultPrevented || isTypingTarget(event.target)) return;
       if (mod && !event.altKey && key === 'z' && !event.shiftKey) undo();
       else if (mod && !event.altKey && ((key === 'z' && event.shiftKey) || key === 'y')) redo();
-      else if (event.altKey && !mod && ['Digit1', 'Digit2', 'Digit3'].includes(event.code))
-        setView(event.code === 'Digit1' ? 'map' : event.code === 'Digit2' ? 'schema' : 'properties');
+      else if (event.altKey && !mod && ['Digit1', 'Digit2', 'Digit3', 'Digit4'].includes(event.code))
+        setView((['map', 'schema', 'relations', 'properties'] as const)[Number(event.code.slice(-1)) - 1]);
       else if (event.altKey && !mod && event.key === 'ArrowLeft') back();
       else if (event.altKey && !mod && event.key === 'ArrowRight') forward();
       else if (event.key === '?' && !mod) openHelp();

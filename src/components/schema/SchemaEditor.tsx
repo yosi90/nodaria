@@ -149,6 +149,17 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
                   />
                   Relación dirigida <span className="field-hint">(con flecha, de origen a destino)</span>
                 </label>
+                {schema.directed && (
+                  <label className="field">
+                    Nombre visto desde el destino
+                    <input
+                      value={schema.inverseName}
+                      placeholder={`Igual que «${schema.name || '…'}»`}
+                      onChange={event => update({ inverseName: event.target.value })}
+                    />
+                    <small>Para «Venera a», el destino lo ve como «Venerado por». Cada relación puede afinarlo.</small>
+                  </label>
+                )}
                 <label className="check">
                   <input
                     type="checkbox"

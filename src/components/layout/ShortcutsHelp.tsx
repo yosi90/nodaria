@@ -11,7 +11,8 @@ const GROUPS: { title: string; items: [string, string[]][] }[] = [
       ['Rehacer', ['Ctrl', 'Shift', 'Z']],
       ['Ir al mapa', ['Alt', '1']],
       ['Ir a tipos', ['Alt', '2']],
-      ['Ir a propiedades', ['Alt', '3']],
+      ['Ir a relaciones', ['Alt', '3']],
+      ['Ir a propiedades', ['Alt', '4']],
     ],
   },
   {

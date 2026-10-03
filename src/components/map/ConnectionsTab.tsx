@@ -1,7 +1,7 @@
 import { ArrowDownLeft, ArrowUpRight, AtSign, Layers, Link2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { nodeConnections } from '../../domain/connections';
-import { getSchema, nodeLabel, relationLabel } from '../../domain/selectors';
+import { getSchema, nodeLabel, relationRole } from '../../domain/selectors';
 import type { Node, Project, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
@@ -52,7 +52,10 @@ export function ConnectionsTab({ nodeId }: { nodeId: string }) {
                 key={relation.id}
                 project={project}
                 node={other}
-                hint={relationLabel(project, relation) !== schema?.name ? relationLabel(project, relation) : undefined}
+                hint={(() => {
+                  const role = relationRole(project, relation, direction === 'out' ? 'target' : 'source');
+                  return role !== schema?.name ? role : undefined;
+                })()}
                 leading={
                   schema?.directed ? (
                     direction === 'out' ? (

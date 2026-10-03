@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { Selection } from '../domain/types';
 
-export type View = 'map' | 'schema' | 'properties';
+export type View = 'map' | 'schema' | 'relations' | 'properties';
 
 interface NavigationState {
   view: View;
