@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { referenceFields, referenceLinks } from '../../domain/references';
 import { useApp } from '../../state/AppContext';
 import { IconButton } from '../common/Button';
 import { TypeIcon } from '../common/icons';
@@ -12,8 +13,11 @@ export function LegendPanel({ onClose }: { onClose: () => void }) {
   const nodeCount = (id: string) => project.nodes.filter(n => n.typeId === id).length;
   const relationCount = (id: string) => project.relations.filter(r => r.typeId === id).length;
   const hierarchyCount = project.nodes.filter(n => n.parentId).length;
+  const refs = referenceFields(project);
+  const refCounts = new Map<string, number>();
+  referenceLinks(project).forEach(l => refCounts.set(l.fieldId, (refCounts.get(l.fieldId) ?? 0) + 1));
 
-  const toggle = (key: 'hiddenEntityTypeIds' | 'hiddenRelationTypeIds', id: string) => {
+  const toggle = (key: 'hiddenEntityTypeIds' | 'hiddenRelationTypeIds' | 'hiddenReferenceFieldIds', id: string) => {
     const list = view[key];
     dispatch({
       type: 'update-view',
@@ -72,6 +76,23 @@ export function LegendPanel({ onClose }: { onClose: () => void }) {
           </label>
         ))}
       </div>
+      {refs.length > 0 && (
+        <div className="legend-group">
+          <div className="legend-title">Referencias</div>
+          {refs.map(r => (
+            <label key={r.field.id} className="legend-row">
+              <input
+                type="checkbox"
+                checked={!view.hiddenReferenceFieldIds.includes(r.field.id)}
+                onChange={() => toggle('hiddenReferenceFieldIds', r.field.id)}
+              />
+              <span className="legend-line reference" aria-hidden />
+              <span className="label">{r.name}</span>
+              <span className="count">{refCounts.get(r.field.id) ?? 0}</span>
+            </label>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

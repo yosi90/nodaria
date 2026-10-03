@@ -14,7 +14,7 @@ import { useCanvasSettings } from './canvasSettings';
 import { NODE_H, NODE_W } from './layout';
 
 export interface FloatingEdgeData extends Record<string, unknown> {
-  kind: 'relation' | 'hierarchy';
+  kind: 'relation' | 'hierarchy' | 'reference';
   label?: string;
   named?: boolean;
   color?: string;
@@ -97,7 +97,7 @@ export const FloatingEdge = memo(function FloatingEdge({
   const isHierarchy = data.kind === 'hierarchy';
   const classes = [
     'edge-flow',
-    isHierarchy ? 'hierarchy' : `relation ${data.relationStyle ?? ''}`,
+    isHierarchy ? 'hierarchy' : data.kind === 'reference' ? 'reference' : `relation ${data.relationStyle ?? ''}`,
     selected && 'selected',
   ]
     .filter(Boolean)

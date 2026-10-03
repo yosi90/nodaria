@@ -69,6 +69,7 @@ export function createView(): ProjectView {
     layout: 'tree',
     hiddenRelationTypeIds: [],
     hiddenEntityTypeIds: [],
+    hiddenReferenceFieldIds: [],
     showHierarchy: true,
     focusDepth: 0,
   };

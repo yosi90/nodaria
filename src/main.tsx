@@ -6,6 +6,7 @@ import App from './App';
 import { DialogProvider } from './components/common/dialogs';
 import { ToastProvider } from './components/common/toasts';
 import { AppProvider } from './state/AppContext';
+import { NavigationProvider } from './state/navigation';
 import { PreferencesProvider } from './state/preferences';
 import '@xyflow/react/dist/style.css';
 import './styles/tokens.css';
@@ -19,11 +20,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PreferencesProvider>
       <AppProvider>
-        <DialogProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </DialogProvider>
+        <NavigationProvider>
+          <DialogProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </DialogProvider>
+        </NavigationProvider>
       </AppProvider>
     </PreferencesProvider>
   </StrictMode>,

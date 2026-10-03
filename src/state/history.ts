@@ -26,6 +26,7 @@ export const createHistory = (present: AppState): History => ({
 /** Las ediciones de campo se agrupan por elemento para no crear un paso por pulsación. */
 function groupOf(action: Action) {
   if (action.type === 'update-node') return `node:${action.id}`;
+  if (action.type === 'update-notes') return `notes:${action.id}`;
   if (action.type === 'update-relation') return `relation:${action.relation.id}`;
   if (action.type === 'update-schema') return `schema:${action.schema.id}`;
   if (action.type === 'rename-project') return 'project-name';

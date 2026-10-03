@@ -40,6 +40,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - Estilos en `src/styles/`: `tokens.css` (temas claro y oscuro mediante variables, con `[data-theme]` y `prefers-color-scheme`), `base.css`, `components.css`, `overlays.css` (modales, popovers, toasts) y `layout.css` (armazón, mapa, tipos). Ningún color va fijo en los componentes: siempre se usan tokens.
 - Componentes comunes en `src/components/common/`: botones, `Select`/`MultiSelect` con búsqueda, `Menu`, `Popover` (se monta dentro del `<dialog>` abierto si lo hay), diálogos `useDialogs()`, `useToast()`, `Splitter` y catálogo de iconos de tipo (`icon-catalog.ts`).
 - Preferencias de interfaz (tema, anchura y plegado de paneles) en `src/state/preferences.tsx`, con la clave `nodaria_ui_v1`, separadas de los proyectos.
+- Navegación en `src/state/navigation.tsx`: vista activa, selección con historial atrás/adelante, señal de «centrar en el lienzo» y estado de la paleta (Ctrl+K, `src/components/layout/CommandPalette.tsx`).
 - Operaciones de dominio puras e inmutables en `src/domain/operations.ts`; reglas de jerarquía, herencia y compatibilidad en `src/domain/selectors.ts`; reparación de datos incoherentes en `src/domain/integrity.ts`.
 - Estado: `src/state/reducer.ts` (acciones a operaciones de dominio), `src/state/history.ts` (deshacer/rehacer con agrupación de ediciones) y `src/state/AppContext.tsx` (provider, guardado con retardo y volcado al ocultar o cerrar la página).
 - Migraciones versionadas en `src/services/migrations.ts`; `src/services/storage.ts` migra y repara todo lo que se carga o importa.
@@ -57,6 +58,9 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - Un tipo con instancias o subtipos no puede cambiar de clase. La herencia no admite ciclos ni padres de otra clase.
 - Borrar un tipo hace que sus subtipos hereden del abuelo, limpia las restricciones que lo citaban y sube o borra (a elección) los subnodos de otros tipos. Borrar nodos vacía las referencias `nodeRef`/`nodeRefs` que apuntaban a ellos.
 - `Relation`: conecta un nodo de origen con uno de destino e instancia un esquema de relación.
+- **Referencias** (`src/domain/references.ts`): los atributos `nodeRef`/`nodeRefs` son vínculos de pleno derecho: se dibujan en el lienzo, cuentan en `nodeConnections` y definen estructuras `field:<id>` en «Ver por». Regla de uso: atributo de referencia para propiedades del nodo (ciudad, dios), relación para vínculos con datos propios o entre iguales.
+- **Notas** (`Node.notes`, `src/domain/notes.ts`): texto libre con menciones `[[Nombre]]` resueltas por título (sin mayúsculas ni acentos); las menciones cuentan como conexiones.
+- `src/domain/connections.ts` reúne todo lo que conecta a un nodo (jerarquía, relaciones, referencias, menciones) para la pestaña Conexiones.
 - **Estructuras** (`src/domain/structure.ts`): la jerarquía «Dentro de» (`parentId`) es la estructura base. Un tipo de relación con `structural: true` define otra, con `parentEnd` indicando qué extremo es el superior; en ellas un nodo puede colgar de varios superiores. El árbol («Ver por») y la disposición jerárquica usan la estructura elegida en `Project.view.structureId`.
 
 `Project.formatVersion` indica la versión del formato (actual: 3; los datos sin versión se tratan como v2). `AppState.version` es 3. La clave histórica de persistencia es `nodaria_state_v1`. Debe mantenerse mientras sea posible para conservar los proyectos creados con la versión monolítica anterior.

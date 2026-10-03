@@ -10,6 +10,7 @@ import {
   Pencil,
   Plus,
   Redo2,
+  Search,
   Shapes,
   Sun,
   Trash2,
@@ -23,10 +24,11 @@ import { usePreferences, type Preferences } from '../../state/preferences';
 import { IconButton } from '../common/Button';
 import { useDialogs } from '../common/dialogs';
 import { Menu, type MenuEntry } from '../common/Menu';
+import type { View } from '../../state/navigation';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { useToast } from '../common/toasts';
 
-export type View = 'map' | 'schema';
+export type { View } from '../../state/navigation';
 
 const THEME_CYCLE: Record<Preferences['theme'], { next: Preferences['theme']; label: string; icon: typeof Sun }> = {
   system: { next: 'light', label: 'Tema: sistema', icon: Monitor },
@@ -34,7 +36,17 @@ const THEME_CYCLE: Record<Preferences['theme'], { next: Preferences['theme']; la
   dark: { next: 'system', label: 'Tema: oscuro', icon: Moon },
 };
 
-export function Topbar({ view, onView, onHelp }: { view: View; onView: (v: View) => void; onHelp: () => void }) {
+export function Topbar({
+  view,
+  onView,
+  onHelp,
+  onSearch,
+}: {
+  view: View;
+  onView: (v: View) => void;
+  onHelp: () => void;
+  onSearch: () => void;
+}) {
   const { state, project, dispatch, undo, redo, canUndo, canRedo, reportRepairs } = useApp();
   const { preferences, setPreference } = usePreferences();
   const { prompt, confirm } = useDialogs();
@@ -151,6 +163,11 @@ export function Topbar({ view, onView, onHelp }: { view: View; onView: (v: View)
         </button>
       </nav>
       <div className="spacer" />
+      <button type="button" className="search-button hide-narrow" onClick={onSearch}>
+        <Search size={14} aria-hidden />
+        <span>Buscar…</span>
+        <kbd>Ctrl K</kbd>
+      </button>
       <div className="topbar-actions">
         <IconButton icon={Undo2} label="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={undo} />
         <IconButton icon={Redo2} label="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo} />

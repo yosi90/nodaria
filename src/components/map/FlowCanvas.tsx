@@ -17,6 +17,7 @@ import {
 import { Crosshair, LayoutGrid, Network, Orbit, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationLabel } from '../../domain/selectors';
+import { referenceFields, referenceLinks } from '../../domain/references';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -50,6 +51,8 @@ interface FlowCanvasProps {
   onAddNode: (anchor: Anchor, position: Position) => void;
   /** Conexión arrastrada de un nodo a otro. */
   onConnectNodes: (sourceId: string, targetId: string, anchor: Anchor) => void;
+  /** Cambia cuando hay que centrar la selección en el lienzo. */
+  revealKey: number;
 }
 
 export function FlowCanvas(props: FlowCanvasProps) {
@@ -92,7 +95,7 @@ function isIncomplete(project: Project, typeId: string, values: Record<string, u
   });
 }
 
-function Canvas({ selection, onSelect, onAddNode, onConnectNodes }: FlowCanvasProps) {
+function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: FlowCanvasProps) {
   const { project, dispatch } = useApp();
   const toast = useToast();
   const flow = useReactFlow();
@@ -106,13 +109,20 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes }: FlowCanvasPr
   // Conexiones visibles: relaciones no ocultas y, si procede, la jerarquía "Dentro de".
   const hiddenRelations = useMemo(() => new Set(view.hiddenRelationTypeIds), [view.hiddenRelationTypeIds]);
   const hiddenEntities = useMemo(() => new Set(view.hiddenEntityTypeIds), [view.hiddenEntityTypeIds]);
+  const hiddenReferences = useMemo(() => new Set(view.hiddenReferenceFieldIds), [view.hiddenReferenceFieldIds]);
+  const refLinks = useMemo(
+    () => referenceLinks(project).filter(l => !hiddenReferences.has(l.fieldId)),
+    [project, hiddenReferences],
+  );
+  const refFields = useMemo(() => new Map(referenceFields(project).map(r => [r.field.id, r])), [project]);
   const links = useMemo<Link[]>(() => {
     const result: Link[] = project.relations
       .filter(r => !hiddenRelations.has(r.typeId))
       .map(r => ({ a: r.sourceId, b: r.targetId }));
     if (view.showHierarchy) structureLinks(project, null).forEach(l => result.push({ a: l.parentId, b: l.childId }));
+    refLinks.forEach(l => result.push({ a: l.sourceId, b: l.targetId }));
     return result;
-  }, [project, hiddenRelations, view.showHierarchy]);
+  }, [project, hiddenRelations, view.showHierarchy, refLinks]);
 
   // La disposición automática solo depende de la forma del grafo, no de los valores de los nodos.
   const layoutKey = JSON.stringify([
@@ -127,6 +137,26 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes }: FlowCanvasPr
     // eslint-disable-next-line react-hooks/exhaustive-deps -- la clave resume todas las entradas relevantes
     [layoutKey],
   );
+
+  // Al navegar a un elemento (árbol, conexiones, buscador) se centra en el lienzo.
+  useEffect(() => {
+    if (!revealKey || !selection) return;
+    const ids =
+      selection.kind === 'node'
+        ? [selection.id]
+        : (() => {
+            const r = project.relations.find(x => x.id === selection.id);
+            return r ? [r.sourceId, r.targetId] : [];
+          })();
+    if (!ids.length) return;
+    const timer = window.setTimeout(
+      () => flow.fitView({ nodes: ids.map(id => ({ id })), padding: 0.6, maxZoom: 1, duration: 350 }),
+      // El inspector puede estar abriéndose y cambiando el ancho del lienzo.
+      160,
+    );
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando se pide centrar
+  }, [revealKey]);
 
   // Al cambiar de disposición o de estructura, se vuelve a encuadrar el conjunto.
   useEffect(() => {
@@ -197,9 +227,36 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes }: FlowCanvasPr
     const shown = project.relations.filter(
       r => !hiddenRelations.has(r.typeId) && visibleIds.has(r.sourceId) && visibleIds.has(r.targetId),
     );
+    const shownRefs = refLinks.filter(l => visibleIds.has(l.sourceId) && visibleIds.has(l.targetId));
+    const refId = (l: (typeof shownRefs)[number]) => `ref-${l.fieldId}-${l.sourceId}-${l.targetId}`;
     shown.forEach(r => {
       const key = [r.sourceId, r.targetId].sort().join('|');
       pairs.set(key, [...(pairs.get(key) ?? []), r.id]);
+    });
+    shownRefs.forEach(l => {
+      const key = [l.sourceId, l.targetId].sort().join('|');
+      pairs.set(key, [...(pairs.get(key) ?? []), refId(l)]);
+    });
+    shownRefs.forEach(l => {
+      const field = refFields.get(l.fieldId);
+      const targetSchema = getSchema(project, getNode(project, l.targetId)?.typeId ?? '');
+      const group = pairs.get([l.sourceId, l.targetId].sort().join('|')) ?? [refId(l)];
+      result.push({
+        id: refId(l),
+        type: 'floating',
+        source: l.sourceId,
+        target: l.targetId,
+        selectable: false,
+        data: {
+          kind: 'reference',
+          label: field?.name ?? 'Referencia',
+          named: false,
+          color: targetSchema?.color ?? '#888',
+          index: group.indexOf(refId(l)),
+          count: group.length,
+          onSelect: () => onSelect({ kind: 'node', id: l.sourceId }),
+        },
+      });
     });
     shown.forEach(r => {
       const schema = getSchema(project, r.typeId);
@@ -225,7 +282,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes }: FlowCanvasPr
       });
     });
     return result;
-  }, [project, view.showHierarchy, visibleIds, hiddenRelations, selection, onSelect]);
+  }, [project, view.showHierarchy, visibleIds, hiddenRelations, selection, onSelect, refLinks, refFields]);
 
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
   // volver a renderizar los componentes: con cientos de nodos y miles de aristas eso costaría casi un segundo.

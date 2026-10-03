@@ -60,6 +60,7 @@ function normalizeProject(project: RawProject): Project {
       parentId: n.parentId || null,
       values: n.values || {},
       position: n.position && Number.isFinite(n.position.x) && Number.isFinite(n.position.y) ? n.position : null,
+      notes: typeof n.notes === 'string' ? n.notes : '',
     })),
     relations: (project.relations || []).map(r => ({ ...r, values: r.values || {} })),
     view: { ...createView(), ...(project.view ?? {}) },

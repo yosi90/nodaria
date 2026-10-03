@@ -185,20 +185,25 @@ Criterio: con el mundo real del libro cargado, se puede localizar un personaje, 
 
 Objetivo: que cada elemento del mundo tenga una ficha rica y se pueda saltar de uno a otro como en una wiki.
 
-- [ ] Inspector rediseñado con pestañas: **Ficha** (atributos), **Conexiones**, **Notas**.
-- [ ] Controles de `nodeRef` / `nodeRefs`: buscador con autocompletado filtrado por los tipos permitidos, chips clicables que navegan al nodo y opción "crear nuevo" desde el propio selector.
-- [ ] Pestaña **Conexiones**: relaciones salientes y entrantes agrupadas por tipo, referencias desde campos de otros nodos (_backlinks_), hijos y padre. Todo clicable.
-- [ ] Notas en Markdown con menciones `[[Nombre]]` o `@Nombre` que se convierten en enlaces navegables y se listan como _backlinks_ en el nodo mencionado.
-- [ ] Imagen o retrato por nodo (requiere la persistencia de la Fase 7; mientras tanto, solo color e icono).
-- [ ] Etiquetas libres por nodo, filtrables en toda la app.
-- [ ] Vista **Ficha completa** a pantalla entera, legible como una página de enciclopedia del mundo.
-- [ ] Historial de navegación (atrás / adelante) y migas de pan con la jerarquía.
-- [ ] **Paleta de comandos** (Ctrl+K): buscar cualquier nodo, tipo o acción y saltar a él.
-- [ ] Búsqueda global que incluya notas y valores de atributos, con resultados resaltados.
-- [ ] Selección sincronizada entre árbol, lienzo e inspector (seleccionar en uno centra en los demás).
-- [ ] Árbol: arrastrar y soltar para cambiar de padre (respetando las reglas), reordenar hermanos, mostrar el contexto de los resultados de búsqueda.
+- [x] Inspector con pestañas **Ficha**, **Conexiones** y **Notas**, con ruta de superiores y botones atrás/adelante (también Alt+←/→).
+- [x] Controles de `nodeRef` / `nodeRefs`: selector con buscador limitado a los tipos permitidos (con herencia) y «Crear nuevo…» que crea el nodo y lo elige.
+- [x] **Referencias como vínculos** (decisión tomada con el usuario, ver abajo): se dibujan en el lienzo como líneas punteadas con el nombre del atributo, se apagan en la leyenda, cuentan como conexiones y son estructuras en «Ver por».
+- [x] Pestaña Conexiones: superior y subnodos, relaciones agrupadas por tipo con sentido, referencias que hace y que recibe, y menciones en ambos sentidos. Todo navega al nodo o a la relación.
+- [x] Notas por nodo con menciones `[[Nombre]]`: modo leer con enlaces (y aviso cuando el nombre no existe), modo editar con botón «Mencionar», y conexiones inversas.
+- [ ] Imagen o retrato por nodo: espera a la persistencia de imágenes (Fase 7).
+- [ ] Etiquetas libres por nodo: pasan a la Fase 4 junto con el resto del modelo.
+- [ ] Vista «Ficha completa» a pantalla entera: pospuesta; el inspector ensanchado cubre el uso actual.
+- [x] Historial de navegación (atrás / adelante) y migas de pan con la jerarquía.
+- [x] **Paleta de comandos** (Ctrl+K): nodos (por nombre, valores y notas), relaciones, tipos y acciones (crear nodo de un tipo, cambiar de vista, tema).
+- [x] Búsqueda global: la paleta busca en nombres, valores y notas; el árbol sigue filtrando por nombre y valores.
+- [x] Selección sincronizada: elegir en el árbol, en conexiones, en una mención o en la paleta centra el elemento en el lienzo.
+- [ ] Árbol: arrastrar y soltar para cambiar de padre y reordenar hermanos: pospuesto (el selector «Dentro de» y «Ver por» cubren el caso).
+
+**Decisión de modelo (2026-10-03):** el usuario preguntó si modelar la pertenencia a una ciudad como relación o como atributo de referencia. Se acordó que ambos existen con una regla: **atributo de referencia** cuando es una propiedad del nodo (ciudad, dios patrón, escuela de magia), y **relación** cuando el vínculo tiene datos propios, es entre iguales o necesita estilo. Para que el atributo valga como vínculo, se dibuja, se lista como conexión y sirve de estructura (`src/domain/references.ts`).
 
 Criterio: desde un personaje se llega a su dios, a su lugar y a su escuela de magia en un clic, y desde cada uno de ellos se ve quién más está conectado.
+
+Notas de cierre (2026-10-03): verificado en Chromium (Playwright) sin errores: editar y crear referencias desde la ficha, conexiones y navegación atrás/adelante, menciones (resueltas y no resueltas), «Ver por Ciudad» con creación dentro de una ciudad, paleta Ctrl+K (saltar y crear) y leyenda de referencias. Corregidos en la fase: el inspector tapaba las pestañas por un `grid` de dos filas; el centrado al navegar se adelantaba al cambio de tamaño del panel.
 
 ### Fase 4 — Modelo de datos enriquecido
 

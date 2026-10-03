@@ -159,6 +159,11 @@
   stroke: var(--edge);
   stroke-width: 1.6;
 }
+.react-flow__edge-path.edge-flow.reference {
+  stroke-width: 1.7;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
 .react-flow__edge-path.edge-flow.strong {
   stroke-width: 3.4;
 }
@@ -299,6 +304,11 @@
   height: 3px;
   border-radius: 2px;
   background: var(--edge);
+}
+.legend-line.reference {
+  height: 0;
+  border-top: 2px dotted var(--text-muted);
+  background: transparent;
 }
 .legend-line.hierarchy {
   height: 2px;

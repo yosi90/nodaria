@@ -1,5 +1,6 @@
-import { getSchema, typeMatches } from './selectors';
-import type { Node, Project, Schema } from './types';
+import { referenceFields, referencedIds, typesWithField } from './references';
+import { allFields, getSchema, typeMatches } from './selectors';
+import type { FieldDefinition, Node, Project, Schema } from './types';
 
 /*
  * Estructuras: formas de organizar los nodos en árbol. La base es la jerarquía "Dentro de"
@@ -10,20 +11,32 @@ import type { Node, Project, Schema } from './types';
 /** Id de la estructura base (jerarquía por `parentId`). */
 export const HIERARCHY = null;
 
+/** Prefijo de las estructuras definidas por un atributo de referencia. */
+export const FIELD_LENS = 'field:';
+
 export interface StructureLens {
   id: string | null;
   name: string;
   schema?: Schema;
+  field?: FieldDefinition;
 }
 
-/** Estructuras disponibles: la jerarquía base más los tipos de relación estructurales. */
+/** Estructuras disponibles: la jerarquía base, los tipos de relación estructurales y los atributos de referencia. */
 export function structureLenses(p: Project): StructureLens[] {
   return [
     { id: HIERARCHY, name: 'Dentro de' },
     ...p.schemas
       .filter(s => s.kind === 'relationship' && s.structural)
       .map(s => ({ id: s.id, name: s.name, schema: s })),
+    ...referenceFields(p).map(r => ({ id: FIELD_LENS + r.field.id, name: r.name, field: r.field })),
   ];
+}
+
+/** Atributo de referencia al que corresponde una estructura `field:…`, si existe. */
+export function fieldOfLens(p: Project, structureId: string | null): FieldDefinition | undefined {
+  if (!structureId?.startsWith(FIELD_LENS)) return undefined;
+  const fieldId = structureId.slice(FIELD_LENS.length);
+  return referenceFields(p).find(r => r.field.id === fieldId)?.field;
 }
 
 /** Resuelve la estructura pedida; si ya no existe, vuelve a la jerarquía base. */
@@ -36,6 +49,15 @@ export function structureLinks(p: Project, structureId: string | null): { parent
   if (structureId === HIERARCHY) {
     const ids = new Set(p.nodes.map(n => n.id));
     return p.nodes.filter(n => n.parentId && ids.has(n.parentId)).map(n => ({ parentId: n.parentId!, childId: n.id }));
+  }
+  const field = fieldOfLens(p, structureId);
+  if (field) {
+    const links: { parentId: string; childId: string }[] = [];
+    p.nodes.forEach(n => {
+      if (!allFields(p, n.typeId).some(f => f.id === field.id)) return;
+      referencedIds(p, n.values[field.id]).forEach(parentId => links.push({ parentId, childId: n.id }));
+    });
+    return links;
   }
   const schema = getSchema(p, structureId);
   if (!schema?.structural) return [];
@@ -93,6 +115,11 @@ export function creatableTypesIn(p: Project, structureId: string | null, parentI
   if (structureId === HIERARCHY) {
     const allowed = getSchema(p, parent.typeId)?.allowedChildTypeIds ?? [];
     return allowed.length ? concrete.filter(s => typeMatches(p, s.id, allowed)) : [];
+  }
+  const field = fieldOfLens(p, structureId);
+  if (field) {
+    if (field.referenceTypeIds.length && !typeMatches(p, parent.typeId, field.referenceTypeIds)) return [];
+    return typesWithField(p, field.id);
   }
   const schema = getSchema(p, structureId);
   if (!schema?.structural) return [];

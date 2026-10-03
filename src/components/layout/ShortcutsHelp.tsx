@@ -5,6 +5,8 @@ const GROUPS: { title: string; items: [string, string[]][] }[] = [
     title: 'General',
     items: [
       ['Mostrar esta ayuda', ['?']],
+      ['Buscar y saltar a cualquier cosa', ['Ctrl', 'K']],
+      ['Volver al elemento anterior / siguiente', ['Alt', '←', '→']],
       ['Deshacer', ['Ctrl', 'Z']],
       ['Rehacer', ['Ctrl', 'Shift', 'Z']],
       ['Ir al mapa', ['Alt', '1']],

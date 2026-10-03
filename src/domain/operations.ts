@@ -7,7 +7,7 @@ import {
   getSchema,
   inheritanceCandidates,
 } from './selectors';
-import { structureEndpoints } from './structure';
+import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
   FieldDefinition,
   FieldValue,
@@ -127,7 +127,7 @@ export function addNode(
     const value = typedDefault(f);
     if (value !== undefined) values[f.id] = value;
   });
-  const node: Node = { id, typeId, parentId, values, createdAt: now(), position: null };
+  const node: Node = { id, typeId, parentId, values, createdAt: now(), position: null, notes: '' };
   return { project: { ...p, nodes: [...p.nodes, node] }, nodeId: node.id };
 }
 
@@ -263,12 +263,32 @@ export function addNodeUnder(
     const created = addNode(p, typeId, parentId, id);
     return position ? moveNodes(created.project, { [created.nodeId]: position }) : created.project;
   }
-  const schema = getSchema(p, structureId);
   const created = addNode(p, typeId, null, id);
   let next = position ? moveNodes(created.project, { [created.nodeId]: position }) : created.project;
+  if (structureId.startsWith(FIELD_LENS)) {
+    // Estructura por atributo de referencia: el nuevo nodo apunta al superior desde ese atributo.
+    const field = fieldOfLens(p, structureId);
+    if (field)
+      next = updateNodeValue(next, created.nodeId, field.id, field.type === 'nodeRefs' ? [parentId] : parentId);
+    return next;
+  }
+  const schema = getSchema(p, structureId);
   if (schema?.structural) {
     const { sourceId, targetId } = structureEndpoints(schema, parentId, created.nodeId);
     next = addRelation(next, schema.id, sourceId, targetId);
   }
   return next;
+}
+
+/** Cambia un único valor de un nodo. */
+export function updateNodeValue(p: Project, nodeId: string, fieldId: string, value: FieldValue): Project {
+  return {
+    ...p,
+    nodes: p.nodes.map(n => (n.id === nodeId ? { ...n, values: { ...n.values, [fieldId]: value } } : n)),
+  };
+}
+
+export function updateNotes(p: Project, nodeId: string, notes: string): Project {
+  if (!p.nodes.some(n => n.id === nodeId)) return p;
+  return { ...p, nodes: p.nodes.map(n => (n.id === nodeId ? { ...n, notes } : n)) };
 }

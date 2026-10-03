@@ -57,6 +57,7 @@ export function SchemaView() {
                     key={item.id}
                     type="button"
                     className={`type-item ${item.id === schema?.id ? 'active' : ''}`}
+                    data-type-id={item.id}
                     aria-current={item.id === schema?.id ? 'page' : undefined}
                     onClick={() => setSelected(item.id)}
                   >

@@ -34,6 +34,7 @@ export type Action =
       position?: Position | null;
     }
   | { type: 'move-nodes'; positions: Record<string, Position | null> }
+  | { type: 'update-notes'; id: string; notes: string }
   | { type: 'update-view'; view: Partial<ProjectView> }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
@@ -106,6 +107,8 @@ function projectReducer(p: Project, action: Action): Project {
       );
     case 'move-nodes':
       return ops.moveNodes(p, action.positions);
+    case 'update-notes':
+      return ops.updateNotes(p, action.id, action.notes);
     case 'update-view':
       return ops.updateView(p, action.view);
     case 'update-node':

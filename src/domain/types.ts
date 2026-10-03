@@ -48,6 +48,8 @@ export interface Node {
   createdAt: string;
   /** Posición fijada por el usuario en el lienzo; `null` deja que la disposición automática la coloque. */
   position: Position | null;
+  /** Texto libre con menciones `[[Nombre]]` a otros nodos. */
+  notes: string;
 }
 export interface Relation {
   id: string;
@@ -77,6 +79,8 @@ export interface ProjectView {
   layout: LayoutMode;
   hiddenRelationTypeIds: string[];
   hiddenEntityTypeIds: string[];
+  /** Atributos de referencia que no se dibujan como vínculos en el lienzo. */
+  hiddenReferenceFieldIds: string[];
   showHierarchy: boolean;
   /** Modo foco: saltos visibles alrededor del nodo seleccionado; 0 = desactivado. */
   focusDepth: number;

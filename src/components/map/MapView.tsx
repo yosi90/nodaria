@@ -5,6 +5,7 @@ import { compatibleRelationTypes, getNode, nodeLabel } from '../../domain/select
 import { creatableTypesIn } from '../../domain/structure';
 import type { Position, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useNavigation } from '../../state/navigation';
 import { usePreferences } from '../../state/preferences';
 import type { Anchor } from '../common/anchor';
 import { IconButton } from '../common/Button';
@@ -38,7 +39,9 @@ export function MapView() {
   const { project, dispatch } = useApp();
   const { preferences, setPreference } = usePreferences();
   const toast = useToast();
-  const [selection, setSelection] = useState<Selection>(null);
+  const { selection, select, revealKey } = useNavigation();
+  const setSelection = useCallback((s: Selection) => select(s), [select]);
+  const selectAndReveal = useCallback((s: Selection) => select(s, { reveal: true }), [select]);
   const [addNodeMenu, setAddNodeMenu] = useState<AddNodeMenu | null>(null);
   const [connectMenu, setConnectMenu] = useState<ConnectMenu | null>(null);
   const [relationSourceId, setRelationSourceId] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export function MapView() {
 
   const removeSelected = useCallback(async () => {
     if (await deleteSelection(activeSelection)) setSelection(null);
-  }, [activeSelection, deleteSelection]);
+  }, [activeSelection, deleteSelection, setSelection]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -72,7 +75,7 @@ export function MapView() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeSelection, removeSelected, toggleTree]);
+  }, [activeSelection, removeSelected, toggleTree, setSelection]);
 
   const createNode = (typeId: string) => {
     if (!addNodeMenu) return;
@@ -123,7 +126,7 @@ export function MapView() {
         <aside className="side-panel left" aria-label="Estructura">
           <TreePanel
             selection={activeSelection}
-            onSelect={setSelection}
+            onSelect={selectAndReveal}
             onAdd={(parentId, anchor) => setAddNodeMenu({ parentId, anchor })}
             onCollapse={toggleTree}
           />
@@ -138,6 +141,7 @@ export function MapView() {
       <FlowCanvas
         selection={activeSelection}
         onSelect={setSelection}
+        revealKey={revealKey}
         onAddNode={(anchor, position) => setAddNodeMenu({ parentId: null, anchor, position })}
         onConnectNodes={onConnectNodes}
       />
