@@ -1,6 +1,6 @@
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
 import { hierarchy, tree } from 'd3-hierarchy';
-import { structureChildren } from '../../domain/structure';
+import { structureChildren, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project } from '../../domain/types';
 
 /*
@@ -83,12 +83,16 @@ function structureDepths(p: Project, structureId: string | null): Map<string, nu
   return depths;
 }
 
-/** Disposición por fuerzas: los nodos conectados se atraen y todos se repelen. Parte de `seed`. */
+/**
+ * Disposición por fuerzas: los nodos conectados se atraen y todos se repelen. Parte de `seed`.
+ * Los nodos con posición manual (`fixed`) no se mueven: el resto se acomoda alrededor sin pisarlos.
+ */
 export function forceLayout(
   p: Project,
   links: Link[],
   seed: Map<string, Position>,
   structureId: string | null = null,
+  fixed: Map<string, Position> = new Map(),
 ): Map<string, Position> {
   // Profundidad en la estructura: los nodos más generales (raíces) arriba y, en cascada, sus dependientes.
   const depths = structureDepths(p, structureId);
@@ -102,8 +106,16 @@ export function forceLayout(
     .map(t => t.typeId);
   const typeX = (typeId: string) => (typeOrder.indexOf(typeId) - (typeOrder.length - 1) / 2) * (NODE_W + 160);
   const nodes = p.nodes.map(n => {
-    const s = seed.get(n.id);
-    return { id: n.id, typeId: n.typeId, x: (s?.x ?? 0) + NODE_W / 2, y: (s?.y ?? 0) + NODE_H / 2 };
+    const f = fixed.get(n.id);
+    const s = f ?? seed.get(n.id);
+    return {
+      id: n.id,
+      typeId: n.typeId,
+      x: (s?.x ?? 0) + NODE_W / 2,
+      y: (s?.y ?? 0) + NODE_H / 2,
+      fx: f ? f.x + NODE_W / 2 : undefined,
+      fy: f ? f.y + NODE_H / 2 : undefined,
+    };
   });
   const ids = new Set(nodes.map(n => n.id));
   const simulation = forceSimulation(nodes)
@@ -126,7 +138,9 @@ export function forceLayout(
     )
     .stop();
   simulation.tick(300);
-  return normalize(new Map(nodes.map(n => [n.id, { x: n.x - NODE_W / 2, y: n.y - NODE_H / 2 }])));
+  const result = new Map(nodes.map(n => [n.id, { x: Math.round(n.x - NODE_W / 2), y: Math.round(n.y - NODE_H / 2) }]));
+  // Con nodos fijados no se desplaza el conjunto: sus posiciones manuales deben seguir siendo las mismas.
+  return fixed.size ? result : normalize(result);
 }
 
 /** Disposición radial: anillos por distancia (en saltos) al nodo de foco. */
@@ -174,6 +188,70 @@ function normalize(positions: Map<string, Position>) {
   return positions;
 }
 
+/**
+ * Estructura que usa la disposición «Genealogía»: la elegida si es de parentesco; si no, el primer
+ * tipo de relación genealógico del proyecto. Sin ninguno, la estructura elegida.
+ */
+export function genealogyStructure(p: Project, structureId: string | null): string | null {
+  const genealogical = p.schemas.filter(s => s.kind === 'relationship' && s.genealogical);
+  if (genealogical.some(s => s.id === structureId)) return structureId;
+  return genealogical[0]?.id ?? structureId;
+}
+
+/**
+ * Disposición genealógica: generaciones en filas según el parentesco. Los nodos que no participan en
+ * ningún vínculo de parentesco (lugares, objetos…) se alinean en una fila aparte, debajo.
+ */
+export function genealogyLayout(p: Project, structureId: string | null): Map<string, Position> {
+  const genealogyId = genealogyStructure(p, structureId);
+  const genealogical = p.schemas.some(s => s.id === genealogyId && s.genealogical);
+  if (!genealogical) return treeLayout(p, genealogyId, true);
+  const inTree = new Set<string>();
+  structureLinks(p, genealogyId).forEach(l => {
+    inTree.add(l.parentId);
+    inTree.add(l.childId);
+  });
+  const kin = p.relations.filter(r => r.typeId === genealogyId);
+  const family = p.nodes.filter(n => inTree.has(n.id));
+  if (!family.length) return treeLayout(p, genealogyId, true);
+  const result = treeLayout({ ...p, nodes: family }, genealogyId, true);
+  const rowGap = NODE_H + 90;
+  // Parientes sin ascendencia registrada (hermanos, tíos, primos…): a la altura que marca su término
+  // de parentesco respecto a un pariente ya colocado, a la derecha de esa fila.
+  const rightOf = (y: number) => {
+    let right = -Infinity;
+    result.forEach(pos => {
+      if (Math.abs(pos.y - y) < 1) right = Math.max(right, pos.x);
+    });
+    return right === -Infinity ? 0 : right + NODE_W + 40;
+  };
+  const terms = new Map(p.kinship.map(t => [t.id, t]));
+  let placed = true;
+  while (placed) {
+    placed = false;
+    kin.forEach(r => {
+      const g = terms.get(r.kinshipId ?? '')?.generation ?? 0;
+      const source = result.get(r.sourceId);
+      const target = result.get(r.targetId);
+      if (source && !target && p.nodes.some(n => n.id === r.targetId)) {
+        const y = source.y + g * rowGap;
+        result.set(r.targetId, { x: rightOf(y), y });
+        placed = true;
+      } else if (target && !source && p.nodes.some(n => n.id === r.sourceId)) {
+        const y = target.y - g * rowGap;
+        result.set(r.sourceId, { x: rightOf(y), y });
+        placed = true;
+      }
+    });
+  }
+  // El resto (lugares, objetos…) se alinea en una fila aparte, debajo.
+  let bottom = -Infinity;
+  result.forEach(pos => (bottom = Math.max(bottom, pos.y)));
+  bottom += NODE_H + 140;
+  p.nodes.filter(n => !result.has(n.id)).forEach((n, i) => result.set(n.id, { x: i * (NODE_W + 40), y: bottom }));
+  return result;
+}
+
 /** Disposición automática según el modo. `links` son las conexiones visibles (relaciones y jerarquía). */
 export function autoLayout(
   p: Project,
@@ -181,9 +259,10 @@ export function autoLayout(
   structureId: string | null,
   links: Link[],
   focusId: string | null,
+  fixed: Map<string, Position> = new Map(),
 ) {
-  if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId), structureId);
-  if (mode === 'genealogy') return treeLayout(p, structureId, true);
+  if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId), structureId, fixed);
+  if (mode === 'genealogy') return genealogyLayout(p, structureId);
   if (mode === 'radial' && focusId) return radialLayout(p, focusId, links);
   return treeLayout(p, structureId);
 }

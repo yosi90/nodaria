@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { node, project, relation, schema } from '../../test/fixtures';
-import { forceLayout, NODE_W, radialLayout, treeLayout } from './layout';
+import { forceLayout, genealogyLayout, NODE_H, NODE_W, radialLayout, treeLayout } from './layout';
 
 const world = () =>
   project({
@@ -48,6 +48,24 @@ describe('disposiciones', () => {
     );
   });
 
+  it('la de fuerzas respeta los nodos fijados y acomoda el resto sin pisarlos', () => {
+    const p = world();
+    const links = p.relations.map(r => ({ a: r.sourceId, b: r.targetId }));
+    const fixed = new Map([
+      ['reino', { x: 300, y: 300 }],
+      ['ciudad', { x: 420, y: 320 }],
+    ]);
+    const pos = forceLayout(p, links, treeLayout(p, null), null, fixed);
+    expect(pos.get('reino')).toEqual({ x: 300, y: 300 });
+    expect(pos.get('ciudad')).toEqual({ x: 420, y: 320 });
+    const free = ['a', 'b', 'suelto'].map(id => pos.get(id)!);
+    const overlaps = (m: { x: number; y: number }, n: { x: number; y: number }) =>
+      Math.abs(m.x - n.x) < NODE_W && Math.abs(m.y - n.y) < NODE_H;
+    free.forEach(f =>
+      [...fixed.values(), ...free.filter(o => o !== f)].forEach(o => expect(overlaps(f, o)).toBe(false)),
+    );
+  });
+
   it('la radial pone el foco en el centro y los no conectados debajo', () => {
     const p = world();
     const links = p.relations.map(r => ({ a: r.sourceId, b: r.targetId }));
@@ -66,5 +84,23 @@ describe('genealogía', () => {
     expect(pos.get('ciudad')!.y).toBeGreaterThan(pos.get('reino')!.y);
     expect(pos.get('a')!.y).toBe(pos.get('b')!.y);
     expect(pos.get('a')!.x).not.toBe(pos.get('b')!.x);
+  });
+
+  it('usa el parentesco aunque la estructura elegida sea otra, y pone a los hermanos en la misma fila', () => {
+    const p = project({
+      schemas: [schema('t'), schema('familia', { genealogical: true }, 'relationship'), schema('lugar')],
+      nodes: [node('madre', 't'), node('hija', 't'), node('hijo', 't'), node('tio', 't'), node('ciudad', 'lugar')],
+      relations: [
+        { ...relation('f1', 'familia', 'madre', 'hija'), kinshipId: 'progenitor' },
+        { ...relation('f2', 'familia', 'hija', 'hijo'), kinshipId: 'hermano' },
+        { ...relation('f3', 'familia', 'tio', 'hija'), kinshipId: 'tio' },
+      ],
+    });
+    const pos = genealogyLayout(p, null);
+    expect(pos.get('hija')!.y).toBeGreaterThan(pos.get('madre')!.y);
+    expect(pos.get('hijo')!.y).toBe(pos.get('hija')!.y);
+    expect(pos.get('hijo')!.x).not.toBe(pos.get('hija')!.x);
+    expect(pos.get('tio')!.y).toBe(pos.get('madre')!.y);
+    expect(pos.get('ciudad')!.y).toBeGreaterThan(pos.get('hija')!.y);
   });
 });

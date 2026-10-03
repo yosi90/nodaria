@@ -292,6 +292,8 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 - [x] Fuerzas: radio de colisión acorde al ancho de la tarjeta, cascada por profundidad en la estructura (generales arriba) y agrupación horizontal por tipo.
 - [x] El lienzo recalcula la disposición al cambiar el tipo o el parentesco de una relación (antes solo al añadir o quitar nodos o relaciones).
 - [x] Vocabulario de parentesco: término nuevo vacío y enfocado; contraparte con sus formas; explicación de «Árbol».
+- [x] Fuerzas: respetan los nodos fijados con chincheta (entran como obstáculos inmóviles) y el resto se acomoda sin pisarlos.
+- [x] Genealogía: usa siempre la estructura de parentesco (aunque «Ver por» sea otra); hermanos y demás parientes sin ascendencia registrada se colocan en la fila de su generación; lugares y otros nodos sin parentesco en una fila aparte.
 
 ### Fase 9 — Tutorial y primeros pasos
 

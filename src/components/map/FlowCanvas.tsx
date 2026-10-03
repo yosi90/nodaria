@@ -27,7 +27,7 @@ import { EmptyState } from '../common/EmptyState';
 import { useToast } from '../common/toasts';
 import { FloatingEdge, type FloatingEdgeType } from './FloatingEdge';
 import { CanvasSettingsContext } from './canvasSettings';
-import { autoLayout, NODE_H, NODE_W, type Link } from './layout';
+import { autoLayout, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
 import { LegendPanel } from './LegendPanel';
 import { LensMenu } from './LensMenu';
 import { isImageValue } from './images';
@@ -46,9 +46,14 @@ const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: st
     mode: 'genealogy',
     label: 'Genealogía',
     icon: GitBranch,
-    hint: 'Generaciones en filas, de arriba abajo, según la estructura elegida',
+    hint: 'Generaciones en filas, de arriba abajo, según el parentesco (padres arriba, hijos debajo)',
   },
-  { mode: 'force', label: 'Fuerzas', icon: Sparkles, hint: 'Los nodos relacionados se acercan' },
+  {
+    mode: 'force',
+    label: 'Fuerzas',
+    icon: Sparkles,
+    hint: 'Los nodos relacionados se acercan; los fijados con chincheta no se mueven',
+  },
   { mode: 'radial', label: 'Radial', icon: Orbit, hint: 'Anillos alrededor del nodo seleccionado' },
 ];
 
@@ -132,18 +137,25 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     return result;
   }, [project, hiddenRelations, view.showHierarchy, refLinks]);
 
+  // Nodos con posición manual: la disposición por fuerzas los respeta y acomoda el resto alrededor.
+  const fixed = useMemo(
+    () => new Map(project.nodes.filter(n => n.position).map(n => [n.id, n.position!])),
+    [project.nodes],
+  );
   // La disposición automática solo depende de la forma del grafo, no de los valores de los nodos.
   const layoutKey = JSON.stringify([
     view.layout,
     structure.id,
     view.layout === 'radial' ? selectedNodeId : null,
+    view.layout === 'force' ? [...fixed] : null,
+    view.layout === 'genealogy' ? structureLinks(project, genealogyStructure(project, structure.id)) : null,
     project.nodes.map(n => [n.id, n.typeId, n.parentId]),
     links,
     // Cambiar el tipo o el parentesco de una relación altera la estructura sin cambiar sus extremos.
     structureLinks(project, structure.id),
   ]);
   const autoPositions = useMemo(
-    () => autoLayout(project, view.layout, structure.id, links, selectedNodeId),
+    () => autoLayout(project, view.layout, structure.id, links, selectedNodeId, fixed),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- la clave resume todas las entradas relevantes
     [layoutKey],
   );
