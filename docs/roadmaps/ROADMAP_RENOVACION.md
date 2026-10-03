@@ -209,10 +209,16 @@ Notas de cierre (2026-10-03): verificado en Chromium (Playwright) sin errores: e
 
 Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 
+**Adelantado a petición del usuario (2026-10-03):**
+
+- [x] **Biblioteca de atributos compartidos** (`Project.fieldLibrary`, `src/domain/library.ts`): un atributo se define una vez y se vincula a varios tipos conservando el mismo id, así que los valores no cambian al compartir o desvincular. Viven en la vista **Propiedades** (tercera pestaña de la barra, Alt+3), llamadas «preformas»; en cada tipo, «Añadir» ofrece **Definición rápida** (atributo propio) o **Preforma**, las preformas vinculadas se muestran con insignia y se pueden desvincular, y cualquier atributo propio se puede convertir en preforma con un clic. En etiquetas y descripciones, `{tipo}` se sustituye por el nombre del tipo («Nombre del {tipo}» → «Nombre del Personaje»).
+- [x] **Tipo de atributo «Imagen»**: la imagen se reduce a 384 px de lado mayor (JPEG) y se guarda en el valor del nodo; se muestra en la tarjeta del lienzo y en la cabecera del inspector en lugar del icono del tipo. Las búsquedas no indexan estos valores. _Límite mientras los datos vivan en `localStorage` (~5 MB en total): unos 20–40 KB por retrato._
+- [x] Corrección derivada: `allFields` solo sustituye por clave entre niveles de herencia; dentro de un mismo tipo se conservan todos los atributos aunque repitan clave.
+
 - [ ] Relaciones con **nombre por dirección** ("padre de" / "hijo de", "venera a" / "venerado por") y relaciones **simétricas** ("hermano de", "aliado de").
 - [ ] Atributos de relación visibles y editables (intensidad, desde cuándo, si es pública o secreta…).
 - [ ] Opción de **dibujar los campos de referencia como aristas** ("Dios: Aurel" se ve en el grafo sin crear además una relación). Decidir y documentar cuándo usar campo de referencia y cuándo relación.
-- [ ] Nuevos tipos de campo: imagen, URL, color, escala (1–5), etiquetas, lista ordenada, fecha del mundo (ver Fase 5).
+- [ ] Nuevos tipos de campo: URL, color, escala (1–5), etiquetas, lista ordenada, fecha del mundo (ver Fase 5). _Imagen ya hecho._
 - [ ] Valores por defecto tipados y heredados.
 - [ ] Campos calculados reales (valor visible; funciones simples: contar relaciones, concatenar, referencia a un campo de otro nodo).
 - [ ] Validación de campos obligatorios con avisos no bloqueantes y contador de "fichas incompletas".

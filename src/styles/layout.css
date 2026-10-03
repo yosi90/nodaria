@@ -815,3 +815,74 @@ button.mention:hover {
   color: var(--warning);
   text-decoration: underline dotted;
 }
+
+/* ---------- Imágenes y biblioteca ---------- */
+.image-control {
+  display: grid;
+  gap: 8px;
+}
+.image-control img {
+  width: 100%;
+  max-width: 220px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+.image-placeholder {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 220px;
+  padding: 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-inset);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.image-placeholder:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.inspector-head .portrait {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.library-list {
+  display: grid;
+  gap: 8px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.library-users {
+  max-width: 50%;
+}
+.library-users .chip {
+  min-height: 22px;
+  font-size: var(--fs-xs);
+}
+.field-def.linked {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.field-def.linked .drag-handle {
+  cursor: grab;
+  color: var(--accent);
+}
+
+.properties-layout {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}

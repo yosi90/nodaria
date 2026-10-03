@@ -48,10 +48,12 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
       (!typeFilter || n.typeId === typeFilter) &&
       (!q ||
         nodeLabel(project, n).toLowerCase().includes(q) ||
-        allFields(project, n.typeId).some(f =>
-          String(n.values[f.id] ?? '')
-            .toLowerCase()
-            .includes(q),
+        allFields(project, n.typeId).some(
+          f =>
+            f.type !== 'image' &&
+            String(n.values[f.id] ?? '')
+              .toLowerCase()
+              .includes(q),
         ));
     // Un nodo es visible si coincide o si algún descendiente coincide (entonces sirve de contexto).
     const relevant = new Map<string, boolean>();

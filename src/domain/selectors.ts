@@ -1,3 +1,4 @@
+import { declaredFields } from './library';
 import type { FieldDefinition, FieldValue, Node, Project, Relation, Schema } from './types';
 
 export const getSchema = (p: Project, id: string) => p.schemas.find(x => x.id === id);
@@ -18,9 +19,17 @@ export function inheritedSchemas(p: Project, typeId: string) {
 
 /** Campos efectivos de un tipo. Un campo propio sustituye a uno heredado con la misma clave. */
 export function allFields(p: Project, typeId: string) {
-  const fields = new Map<string, FieldDefinition>();
-  inheritedSchemas(p, typeId).forEach(s => s.fields.forEach(f => fields.set(f.key, f)));
-  return [...fields.values()];
+  // Un tipo sustituye los atributos heredados que repiten clave; dentro de un mismo tipo se conservan todos.
+  let result: FieldDefinition[] = [];
+  inheritedSchemas(p, typeId).forEach(s => {
+    const declared = declaredFields(p, s);
+    const keys = new Set(declared.map(f => f.key));
+    result = [
+      ...result.filter(f => !keys.has(f.key)),
+      ...declared.filter((f, i, all) => all.findIndex(x => x.id === f.id) === i),
+    ];
+  });
+  return result;
 }
 
 export function typeMatches(p: Project, typeId: string, allowed: string[]) {
@@ -168,4 +177,16 @@ export function compatibleRelationTypes(project: Project, sourceId: string, targ
       typeMatches(project, source.typeId, s.sourceTypeIds) &&
       typeMatches(project, target.typeId, s.targetTypeIds),
   );
+}
+
+/**
+ * Texto de etiqueta o descripción de un atributo para un tipo concreto: `{tipo}` se sustituye por el
+ * nombre del tipo, de modo que una preforma «Nombre del {tipo}» se lee «Nombre del Personaje».
+ */
+export function fieldText(text: string, typeName: string | undefined) {
+  if (!text.includes('{')) return text;
+  return text
+    .replace(/\{\s*tipo\s*\}/gi, typeName ?? '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }

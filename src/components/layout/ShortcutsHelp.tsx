@@ -10,7 +10,8 @@ const GROUPS: { title: string; items: [string, string[]][] }[] = [
       ['Deshacer', ['Ctrl', 'Z']],
       ['Rehacer', ['Ctrl', 'Shift', 'Z']],
       ['Ir al mapa', ['Alt', '1']],
-      ['Ir a tipos y propiedades', ['Alt', '2']],
+      ['Ir a tipos', ['Alt', '2']],
+      ['Ir a propiedades', ['Alt', '3']],
     ],
   },
   {

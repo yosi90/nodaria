@@ -14,6 +14,8 @@ export interface NodeCardData extends Record<string, unknown> {
   incomplete: boolean;
   /** Posición fijada por el usuario. */
   pinned: boolean;
+  /** Retrato (data URL) del primer atributo de imagen con valor. */
+  image: string | null;
 }
 
 export type CardNode = FlowNode<NodeCardData, 'card'>;
@@ -26,9 +28,13 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
       style={{ '--type-color': data.color } as CSSProperties}
     >
       <Handle type="target" position={Position.Left} className="node-target" isConnectableStart={false} />
-      <span className="type-icon lg" aria-hidden>
-        {createElement(typeIcon(data.icon), { size: 16, strokeWidth: 2.2 })}
-      </span>
+      {data.image ? (
+        <img className="node-portrait" src={data.image} alt="" />
+      ) : (
+        <span className="type-icon lg" aria-hidden>
+          {createElement(typeIcon(data.icon), { size: 16, strokeWidth: 2.2 })}
+        </span>
+      )}
       <div className="node-texts">
         <strong title={data.label}>{data.label}</strong>
         <small>{data.typeName}</small>

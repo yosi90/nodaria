@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, relation, schema } from '../test/fixtures';
 import { repairProject } from './integrity';
+import type { FieldDefinition } from './types';
 
 describe('repairProject', () => {
   it('devuelve el mismo objeto si el proyecto está sano', () => {
@@ -49,7 +50,7 @@ describe('repairProject', () => {
     });
     const { project: fixed } = repairProject(p);
     expect(fixed.schemas[0].allowedChildTypeIds).toEqual(['t']);
-    expect(fixed.schemas[0].fields[0].referenceTypeIds).toEqual([]);
+    expect((fixed.schemas[0].fields[0] as FieldDefinition).referenceTypeIds).toEqual([]);
     expect(fixed.schemas[1].sourceTypeIds).toEqual([]);
     expect(fixed.relations).toEqual([]);
   });

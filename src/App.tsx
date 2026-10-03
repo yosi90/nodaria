@@ -5,6 +5,7 @@ import { RepairNotice } from './components/layout/RepairNotice';
 import { ShortcutsHelp } from './components/layout/ShortcutsHelp';
 import { Topbar } from './components/layout/Topbar';
 import { MapView } from './components/map/MapView';
+import { PropertiesView } from './components/schema/PropertiesView';
 import { SchemaView } from './components/schema/SchemaView';
 import { useApp } from './state/AppContext';
 import { useNavigation, type View } from './state/navigation';
@@ -18,7 +19,7 @@ export default function App() {
   return (
     <div className="app">
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} />
-      {view === 'map' ? <MapView /> : <SchemaView />}
+      {view === 'map' ? <MapView /> : view === 'schema' ? <SchemaView /> : <PropertiesView />}
       <RepairNotice />
       {help && <ShortcutsHelp onClose={() => setHelp(false)} />}
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
@@ -47,8 +48,8 @@ function useGlobalShortcuts(
       if (event.defaultPrevented || isTypingTarget(event.target)) return;
       if (mod && !event.altKey && key === 'z' && !event.shiftKey) undo();
       else if (mod && !event.altKey && ((key === 'z' && event.shiftKey) || key === 'y')) redo();
-      else if (event.altKey && !mod && (event.code === 'Digit1' || event.code === 'Digit2'))
-        setView(event.code === 'Digit1' ? 'map' : 'schema');
+      else if (event.altKey && !mod && ['Digit1', 'Digit2', 'Digit3'].includes(event.code))
+        setView(event.code === 'Digit1' ? 'map' : event.code === 'Digit2' ? 'schema' : 'properties');
       else if (event.altKey && !mod && event.key === 'ArrowLeft') back();
       else if (event.altKey && !mod && event.key === 'ArrowRight') forward();
       else if (event.key === '?' && !mod) openHelp();

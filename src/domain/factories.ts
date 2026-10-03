@@ -19,6 +19,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     createdAt: stamp,
     updatedAt: stamp,
     schemas: [],
+    fieldLibrary: [],
     nodes: [],
     relations: [],
     view: createView(),

@@ -1,7 +1,9 @@
 import { createProject, now, uid } from '../domain/factories';
+import * as lib from '../domain/library';
 import * as ops from '../domain/operations';
 import type {
   AppState,
+  FieldDefinition,
   FieldValue,
   OrphanStrategy,
   Position,
@@ -23,6 +25,12 @@ export type Action =
   | { type: 'update-schema'; schema: Schema }
   | { type: 'delete-schema'; id: string; strategy: OrphanStrategy }
   | { type: 'add-field'; schemaId: string }
+  | { type: 'add-library-field'; id?: string }
+  | { type: 'update-library-field'; field: FieldDefinition }
+  | { type: 'delete-library-field'; id: string }
+  | { type: 'link-field'; schemaId: string; libraryId: string }
+  | { type: 'unlink-field'; schemaId: string; libraryId: string }
+  | { type: 'share-field'; schemaId: string; fieldId: string }
   | { type: 'delete-field'; schemaId: string; fieldId: string }
   | {
       type: 'add-node';
@@ -94,6 +102,18 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.deleteSchema(p, action.id, action.strategy);
     case 'add-field':
       return ops.addField(p, action.schemaId);
+    case 'add-library-field':
+      return lib.addLibraryField(p, action.id);
+    case 'update-library-field':
+      return lib.updateLibraryField(p, action.field);
+    case 'delete-library-field':
+      return lib.deleteLibraryField(p, action.id);
+    case 'link-field':
+      return lib.linkField(p, action.schemaId, action.libraryId);
+    case 'unlink-field':
+      return lib.unlinkField(p, action.schemaId, action.libraryId);
+    case 'share-field':
+      return lib.shareField(p, action.schemaId, action.fieldId);
     case 'delete-field':
       return ops.deleteField(p, action.schemaId, action.fieldId);
     case 'add-node':

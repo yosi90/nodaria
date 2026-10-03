@@ -1,4 +1,4 @@
-import { Moon, Network, Plus, Search, Shapes, Sun, type LucideIcon } from 'lucide-react';
+import { Library, Moon, Network, Plus, Search, Shapes, Sun, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
@@ -42,6 +42,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     const nodes: Command[] = project.nodes.map(n => {
       const schema = getSchema(project, n.typeId);
       const values = allFields(project, n.typeId)
+        .filter(f => f.type !== 'image')
         .map(f => n.values[f.id])
         .filter(v => typeof v === 'string' || typeof v === 'number')
         .join(' ');
@@ -108,11 +109,19 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       },
       {
         id: 'view:schema',
-        label: 'Ir a tipos y propiedades',
+        label: 'Ir a tipos',
         group: 'Acciones',
         leading: icon(Shapes),
         keywords: 'vista esquema tipos',
         run: () => setView('schema'),
+      },
+      {
+        id: 'view:properties',
+        label: 'Ir a propiedades',
+        group: 'Acciones',
+        leading: icon(Library),
+        keywords: 'vista propiedades atributos compartidos preformas biblioteca',
+        run: () => setView('properties'),
       },
       {
         id: 'theme',

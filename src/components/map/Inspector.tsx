@@ -4,6 +4,7 @@ import { nodeConnections } from '../../domain/connections';
 import {
   allFields,
   creatableTypes,
+  fieldText,
   fieldValue,
   getNode,
   getSchema,
@@ -22,6 +23,8 @@ import { nodeOption } from '../common/options';
 import { Select } from '../common/Select';
 import { ConnectionsTab } from './ConnectionsTab';
 import { NotesTab } from './NotesTab';
+import { ImageControl } from './ImageControl';
+import { isImageValue } from './images';
 import { ReferenceControl } from './ReferenceControl';
 
 type Tab = 'fields' | 'connections' | 'notes';
@@ -44,6 +47,7 @@ function FieldControl({
   };
   if (field.type === 'nodeRef' || field.type === 'nodeRefs')
     return <ReferenceControl field={field} value={value} ownerId={ownerId} onChange={onChange} />;
+  if (field.type === 'image') return <ImageControl value={value} label={field.label} onChange={onChange} />;
   if (field.type === 'boolean')
     return (
       <label className="check">
@@ -98,6 +102,10 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
   const title = node ? nodeLabel(project, node) : relationLabel(project, relation!);
   const subtitle = node ? (schema?.name ?? 'Sin tipo') : relationSummary(relation!);
   const crumbs = node ? ancestors(project, node) : [];
+  const portrait = fields
+    .filter(f => f.type === 'image')
+    .map(f => item.values[f.id])
+    .find(isImageValue);
 
   return (
     <>
@@ -106,7 +114,11 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
           <IconButton icon={ChevronLeft} size="sm" label="Atrás" disabled={!canBack} onClick={back} />
           <IconButton icon={ChevronRight} size="sm" label="Adelante" disabled={!canForward} onClick={forward} />
         </div>
-        <TypeIcon icon={schema?.icon} color={schema?.color} size="lg" />
+        {portrait ? (
+          <img className="portrait" src={portrait} alt="" />
+        ) : (
+          <TypeIcon icon={schema?.icon} color={schema?.color} size="lg" />
+        )}
         <div className="titles">
           {crumbs.length > 0 && (
             <nav className="crumbs" aria-label="Ruta">
@@ -193,12 +205,11 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
                 <div className="form-grid">
                   {fields.map(f => {
                     // Un checkbox o un selector ya llevan su propia etiqueta: no se anidan dentro de otro <label>.
-                    const Wrapper =
-                      f.type === 'boolean' || f.type === 'nodeRef' || f.type === 'nodeRefs' ? 'div' : 'label';
+                    const Wrapper = ['boolean', 'nodeRef', 'nodeRefs', 'image'].includes(f.type) ? 'div' : 'label';
                     return (
                       <Wrapper className="field" key={f.id}>
                         <span>
-                          {f.label}
+                          {fieldText(f.label, schema?.name)}
                           {f.required && <span className="required"> *</span>}
                         </span>
                         <FieldControl
@@ -207,7 +218,7 @@ export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete
                           ownerId={item.id}
                           onChange={v => updateValue(f.id, v)}
                         />
-                        {f.description && <small>{f.description}</small>}
+                        {f.description && <small>{fieldText(f.description, schema?.name)}</small>}
                       </Wrapper>
                     );
                   })}

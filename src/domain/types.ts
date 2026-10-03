@@ -1,5 +1,5 @@
 export type FieldType =
-  'text' | 'longText' | 'number' | 'boolean' | 'date' | 'select' | 'nodeRef' | 'nodeRefs' | 'computed';
+  'text' | 'longText' | 'number' | 'boolean' | 'date' | 'select' | 'nodeRef' | 'nodeRefs' | 'computed' | 'image';
 export type SchemaKind = 'entity' | 'relationship';
 export type RelationStyle = 'normal' | 'strong' | 'hidden';
 export type FieldValue = string | number | boolean | string[] | null;
@@ -17,6 +17,12 @@ export interface FieldDefinition {
   referenceTypeIds: string[];
   formula: string;
 }
+/** Vínculo a un atributo de la biblioteca compartida del proyecto. */
+export interface FieldLink {
+  ref: string;
+}
+/** Un tipo lista atributos propios y vínculos a compartidos, en el orden en que se muestran. */
+export type SchemaField = FieldDefinition | FieldLink;
 export interface Schema {
   id: string;
   name: string;
@@ -27,7 +33,7 @@ export interface Schema {
   /** Nombre de un icono del catálogo de la interfaz; desconocido o vacío se muestra como genérico. */
   icon: string;
   description: string;
-  fields: FieldDefinition[];
+  fields: SchemaField[];
   allowedChildTypeIds: string[];
   sourceTypeIds: string[];
   targetTypeIds: string[];
@@ -67,6 +73,8 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   schemas: Schema[];
+  /** Atributos compartidos que los tipos vinculan en lugar de redefinir. */
+  fieldLibrary: FieldDefinition[];
   nodes: Node[];
   relations: Relation[];
   view: ProjectView;

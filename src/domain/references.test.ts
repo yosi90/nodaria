@@ -5,6 +5,7 @@ import { extractMentions, mentionedNodes, mentioningNodes, segmentNotes } from '
 import { addNodeUnder } from './operations';
 import { referenceCandidates, referenceFields, referenceLinks } from './references';
 import { creatableTypesIn, FIELD_LENS, structureChildren, structureLenses } from './structure';
+import type { FieldDefinition } from './types';
 
 const world = () =>
   project({
@@ -42,9 +43,9 @@ describe('referencias como vínculos', () => {
 
   it('los candidatos respetan los tipos permitidos, con herencia, y excluyen al propio nodo', () => {
     const p = world();
-    const aliados = p.schemas[1].fields[2];
+    const aliados = p.schemas[1].fields[2] as FieldDefinition;
     expect(referenceCandidates(p, aliados, 'aria').map(n => n.id)).toEqual(['tor']);
-    expect(referenceCandidates(p, p.schemas[1].fields[1]).map(n => n.id)).toEqual(['alta']);
+    expect(referenceCandidates(p, p.schemas[1].fields[1] as FieldDefinition).map(n => n.id)).toEqual(['alta']);
   });
 
   it('un atributo de referencia es una estructura más en «Ver por»', () => {

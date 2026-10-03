@@ -7,6 +7,7 @@ import {
   getSchema,
   inheritanceCandidates,
 } from './selectors';
+import { isFieldLink, ownFields } from './library';
 import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
   FieldDefinition,
@@ -75,7 +76,7 @@ export function deleteSchema(p: Project, schemaId: string, strategy: OrphanStrat
   const direct = p.nodes.filter(n => n.typeId === schemaId).map(n => n.id);
   const removed = new Set(direct);
   if (strategy === 'cascade') direct.forEach(id => descendants(p, id).forEach(d => removed.add(d)));
-  const deletedFieldIds = new Set(deleted.fields.map(f => f.id));
+  const deletedFieldIds = new Set(ownFields(deleted).map(f => f.id));
 
   let next = removeNodes(p, removed);
   next = {
@@ -99,7 +100,8 @@ export function addField(p: Project, schemaId: string): Project {
       if (s.id !== schemaId) return s;
       const field = createField();
       let i = 2;
-      while (s.fields.some(x => x.key === field.key)) field.key = `nuevo_campo_${i++}`;
+      const taken = [...ownFields(s).map(x => x.key), ...p.fieldLibrary.map(x => x.key)];
+      while (taken.includes(field.key)) field.key = `nuevo_campo_${i++}`;
       return { ...s, fields: [...s.fields, field] };
     }),
   };
@@ -110,7 +112,9 @@ export function deleteField(p: Project, schemaId: string, fieldId: string): Proj
   const ids = new Set([fieldId]);
   return {
     ...p,
-    schemas: p.schemas.map(s => (s.id === schemaId ? { ...s, fields: s.fields.filter(f => f.id !== fieldId) } : s)),
+    schemas: p.schemas.map(s =>
+      s.id === schemaId ? { ...s, fields: s.fields.filter(f => isFieldLink(f) || f.id !== fieldId) } : s,
+    ),
     nodes: p.nodes.map(n => withoutValues(n, ids)),
     relations: p.relations.map(r => withoutValues(r, ids)),
   };
@@ -220,12 +224,14 @@ function removeTypeReferences(schemas: Schema[], typeIds: Set<string>, exceptSch
   return schemas.map(s => {
     if (s.id === exceptSchemaId) return s;
     const lists = TYPE_LIST_KEYS.filter(key => s[key].some(id => typeIds.has(id)));
-    const fieldsChanged = s.fields.some(f => f.referenceTypeIds.some(id => typeIds.has(id)));
+    const fieldsChanged = ownFields(s).some(f => f.referenceTypeIds.some(id => typeIds.has(id)));
     if (!lists.length && !fieldsChanged) return s;
     const next: Schema = { ...s };
     lists.forEach(key => (next[key] = s[key].filter(id => !typeIds.has(id))));
     if (fieldsChanged)
-      next.fields = s.fields.map(f => ({ ...f, referenceTypeIds: f.referenceTypeIds.filter(id => !typeIds.has(id)) }));
+      next.fields = s.fields.map(f =>
+        isFieldLink(f) ? f : { ...f, referenceTypeIds: f.referenceTypeIds.filter(id => !typeIds.has(id)) },
+      );
     return next;
   });
 }

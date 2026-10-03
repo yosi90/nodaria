@@ -1,27 +1,42 @@
 import { ChevronDown, ChevronRight, GripVertical, Trash2, X } from 'lucide-react';
-import { useState, type DragEvent, type KeyboardEvent } from 'react';
+import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { slugify } from '../../domain/factories';
-import type { FieldDefinition, Schema } from '../../domain/types';
+import type { FieldDefinition } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { IconButton } from '../common/Button';
 import { schemaOption } from '../common/options';
 import { MultiSelect } from '../common/Select';
-import { useToast } from '../common/toasts';
 
 interface FieldEditorProps {
-  schema: Schema;
   field: FieldDefinition;
   dragging: boolean;
   onChange: (field: FieldDefinition) => void;
+  onDelete: () => void;
   onDragStart: (fieldId: string) => void;
   onDragEnd: () => void;
   onDrop: (targetId: string, after: boolean) => void;
+  /** Insignias y acciones extra en la cabecera (p. ej. «Compartido», «Usado en 3 tipos»). */
+  badges?: ReactNode;
+  actions?: ReactNode;
+  /** Mostrar «Título del nodo»: no aplica a los atributos de relación. */
+  allowTitle?: boolean;
 }
 
-export function FieldEditor({ schema, field, dragging, onChange, onDragStart, onDragEnd, onDrop }: FieldEditorProps) {
-  const { project, dispatch } = useApp();
-  const toast = useToast();
+/** Edición de un atributo, propio de un tipo o de la biblioteca compartida. */
+export function FieldEditor({
+  field,
+  dragging,
+  onChange,
+  onDelete,
+  onDragStart,
+  onDragEnd,
+  onDrop,
+  badges,
+  actions,
+  allowTitle = true,
+}: FieldEditorProps) {
+  const { project } = useApp();
   const [expanded, setExpanded] = useState(field.key === 'nuevo_campo' || field.key.startsWith('nuevo_campo_'));
   const set = <K extends keyof FieldDefinition>(key: K, value: FieldDefinition[K]) =>
     onChange({ ...field, [key]: value });
@@ -30,16 +45,12 @@ export function FieldEditor({ schema, field, dragging, onChange, onDragStart, on
     onChange({ ...field, label, key: keyWasAutomatic ? slugify(label) : field.key });
   };
   const typeLabel = FIELD_TYPES.find(item => item[0] === field.type)?.[1];
+  const hasDefault = !['computed', 'nodeRef', 'nodeRefs', 'image'].includes(field.type);
 
   const drop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const bounds = event.currentTarget.getBoundingClientRect();
     onDrop(field.id, event.clientY > bounds.top + bounds.height / 2);
-  };
-
-  const remove = () => {
-    toast({ message: `Atributo «${field.label}» eliminado`, undoable: true });
-    dispatch({ type: 'delete-field', schemaId: schema.id, fieldId: field.id });
   };
 
   return (
@@ -71,17 +82,19 @@ export function FieldEditor({ schema, field, dragging, onChange, onDragStart, on
         >
           <span className="field-chevron">{expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
           <strong>{field.label || 'Atributo sin nombre'}</strong>
+          {badges}
           {field.isTitle && <span className="badge accent">Título</span>}
           {field.required && <span className="badge warning">Obligatorio</span>}
           <span className="badge">{typeLabel}</span>
         </button>
+        {actions}
         <IconButton
           icon={Trash2}
           size="sm"
           variant="danger"
           label={`Eliminar ${field.label}`}
           tooltipSide="left"
-          onClick={remove}
+          onClick={onDelete}
         />
       </div>
       {expanded && (
@@ -112,7 +125,7 @@ export function FieldEditor({ schema, field, dragging, onChange, onDragStart, on
                 ))}
               </select>
             </label>
-            {field.type !== 'computed' && field.type !== 'nodeRef' && field.type !== 'nodeRefs' && (
+            {hasDefault && (
               <label className="field">
                 Valor inicial
                 <input
@@ -132,10 +145,16 @@ export function FieldEditor({ schema, field, dragging, onChange, onDragStart, on
               />
               Obligatorio
             </label>
-            <label>
-              <input type="checkbox" checked={field.isTitle} onChange={event => set('isTitle', event.target.checked)} />
-              Título del nodo
-            </label>
+            {allowTitle && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={field.isTitle}
+                  onChange={event => set('isTitle', event.target.checked)}
+                />
+                Título del nodo
+              </label>
+            )}
           </div>
           <label className="field">
             Descripción
@@ -144,7 +163,16 @@ export function FieldEditor({ schema, field, dragging, onChange, onDragStart, on
               placeholder="Ayuda que se muestra bajo el campo"
               onChange={event => set('description', event.target.value)}
             />
+            <small>
+              Puedes escribir {'{tipo}'} en la etiqueta o la descripción: «Nombre del {'{tipo}'}» se lee «Nombre del
+              Personaje» en un personaje y «Nombre del Lugar» en un lugar.
+            </small>
           </label>
+          {field.type === 'image' && (
+            <p className="field-hint">
+              La imagen se reduce al guardarla (máximo 384 px) y se muestra en la tarjeta del nodo en lugar del icono.
+            </p>
+          )}
           {field.type === 'select' && (
             <div className="field">
               Opciones

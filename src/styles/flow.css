@@ -66,6 +66,14 @@
 .node-card-flow.dimmed {
   opacity: 0.28;
 }
+.node-portrait {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
 .node-card-flow .node-texts {
   flex: 1;
   min-width: 0;

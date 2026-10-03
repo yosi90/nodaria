@@ -6,6 +6,7 @@ import {
   canSetParent,
   creatableTypes,
   descendants,
+  fieldText,
   fieldValue,
   inheritanceCandidates,
   nodeDepths,
@@ -143,5 +144,14 @@ describe('títulos de nodos y relaciones', () => {
     expect(relationLabel(world, world.relations[0])).toBe('Hermanos');
     expect(relationLabel(world, world.relations[1])).toBe('parentesco');
     expect(relationLabel(world, world.relations[2])).toBe('alianza');
+  });
+});
+
+describe('textos de atributo por tipo', () => {
+  it('{tipo} se sustituye por el nombre del tipo', () => {
+    expect(fieldText('Nombre del {tipo}', 'Personaje')).toBe('Nombre del Personaje');
+    expect(fieldText('Nombre del { Tipo }', 'Lugar')).toBe('Nombre del Lugar');
+    expect(fieldText('Sin marcador', 'Lugar')).toBe('Sin marcador');
+    expect(fieldText('Nombre del {tipo}', undefined)).toBe('Nombre del');
   });
 });

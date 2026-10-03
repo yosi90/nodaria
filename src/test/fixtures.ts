@@ -24,5 +24,5 @@ export function relation(id: string, typeId: string, sourceId: string, targetId:
 }
 
 export function project(patch: Partial<Project> = {}): Project {
-  return { ...createProject('Prueba'), id: 'p1', ...patch };
+  return { ...createProject('Prueba'), id: 'p1', fieldLibrary: [], ...patch };
 }

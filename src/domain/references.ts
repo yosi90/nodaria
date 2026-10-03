@@ -1,3 +1,4 @@
+import { declaredFields } from './library';
 import { allFields, nodeLabel } from './selectors';
 import type { FieldDefinition, Node, Project, Schema } from './types';
 
@@ -28,7 +29,11 @@ export function referenceFields(p: Project): ReferenceField[] {
   p.schemas
     .filter(s => s.kind === 'entity')
     .forEach(owner =>
-      owner.fields.filter(isReferenceField).forEach(field => result.push({ field, owner, name: field.label })),
+      declaredFields(p, owner)
+        .filter(isReferenceField)
+        .forEach(field => {
+          if (!result.some(r => r.field.id === field.id)) result.push({ field, owner, name: field.label });
+        }),
     );
   const labels = new Map<string, number>();
   result.forEach(r => labels.set(r.field.label, (labels.get(r.field.label) ?? 0) + 1));

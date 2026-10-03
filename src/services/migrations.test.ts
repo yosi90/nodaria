@@ -7,6 +7,8 @@ import { parseProject, serializeProject } from './storage';
 const legacy = () => ({
   id: 'old',
   name: 'Mundo antiguo',
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z',
   schemas: [
     {
       id: 'ser',

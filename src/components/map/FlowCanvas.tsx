@@ -29,6 +29,7 @@ import { FloatingEdge, type FloatingEdgeType } from './FloatingEdge';
 import { CanvasSettingsContext } from './canvasSettings';
 import { autoLayout, NODE_H, NODE_W, type Link } from './layout';
 import { LegendPanel } from './LegendPanel';
+import { isImageValue } from './images';
 import { NodeCard, type CardNode } from './NodeCard';
 
 const nodeTypes = { card: NodeCard };
@@ -204,6 +205,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             degree: degree.get(n.id) ?? 0,
             incomplete: isIncomplete(project, n.typeId, n.values),
             pinned: n.position !== null,
+            image:
+              allFields(project, n.typeId)
+                .filter(f => f.type === 'image')
+                .map(f => n.values[f.id])
+                .find(isImageValue) ?? null,
           },
         };
       });

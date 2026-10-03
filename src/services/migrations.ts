@@ -40,13 +40,17 @@ function normalizeProject(project: RawProject): Project {
       icon: s.icon || (s.kind === 'relationship' ? 'link' : 'circle'),
       parentTypeId: s.parentTypeId || null,
       description: s.description || '',
-      fields: (s.fields || []).map(f => ({
-        ...f,
-        description: f.description || '',
-        options: f.options || [],
-        referenceTypeIds: f.referenceTypeIds || [],
-        formula: f.formula || '',
-      })),
+      fields: (s.fields || []).map(f =>
+        'ref' in f
+          ? f
+          : {
+              ...f,
+              description: f.description || '',
+              options: f.options || [],
+              referenceTypeIds: f.referenceTypeIds || [],
+              formula: f.formula || '',
+            },
+      ),
       allowedChildTypeIds: s.allowedChildTypeIds || [],
       sourceTypeIds: s.sourceTypeIds || [],
       targetTypeIds: s.targetTypeIds || [],
@@ -54,6 +58,13 @@ function normalizeProject(project: RawProject): Project {
       relationStyle: s.relationStyle || 'normal',
       structural: s.structural || false,
       parentEnd: s.parentEnd || 'target',
+    })),
+    fieldLibrary: (project.fieldLibrary || []).map(f => ({
+      ...f,
+      description: f.description || '',
+      options: f.options || [],
+      referenceTypeIds: f.referenceTypeIds || [],
+      formula: f.formula || '',
     })),
     nodes: (project.nodes || []).map(n => ({
       ...n,

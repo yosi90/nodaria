@@ -9,6 +9,7 @@ export const FIELD_TYPES: ReadonlyArray<[FieldType, string]> = [
   ['nodeRef', 'Referencia a nodo'],
   ['nodeRefs', 'Referencias múltiples'],
   ['computed', 'Calculado'],
+  ['image', 'Imagen'],
 ];
 export const RELATION_STYLES: Record<RelationStyle, { label: string; dash?: string }> = {
   normal: { label: 'Normal' },

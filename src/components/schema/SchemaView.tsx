@@ -67,6 +67,7 @@ export function SchemaView() {
                       <small>
                         {item.isAbstract ? 'Abstracto · ' : ''}
                         {item.fields.length} {item.fields.length === 1 ? 'atributo' : 'atributos'}
+                        {item.fields.some(f => 'ref' in f) ? ' · con preformas' : ''}
                       </small>
                     </span>
                   </button>

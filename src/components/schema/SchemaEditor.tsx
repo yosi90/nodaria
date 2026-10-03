@@ -1,38 +1,25 @@
-import { Lock, Plus, Trash2 } from 'lucide-react';
+import { Lock, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { RELATION_STYLES } from '../../domain/constants';
-import { canChangeSchemaKind, inheritanceCandidates, inheritedSchemas, schemaUsage } from '../../domain/selectors';
+import { canChangeSchemaKind, inheritanceCandidates, schemaUsage } from '../../domain/selectors';
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
-import { Button, IconButton } from '../common/Button';
+import { Button } from '../common/Button';
 import { TypeIcon } from '../common/icons';
 import { schemaOption } from '../common/options';
 import { MultiSelect, Select } from '../common/Select';
 import { AppearancePicker } from './AppearancePicker';
 import { DeleteSchemaModal } from './DeleteSchemaModal';
-import { FieldEditor } from './FieldEditor';
+import { AttributesCard } from './AttributesCard';
 
 export function SchemaEditor({ schema }: { schema: Schema }) {
   const { project, dispatch } = useApp();
-  const [draggedFieldId, setDraggedFieldId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const kindLocked = !canChangeSchemaKind(project, schema.id);
   const update = (patch: Partial<Schema>) => dispatch({ type: 'update-schema', schema: { ...schema, ...patch } });
   const entities = project.schemas.filter(item => item.kind === 'entity');
   const usage = schemaUsage(project, schema.id);
-  const ancestors = inheritedSchemas(project, schema.id).slice(0, -1);
   const isEntity = schema.kind === 'entity';
-
-  const reorderField = (targetId: string, after: boolean) => {
-    if (!draggedFieldId || draggedFieldId === targetId) return;
-    const dragged = schema.fields.find(field => field.id === draggedFieldId);
-    if (!dragged) return;
-    const withoutDragged = schema.fields.filter(field => field.id !== draggedFieldId);
-    const targetIndex = withoutDragged.findIndex(field => field.id === targetId);
-    withoutDragged.splice(targetIndex + (after ? 1 : 0), 0, dragged);
-    update({ fields: withoutDragged });
-    setDraggedFieldId(null);
-  };
 
   return (
     <section className="schema-editor">
@@ -215,52 +202,7 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
             )}
           </div>
         </div>
-        <div className="card">
-          <div className="card-head">
-            <h3>Atributos</h3>
-            <IconButton
-              icon={Plus}
-              variant="outlined"
-              label="Añadir atributo"
-              tooltipSide="left"
-              onClick={() => dispatch({ type: 'add-field', schemaId: schema.id })}
-            />
-          </div>
-          {ancestors.length > 0 && (
-            <p className="muted-note" style={{ marginBottom: 'var(--space-3)' }}>
-              Hereda{' '}
-              {ancestors.map((a, i) => (
-                <span key={a.id}>
-                  {i > 0 && ', '}
-                  {a.fields.length} de «{a.name}»{a.fields.length > 0 && ` (${a.fields.map(f => f.label).join(', ')})`}
-                </span>
-              ))}
-              .
-            </p>
-          )}
-          <div className="field-list">
-            {schema.fields.length ? (
-              schema.fields.map(field => (
-                <FieldEditor
-                  key={field.id}
-                  schema={schema}
-                  field={field}
-                  dragging={draggedFieldId === field.id}
-                  onDragStart={setDraggedFieldId}
-                  onDragEnd={() => setDraggedFieldId(null)}
-                  onDrop={reorderField}
-                  onChange={changed =>
-                    update({ fields: schema.fields.map(item => (item.id === changed.id ? changed : item)) })
-                  }
-                />
-              ))
-            ) : (
-              <p className="empty-copy">
-                Aún no tiene atributos propios. Añade, por ejemplo, un «Nombre» y márcalo como título del nodo.
-              </p>
-            )}
-          </div>
-        </div>
+        <AttributesCard schema={schema} />
       </div>
       {deleting && <DeleteSchemaModal schema={schema} onClose={() => setDeleting(false)} />}
     </section>

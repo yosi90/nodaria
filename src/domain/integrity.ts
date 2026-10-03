@@ -34,6 +34,7 @@ export function repairProject(input: Project): RepairResult {
         sourceTypeIds: cleanList(s.sourceTypeIds),
         targetTypeIds: cleanList(s.targetTypeIds),
         fields: s.fields.map(f => {
+          if ('ref' in f) return f;
           const referenceTypeIds = cleanList(f.referenceTypeIds);
           return referenceTypeIds === f.referenceTypeIds ? f : { ...f, referenceTypeIds };
         }),
@@ -41,6 +42,25 @@ export function repairProject(input: Project): RepairResult {
       return next;
     }),
   };
+  p = {
+    ...p,
+    fieldLibrary: p.fieldLibrary.map(f => {
+      const referenceTypeIds = cleanList(f.referenceTypeIds);
+      return referenceTypeIds === f.referenceTypeIds ? f : { ...f, referenceTypeIds };
+    }),
+  };
+  // Vínculos a atributos compartidos que ya no existen.
+  const libraryIds = new Set(p.fieldLibrary.map(f => f.id));
+  let danglingLinks = 0;
+  p = {
+    ...p,
+    schemas: p.schemas.map(s => {
+      const fields = s.fields.filter(f => !('ref' in f) || libraryIds.has(f.ref));
+      danglingLinks += s.fields.length - fields.length;
+      return fields.length === s.fields.length ? s : { ...s, fields };
+    }),
+  };
+  if (danglingLinks) issues.push(`Se quitaron ${danglingLinks} vínculos a atributos compartidos que ya no existen.`);
   if (danglingTypeRefs) issues.push(`Se quitaron ${danglingTypeRefs} referencias a tipos que ya no existen.`);
 
   // Herencia: padres inexistentes, de otra clase o en ciclo.
