@@ -1,8 +1,57 @@
-import { useState } from 'react';
-import { getSchema, nodeLabel, typeMatches } from '../../domain/selectors';
-import type { Selection } from '../../domain/types';
+import { useCallback, useState } from 'react';
+import { creatableTypes } from '../../domain/selectors';
+import type { Schema, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
-import { GraphCanvas } from './GraphCanvas';import { Inspector } from './Inspector';import { TreePanel } from './TreePanel';
-export function MapView(){const{project,dispatch}=useApp();const[selection,setSelection]=useState<Selection>(null);const add=(parentId:string|null)=>{const allowed=project.schemas.filter(s=>s.kind==='entity'&&!s.isAbstract&&(parentId?getSchema(project,project.nodes.find(n=>n.id===parentId)?.typeId||'')?.allowedChildTypeIds.includes(s.id):true));if(!allowed.length){alert('Primero crea un tipo de entidad compatible.');return}const choice=prompt(`Tipo de nodo:\n${allowed.map((s,i)=>`${i+1}. ${s.name}`).join('\n')}`,'1');const s=allowed[Number(choice)-1];if(s)dispatch({type:'add-node',typeId:s.id,parentId});};
- const addRelation=(sourceId:string)=>{const source=project.nodes.find(n=>n.id===sourceId)!;const types=project.schemas.filter(s=>s.kind==='relationship'&&typeMatches(project,source.typeId,s.sourceTypeIds));if(!types.length){alert('No hay tipos de relación compatibles.');return}const t=types[Number(prompt(`Tipo:\n${types.map((s,i)=>`${i+1}. ${s.name}`).join('\n')}`,'1'))-1];if(!t)return;const targets=project.nodes.filter(n=>n.id!==sourceId&&typeMatches(project,n.typeId,t.targetTypeIds));const target=targets[Number(prompt(`Destino:\n${targets.map((n,i)=>`${i+1}. ${nodeLabel(project,n)}`).join('\n')}`,'1'))-1];if(target)dispatch({type:'add-relation',typeId:t.id,sourceId,targetId:target.id});};
- return <main className="map-layout"><TreePanel selection={selection} onSelect={setSelection} onAdd={add}/><GraphCanvas selection={selection} onSelect={setSelection}/><Inspector key={selection?`${selection.kind}-${selection.id}`:'empty'} selection={selection} onClose={()=>setSelection(null)} onRelation={addRelation}/></main>}
+import { GraphCanvas } from './GraphCanvas';
+import { CreateRelationModal } from './CreateRelationModal';
+import { Inspector } from './Inspector';
+import { NodeTypeMenu } from './NodeTypeMenu';
+import { TreePanel } from './TreePanel';
+
+interface AddNodeMenu {
+  parentId: string | null;
+  anchor: { x: number; y: number };
+  schemas: Schema[];
+}
+
+export function MapView() {
+  const { project, dispatch } = useApp();
+  const [selection, setSelection] = useState<Selection>(null);
+  const [addNodeMenu, setAddNodeMenu] = useState<AddNodeMenu | null>(null);
+  const [relationSourceId, setRelationSourceId] = useState<string | null>(null);
+  const closeAddNodeMenu = useCallback(() => setAddNodeMenu(null), []);
+
+  const openAddNodeMenu = (parentId: string | null, anchor: { x: number; y: number }) => {
+    setAddNodeMenu({ parentId, anchor, schemas: creatableTypes(project, parentId) });
+  };
+
+  const createNode = (typeId: string) => {
+    if (!addNodeMenu) return;
+    dispatch({ type: 'add-node', typeId, parentId: addNodeMenu.parentId });
+    setAddNodeMenu(null);
+  };
+
+  return (
+    <main className="map-layout">
+      <TreePanel selection={selection} onSelect={setSelection} onAdd={openAddNodeMenu} />
+      <GraphCanvas selection={selection} onSelect={setSelection} />
+      <Inspector
+        key={selection ? `${selection.kind}-${selection.id}` : 'empty'}
+        selection={selection}
+        onClose={() => setSelection(null)}
+        onRelation={setRelationSourceId}
+      />
+      {addNodeMenu && (
+        <NodeTypeMenu
+          anchor={addNodeMenu.anchor}
+          schemas={addNodeMenu.schemas}
+          onSelect={createNode}
+          onClose={closeAddNodeMenu}
+        />
+      )}
+      {relationSourceId && (
+        <CreateRelationModal initialSourceId={relationSourceId} onClose={() => setRelationSourceId(null)} />
+      )}
+    </main>
+  );
+}
