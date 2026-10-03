@@ -371,3 +371,11 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* Relación bidireccional con el ratón sobre un extremo: solo queda la flecha hacia el otro */
+.react-flow__edge.hide-start .react-flow__edge-path {
+  marker-start: none;
+}
+.react-flow__edge.hide-end .react-flow__edge-path {
+  marker-end: none;
+}

@@ -310,6 +310,14 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       const [a, b] = ends.get(id) ?? [];
       el.classList.toggle('dimmed', Boolean(hoveredId && a !== hoveredId && b !== hoveredId));
       el.classList.toggle('lit', Boolean(hoveredId && (a === hoveredId || b === hoveredId)));
+      // En una relación bidireccional, al pasar por un nodo se oculta la punta de su lado:
+      // la flecha que queda apunta al otro extremo, como el nombre que se muestra.
+      if (el.dataset.id) {
+        const path = el.querySelector('path.react-flow__edge-path');
+        const reciprocal = Boolean(path?.getAttribute('marker-start') && path?.getAttribute('marker-end'));
+        el.classList.toggle('hide-start', reciprocal && hoveredId === a);
+        el.classList.toggle('hide-end', reciprocal && hoveredId === b && a !== b);
+      }
       // El texto de la arista es el papel del otro extremo respecto al nodo bajo el puntero.
       if (el.dataset.edge) {
         const fromTarget = hoveredId === a && b !== a;
