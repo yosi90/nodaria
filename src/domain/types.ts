@@ -24,6 +24,8 @@ export interface Schema {
   isAbstract: boolean;
   parentTypeId: string | null;
   color: string;
+  /** Nombre de un icono del catálogo de la interfaz; desconocido o vacío se muestra como genérico. */
+  icon: string;
   description: string;
   fields: FieldDefinition[];
   allowedChildTypeIds: string[];

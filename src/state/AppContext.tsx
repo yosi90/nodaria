@@ -26,6 +26,8 @@ interface AppContextValue {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  /** Estado al que volvería un deshacer; permite saber si una acción concreta sigue siendo la última. */
+  undoTarget: AppState | undefined;
   /** Correcciones aplicadas al cargar o importar datos, pendientes de mostrar al usuario. */
   repairs: LoadResult['repairs'];
   reportRepairs: (entry: LoadResult['repairs'][number]) => void;
@@ -52,10 +54,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const project = state.projects.find(p => p.id === state.activeProjectId) ?? state.projects[0];
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
+  const undoTarget = history.past.at(-1);
 
   const value = useMemo(
-    () => ({ state, project, dispatch, undo, redo, canUndo, canRedo, repairs, reportRepairs, dismissRepairs }),
-    [state, project, dispatch, undo, redo, canUndo, canRedo, repairs, reportRepairs, dismissRepairs],
+    () => ({
+      state,
+      project,
+      dispatch,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
+      undoTarget,
+      repairs,
+      reportRepairs,
+      dismissRepairs,
+    }),
+    [state, project, dispatch, undo, redo, canUndo, canRedo, undoTarget, repairs, reportRepairs, dismissRepairs],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

@@ -1,6 +1,7 @@
+import { GitFork, Plus, Trash2, X } from 'lucide-react';
 import {
   allFields,
-  descendants,
+  creatableTypes,
   fieldValue,
   getNode,
   getSchema,
@@ -10,6 +11,11 @@ import {
 } from '../../domain/selectors';
 import type { FieldDefinition, FieldValue, Relation, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { Button, IconButton } from '../common/Button';
+import { TypeIcon } from '../common/icons';
+import { nodeOption } from '../common/options';
+import { anchorOf, type Anchor } from '../common/anchor';
+import { Select } from '../common/Select';
 
 function FieldControl({
   field,
@@ -26,7 +32,12 @@ function FieldControl({
       onChange(field.type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value),
   };
   if (field.type === 'boolean')
-    return <input type="checkbox" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />;
+    return (
+      <label className="check">
+        <input type="checkbox" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />
+        {value ? 'Sí' : 'No'}
+      </label>
+    );
   if (field.type === 'longText') return <textarea {...common} />;
   if (field.type === 'select')
     return (
@@ -41,15 +52,15 @@ function FieldControl({
   return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} {...common} />;
 }
 
-export function Inspector({
-  selection,
-  onClose,
-  onRelation,
-}: {
+interface InspectorProps {
   selection: Selection;
   onClose: () => void;
   onRelation: (source: string) => void;
-}) {
+  onAddChild: (parentId: string, anchor: Anchor) => void;
+  onDelete: () => void;
+}
+
+export function Inspector({ selection, onClose, onRelation, onAddChild, onDelete }: InspectorProps) {
   const { project, dispatch } = useApp();
   const node = selection?.kind === 'node' ? getNode(project, selection.id) : undefined;
   const relation = selection?.kind === 'relation' ? project.relations.find(r => r.id === selection.id) : undefined;
@@ -60,6 +71,7 @@ export function Inspector({
   const parents = node ? parentCandidates(project, node.id) : [];
   const currentParent = node?.parentId ? getNode(project, node.parentId) : undefined;
   if (currentParent && !parents.includes(currentParent)) parents.unshift(currentParent);
+  const canHaveChildren = node ? creatableTypes(project, node.id).length > 0 : false;
 
   const updateValue = (fieldId: string, value: FieldValue) => {
     const values = { ...item.values, [fieldId]: value };
@@ -67,100 +79,123 @@ export function Inspector({
     else dispatch({ type: 'update-relation', relation: { ...relation!, values } });
   };
 
-  const remove = () => {
-    const nested = node ? descendants(project, node.id).size - 1 : 0;
-    const message = nested
-      ? `¿Eliminar este nodo y sus ${nested} subnodos? Puedes deshacerlo con Ctrl+Z.`
-      : '¿Eliminar este elemento? Puedes deshacerlo con Ctrl+Z.';
-    if (!confirm(message)) return;
-    dispatch(node ? { type: 'delete-node', id: node.id } : { type: 'delete-relation', id: relation!.id });
-    onClose();
-  };
+  const title = node ? nodeLabel(project, node) : (schema?.name ?? 'Relación');
+  const subtitle = node ? (schema?.name ?? 'Sin tipo') : relationSummary(relation!);
 
   return (
-    <aside className="inspector">
-      <div className="panel-head">
-        <h3>{node ? nodeLabel(project, node) : schema?.name}</h3>
-        <div className="spacer" />
-        <button className="icon-btn" aria-label="Cerrar" onClick={onClose}>
-          ×
-        </button>
-      </div>
-      <div className="panel-body">
-        <div className="form-grid">
-          {node && (
-            <label className="field">
-              Padre
-              <select
-                value={node.parentId ?? ''}
-                onChange={e =>
-                  dispatch({ type: 'update-node', id: node.id, values: node.values, parentId: e.target.value || null })
-                }
-              >
-                <option value="">Raíz</option>
-                {parents.map(n => (
-                  <option key={n.id} value={n.id}>
-                    {nodeLabel(project, n)}
-                  </option>
-                ))}
-              </select>
-              <small>Solo aparecen nodos cuyo tipo admite este como subnodo.</small>
-            </label>
-          )}
-          {relation && (
-            <RelationEndpoints relation={relation} onChange={r => dispatch({ type: 'update-relation', relation: r })} />
-          )}
-          {fields.map(f => (
-            <label className="field" key={f.id}>
-              {f.label}
-              {f.required && ' *'}
-              <FieldControl field={f} value={fieldValue(f, item.values, fields)} onChange={v => updateValue(f.id, v)} />
-              <small>{f.description}</small>
-            </label>
-          ))}
-          {node && (
-            <button className="btn" onClick={() => onRelation(node.id)}>
-              ＋ Crear relación
-            </button>
-          )}
-          <button className="btn danger" onClick={remove}>
-            Eliminar
-          </button>
+    <>
+      <header className="inspector-head">
+        <TypeIcon icon={schema?.icon} color={schema?.color} size="lg" />
+        <div className="titles">
+          <h2 title={title}>{title}</h2>
+          <small>{subtitle}</small>
         </div>
+        <IconButton icon={X} label="Cerrar inspector (Esc)" tooltipSide="left" onClick={onClose} />
+      </header>
+      <div className="panel-body">
+        {node && (
+          <section className="inspector-section">
+            <div className="form-grid">
+              <div className="field">
+                Dentro de
+                <Select
+                  aria-label="Nodo padre"
+                  options={parents.map(n => nodeOption(project, n))}
+                  value={node.parentId}
+                  nullLabel="Raíz (sin padre)"
+                  onChange={parentId => dispatch({ type: 'update-node', id: node.id, values: node.values, parentId })}
+                />
+                <small>Solo aparecen nodos cuyo tipo admite este como subnodo.</small>
+              </div>
+            </div>
+          </section>
+        )}
+        {relation && (
+          <section className="inspector-section">
+            <RelationEndpoints relation={relation} onChange={r => dispatch({ type: 'update-relation', relation: r })} />
+          </section>
+        )}
+        {fields.length > 0 && (
+          <section className="inspector-section">
+            <div className="form-grid">
+              {fields.map(f => {
+                // Un checkbox ya lleva su propia etiqueta: no se puede anidar dentro de otro <label>.
+                const Wrapper = f.type === 'boolean' ? 'div' : 'label';
+                return (
+                  <Wrapper className="field" key={f.id}>
+                    <span>
+                      {f.label}
+                      {f.required && <span className="required"> *</span>}
+                    </span>
+                    <FieldControl
+                      field={f}
+                      value={fieldValue(f, item.values, fields)}
+                      onChange={v => updateValue(f.id, v)}
+                    />
+                    {f.description && <small>{f.description}</small>}
+                  </Wrapper>
+                );
+              })}
+            </div>
+          </section>
+        )}
+        <section className="inspector-section">
+          <div className="inspector-actions">
+            {node && canHaveChildren && (
+              <Button icon={Plus} size="sm" onClick={event => onAddChild(node.id, anchorOf(event.currentTarget))}>
+                Añadir subnodo
+              </Button>
+            )}
+            {node && (
+              <Button icon={GitFork} size="sm" onClick={() => onRelation(node.id)}>
+                Crear relación
+              </Button>
+            )}
+            <div className="spacer" />
+            <Button icon={Trash2} size="sm" variant="danger" onClick={onDelete}>
+              Eliminar
+            </Button>
+          </div>
+        </section>
       </div>
-    </aside>
+    </>
   );
+
+  function relationSummary(r: Relation) {
+    const source = getNode(project, r.sourceId);
+    const target = getNode(project, r.targetId);
+    const arrow = schema?.directed ? '→' : '↔';
+    return `${source ? nodeLabel(project, source) : '?'} ${arrow} ${target ? nodeLabel(project, target) : '?'}`;
+  }
 }
 
 function RelationEndpoints({ relation, onChange }: { relation: Relation; onChange: (r: Relation) => void }) {
   const { project } = useApp();
   const s = getSchema(project, relation.typeId);
+  const candidates = (key: 'sourceTypeIds' | 'targetTypeIds', exclude: string) =>
+    project.nodes
+      .filter(n => n.id !== exclude && typeMatches(project, n.typeId, s?.[key] ?? []))
+      .map(n => nodeOption(project, n));
   return (
-    <div className="field-row">
-      <label className="field">
+    <div className="form-grid">
+      <div className="field">
         Origen
-        <select value={relation.sourceId} onChange={e => onChange({ ...relation, sourceId: e.target.value })}>
-          {project.nodes
-            .filter(n => n.id !== relation.targetId && typeMatches(project, n.typeId, s?.sourceTypeIds || []))
-            .map(n => (
-              <option key={n.id} value={n.id}>
-                {nodeLabel(project, n)}
-              </option>
-            ))}
-        </select>
-      </label>
-      <label className="field">
+        <Select
+          aria-label="Nodo de origen"
+          options={candidates('sourceTypeIds', relation.targetId)}
+          value={relation.sourceId}
+          onChange={id => id && onChange({ ...relation, sourceId: id })}
+        />
+      </div>
+      <div className="field">
         Destino
-        <select value={relation.targetId} onChange={e => onChange({ ...relation, targetId: e.target.value })}>
-          {project.nodes
-            .filter(n => n.id !== relation.sourceId && typeMatches(project, n.typeId, s?.targetTypeIds || []))
-            .map(n => (
-              <option key={n.id} value={n.id}>
-                {nodeLabel(project, n)}
-              </option>
-            ))}
-        </select>
-      </label>
+        <Select
+          aria-label="Nodo de destino"
+          options={candidates('targetTypeIds', relation.sourceId)}
+          value={relation.targetId}
+          onChange={id => id && onChange({ ...relation, targetId: id })}
+        />
+      </div>
     </div>
   );
 }

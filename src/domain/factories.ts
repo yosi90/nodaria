@@ -35,6 +35,7 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     isAbstract: false,
     parentTypeId: null,
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    icon: kind === 'entity' ? 'circle' : 'link',
     description: '',
     fields: [],
     allowedChildTypeIds: [],

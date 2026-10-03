@@ -1,4 +1,6 @@
+import { TriangleAlert, X } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
+import { Button } from '../common/Button';
 
 /** Informa de las correcciones automáticas aplicadas a datos guardados o importados. */
 export function RepairNotice() {
@@ -7,9 +9,10 @@ export function RepairNotice() {
   return (
     <section className="repair-banner" role="status">
       <header>
+        <TriangleAlert size={18} aria-hidden />
         <h2>Se han reparado datos dañados</h2>
-        <button className="icon-btn" aria-label="Cerrar aviso" onClick={dismissRepairs}>
-          ×
+        <button className="icon-btn sm" aria-label="Cerrar aviso" onClick={dismissRepairs}>
+          <X size={15} aria-hidden />
         </button>
       </header>
       {repairs.map((entry, index) => (
@@ -22,9 +25,9 @@ export function RepairNotice() {
           </ul>
         </div>
       ))}
-      <button className="btn" onClick={dismissRepairs}>
+      <Button size="sm" onClick={dismissRepairs}>
         Entendido
-      </button>
+      </Button>
     </section>
   );
 }

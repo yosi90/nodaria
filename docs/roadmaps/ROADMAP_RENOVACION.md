@@ -127,19 +127,26 @@ Notas de cierre (2026-10-03):
 
 Objetivo: que se vea como una herramienta cuidada y que el resto de fases construya sobre piezas comunes.
 
-- [ ] Tokens de diseño: escala tipográfica, espaciados, radios, sombras, superficies por nivel, colores semánticos (éxito, aviso, peligro, información).
-- [ ] Tema claro y oscuro (y "sistema"), con contraste AA.
-- [ ] Tipografía: sans legible para la interfaz y una serif opcional para títulos y fichas (da carácter de "atlas" sin imponer temática).
-- [ ] Iconos `lucide-react` en toda la interfaz; cada tipo de entidad puede elegir icono además de color.
-- [ ] Componentes comunes: `Button`, `IconButton`, `Input`, `Select` con búsqueda, `MultiSelect` con chips (sustituye a los `<select multiple>`), `Tabs`, `Tooltip`, `Popover`, `ConfirmDialog`, `Toast`, `EmptyState`, `Badge`.
-- [ ] Eliminar `prompt`, `confirm` y `alert` nativos.
-- [ ] Paneles laterales redimensionables y plegables; anchuras recordadas.
-- [ ] Barra superior reorganizada: selector de proyecto como menú con acciones (nuevo, renombrar, duplicar, exportar, borrar), navegación por vistas con iconos.
-- [ ] Toasts de confirmación con "Deshacer" en las acciones destructivas.
-- [ ] Atajos de teclado básicos y panel de ayuda (`?`).
-- [ ] Accesibilidad: foco visible, navegación por teclado en árbol y menús, `aria-*` correctos.
+- [x] Tokens de diseño en `src/styles/tokens.css`: escala tipográfica, espaciados, radios, sombras, superficies por nivel y colores semánticos.
+- [x] Tema claro ("papel"), oscuro ("tinta") y del sistema, recordado por navegador. Contraste AA medido en todos los pares de texto: el texto sutil más bajo da 4,8:1.
+- [x] Tipografía local (sin depender de la red): Inter Variable para la interfaz y Fraunces Variable para los títulos.
+- [x] Iconos `lucide-react` en toda la interfaz. Cada tipo elige uno de 70 iconos (`Schema.icon`) y un color con muestras o selector libre.
+- [x] Componentes comunes en `src/components/common/`: `Button`/`IconButton` (con tooltip), `Select` con búsqueda, `MultiSelect` con chips, `Menu`, `Popover`, `OptionList`, `Modal` con variante de peligro, diálogos `useDialogs()` (confirmar y pedir texto), `useToast()`, `EmptyState` y `Splitter`. El control segmentado, los badges y los chips son clases CSS. _Los `input` nativos se mantienen con un estilo común: no hacía falta un componente propio._
+- [x] Eliminar `prompt`, `confirm` y `alert` nativos.
+- [x] Paneles redimensionables (ratón y flechas) con anchura recordada. La estructura se pliega con `[`; el inspector solo ocupa sitio cuando hay algo seleccionado.
+- [x] Barra superior: menú de proyecto (cambiar, nuevo, renombrar, duplicar, importar, exportar, eliminar), control segmentado de vistas con iconos, deshacer/rehacer, tema y ayuda.
+- [x] Toasts con "Deshacer" al borrar nodos, relaciones, atributos y proyectos. Solo se ofrece mientras esa acción siga siendo la última del historial.
+- [x] Atajos de teclado y panel de ayuda (`?`, Alt+1/2, `[`, Esc, Supr).
+- [x] Accesibilidad: foco visible, árbol con el patrón ARIA `tree` (flechas, Inicio/Fin, Intro), menús y listas navegables con flechas, y nodos del lienzo enfocables.
 
 Criterio: no quedan diálogos nativos; toda la UI usa los componentes comunes; ambos temas se ven bien.
+
+Notas de cierre (2026-10-03):
+
+- Verificado en Chromium (Playwright) con un mundo de ejemplo, sin errores ni diálogos nativos: selección e inspector, selectores con búsqueda, confirmación al borrar con subnodos, Supr con "Deshacer" desde el toast, "Añadir subnodo", navegación del árbol con teclado, plegado con `[`, modal de relaciones, renombrado desde el menú, cambio de tema, edición de tipos (icono, opciones, subnodos permitidos), creación de un tipo de relación, ayuda y persistencia de preferencias tras recargar.
+- Extras de la fase: el nodo recién creado queda seleccionado (`add-node` y `add-schema` aceptan un id generado de antemano). El modal de "Crear tipo" permite elegir entidad o relación. La ficha del tipo muestra los atributos heredados. Las flechas de las relaciones dirigidas toman el color de su tipo.
+- Bug corregido: en el campo "Opciones" de una lista no se podía escribir una coma. Ahora es un editor de chips (Intro o coma para añadir).
+- Dependencias añadidas: `lucide-react@1.51.0`, `@fontsource-variable/inter@5.3.0` y `@fontsource-variable/fraunces@5.3.0`.
 
 ### Fase 2 — Lienzo de grafo de verdad
 

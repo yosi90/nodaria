@@ -1,8 +1,14 @@
+import { Lock, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { RELATION_STYLES } from '../../domain/constants';
-import { canChangeSchemaKind, inheritanceCandidates } from '../../domain/selectors';
+import { canChangeSchemaKind, inheritanceCandidates, inheritedSchemas, schemaUsage } from '../../domain/selectors';
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { Button, IconButton } from '../common/Button';
+import { TypeIcon } from '../common/icons';
+import { schemaOption } from '../common/options';
+import { MultiSelect, Select } from '../common/Select';
+import { AppearancePicker } from './AppearancePicker';
 import { DeleteSchemaModal } from './DeleteSchemaModal';
 import { FieldEditor } from './FieldEditor';
 
@@ -13,13 +19,15 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
   const kindLocked = !canChangeSchemaKind(project, schema.id);
   const update = (patch: Partial<Schema>) => dispatch({ type: 'update-schema', schema: { ...schema, ...patch } });
   const entities = project.schemas.filter(item => item.kind === 'entity');
+  const usage = schemaUsage(project, schema.id);
+  const ancestors = inheritedSchemas(project, schema.id).slice(0, -1);
+  const isEntity = schema.kind === 'entity';
 
   const reorderField = (targetId: string, after: boolean) => {
     if (!draggedFieldId || draggedFieldId === targetId) return;
-    const fields = [...schema.fields];
-    const dragged = fields.find(field => field.id === draggedFieldId);
+    const dragged = schema.fields.find(field => field.id === draggedFieldId);
     if (!dragged) return;
-    const withoutDragged = fields.filter(field => field.id !== draggedFieldId);
+    const withoutDragged = schema.fields.filter(field => field.id !== draggedFieldId);
     const targetIndex = withoutDragged.findIndex(field => field.id === targetId);
     withoutDragged.splice(targetIndex + (after ? 1 : 0), 0, dragged);
     update({ fields: withoutDragged });
@@ -29,160 +37,173 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
   return (
     <section className="schema-editor">
       <div className="schema-heading">
-        <div>
-          <h1>{schema.name}</h1>
-          <p>Configura su identidad, herencia y estructura de datos.</p>
+        <TypeIcon icon={schema.icon} color={schema.color} size="lg" />
+        <div className="titles">
+          <h1>{schema.name || 'Tipo sin nombre'}</h1>
+          <p>
+            {isEntity ? (schema.isAbstract ? 'Entidad abstracta' : 'Entidad') : 'Relación'} ·{' '}
+            {isEntity
+              ? `${usage.nodes} ${usage.nodes === 1 ? 'nodo' : 'nodos'}`
+              : `${usage.relations} ${usage.relations === 1 ? 'relación' : 'relaciones'}`}
+            {usage.subtypes > 0 && ` · ${usage.subtypes} ${usage.subtypes === 1 ? 'subtipo' : 'subtipos'}`}
+          </p>
         </div>
-        <button className="btn danger" onClick={() => setDeleting(true)}>
+        <Button variant="danger" icon={Trash2} onClick={() => setDeleting(true)}>
           Eliminar tipo
-        </button>
+        </Button>
       </div>
       <div className="editor-columns">
-        <div className="card">
-          <h3>Definición</h3>
-          <div className="form-grid">
-            <label className="field">
-              Nombre
-              <input value={schema.name} onChange={event => update({ name: event.target.value })} />
-            </label>
-            <div className="field-row">
+        <div className="form-grid">
+          <div className="card">
+            <div className="card-head">
+              <h3>Identidad</h3>
+            </div>
+            <div className="form-grid">
               <label className="field">
-                Clase
-                <select
-                  value={schema.kind}
-                  disabled={kindLocked}
-                  title={kindLocked ? 'No se puede cambiar: el tipo tiene instancias o subtipos.' : undefined}
-                  onChange={event => update({ kind: event.target.value as Schema['kind'] })}
-                >
-                  <option value="entity">Entidad</option>
-                  <option value="relationship">Relación</option>
-                </select>
+                Nombre
+                <input value={schema.name} onChange={event => update({ name: event.target.value })} />
               </label>
+              <div className="field">
+                Apariencia
+                <AppearancePicker icon={schema.icon} color={schema.color} onChange={patch => update(patch)} />
+              </div>
+              <div className="field">
+                Clase
+                <div className="segmented" role="group" aria-label="Clase de tipo">
+                  {(['entity', 'relationship'] as const).map(kind => (
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={schema.kind === kind}
+                      disabled={kindLocked && schema.kind !== kind}
+                      onClick={() => update({ kind })}
+                    >
+                      {kindLocked && schema.kind !== kind && <Lock size={12} aria-hidden />}
+                      {kind === 'entity' ? 'Entidad' : 'Relación'}
+                    </button>
+                  ))}
+                </div>
+                {kindLocked && <small>No se puede cambiar mientras tenga instancias o subtipos.</small>}
+              </div>
+              <div className="field">
+                Hereda de
+                <Select
+                  aria-label="Tipo padre"
+                  options={inheritanceCandidates(project, schema.id).map(item => schemaOption(item))}
+                  value={schema.parentTypeId}
+                  nullLabel="Ninguno"
+                  onChange={parentTypeId => update({ parentTypeId })}
+                />
+                <small>Hereda sus atributos y cuenta como ese tipo en las restricciones.</small>
+              </div>
+              {isEntity && (
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={schema.isAbstract}
+                    onChange={event => update({ isAbstract: event.target.checked })}
+                  />
+                  Tipo abstracto <span className="field-hint">(solo sirve de base para otros tipos)</span>
+                </label>
+              )}
               <label className="field">
-                Color
-                <input type="color" value={schema.color} onChange={event => update({ color: event.target.value })} />
+                Descripción
+                <textarea
+                  value={schema.description}
+                  placeholder="Para qué sirve este tipo…"
+                  onChange={event => update({ description: event.target.value })}
+                />
               </label>
             </div>
-            {schema.kind === 'entity' && (
-              <label className="check-row">
-                <input
-                  type="checkbox"
-                  checked={schema.isAbstract}
-                  onChange={event => update({ isAbstract: event.target.checked })}
-                />{' '}
-                Tipo abstracto
-              </label>
-            )}
-            <label className="field">
-              Hereda de
-              <select
-                value={schema.parentTypeId || ''}
-                onChange={event => update({ parentTypeId: event.target.value || null })}
-              >
-                <option value="">Ninguno</option>
-                {inheritanceCandidates(project, schema.id).map(item => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Descripción
-              <textarea value={schema.description} onChange={event => update({ description: event.target.value })} />
-            </label>
-            {schema.kind === 'entity' ? (
-              <label className="field">
+          </div>
+          <div className="card">
+            <div className="card-head">
+              <h3>{isEntity ? 'Jerarquía' : 'Conexión'}</h3>
+            </div>
+            {isEntity ? (
+              <div className="field">
                 Subnodos permitidos
-                <select
-                  multiple
+                <MultiSelect
+                  options={entities.filter(item => !item.isAbstract).map(item => schemaOption(item))}
                   value={schema.allowedChildTypeIds}
-                  onChange={event =>
-                    update({ allowedChildTypeIds: [...event.target.selectedOptions].map(option => option.value) })
-                  }
-                >
-                  {entities
-                    .filter(item => item.id !== schema.id && !item.isAbstract)
-                    .map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
+                  onChange={allowedChildTypeIds => update({ allowedChildTypeIds })}
+                  addLabel="Añadir tipo"
+                  emptyText="Ninguno: sus nodos no pueden contener otros."
+                />
+                <small>Los subtipos de un tipo permitido también se admiten.</small>
+              </div>
             ) : (
-              <>
-                <div className="field-row">
-                  <label className="field">
-                    Tipos de origen
-                    <select
-                      multiple
-                      value={schema.sourceTypeIds}
-                      onChange={event =>
-                        update({ sourceTypeIds: [...event.target.selectedOptions].map(option => option.value) })
-                      }
-                    >
-                      {entities.map(item => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field">
-                    Tipos de destino
-                    <select
-                      multiple
-                      value={schema.targetTypeIds}
-                      onChange={event =>
-                        update({ targetTypeIds: [...event.target.selectedOptions].map(option => option.value) })
-                      }
-                    >
-                      {entities.map(item => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+              <div className="form-grid">
+                <div className="field">
+                  Desde
+                  <MultiSelect
+                    options={entities.map(item => schemaOption(item))}
+                    value={schema.sourceTypeIds}
+                    onChange={sourceTypeIds => update({ sourceTypeIds })}
+                    addLabel="Añadir tipo"
+                    emptyText="Cualquier tipo."
+                  />
                 </div>
-                <label className="check-row">
+                <div className="field">
+                  Hacia
+                  <MultiSelect
+                    options={entities.map(item => schemaOption(item))}
+                    value={schema.targetTypeIds}
+                    onChange={targetTypeIds => update({ targetTypeIds })}
+                    addLabel="Añadir tipo"
+                    emptyText="Cualquier tipo."
+                  />
+                </div>
+                <label className="check">
                   <input
                     type="checkbox"
                     checked={schema.directed}
                     onChange={event => update({ directed: event.target.checked })}
-                  />{' '}
-                  Relación dirigida
+                  />
+                  Relación dirigida <span className="field-hint">(con flecha, de origen a destino)</span>
                 </label>
-                <label className="field">
-                  Estilo
-                  <select
-                    value={schema.relationStyle}
-                    onChange={event => update({ relationStyle: event.target.value as Schema['relationStyle'] })}
-                  >
+                <div className="field">
+                  Estilo de línea
+                  <div className="segmented" role="group" aria-label="Estilo de línea">
                     {Object.entries(RELATION_STYLES).map(([value, item]) => (
-                      <option key={value} value={value}>
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={schema.relationStyle === value}
+                        onClick={() => update({ relationStyle: value as Schema['relationStyle'] })}
+                      >
                         {item.label}
-                      </option>
+                      </button>
                     ))}
-                  </select>
-                </label>
-              </>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
-        <div className="card attributes-card">
+        <div className="card">
           <div className="card-head">
             <h3>Atributos</h3>
-            <button
-              className="btn add-field-button"
-              aria-label="Añadir atributo"
-              title="Añadir atributo"
+            <IconButton
+              icon={Plus}
+              variant="outlined"
+              label="Añadir atributo"
+              tooltipSide="left"
               onClick={() => dispatch({ type: 'add-field', schemaId: schema.id })}
-            >
-              ＋
-            </button>
+            />
           </div>
+          {ancestors.length > 0 && (
+            <p className="muted-note" style={{ marginBottom: 'var(--space-3)' }}>
+              Hereda{' '}
+              {ancestors.map((a, i) => (
+                <span key={a.id}>
+                  {i > 0 && ', '}
+                  {a.fields.length} de «{a.name}»{a.fields.length > 0 && ` (${a.fields.map(f => f.label).join(', ')})`}
+                </span>
+              ))}
+              .
+            </p>
+          )}
           <div className="field-list">
             {schema.fields.length ? (
               schema.fields.map(field => (
@@ -200,7 +221,9 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
                 />
               ))
             ) : (
-              <p className="empty-copy">Este tipo aún no tiene atributos propios.</p>
+              <p className="empty-copy">
+                Aún no tiene atributos propios. Añade, por ejemplo, un «Nombre» y márcalo como título del nodo.
+              </p>
             )}
           </div>
         </div>

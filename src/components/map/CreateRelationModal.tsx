@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { nodeLabel, typeMatches } from '../../domain/selectors';
+import { typeMatches } from '../../domain/selectors';
 import type { Project, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { Modal } from '../common/Modal';
+import { nodeOption, schemaOption } from '../common/options';
+import { Select } from '../common/Select';
 
 interface CreateRelationModalProps {
   initialSourceId: string;
@@ -24,14 +26,8 @@ export function CreateRelationModal({ initialSourceId, onClose }: CreateRelation
   const sourceNodes = compatibleNodes(project, schema, 'sourceTypeIds');
   const validSourceId = sourceNodes.some(node => node.id === sourceId) ? sourceId : (sourceNodes[0]?.id ?? '');
   const targetNodes = compatibleNodes(project, schema, 'targetTypeIds').filter(node => node.id !== validSourceId);
-  const validTargetId = targetNodes.some(node => node.id === targetId) ? targetId : (targetNodes[0]?.id ?? '');
+  const validTargetId = targetNodes.some(node => node.id === targetId) ? targetId : '';
   const canCreate = Boolean(schema && validSourceId && validTargetId);
-
-  const changeSchema = (nextSchemaId: string) => {
-    setSchemaId(nextSchemaId);
-    setSourceId('');
-    setTargetId('');
-  };
 
   const create = () => {
     if (!schema || !validSourceId || !validTargetId) return;
@@ -49,43 +45,40 @@ export function CreateRelationModal({ initialSourceId, onClose }: CreateRelation
     >
       {relationSchemas.length ? (
         <div className="form-grid">
-          <label className="field">
+          <div className="field">
             Tipo de relación
-            <select value={schemaId} onChange={event => changeSchema(event.target.value)}>
-              {relationSchemas.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="field-row">
-            <label className="field">
-              Nodo de origen
-              <select
-                value={validSourceId}
-                onChange={event => {
-                  setSourceId(event.target.value);
-                  setTargetId('');
-                }}
-              >
-                {sourceNodes.map(node => (
-                  <option key={node.id} value={node.id}>
-                    {nodeLabel(project, node)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Nodo de destino
-              <select value={validTargetId} onChange={event => setTargetId(event.target.value)}>
-                {targetNodes.map(node => (
-                  <option key={node.id} value={node.id}>
-                    {nodeLabel(project, node)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select
+              aria-label="Tipo de relación"
+              options={relationSchemas.map(item => schemaOption(item))}
+              value={schemaId}
+              onChange={next => {
+                setSchemaId(next ?? '');
+                setTargetId('');
+              }}
+            />
+          </div>
+          <div className="field">
+            Desde
+            <Select
+              aria-label="Nodo de origen"
+              options={sourceNodes.map(node => nodeOption(project, node))}
+              value={validSourceId || null}
+              placeholder="No hay nodos compatibles"
+              onChange={next => {
+                setSourceId(next ?? '');
+                setTargetId('');
+              }}
+            />
+          </div>
+          <div className="field">
+            Hacia
+            <Select
+              aria-label="Nodo de destino"
+              options={targetNodes.map(node => nodeOption(project, node))}
+              value={validTargetId || null}
+              placeholder="Elige el nodo de destino…"
+              onChange={next => setTargetId(next ?? '')}
+            />
           </div>
           {!targetNodes.length && (
             <p className="validation-message">
@@ -94,7 +87,7 @@ export function CreateRelationModal({ initialSourceId, onClose }: CreateRelation
           )}
         </div>
       ) : (
-        <p className="validation-message">Primero crea un tipo de relación en “Tipos y propiedades”.</p>
+        <p className="validation-message">Primero crea un tipo de relación en «Tipos y propiedades».</p>
       )}
     </Modal>
   );

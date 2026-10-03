@@ -31,8 +31,9 @@ export function typedDefault(field: FieldDefinition): FieldValue | undefined {
   return raw;
 }
 
-export function addSchema(p: Project, name: string, kind: SchemaKind): Project {
-  return { ...p, schemas: [...p.schemas, createSchema(name, kind)] };
+export function addSchema(p: Project, name: string, kind: SchemaKind, id?: string): Project {
+  const schema = createSchema(name, kind);
+  return { ...p, schemas: [...p.schemas, id ? { ...schema, id } : schema] };
 }
 
 /** Aplica cambios a un tipo, ignorando los que romperían el modelo (ciclos de herencia, cambio de clase en uso). */
@@ -103,13 +104,18 @@ export function deleteField(p: Project, schemaId: string, fieldId: string): Proj
   };
 }
 
-export function addNode(p: Project, typeId: string, parentId: string | null): { project: Project; nodeId: string } {
+export function addNode(
+  p: Project,
+  typeId: string,
+  parentId: string | null,
+  id: string = uid('node'),
+): { project: Project; nodeId: string } {
   const values: Record<string, FieldValue> = {};
   allFields(p, typeId).forEach(f => {
     const value = typedDefault(f);
     if (value !== undefined) values[f.id] = value;
   });
-  const node: Node = { id: uid('node'), typeId, parentId, values, createdAt: now() };
+  const node: Node = { id, typeId, parentId, values, createdAt: now() };
   return { project: { ...p, nodes: [...p.nodes, node] }, nodeId: node.id };
 }
 

@@ -1,55 +1,32 @@
-import { useEffect, useRef } from 'react';
 import type { Schema } from '../../domain/types';
+import { OptionList } from '../common/OptionList';
+import { schemaOption } from '../common/options';
+import { Popover } from '../common/Popover';
+import { type Anchor } from '../common/anchor';
 
 interface NodeTypeMenuProps {
-  anchor: { x: number; y: number };
+  anchor: Anchor;
   schemas: Schema[];
+  /** Nombre del padre, si el nodo se crea dentro de otro. */
+  parentLabel?: string;
   onSelect: (schemaId: string) => void;
   onClose: () => void;
 }
 
-export function NodeTypeMenu({ anchor, schemas, onSelect, onClose }: NodeTypeMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as globalThis.Node)) onClose();
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('pointerdown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [onClose]);
-
-  const left = Math.min(anchor.x, window.innerWidth - 250);
-  const top = Math.min(anchor.y, window.innerHeight - 300);
-
+export function NodeTypeMenu({ anchor, schemas, parentLabel, onSelect, onClose }: NodeTypeMenuProps) {
   return (
-    <div
-      ref={menuRef}
-      className="node-type-menu"
-      style={{ left: Math.max(8, left), top: Math.max(8, top) }}
-      role="menu"
-      aria-label="Elegir tipo de nodo"
-    >
-      <div className="node-type-menu-title">Añadir nodo</div>
-      <div className="node-type-menu-options">
-        {schemas.length ? (
-          schemas.map(schema => (
-            <button key={schema.id} type="button" role="menuitem" onClick={() => onSelect(schema.id)}>
-              <span className="type-dot" style={{ background: schema.color }} />
-              <span>{schema.name}</span>
-            </button>
-          ))
-        ) : (
-          <p>No hay tipos de nodo válidos aquí.</p>
-        )}
-      </div>
-    </div>
+    <Popover anchor={anchor} onClose={onClose} label="Elegir tipo de nodo">
+      <OptionList
+        title={parentLabel ? `Añadir dentro de ${parentLabel}` : 'Añadir nodo raíz'}
+        options={schemas.map(schema => schemaOption(schema))}
+        selected={[]}
+        onPick={onSelect}
+        emptyLabel={
+          parentLabel
+            ? 'Este tipo no admite subnodos. Configúralos en «Tipos y propiedades».'
+            : 'Crea primero un tipo de entidad en «Tipos y propiedades».'
+        }
+      />
+    </Popover>
   );
 }

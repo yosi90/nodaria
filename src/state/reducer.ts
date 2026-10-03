@@ -7,13 +7,14 @@ export type Action =
   | { type: 'add-project'; name: string }
   | { type: 'rename-project'; name: string }
   | { type: 'delete-project' }
+  | { type: 'duplicate-project' }
   | { type: 'import-project'; project: Project }
-  | { type: 'add-schema'; name: string; kind: SchemaKind }
+  | { type: 'add-schema'; name: string; kind: SchemaKind; id?: string }
   | { type: 'update-schema'; schema: Schema }
   | { type: 'delete-schema'; id: string; strategy: OrphanStrategy }
   | { type: 'add-field'; schemaId: string }
   | { type: 'delete-field'; schemaId: string; fieldId: string }
-  | { type: 'add-node'; typeId: string; parentId: string | null }
+  | { type: 'add-node'; typeId: string; parentId: string | null; id?: string }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
   | { type: 'add-relation'; typeId: string; sourceId: string; targetId: string }
@@ -32,6 +33,19 @@ export function appReducer(state: AppState, action: Action): AppState {
       const remaining = state.projects.filter(p => p.id !== state.activeProjectId);
       const projects = remaining.length ? remaining : [createProject()];
       return { ...state, projects, activeProjectId: projects[0].id };
+    }
+    case 'duplicate-project': {
+      const active = state.projects.find(p => p.id === state.activeProjectId);
+      if (!active) return state;
+      const stamp = now();
+      const copy = {
+        ...active,
+        id: uid('project'),
+        name: `${active.name} (copia)`,
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      return { ...state, projects: [...state.projects, copy], activeProjectId: copy.id };
     }
     case 'import-project': {
       const clash = state.projects.some(p => p.id === action.project.id);
@@ -52,7 +66,7 @@ function projectReducer(p: Project, action: Action): Project {
     case 'rename-project':
       return { ...p, name: action.name };
     case 'add-schema':
-      return ops.addSchema(p, action.name, action.kind);
+      return ops.addSchema(p, action.name, action.kind, action.id);
     case 'update-schema':
       return ops.updateSchema(p, action.schema);
     case 'delete-schema':
@@ -62,7 +76,7 @@ function projectReducer(p: Project, action: Action): Project {
     case 'delete-field':
       return ops.deleteField(p, action.schemaId, action.fieldId);
     case 'add-node':
-      return ops.addNode(p, action.typeId, action.parentId).project;
+      return ops.addNode(p, action.typeId, action.parentId, action.id).project;
     case 'update-node':
       return ops.updateNode(p, action.id, action.values, action.parentId);
     case 'delete-node':

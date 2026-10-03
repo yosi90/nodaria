@@ -1,85 +1,167 @@
-import { useRef } from 'react';
-import { useApp } from '../../state/AppContext';
+import {
+  ChevronDown,
+  CircleHelp,
+  Copy,
+  Download,
+  FolderOpen,
+  Monitor,
+  Moon,
+  Network,
+  Pencil,
+  Plus,
+  Redo2,
+  Shapes,
+  Sun,
+  Trash2,
+  Undo2,
+  Upload,
+} from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
 import { parseProject, serializeProject } from '../../services/storage';
-import { Button } from '../common/Button';
-export function Topbar({ view, onView }: { view: 'map' | 'schema'; onView: (v: 'map' | 'schema') => void }) {
+import { useApp } from '../../state/AppContext';
+import { usePreferences, type Preferences } from '../../state/preferences';
+import { IconButton } from '../common/Button';
+import { useDialogs } from '../common/dialogs';
+import { Menu, type MenuEntry } from '../common/Menu';
+import { anchorOf, type Anchor } from '../common/anchor';
+import { useToast } from '../common/toasts';
+
+export type View = 'map' | 'schema';
+
+const THEME_CYCLE: Record<Preferences['theme'], { next: Preferences['theme']; label: string; icon: typeof Sun }> = {
+  system: { next: 'light', label: 'Tema: sistema', icon: Monitor },
+  light: { next: 'dark', label: 'Tema: claro', icon: Sun },
+  dark: { next: 'system', label: 'Tema: oscuro', icon: Moon },
+};
+
+export function Topbar({ view, onView, onHelp }: { view: View; onView: (v: View) => void; onHelp: () => void }) {
   const { state, project, dispatch, undo, redo, canUndo, canRedo, reportRepairs } = useApp();
+  const { preferences, setPreference } = usePreferences();
+  const { prompt, confirm } = useDialogs();
+  const toast = useToast();
   const file = useRef<HTMLInputElement>(null);
-  const create = () => {
-    const name = prompt('Nombre del proyecto');
-    if (name?.trim()) dispatch({ type: 'add-project', name: name.trim() });
+  const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
+  const closeMenu = useCallback(() => setMenuAnchor(null), []);
+  const theme = THEME_CYCLE[preferences.theme];
+
+  const create = async () => {
+    const name = await prompt({
+      title: 'Nuevo proyecto',
+      label: 'Nombre',
+      placeholder: 'Por ejemplo: Crónicas de Vael',
+      confirmLabel: 'Crear',
+    });
+    if (name) dispatch({ type: 'add-project', name });
   };
-  const rename = () => {
-    const name = prompt('Nuevo nombre', project.name);
-    if (name?.trim()) dispatch({ type: 'rename-project', name: name.trim() });
+  const rename = async () => {
+    const name = await prompt({
+      title: 'Renombrar proyecto',
+      label: 'Nombre',
+      initialValue: project.name,
+      confirmLabel: 'Renombrar',
+    });
+    if (name) dispatch({ type: 'rename-project', name });
+  };
+  const remove = async () => {
+    const ok = await confirm({
+      title: 'Eliminar proyecto',
+      message: (
+        <>
+          Se eliminará «{project.name}» con sus {project.nodes.length} nodos y {project.relations.length} relaciones.
+          Descarga antes una copia si quieres conservarlo.
+        </>
+      ),
+      confirmLabel: 'Eliminar proyecto',
+      danger: true,
+    });
+    if (!ok) return;
+    toast({ message: `Proyecto «${project.name}» eliminado`, undoable: true });
+    dispatch({ type: 'delete-project' });
   };
   const download = () => {
     const blob = new Blob([serializeProject(project)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${project.name.replace(/[^a-z0-9]+/gi, '_')}.nodaria.json`;
+    a.download = `${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.nodaria.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
+    e.target.value = '';
     if (!f) return;
     try {
       const { project: imported, issues } = parseProject(await f.text());
       dispatch({ type: 'import-project', project: imported });
+      toast({ message: `Proyecto «${imported.name}» importado` });
       if (issues.length) reportRepairs({ projectName: imported.name, issues });
     } catch {
-      alert('El archivo no contiene un proyecto Nodaria válido.');
+      toast({ message: 'El archivo no contiene un proyecto de Nodaria válido.' });
     }
-    e.target.value = '';
   };
+
+  const entries: MenuEntry[] = [
+    { section: 'Proyectos' },
+    ...state.projects.map(p => ({
+      label: p.name,
+      icon: FolderOpen,
+      checked: p.id === project.id,
+      onSelect: () => dispatch({ type: 'set-project', id: p.id }),
+    })),
+    'separator',
+    { label: 'Nuevo proyecto', icon: Plus, onSelect: create },
+    { label: 'Renombrar', icon: Pencil, onSelect: rename },
+    { label: 'Duplicar', icon: Copy, onSelect: () => dispatch({ type: 'duplicate-project' }) },
+    'separator',
+    { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
+    { label: 'Exportar JSON', icon: Download, onSelect: download },
+    'separator',
+    { label: 'Eliminar proyecto', icon: Trash2, danger: true, onSelect: remove },
+  ];
+
   return (
     <header className="topbar">
       <div className="brand">
-        <span className="brand-mark">N</span>
-        <b>Nodaria</b>
+        <span className="brand-mark" aria-hidden>
+          <Network size={17} strokeWidth={2.4} />
+        </span>
+        <span className="brand-name">Nodaria</span>
       </div>
-      <div className="project-tools">
-        <select value={project.id} onChange={e => dispatch({ type: 'set-project', id: e.target.value })}>
-          {state.projects.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <Button title="Nuevo proyecto" onClick={create}>
-          ＋
-        </Button>
-        <Button title="Renombrar proyecto" onClick={rename}>
-          ✎
-        </Button>
-      </div>
-      <nav className="tabs">
-        <button className={view === 'map' ? 'active' : ''} onClick={() => onView('map')}>
-          Mapa
+      <button
+        type="button"
+        className="project-switcher"
+        aria-haspopup="menu"
+        aria-expanded={Boolean(menuAnchor)}
+        title="Proyecto actual"
+        onClick={event => (menuAnchor ? closeMenu() : setMenuAnchor(anchorOf(event.currentTarget)))}
+      >
+        <span className="label">{project.name}</span>
+        <ChevronDown size={15} aria-hidden />
+      </button>
+      {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Proyecto" />}
+      <span className="divider hide-narrow" aria-hidden />
+      <nav className="segmented" aria-label="Vistas">
+        <button type="button" aria-pressed={view === 'map'} onClick={() => onView('map')}>
+          <Network size={15} aria-hidden />
+          <span className="label">Mapa</span>
         </button>
-        <button className={view === 'schema' ? 'active' : ''} onClick={() => onView('schema')}>
-          Tipos y propiedades
+        <button type="button" aria-pressed={view === 'schema'} onClick={() => onView('schema')}>
+          <Shapes size={15} aria-hidden />
+          <span className="label">Tipos y propiedades</span>
         </button>
       </nav>
       <div className="spacer" />
-      <Button title="Deshacer (Ctrl+Z)" aria-label="Deshacer" disabled={!canUndo} onClick={undo}>
-        ↶
-      </Button>
-      <Button title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer" disabled={!canRedo} onClick={redo}>
-        ↷
-      </Button>
-      <Button className="ghost" onClick={() => file.current?.click()}>
-        Importar JSON
-      </Button>
-      <Button onClick={download}>Descargar JSON</Button>
-      <Button
-        className="danger"
-        title="Eliminar proyecto"
-        onClick={() => confirm(`¿Eliminar “${project.name}”?`) && dispatch({ type: 'delete-project' })}
-      >
-        🗑
-      </Button>
+      <div className="topbar-actions">
+        <IconButton icon={Undo2} label="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={undo} />
+        <IconButton icon={Redo2} label="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo} />
+        <span className="divider" aria-hidden />
+        <IconButton
+          icon={theme.icon}
+          label={`${theme.label} (cambiar)`}
+          onClick={() => setPreference('theme', theme.next)}
+        />
+        <IconButton icon={CircleHelp} label="Atajos de teclado (?)" tooltipSide="left" onClick={onHelp} />
+      </div>
       <input ref={file} hidden type="file" accept="application/json,.json" onChange={upload} />
     </header>
   );

@@ -37,17 +37,19 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - Persistencia local mediante `localStorage` en `src/services/storage.ts`.
 - Modelo y reglas reutilizables en `src/domain/`.
 - Interfaz dividida entre mapa, árbol, inspector, esquemas y layout en `src/components/`.
-- Estilos globales en `src/styles/index.css`, con hojas por zona (`overlays.css`, `schema-fields.css`, `graph-tooltip.css`).
+- Estilos en `src/styles/`: `tokens.css` (temas claro y oscuro mediante variables, con `[data-theme]` y `prefers-color-scheme`), `base.css`, `components.css`, `overlays.css` (modales, popovers, toasts) y `layout.css` (armazón, mapa, tipos). Ningún color va fijo en los componentes: siempre se usan tokens.
+- Componentes comunes en `src/components/common/`: botones, `Select`/`MultiSelect` con búsqueda, `Menu`, `Popover` (se monta dentro del `<dialog>` abierto si lo hay), diálogos `useDialogs()`, `useToast()`, `Splitter` y catálogo de iconos de tipo (`icon-catalog.ts`).
+- Preferencias de interfaz (tema, anchura y plegado de paneles) en `src/state/preferences.tsx`, con la clave `nodaria_ui_v1`, separadas de los proyectos.
 - Operaciones de dominio puras e inmutables en `src/domain/operations.ts`; reglas de jerarquía, herencia y compatibilidad en `src/domain/selectors.ts`; reparación de datos incoherentes en `src/domain/integrity.ts`.
 - Estado: `src/state/reducer.ts` (acciones a operaciones de dominio), `src/state/history.ts` (deshacer/rehacer con agrupación de ediciones) y `src/state/AppContext.tsx` (provider, guardado con retardo y volcado al ocultar o cerrar la página).
 - Migraciones versionadas en `src/services/migrations.ts`; `src/services/storage.ts` migra y repara todo lo que se carga o importa.
 - Pruebas con Vitest junto al código (`*.test.ts`) y constructores comunes en `src/test/fixtures.ts`. Formato con Prettier (`.prettierrc.json`).
-- Dependencias de desarrollo añadidas en la Fase 0: `vitest@5.0.3` y `prettier@3.9.9`.
+- Dependencias de desarrollo añadidas en la Fase 0: `vitest@5.0.3` y `prettier@3.9.9`. Dependencias de la Fase 1: `lucide-react@1.51.0`, `@fontsource-variable/inter@5.3.0` y `@fontsource-variable/fraunces@5.3.0`.
 
 ## Modelo de dominio actual
 
 - `Project`: agrupa esquemas, nodos y relaciones.
-- `Schema`: define una entidad o una relación, sus atributos, herencia y restricciones.
+- `Schema`: define una entidad o una relación, sus atributos, herencia y restricciones, además de su color e icono (`icon` es un nombre del catálogo de la interfaz; si falta, la migración pone uno por defecto).
 - `FieldDefinition`: describe un atributo tipado, requerido, calculado o usado como título.
 - `Node`: instancia un esquema de entidad y puede pertenecer a un padre jerárquico. La jerarquía nunca puede tener ciclos y el padre debe admitir el tipo del hijo (`allowedChildTypeIds`, con herencia).
 - Los valores de nodos y relaciones se indexan por `FieldDefinition.id` (formato v3). `key` es un alias legible que usan las fórmulas.
@@ -65,7 +67,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - Hay deshacer/rehacer global. Cambiar de proyecto no ocupa un paso.
 - Los datos dañados (ciclos, padres o extremos inexistentes, tipos borrados) se reparan al cargar o importar, y se avisa al usuario.
 - La persistencia sigue siendo exclusivamente local.
-- La creación de tipos y relaciones utiliza modales propios; la creación de nodos usa un menú contextual con tipos válidos. El modal de relaciones valida origen y destino contra las restricciones del esquema antes de permitir la creación.
+- No quedan diálogos nativos: confirmaciones y peticiones de texto usan `useDialogs()`, y los borrados ofrecen "Deshacer" mediante un toast.
 
 ## Roadmap activo
 
@@ -73,6 +75,5 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Prioridades conocidas
 
-- Sustituir progresivamente los diálogos nativos secundarios que todavía quedan en acciones de proyecto y confirmaciones destructivas.
 - Mejorar la visualización para mapas grandes: zoom, paneo, disposición y filtros avanzados.
 - Evolucionar la interfaz a partir de casos reales sin acoplar el dominio a la escritura de ficción.

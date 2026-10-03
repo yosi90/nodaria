@@ -37,6 +37,7 @@ function normalizeProject(project: RawProject): Project {
     schemas: (project.schemas || []).map(s => ({
       ...s,
       isAbstract: s.isAbstract || false,
+      icon: s.icon || (s.kind === 'relationship' ? 'link' : 'circle'),
       parentTypeId: s.parentTypeId || null,
       description: s.description || '',
       fields: (s.fields || []).map(f => ({

@@ -1,11 +1,18 @@
+import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type FormEvent, type ReactNode } from 'react';
+import { Button } from './Button';
 
 interface ModalProps {
   title: string;
   children: ReactNode;
   submitLabel?: string;
   submitDisabled?: boolean;
-  onSubmit: () => void;
+  /** `danger` pinta el botón principal en rojo para acciones destructivas. */
+  tone?: 'default' | 'danger';
+  /** Sin botón de envío: solo "Cerrar" (paneles informativos). */
+  informational?: boolean;
+  wide?: boolean;
+  onSubmit?: () => void;
   onClose: () => void;
 }
 
@@ -14,6 +21,9 @@ export function Modal({
   children,
   submitLabel = 'Guardar',
   submitDisabled = false,
+  tone = 'default',
+  informational,
+  wide,
   onSubmit,
   onClose,
 }: ModalProps) {
@@ -23,21 +33,28 @@ export function Modal({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
+    const previous = document.activeElement as HTMLElement | null;
     dialog.showModal();
-    return () => dialog.close();
+    return () => {
+      dialog.close();
+      if (previous?.isConnected) previous.focus();
+    };
   }, []);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSubmit();
+    if (!submitDisabled) onSubmit?.();
   };
 
   return (
     <dialog
       ref={dialogRef}
-      className="modal"
+      className={`modal ${wide ? 'wide' : ''}`}
       aria-labelledby={titleId}
-      onCancel={onClose}
+      onCancel={event => {
+        event.preventDefault();
+        onClose();
+      }}
       onClick={event => {
         if (event.target === dialogRef.current) onClose();
       }}
@@ -46,17 +63,25 @@ export function Modal({
         <header className="modal-head">
           <h2 id={titleId}>{title}</h2>
           <button type="button" className="icon-btn" aria-label="Cerrar" onClick={onClose}>
-            ×
+            <X size={18} aria-hidden />
           </button>
         </header>
         <div className="modal-body">{children}</div>
         <footer className="modal-actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
-            Cancelar
-          </button>
-          <button type="submit" className="btn primary" disabled={submitDisabled}>
-            {submitLabel}
-          </button>
+          {informational ? (
+            <Button variant="primary" onClick={onClose}>
+              Cerrar
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant={tone === 'danger' ? 'solid-danger' : 'primary'} disabled={submitDisabled}>
+                {submitLabel}
+              </Button>
+            </>
+          )}
         </footer>
       </form>
     </dialog>
