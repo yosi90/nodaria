@@ -1587,3 +1587,39 @@ button.mention:hover {
 .health-pair:last-child {
   border-bottom: 0;
 }
+.health-community {
+  display: grid;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.health-community:last-child {
+  border-bottom: 0;
+}
+.health-community-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+.health-community-head .map-cluster-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.health-community-members {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.health-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+}
+.health-chip:hover {
+  border-color: var(--accent);
+}

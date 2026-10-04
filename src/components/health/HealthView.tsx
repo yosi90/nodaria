@@ -8,11 +8,14 @@ import {
   Network,
   Shapes,
   Unplug,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 import { describeIssue } from '../../domain/cardinality';
 import { analysisLinks, betweenness, bridges, degreeCentrality } from '../../domain/centrality';
+import { detectCommunities } from '../../domain/communities';
+import { COLORS } from '../../domain/constants';
 import { worldHealth } from '../../domain/health';
 import { redundancyPairs } from '../../domain/redundancy';
 import { getSchema, nodeLabel } from '../../domain/selectors';
@@ -50,6 +53,21 @@ export function HealthView() {
   }, [project]);
   const { central, bridgeNodes, bridgeLinks } = graph;
   const redundancies = useMemo(() => redundancyPairs(project).slice(0, 20), [project]);
+  const communities = useMemo(() => {
+    const byId = new Map(project.nodes.map(n => [n.id, n]));
+    const links = analysisLinks(project);
+    const degree = degreeCentrality(links);
+    return detectCommunities(links)
+      .filter(c => c.members.length > 1)
+      .map(c => ({
+        ...c,
+        color: COLORS[c.index % COLORS.length],
+        nodes: c.members
+          .map(id => byId.get(id)!)
+          .filter(Boolean)
+          .sort((x, y) => (degree.get(y.id) ?? 0) - (degree.get(x.id) ?? 0)),
+      }));
+  }, [project]);
 
   const goTo = (node: Node) => select({ kind: 'node', id: node.id }, { reveal: true });
   const NodeButton = ({ node, children }: { node: Node; children?: ReactNode }) => {
@@ -192,6 +210,31 @@ export function HealthView() {
             <NodeButton key={c.node.id} node={c.node}>
               {c.degree} conexiones · intermediación {Math.round(c.score)}
             </NodeButton>
+          ))}
+        </Section>
+        <Section
+          icon={Users}
+          title="Comunidades"
+          count={communities.length}
+          hint="Grupos de nodos más conectados entre sí que con el resto (Louvain). El lienzo puede colorearlos («Color por comunidad»)."
+          neutral
+        >
+          {communities.map(c => (
+            <div key={c.index} className="health-community">
+              <span className="health-community-head">
+                <span className="map-cluster-swatch" style={{ background: c.color }} />
+                <strong>Comunidad {c.index + 1}</strong>
+                <span className="muted">{c.members.length} nodos</span>
+              </span>
+              <span className="health-community-members">
+                {c.nodes.slice(0, 6).map(n => (
+                  <button key={n.id} type="button" className="health-chip" onClick={() => goTo(n)}>
+                    {nodeLabel(project, n)}
+                  </button>
+                ))}
+                {c.nodes.length > 6 && <span className="muted">y {c.nodes.length - 6} más</span>}
+              </span>
+            </div>
           ))}
         </Section>
         <Section

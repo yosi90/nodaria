@@ -91,5 +91,6 @@ export function createView(): ProjectView {
     lensId: null,
     focusDepth: 0,
     sizeByCentrality: false,
+    colorByCommunity: false,
   };
 }

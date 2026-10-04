@@ -22,6 +22,7 @@ import {
   Map as MapIcon,
   Network,
   Orbit,
+  Palette,
   Route,
   Scaling,
   SlidersHorizontal,
@@ -65,6 +66,8 @@ import { LegendPanel } from './LegendPanel';
 import { PathPanel, type PathQuery } from './PathPanel';
 import { pathPairs, shortestPath } from '../../domain/paths';
 import { betweenness } from '../../domain/centrality';
+import { communityIndex } from '../../domain/communities';
+import { COLORS } from '../../domain/constants';
 import { LensMenu } from './LensMenu';
 import { isImageValue } from './images';
 import { NodeCard, type CardNode } from './NodeCard';
@@ -356,6 +359,15 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     const max = Math.max(1, ...score.values());
     return (id: string) => 0.85 + 0.4 * Math.sqrt((score.get(id) ?? 0) / max);
   }, [view.sizeByCentrality, links]);
+  // Color de cada tarjeta por comunidad (si está activado), sobre los vínculos visibles.
+  const communityColor = useMemo(() => {
+    if (!view.colorByCommunity) return () => undefined;
+    const index = communityIndex(links);
+    return (id: string) => {
+      const i = index.get(id);
+      return i === undefined ? undefined : COLORS[i % COLORS.length];
+    };
+  }, [view.colorByCommunity, links]);
   const nodes = useMemo<CardNode[]>(() => {
     const degree = new Map<string, number>();
     const compactIds = new Set(
@@ -418,7 +430,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             offset: expanded ? expandOffset : compact ? pushAway(position) : undefined,
             label: nodeLabel(project, n),
             typeName: schema?.name ?? 'Sin tipo',
-            color: schema?.color ?? '#888',
+            color: communityColor(n.id) ?? schema?.color ?? '#888',
             icon: schema?.icon ?? 'circle',
             degree: degree.get(n.id) ?? 0,
             incomplete: isIncomplete(project, n),
@@ -446,6 +458,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     hoverOnMap,
     clustered,
     scaleOf,
+    communityColor,
   ]);
 
   const edges = useMemo<FloatingEdgeType[]>(() => {
@@ -863,6 +876,16 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                 edgeLabels: view.edgeLabels === 'always' ? 'hover' : view.edgeLabels === 'hover' ? 'never' : 'always',
               })
             }
+          />
+          <IconButton
+            icon={Palette}
+            label={
+              view.colorByCommunity
+                ? 'Color por comunidad: activado (cada grupo de nodos muy conectados entre sí lleva un color)'
+                : 'Color por comunidad: desactivado (los nodos van por el color de su tipo)'
+            }
+            active={view.colorByCommunity}
+            onClick={() => setView({ colorByCommunity: !view.colorByCommunity })}
           />
           <IconButton
             icon={Scaling}

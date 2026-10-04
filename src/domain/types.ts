@@ -190,6 +190,8 @@ export interface ProjectView {
   focusDepth: number;
   /** Dimensionar las tarjetas del lienzo según su centralidad (intermediación). */
   sizeByCentrality: boolean;
+  /** Colorear las tarjetas por comunidad (grupos de Louvain) en vez de por tipo. */
+  colorByCommunity: boolean;
 }
 export interface AppState {
   version: 3;
