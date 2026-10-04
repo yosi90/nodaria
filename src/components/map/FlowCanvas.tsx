@@ -22,6 +22,7 @@ import {
   Map as MapIcon,
   Network,
   Orbit,
+  Route,
   SlidersHorizontal,
   Sparkles,
   Tag,
@@ -59,6 +60,8 @@ import { cardContent, cardHeight } from './cardLines';
 import { edgeSlots } from './edgeSlots';
 import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
 import { LegendPanel } from './LegendPanel';
+import { PathPanel, type PathQuery } from './PathPanel';
+import { pathPairs, shortestPath } from '../../domain/paths';
 import { LensMenu } from './LensMenu';
 import { isImageValue } from './images';
 import { NodeCard, type CardNode } from './NodeCard';
@@ -177,6 +180,12 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     refLinks.forEach(l => result.push({ a: l.sourceId, b: l.targetId }));
     return result;
   }, [project, hiddenRelations, view.showHierarchy, refLinks]);
+  // Camino entre dos nodos: mientras está abierto, el lienzo atenúa todo lo que no forme parte de él.
+  const [pathQuery, setPathQuery] = useState<PathQuery | null>(null);
+  const path = useMemo(
+    () => (pathQuery?.from && pathQuery.to ? shortestPath(links, pathQuery.from, pathQuery.to) : undefined),
+    [pathQuery, links],
+  );
 
   // Nodos con posición manual: la disposición por fuerzas los respeta y acomoda el resto alrededor.
   const fixed = useMemo(
@@ -584,20 +593,26 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   useEffect(() => {
     const root = container.current;
     if (!root) return;
-    const near = hoveredId ? neighborhood(hoveredId, links, 1) : null;
+    const pathNodes = !hoveredId && path ? new Set(path) : null;
+    const pairs = pathNodes && path ? pathPairs(path) : null;
+    const near = hoveredId ? neighborhood(hoveredId, links, 1) : pathNodes;
     const ends = new Map(edges.map(e => [e.id, [e.source, e.target]]));
     root.querySelectorAll<HTMLElement>('.react-flow__node').forEach(el => {
       el.classList.toggle('dimmed', Boolean(near && !near.has(el.dataset.id ?? '')));
     });
     root.querySelectorAll<SVGElement>('.family-link, .family-kin').forEach(el => {
       const members = (el.dataset.members ?? '').split(',');
-      el.classList.toggle('dimmed', Boolean(hoveredId && !members.includes(hoveredId)));
+      el.classList.toggle(
+        'dimmed',
+        Boolean((hoveredId && !members.includes(hoveredId)) || (pathNodes && !members.some(m => pathNodes.has(m)))),
+      );
     });
     root.querySelectorAll<HTMLElement>('.react-flow__edge, .edge-label').forEach(el => {
       const id = el.dataset.id ?? el.dataset.edge ?? '';
       const [a, b] = ends.get(id) ?? [];
-      el.classList.toggle('dimmed', Boolean(hoveredId && a !== hoveredId && b !== hoveredId));
-      el.classList.toggle('lit', Boolean(hoveredId && (a === hoveredId || b === hoveredId)));
+      const onPath = Boolean(pairs && pairs.has(`${a}|${b}`));
+      el.classList.toggle('dimmed', Boolean((hoveredId && a !== hoveredId && b !== hoveredId) || (pairs && !onPath)));
+      el.classList.toggle('lit', Boolean((hoveredId && (a === hoveredId || b === hoveredId)) || onPath));
       // En una relación bidireccional, al pasar por un nodo se oculta la punta de su lado:
       // la flecha que queda apunta al otro extremo, como el nombre que se muestra.
       if (el.dataset.id) {
@@ -612,7 +627,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         el.textContent = fromTarget ? (el.dataset.roleTarget ?? '') : (el.dataset.roleSource ?? '');
       }
     });
-  }, [hoveredId, links, edges]);
+  }, [hoveredId, links, edges, path]);
 
   const onNodeClick = useCallback((_: unknown, n: { id: string }) => onSelect({ kind: 'node', id: n.id }), [onSelect]);
   const onEdgeClick = useCallback(
@@ -823,6 +838,12 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             }
           />
           <IconButton
+            icon={Route}
+            label="Camino entre dos nodos"
+            active={pathQuery !== null}
+            onClick={() => setPathQuery(q => (q ? null : { from: selectedNodeId, to: null }))}
+          />
+          <IconButton
             icon={SlidersHorizontal}
             label="Leyenda y filtros"
             active={legendOpen}
@@ -898,6 +919,17 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           {legendOpen && (
             <Panel position="top-right">
               <LegendPanel onClose={() => setLegendOpen(false)} />
+            </Panel>
+          )}
+          {pathQuery && (
+            <Panel position="top-left">
+              <PathPanel
+                query={pathQuery}
+                path={path}
+                onChange={setPathQuery}
+                onPick={id => onSelect({ kind: 'node', id })}
+                onClose={() => setPathQuery(null)}
+              />
             </Panel>
           )}
           <Controls position="bottom-left" showInteractive={false} />

@@ -255,7 +255,7 @@ Objetivo: que la herramienta ayude a detectar huecos, redundancias y puntos clav
 - [x] Panel **Salud del mundo** (2026-10-04): vista «Salud» (Alt+6, también en la paleta) con nodos sin conexiones, fichas incompletas (obligatorios vacíos, con el detalle), tipos sin instancias, límites de relación superados, referencias rotas (nodo inexistente o de tipo no admitido) y menciones `[[ ]]` sin destino; cada aviso salta al nodo o al tipo. Dominio en `src/domain/health.ts` (`worldHealth`), que también aporta `isIncomplete` al lienzo.
 - [ ] **Centralidad**: nodos más conectados y "puentes" que unen grupos que de otro modo estarían separados; opción de dimensionar los nodos del lienzo por centralidad.
 - [ ] **Comunidades**: detección de grupos (p. ej. Louvain) coloreables en el lienzo.
-- [ ] **Camino entre dos nodos**: "¿cómo se conecta A con B?", resaltado en el lienzo, con filtro de tipos de relación.
+- [x] **Camino entre dos nodos** (2026-10-04): botón «Camino entre dos nodos» en la barra del lienzo abre un panel con dos selectores (el origen parte del nodo seleccionado); `shortestPath` (`src/domain/paths.ts`) busca por los vínculos visibles (relaciones, jerarquía y referencias, sin sentido), el lienzo atenúa todo lo que no es el camino y el panel lista los pasos (clic para seleccionar). El filtro de tipos es el de la leyenda: lo oculto no cuenta.
 - [ ] **Posibles redundancias**: nodos del mismo tipo con atributos y conexiones muy parecidos.
 - [ ] **Consultas guardadas** con un constructor visual ("Personajes sin dios patrón", "Magos que no pertenecen a ninguna escuela").
 - [ ] Estadísticas por tipo: cuántos, cuántas relaciones de media, distribución de valores de un campo de lista.
