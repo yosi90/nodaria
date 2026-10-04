@@ -18,7 +18,9 @@ interface FieldEditorProps {
   onDelete: () => void;
   onDragStart: (fieldId: string) => void;
   onDragEnd: () => void;
-  onDrop: (targetId: string, after: boolean) => void;
+  /** Al pasar por encima arrastrando otro atributo: dónde quedaría (antes o después de este). */
+  onDragHover?: (targetId: string, after: boolean) => void;
+  onDrop: () => void;
   /** Insignias y acciones extra en la cabecera (p. ej. «Compartido», «Usado en 3 tipos»). */
   badges?: ReactNode;
   actions?: ReactNode;
@@ -36,6 +38,7 @@ export function FieldEditor({
   onDelete,
   onDragStart,
   onDragEnd,
+  onDragHover,
   onDrop,
   badges,
   actions,
@@ -56,16 +59,20 @@ export function FieldEditor({
   const system = field.type === 'gender';
   const hasDefault = !['computed', 'nodeRef', 'nodeRefs', 'image', 'gender', 'color', 'url'].includes(field.type);
 
-  const drop = (event: DragEvent<HTMLDivElement>) => {
+  const over = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const bounds = event.currentTarget.getBoundingClientRect();
-    onDrop(field.id, event.clientY > bounds.top + bounds.height / 2);
+    onDragHover?.(field.id, event.clientY > bounds.top + bounds.height / 2);
+  };
+  const drop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    onDrop();
   };
 
   return (
     <div
       className={`field-def ${dragging ? 'dragging' : ''} ${system ? 'system' : ''}`}
-      onDragOver={event => event.preventDefault()}
+      onDragOver={over}
       onDrop={drop}
     >
       <div className="field-def-head">

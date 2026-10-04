@@ -49,6 +49,14 @@ export function updateLibraryField(p: Project, field: FieldDefinition): Project 
   return { ...p, fieldLibrary: p.fieldLibrary.map(f => (f.id === field.id ? field : f)) };
 }
 
+/** Reordena la biblioteca según la lista de ids (los que falten conservan su posición relativa al final). */
+export function reorderLibrary(p: Project, ids: string[]): Project {
+  const byId = new Map(p.fieldLibrary.map(f => [f.id, f]));
+  const ordered = ids.map(id => byId.get(id)).filter((f): f is FieldDefinition => Boolean(f));
+  const rest = p.fieldLibrary.filter(f => !ids.includes(f.id));
+  return { ...p, fieldLibrary: [...ordered, ...rest] };
+}
+
 /** Elimina un atributo de la biblioteca, sus vínculos y los valores guardados. */
 export function deleteLibraryField(p: Project, id: string): Project {
   if (!p.fieldLibrary.some(f => f.id === id)) return p;

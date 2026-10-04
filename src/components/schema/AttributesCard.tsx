@@ -24,6 +24,29 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   const onOpenLibrary = () => setView('properties');
   const toast = useToast();
   const [dragged, setDragged] = useState<string | null>(null);
+  // Mientras se arrastra, la lista se enseña ya reordenada y el elemento movido va como fantasma.
+  const [preview, setPreview] = useState<{ targetId: string; after: boolean } | null>(null);
+  const reordered = (list: Schema['fields'], moving: string, targetId: string, after: boolean) => {
+    const item = list.find(f => entryId(f) === moving);
+    if (!item || moving === targetId) return list;
+    const rest = list.filter(f => entryId(f) !== moving);
+    const index = rest.findIndex(f => entryId(f) === targetId);
+    if (index < 0) return list;
+    rest.splice(index + (after ? 1 : 0), 0, item);
+    return rest;
+  };
+  const shownFields =
+    dragged && preview ? reordered(schema.fields, dragged, preview.targetId, preview.after) : schema.fields;
+  const hover = (targetId: string, after: boolean) => {
+    if (!dragged || targetId === dragged) return;
+    setPreview(current =>
+      current && current.targetId === targetId && current.after === after ? current : { targetId, after },
+    );
+  };
+  const endDrag = () => {
+    setDragged(null);
+    setPreview(null);
+  };
   const [addAnchor, setAddAnchor] = useState<Anchor | null>(null);
   const [linkAnchor, setLinkAnchor] = useState<Anchor | null>(null);
   const closeAdd = useCallback(() => setAddAnchor(null), []);
@@ -48,10 +71,12 @@ export function AttributesCard({ schema }: { schema: Schema }) {
         <div className="overlap-note">
           <TriangleAlert size={13} aria-hidden />
           <span>
-            Ya llega por herencia desde «{overlap.from.name}»: aquí sobra.{' '}
+            Desactivado por herencia: mientras «{schema.name}» herede de «{overlap.from.name}» este atributo no se usa
+            ni se tiene en cuenta (lo aporta ya el heredado). Puedes conservarlo por si deshaces la herencia, o{' '}
             <button type="button" className="link-button" onClick={onRemove}>
-              Quitar de este tipo
+              quitarlo de este tipo
             </button>
+            .
           </span>
         </div>
       );
@@ -76,15 +101,10 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   const linkedIds = new Set(schema.fields.filter(isFieldLink).map(f => f.ref));
   const linkable = project.fieldLibrary.filter(f => !linkedIds.has(f.id));
 
-  const reorder = (targetId: string, after: boolean) => {
-    if (!dragged || dragged === targetId) return;
-    const moving = schema.fields.find(f => entryId(f) === dragged);
-    if (!moving) return;
-    const rest = schema.fields.filter(f => entryId(f) !== dragged);
-    const index = rest.findIndex(f => entryId(f) === targetId);
-    rest.splice(index + (after ? 1 : 0), 0, moving);
-    update(rest);
-    setDragged(null);
+  const reorder = () => {
+    // Al soltar se confirma lo que ya se veía en la previsualización.
+    if (dragged && preview) update(reordered(schema.fields, dragged, preview.targetId, preview.after));
+    endDrag();
   };
 
   const removeOwn = (field: FieldDefinition) => {
@@ -164,7 +184,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
       )}
       <div className="field-list">
         {schema.fields.length ? (
-          schema.fields.map(entry => {
+          shownFields.map(entry => {
             if (isFieldLink(entry)) {
               const field = project.fieldLibrary.find(f => f.id === entry.ref);
               if (!field) return null;
@@ -175,7 +195,8 @@ export function AttributesCard({ schema }: { schema: Schema }) {
                   users={usersOfLibraryField(project, field.id).length}
                   dragging={dragged === field.id}
                   onDragStart={() => setDragged(field.id)}
-                  onDragEnd={() => setDragged(null)}
+                  onDragEnd={endDrag}
+                  onDragHover={hover}
                   onDrop={reorder}
                   onEdit={onOpenLibrary}
                   onUnlink={() => unlink(field)}
@@ -190,7 +211,8 @@ export function AttributesCard({ schema }: { schema: Schema }) {
                 allowTitle={schema.kind === 'entity'}
                 dragging={dragged === entry.id}
                 onDragStart={setDragged}
-                onDragEnd={() => setDragged(null)}
+                onDragEnd={endDrag}
+                onDragHover={hover}
                 onDrop={reorder}
                 onChange={changed =>
                   update(schema.fields.map(item => (!isFieldLink(item) && item.id === changed.id ? changed : item)))
@@ -226,6 +248,7 @@ function LinkedFieldRow({
   dragging,
   onDragStart,
   onDragEnd,
+  onDragHover,
   onDrop,
   onEdit,
   onUnlink,
@@ -236,21 +259,25 @@ function LinkedFieldRow({
   dragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
-  onDrop: (targetId: string, after: boolean) => void;
+  onDragHover: (targetId: string, after: boolean) => void;
+  onDrop: () => void;
   onEdit: () => void;
   onUnlink: () => void;
   note?: ReactNode;
 }) {
-  const drop = (event: DragEvent<HTMLDivElement>) => {
+  const over = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const bounds = event.currentTarget.getBoundingClientRect();
-    onDrop(field.id, event.clientY > bounds.top + bounds.height / 2);
+    onDragHover(field.id, event.clientY > bounds.top + bounds.height / 2);
   };
   return (
     <div
       className={`field-def linked ${dragging ? 'dragging' : ''}`}
-      onDragOver={e => e.preventDefault()}
-      onDrop={drop}
+      onDragOver={over}
+      onDrop={event => {
+        event.preventDefault();
+        onDrop();
+      }}
     >
       <div className="field-def-head">
         <button

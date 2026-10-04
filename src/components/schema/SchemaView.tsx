@@ -1,7 +1,7 @@
 import { GitFork, Plus, Shapes } from 'lucide-react';
 import { useState } from 'react';
 import { uid } from '../../domain/factories';
-import { schemaTree } from '../../domain/inheritance';
+import { reorderSchema, schemaTree } from '../../domain/inheritance';
 import type { SchemaKind } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { usePreferences } from '../../state/preferences';
@@ -21,6 +21,9 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
   const [creating, setCreating] = useState<SchemaKind | null>(null);
   const [name, setName] = useState('');
   const [dragged, setDragged] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ targetId: string; after: boolean } | null>(null);
+  // Durante el arrastre la lista se enseña ya reordenada; al soltar se confirma.
+  const shown = dragged && preview ? reorderSchema(project, dragged, preview.targetId, preview.after) : project;
   const schema = ofKind.find(item => item.id === selected) ?? ofKind[0];
 
   const openCreateModal = () => {
@@ -49,7 +52,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
         </div>
         <nav className="type-items" aria-label="Lista de tipos">
           {groups.map(group => {
-            const items = schemaTree(project, group.kind);
+            const items = schemaTree(shown, group.kind);
             return (
               <div key={group.kind}>
                 <div className="type-group-title">{group.title}</div>
@@ -66,21 +69,33 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
                       event.dataTransfer.effectAllowed = 'move';
                       setDragged(item.id);
                     }}
-                    onDragEnd={() => setDragged(null)}
+                    onDragEnd={() => {
+                      setDragged(null);
+                      setPreview(null);
+                    }}
                     onDragOver={event => {
-                      if (dragged && dragged !== item.id) event.preventDefault();
+                      if (!dragged || dragged === item.id) return;
+                      event.preventDefault();
+                      const bounds = event.currentTarget.getBoundingClientRect();
+                      const after = event.clientY > bounds.top + bounds.height / 2;
+                      setPreview(current =>
+                        current && current.targetId === item.id && current.after === after
+                          ? current
+                          : { targetId: item.id, after },
+                      );
                     }}
                     onDrop={event => {
                       event.preventDefault();
-                      if (!dragged || dragged === item.id) return;
-                      const bounds = event.currentTarget.getBoundingClientRect();
-                      dispatch({
-                        type: 'reorder-schema',
-                        id: dragged,
-                        targetId: item.id,
-                        after: event.clientY > bounds.top + bounds.height / 2,
-                      });
+                      if (dragged && preview) {
+                        dispatch({
+                          type: 'reorder-schema',
+                          id: dragged,
+                          targetId: preview.targetId,
+                          after: preview.after,
+                        });
+                      }
                       setDragged(null);
+                      setPreview(null);
                     }}
                     onClick={() => setSelected(item.id)}
                   >

@@ -158,7 +158,10 @@ export function Topbar({
       </button>
       {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Proyecto" />}
       <span className="divider hide-narrow" aria-hidden />
-      <nav className="segmented" aria-label="Vistas">
+      <nav className="segmented labeled views-nav" aria-label="Vistas">
+        <span className="segmented-label" title="Ver y revisar los datos del mundo">
+          Datos
+        </span>
         <button type="button" aria-pressed={view === 'map'} onClick={() => onView('map')}>
           <Network size={15} aria-hidden />
           <span className="label">Mapa</span>
@@ -167,6 +170,14 @@ export function Topbar({
           <Table2 size={15} aria-hidden />
           <span className="label">Tabla</span>
         </button>
+        <button type="button" aria-pressed={view === 'health'} onClick={() => onView('health')}>
+          <HeartPulse size={15} aria-hidden />
+          <span className="label">Salud</span>
+        </button>
+        <span className="views-divider" aria-hidden />
+        <span className="segmented-label" title="Definir qué cosas existen y cómo se conectan">
+          Esquema
+        </span>
         <button type="button" aria-pressed={view === 'schema'} onClick={() => onView('schema')}>
           <Shapes size={15} aria-hidden />
           <span className="label">Tipos</span>
@@ -178,10 +189,6 @@ export function Topbar({
         <button type="button" aria-pressed={view === 'properties'} onClick={() => onView('properties')}>
           <Library size={15} aria-hidden />
           <span className="label">Propiedades</span>
-        </button>
-        <button type="button" aria-pressed={view === 'health'} onClick={() => onView('health')}>
-          <HeartPulse size={15} aria-hidden />
-          <span className="label">Salud</span>
         </button>
       </nav>
       <div className="spacer" />

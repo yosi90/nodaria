@@ -39,6 +39,7 @@ export type Action =
   | { type: 'add-library-field'; id?: string }
   | { type: 'update-library-field'; field: FieldDefinition }
   | { type: 'delete-library-field'; id: string }
+  | { type: 'reorder-library'; ids: string[] }
   | { type: 'link-field'; schemaId: string; libraryId: string }
   | { type: 'unlink-field'; schemaId: string; libraryId: string }
   | { type: 'share-field'; schemaId: string; fieldId: string }
@@ -156,6 +157,8 @@ function projectReducer(p: Project, action: Action): Project {
       return lib.updateLibraryField(p, action.field);
     case 'delete-library-field':
       return lib.deleteLibraryField(p, action.id);
+    case 'reorder-library':
+      return lib.reorderLibrary(p, action.ids);
     case 'link-field':
       return lib.linkField(p, action.schemaId, action.libraryId);
     case 'unlink-field':

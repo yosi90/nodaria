@@ -1702,8 +1702,19 @@ button.mention:hover {
 .query-preview {
   font-weight: 400;
 }
-.type-item.dragging {
-  opacity: 0.4;
+/* Durante el arrastre, el elemento movido se ve como fantasma en el sitio donde quedaría. */
+.type-item.dragging,
+.field-def.dragging {
+  opacity: 0.45;
+  outline: 1.5px dashed var(--accent);
+  outline-offset: -1.5px;
+  background: var(--accent-soft);
+}
+.views-nav .views-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: var(--border-strong);
 }
 .type-branch {
   flex: none;

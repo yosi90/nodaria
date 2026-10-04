@@ -77,7 +77,7 @@ function useGlobalShortcuts(
         ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'].includes(event.code)
       )
         setView(
-          (['map', 'schema', 'relations', 'properties', 'table', 'health'] as const)[Number(event.code.slice(-1)) - 1],
+          (['map', 'table', 'health', 'schema', 'relations', 'properties'] as const)[Number(event.code.slice(-1)) - 1],
         );
       else if (event.altKey && !mod && event.key === 'ArrowLeft') back();
       else if (event.altKey && !mod && event.key === 'ArrowRight') forward();

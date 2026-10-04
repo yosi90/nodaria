@@ -20,16 +20,33 @@ export function LibraryEditor() {
   const library = project.fieldLibrary;
 
   const add = () => dispatch({ type: 'add-library-field', id: uid('field') });
-  const reorder = (targetId: string, after: boolean) => {
-    // El orden de la biblioteca es solo estético: se guarda reordenando la lista completa.
-    if (!dragged || dragged === targetId) return;
+  // Mientras se arrastra, la lista se enseña ya reordenada y el elemento movido va como fantasma.
+  const [preview, setPreview] = useState<{ targetId: string; after: boolean } | null>(null);
+  const reordered = (targetId: string, after: boolean) => {
     const moving = library.find(f => f.id === dragged);
-    if (!moving) return;
+    if (!moving || dragged === targetId) return library;
     const rest = library.filter(f => f.id !== dragged);
-    rest.splice(rest.findIndex(f => f.id === targetId) + (after ? 1 : 0), 0, moving);
-    // No hay acción de reordenar la biblioteca; se recrea actualizando cada campo en orden.
-    rest.forEach(f => dispatch({ type: 'update-library-field', field: f }));
+    const index = rest.findIndex(f => f.id === targetId);
+    if (index < 0) return library;
+    rest.splice(index + (after ? 1 : 0), 0, moving);
+    return rest;
+  };
+  const shown = dragged && preview ? reordered(preview.targetId, preview.after) : library;
+  const hover = (targetId: string, after: boolean) => {
+    if (!dragged || targetId === dragged) return;
+    setPreview(current =>
+      current && current.targetId === targetId && current.after === after ? current : { targetId, after },
+    );
+  };
+  const endDrag = () => {
     setDragged(null);
+    setPreview(null);
+  };
+  const reorder = () => {
+    if (dragged && preview) {
+      dispatch({ type: 'reorder-library', ids: reordered(preview.targetId, preview.after).map(f => f.id) });
+    }
+    endDrag();
   };
 
   const remove = async (field: FieldDefinition) => {
@@ -76,7 +93,7 @@ export function LibraryEditor() {
       </div>
       <div className="library-list">
         {library.length ? (
-          library.map(field => {
+          shown.map(field => {
             const users = usersOfLibraryField(project, field.id);
             return (
               <FieldEditor
@@ -84,7 +101,8 @@ export function LibraryEditor() {
                 field={field}
                 dragging={dragged === field.id}
                 onDragStart={setDragged}
-                onDragEnd={() => setDragged(null)}
+                onDragEnd={endDrag}
+                onDragHover={hover}
                 onDrop={reorder}
                 onChange={changed => dispatch({ type: 'update-library-field', field: changed })}
                 onDelete={() => void remove(field)}
