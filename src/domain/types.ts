@@ -63,6 +63,8 @@ export interface Schema {
 /** Género de un nodo: masculino, femenino, neutro u otro, o sin definir. */
 export type Gender = 'm' | 'f' | 'n' | '';
 /** Término del vocabulario de parentesco de un proyecto. */
+/** Papel que el árbol puede deducir de la ascendencia directa y que un término del vocabulario representa. */
+export type DerivedRole = 'grandparent' | 'grandchild' | 'sibling' | 'uncle' | 'nephew' | 'cousin';
 export interface KinshipTerm {
   id: string;
   neutral: string;
@@ -76,6 +78,8 @@ export interface KinshipTerm {
   lineage: boolean;
   /** Pareja: en la disposición genealógica los dos nodos se dibujan juntos, con sus hijos debajo. */
   couple: boolean;
+  /** Si el árbol deduce este parentesco (abuelo = progenitor del progenitor, etc.), con qué papel. */
+  derived: DerivedRole | null;
 }
 export type Position = { x: number; y: number };
 /** Los valores de nodos y relaciones se indexan por `FieldDefinition.id`, no por su clave. */

@@ -16,7 +16,8 @@ import {
 } from '@xyflow/react';
 import { Crosshair, GitBranch, LayoutGrid, Network, Orbit, SlidersHorizontal, Sparkles, Tag } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
+import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole, typeMatches } from '../../domain/selectors';
+import { usePreferences } from '../../state/preferences';
 import { referenceFields, referenceLinks } from '../../domain/references';
 import {
   impliedKinship,
@@ -125,6 +126,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Position>>({});
   const [legendOpen, setLegendOpen] = useState(false);
+  const { preferences, setPreference } = usePreferences();
+  const genealogySchemas = useMemo(
+    () => project.schemas.filter(s => s.kind === 'relationship' && s.genealogical),
+    [project.schemas],
+  );
   const selectedNodeId = selection?.kind === 'node' ? selection.id : null;
   const structure = resolveStructure(project, view.structureId);
 
@@ -376,7 +382,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           positions.has(r.targetId) &&
           !kinshipStructureLink(project, r) &&
           !kinshipTerm(project, r.kinshipId)?.couple &&
-          !isImpliedKinship(implied, r),
+          !isImpliedKinship(implied, r, project),
       )
       .map(r => {
         const roles = kinshipRoles(project, r);
@@ -475,6 +481,73 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   };
 
   const setView = (patch: Partial<Project['view']>) => dispatch({ type: 'update-view', view: patch });
+
+  // Al entrar en Genealogía se ocultan por defecto los tipos que ningún parentesco admite y se abre la
+  // leyenda; lo que el usuario cambie ahí se recuerda (por proyecto, en este navegador) y al salir se
+  // restauran los filtros anteriores.
+  const genealogyPrefs = preferences.genealogy[project.id];
+  const switchLayout = (mode: LayoutMode) => {
+    if (mode === view.layout) return;
+    if (mode === 'genealogy') {
+      const admitted = genealogySchemas.flatMap(s => [...s.sourceTypeIds, ...s.targetTypeIds]);
+      const defaults = {
+        hiddenEntityTypeIds: project.schemas
+          .filter(s => s.kind === 'entity' && !s.isAbstract && !typeMatches(project, s.id, admitted))
+          .map(s => s.id),
+        hiddenRelationTypeIds: view.hiddenRelationTypeIds,
+        legendOpen: true,
+      };
+      const g = genealogyPrefs ?? defaults;
+      setPreference('genealogy', {
+        ...preferences.genealogy,
+        [project.id]: {
+          ...g,
+          before: { hiddenEntityTypeIds: view.hiddenEntityTypeIds, hiddenRelationTypeIds: view.hiddenRelationTypeIds },
+        },
+      });
+      setLegendOpen(g.legendOpen);
+      setView({
+        layout: mode,
+        hiddenEntityTypeIds: g.hiddenEntityTypeIds,
+        hiddenRelationTypeIds: g.hiddenRelationTypeIds,
+      });
+      return;
+    }
+    if (view.layout === 'genealogy' && genealogyPrefs) {
+      setPreference('genealogy', {
+        ...preferences.genealogy,
+        [project.id]: {
+          hiddenEntityTypeIds: view.hiddenEntityTypeIds,
+          hiddenRelationTypeIds: view.hiddenRelationTypeIds,
+          legendOpen,
+        },
+      });
+      setView({ layout: mode, ...(genealogyPrefs.before ?? {}) });
+      return;
+    }
+    setView({ layout: mode });
+  };
+  // Mientras se está en Genealogía, cada cambio de filtros o de la leyenda se recuerda.
+  useEffect(() => {
+    if (view.layout !== 'genealogy') return;
+    const current = preferences.genealogy[project.id];
+    if (!current) return;
+    const same =
+      current.legendOpen === legendOpen &&
+      JSON.stringify(current.hiddenEntityTypeIds) === JSON.stringify(view.hiddenEntityTypeIds) &&
+      JSON.stringify(current.hiddenRelationTypeIds) === JSON.stringify(view.hiddenRelationTypeIds);
+    if (same) return;
+    setPreference('genealogy', {
+      ...preferences.genealogy,
+      [project.id]: {
+        ...current,
+        legendOpen,
+        hiddenEntityTypeIds: view.hiddenEntityTypeIds,
+        hiddenRelationTypeIds: view.hiddenRelationTypeIds,
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona a lo que el usuario cambia en Genealogía
+  }, [view.layout, legendOpen, view.hiddenEntityTypeIds, view.hiddenRelationTypeIds]);
   const pinnedCount = project.nodes.filter(n => n.positions[view.layout]).length;
   const selectedNode = selectedNodeId ? getNode(project, selectedNodeId) : undefined;
 
@@ -502,12 +575,22 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                 key={mode}
                 type="button"
                 aria-pressed={view.layout === mode}
-                aria-disabled={mode === 'radial' && !selectedNode ? true : undefined}
-                className={mode === 'radial' && !selectedNode ? 'looks-disabled' : undefined}
+                aria-disabled={
+                  (mode === 'radial' && !selectedNode) || (mode === 'genealogy' && !genealogySchemas.length)
+                    ? true
+                    : undefined
+                }
+                className={
+                  (mode === 'radial' && !selectedNode) || (mode === 'genealogy' && !genealogySchemas.length)
+                    ? 'looks-disabled'
+                    : undefined
+                }
                 data-tooltip={
                   mode === 'radial' && !selectedNode
                     ? 'Vista radial: coloca un nodo en el centro y el resto en anillos según los saltos de distancia. Selecciona primero un nodo para centrarla en él.'
-                    : hint
+                    : mode === 'genealogy' && !genealogySchemas.length
+                      ? 'Genealogía: generaciones en filas según el parentesco. Define primero un tipo de relación marcado como «Genealógica» en «Relaciones».'
+                      : hint
                 }
                 data-tooltip-wide
                 onClick={() => {
@@ -515,7 +598,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                     toast({ message: 'Selecciona un nodo para centrar en él la vista radial.' });
                     return;
                   }
-                  setView({ layout: mode });
+                  if (mode === 'genealogy' && !genealogySchemas.length) {
+                    toast({ message: 'Define primero un tipo de relación genealógico en «Relaciones».' });
+                    return;
+                  }
+                  switchLayout(mode);
                 }}
               >
                 <Icon size={14} aria-hidden />

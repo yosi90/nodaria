@@ -1,5 +1,5 @@
 import { allFields, getSchema } from './selectors';
-import type { Gender, KinshipTerm, Node, Project, Relation } from './types';
+import type { DerivedRole, Gender, KinshipTerm, Node, Project, Relation } from './types';
 
 /*
  * Parentesco: vocabulario por proyecto para las relaciones genealógicas. Cada término tiene nombre
@@ -16,7 +16,30 @@ const term = (
   generation: number,
   lineage = false,
   couple = false,
-): KinshipTerm => ({ id, neutral, masculine, feminine, counterpartId, generation, lineage, couple });
+  derived: DerivedRole | null = null,
+): KinshipTerm => ({ id, neutral, masculine, feminine, counterpartId, generation, lineage, couple, derived });
+
+/** Papeles deducibles, con su explicación. */
+export const DERIVED_ROLES: { value: DerivedRole; label: string; hint: string }[] = [
+  { value: 'grandparent', label: 'Abuelo/a', hint: 'progenitor del progenitor' },
+  { value: 'grandchild', label: 'Nieto/a', hint: 'hijo del hijo' },
+  { value: 'sibling', label: 'Hermano/a', hint: 'comparten progenitor' },
+  { value: 'uncle', label: 'Tío/a', hint: 'hermano del progenitor' },
+  { value: 'nephew', label: 'Sobrino/a', hint: 'hijo del hermano' },
+  { value: 'cousin', label: 'Primo/a', hint: 'hijo del tío' },
+];
+
+/** Papel deducible de los términos del vocabulario inicial (para migrar proyectos anteriores). */
+export const DEFAULT_DERIVED: Record<string, DerivedRole> = {
+  abuelo: 'grandparent',
+  nieto: 'grandchild',
+  hermano: 'sibling',
+  medio_hermano: 'sibling',
+  gemelo: 'sibling',
+  tio: 'uncle',
+  sobrino: 'nephew',
+  primo: 'cousin',
+};
 
 /** Vocabulario inicial de un proyecto; el usuario puede cambiarlo, ampliarlo o reducirlo. */
 export function defaultKinship(): KinshipTerm[] {
@@ -25,16 +48,26 @@ export function defaultKinship(): KinshipTerm[] {
     term('hijo', 'Hijo/a', 'Hijo', 'Hija', 'progenitor', -1, true),
     term('padrastro', 'Padrastro/madrastra', 'Padrastro', 'Madrastra', 'hijastro', 1, true),
     term('hijastro', 'Hijastro/a', 'Hijastro', 'Hijastra', 'padrastro', -1, true),
-    term('abuelo', 'Abuelo/a', 'Abuelo', 'Abuela', 'nieto', 2),
-    term('nieto', 'Nieto/a', 'Nieto', 'Nieta', 'abuelo', -2),
+    term('abuelo', 'Abuelo/a', 'Abuelo', 'Abuela', 'nieto', 2, false, false, 'grandparent'),
+    term('nieto', 'Nieto/a', 'Nieto', 'Nieta', 'abuelo', -2, false, false, 'grandchild'),
     term('bisabuelo', 'Bisabuelo/a', 'Bisabuelo', 'Bisabuela', 'bisnieto', 3),
     term('bisnieto', 'Bisnieto/a', 'Bisnieto', 'Bisnieta', 'bisabuelo', -3),
-    term('hermano', 'Hermano/a', 'Hermano', 'Hermana', 'hermano', 0),
-    term('medio_hermano', 'Medio hermano/a', 'Medio hermano', 'Media hermana', 'medio_hermano', 0),
-    term('gemelo', 'Gemelo/a', 'Gemelo', 'Gemela', 'gemelo', 0),
-    term('tio', 'Tío/a', 'Tío', 'Tía', 'sobrino', 1),
-    term('sobrino', 'Sobrino/a', 'Sobrino', 'Sobrina', 'tio', -1),
-    term('primo', 'Primo/a', 'Primo', 'Prima', 'primo', 0),
+    term('hermano', 'Hermano/a', 'Hermano', 'Hermana', 'hermano', 0, false, false, 'sibling'),
+    term(
+      'medio_hermano',
+      'Medio hermano/a',
+      'Medio hermano',
+      'Media hermana',
+      'medio_hermano',
+      0,
+      false,
+      false,
+      'sibling',
+    ),
+    term('gemelo', 'Gemelo/a', 'Gemelo', 'Gemela', 'gemelo', 0, false, false, 'sibling'),
+    term('tio', 'Tío/a', 'Tío', 'Tía', 'sobrino', 1, false, false, 'uncle'),
+    term('sobrino', 'Sobrino/a', 'Sobrino', 'Sobrina', 'tio', -1, false, false, 'nephew'),
+    term('primo', 'Primo/a', 'Primo', 'Prima', 'primo', 0, false, false, 'cousin'),
     term('pareja', 'Pareja', 'Pareja', 'Pareja', 'pareja', 0, false, true),
     term('conyuge', 'Cónyuge', 'Esposo', 'Esposa', 'conyuge', 0, false, true),
     term('expareja', 'Expareja', 'Expareja', 'Expareja', 'expareja', 0),
@@ -102,9 +135,6 @@ export interface DerivedKin {
   via: string;
 }
 
-/** Términos que describen a hermanos (comparten al menos un progenitor). */
-const SIBLING_TERMS = ['hermano', 'medio_hermano', 'gemelo'];
-
 /**
  * Parentescos que se deducen de la ascendencia directa: abuelos y nietos (progenitor del
  * progenitor), hermanos (comparten progenitor), tíos y sobrinos (hermanos del progenitor, explícitos
@@ -112,7 +142,16 @@ const SIBLING_TERMS = ['hermano', 'medio_hermano', 'gemelo'];
  * vocabulario, por su identificador original (`abuelo`, `nieto`, `hermano`, `tio`, `sobrino`, `primo`).
  */
 export function derivedKinship(p: Project, genealogyId: string): DerivedKin[] {
-  const has = (id: string) => p.kinship.some(t => t.id === id);
+  const roleTerm = (role: DerivedRole) => p.kinship.find(t => t.derived === role)?.id;
+  const siblingIds = new Set(p.kinship.filter(t => t.derived === 'sibling').map(t => t.id));
+  const T = {
+    grandparent: roleTerm('grandparent'),
+    grandchild: roleTerm('grandchild'),
+    sibling: roleTerm('sibling'),
+    uncle: roleTerm('uncle'),
+    nephew: roleTerm('nephew'),
+    cousin: roleTerm('cousin'),
+  };
   const parentsOf = new Map<string, string[]>();
   const childrenOf = new Map<string, string[]>();
   const explicitSiblings = new Map<string, string[]>();
@@ -123,15 +162,15 @@ export function derivedKinship(p: Project, genealogyId: string): DerivedKin[] {
       if (link) {
         parentsOf.set(link.childId, [...(parentsOf.get(link.childId) ?? []), link.parentId]);
         childrenOf.set(link.parentId, [...(childrenOf.get(link.parentId) ?? []), link.childId]);
-      } else if (r.kinshipId && SIBLING_TERMS.includes(r.kinshipId)) {
+      } else if (r.kinshipId && siblingIds.has(r.kinshipId)) {
         explicitSiblings.set(r.sourceId, [...(explicitSiblings.get(r.sourceId) ?? []), r.targetId]);
         explicitSiblings.set(r.targetId, [...(explicitSiblings.get(r.targetId) ?? []), r.sourceId]);
       }
     });
   const out: DerivedKin[] = [];
   const seen = new Set<string>();
-  const add = (sourceId: string, targetId: string, termId: string, via: string) => {
-    if (sourceId === targetId || !has(termId)) return;
+  const add = (sourceId: string, targetId: string, termId: string | undefined, via: string) => {
+    if (sourceId === targetId || !termId) return;
     const key = `${sourceId}|${targetId}|${termId}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -145,14 +184,14 @@ export function derivedKinship(p: Project, genealogyId: string): DerivedKin[] {
   p.nodes.forEach(n => {
     (parentsOf.get(n.id) ?? []).forEach(par => {
       (parentsOf.get(par) ?? []).forEach(gp => {
-        add(gp, n.id, 'abuelo', par);
-        add(n.id, gp, 'nieto', par);
+        add(gp, n.id, T.grandparent, par);
+        add(n.id, gp, T.grandchild, par);
       });
-      (childrenOf.get(par) ?? []).forEach(sib => add(n.id, sib, 'hermano', par));
+      (childrenOf.get(par) ?? []).forEach(sib => add(n.id, sib, T.sibling, par));
       siblingsOf(par).forEach(uncle => {
-        add(uncle, n.id, 'tio', par);
-        add(n.id, uncle, 'sobrino', par);
-        (childrenOf.get(uncle) ?? []).forEach(cousin => add(n.id, cousin, 'primo', uncle));
+        add(uncle, n.id, T.uncle, par);
+        add(n.id, uncle, T.nephew, par);
+        (childrenOf.get(uncle) ?? []).forEach(cousin => add(n.id, cousin, T.cousin, uncle));
       });
     });
   });
@@ -165,10 +204,33 @@ export function impliedKinship(p: Project, genealogyId: string): Set<string> {
 }
 
 /** Una relación de parentesco explícita que el árbol ya deduce (abuelo, hermano, tío, sobrino, primo). */
-export function isImpliedKinship(implied: Set<string>, r: Relation): boolean {
-  if (!r.kinshipId) return false;
-  const term = SIBLING_TERMS.includes(r.kinshipId) ? 'hermano' : r.kinshipId;
-  return implied.has(`${r.sourceId}|${r.targetId}|${term}`);
+export function isImpliedKinship(implied: Set<string>, r: Relation, p: Project): boolean {
+  const t = kinshipTerm(p, r.kinshipId);
+  if (!t) return false;
+  // Cualquier término con el mismo papel deducible cuenta (gemelos, medio hermanos…).
+  const canonical = t.derived ? (p.kinship.find(x => x.derived === t.derived)?.id ?? t.id) : t.id;
+  return implied.has(`${r.sourceId}|${r.targetId}|${canonical}`);
+}
+
+/**
+ * Relaciones de ascendencia que parecen guardadas al revés: invertidas, dejan de contradecirse
+ * otros parentescos. Devuelve cuántos conflictos arregla invertir cada una.
+ */
+export function kinshipSuspects(p: Project, genealogyId: string): Map<string, number> {
+  const base = kinshipConflicts(p, genealogyId).length;
+  const result = new Map<string, number>();
+  if (!base) return result;
+  p.relations
+    .filter(r => r.typeId === genealogyId && kinshipStructureLink(p, r))
+    .forEach(r => {
+      const flipped = {
+        ...p,
+        relations: p.relations.map(x => (x.id === r.id ? { ...x, sourceId: x.targetId, targetId: x.sourceId } : x)),
+      };
+      const after = kinshipConflicts(flipped, genealogyId).length;
+      if (after < base) result.set(r.id, base - after);
+    });
+  return result;
 }
 
 /** Grafo de parentesco de un tipo genealógico, con la generación de cada nodo. */

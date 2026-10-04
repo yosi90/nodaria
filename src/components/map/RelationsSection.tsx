@@ -1,7 +1,14 @@
 import { ArrowLeftRight, ChevronDown, ChevronRight, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { nodeConnections } from '../../domain/connections';
-import { derivedKinship, kinshipConflicts, kinshipName, kinshipTerm, nodeGender } from '../../domain/kinship';
+import {
+  derivedKinship,
+  kinshipConflicts,
+  kinshipName,
+  kinshipSuspects,
+  kinshipTerm,
+  nodeGender,
+} from '../../domain/kinship';
 import { uid } from '../../domain/factories';
 import { allFields, getNode, getSchema, nodeLabel, relationRole, typeMatches } from '../../domain/selectors';
 import type { FieldValue, Node, Relation, Schema } from '../../domain/types';
@@ -32,6 +39,10 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
       .filter(s => s.genealogical)
       .flatMap(s => kinshipConflicts(project, s.id))
       .map(c => [c.relation.id, c] as const),
+  );
+  // Relaciones de ascendencia que, invertidas, hacen cuadrar al resto: la causa más probable.
+  const suspects = new Map(
+    relationTypes.filter(s => s.genealogical).flatMap(s => [...kinshipSuspects(project, s.id).entries()]),
   );
   if (!connections) return null;
 
@@ -83,6 +94,10 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
             const theirs = relationRole(project, relation, direction === 'out' ? 'target' : 'source');
             const open = editing === relation.id;
             const conflict = conflicts.get(relation.id);
+            const suspect = suspects.get(relation.id);
+            const suspectText = suspect
+              ? `Parece estar al revés: invertida, cuadra${suspect === 1 ? '' : 'n'} ${suspect} parentesco${suspect === 1 ? '' : 's'} más. Ahora dice que ${mine.toLowerCase()} es ${nodeLabel(project, getNode(project, nodeId)!)} y ${theirs.toLowerCase()} es ${nodeLabel(project, other)}.`
+              : undefined;
             const conflictText = conflict
               ? `No cuadra con la ascendencia registrada: ${nodeLabel(project, other)} debería estar ${Math.abs(conflict.expected)} generación${Math.abs(conflict.expected) === 1 ? '' : 'es'} ${(direction === 'out' ? conflict.expected : -conflict.expected) > 0 ? 'por debajo' : 'por encima'} y está ${conflict.actual === 0 ? 'a la misma altura' : `${Math.abs(conflict.actual)} ${(direction === 'out' ? conflict.actual : -conflict.actual) > 0 ? 'por debajo' : 'por encima'}`}. Si alguna relación de progenitor o hijo está al revés, usa «Invertir» en ella.`
               : undefined;
@@ -117,10 +132,16 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
                       </span>
                       {mine !== theirs && <small className="muted"> (yo: {mine})</small>}
                     </span>
-                    {conflict && (
-                      <span className="node-mark warning" title={conflictText}>
-                        <TriangleAlert size={13} aria-label="No cuadra con el árbol" />
+                    {suspect ? (
+                      <span className="node-mark danger" title={suspectText}>
+                        <TriangleAlert size={13} aria-label="Parece estar al revés" />
                       </span>
+                    ) : (
+                      conflict && (
+                        <span className="node-mark warning" title={conflictText}>
+                          <TriangleAlert size={13} aria-label="No cuadra con el árbol" />
+                        </span>
+                      )
                     )}
                     <span className="badge">{schema?.name}</span>
                   </button>
@@ -128,8 +149,8 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
                     <IconButton
                       icon={ArrowLeftRight}
                       size="sm"
-                      variant="ghost"
-                      label="Invertir: intercambiar quién es quién"
+                      variant={suspect ? 'danger' : 'ghost'}
+                      label={suspect ? 'Invertir (parece estar al revés)' : 'Invertir: intercambiar quién es quién'}
                       tooltipSide="left"
                       onClick={() => invert(relation)}
                     />
@@ -155,11 +176,23 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
           </p>
         )
       )}
-      {connections.relations.some(c => conflicts.has(c.relation.id)) && (
+      {connections.relations.some(c => conflicts.has(c.relation.id) || suspects.has(c.relation.id)) && (
         <p className="muted-note conflict-note">
-          <TriangleAlert size={12} aria-hidden /> Hay parentescos que no cuadran con la ascendencia registrada. Lo más
-          habitual es una relación de progenitor o hijo guardada al revés: ábrela y comprueba la frase, o pulsa
-          «Invertir».
+          <TriangleAlert size={12} aria-hidden />{' '}
+          {connections.relations.some(c => suspects.has(c.relation.id))
+            ? 'Una relación de ascendencia de esta ficha parece guardada al revés (marcada en rojo): pulsa «Invertir» en ella.'
+            : (() => {
+                const culprits = [...suspects.keys()]
+                  .map(id => project.relations.find(r => r.id === id))
+                  .filter((r): r is Relation => Boolean(r))
+                  .map(
+                    r =>
+                      `${nodeLabel(project, getNode(project, r.sourceId)!)} – ${nodeLabel(project, getNode(project, r.targetId)!)}`,
+                  );
+                return culprits.length
+                  ? `Hay parentescos que no cuadran con la ascendencia registrada. La causa probable está en otra ficha: ${culprits.join(', ')} (parece al revés; ábrela y pulsa «Invertir»).`
+                  : 'Hay parentescos que no cuadran con la ascendencia registrada. Comprueba la frase de cada relación de progenitor o hijo implicada.';
+              })()}
         </p>
       )}
       <DerivedKinship nodeId={nodeId} />
@@ -266,8 +299,9 @@ function RelationPreview({
 
 /** Parentescos que el árbol deduce para este nodo (abuelos, hermanos, tíos, primos…) sin que haya relación explícita. */
 function DerivedKinship({ nodeId }: { nodeId: string }) {
-  const { project } = useApp();
+  const { project, dispatch } = useApp();
   const { select } = useNavigation();
+  const toast = useToast();
   const me = getNode(project, nodeId);
   if (!me) return null;
   const explicit = new Set(
@@ -275,9 +309,20 @@ function DerivedKinship({ nodeId }: { nodeId: string }) {
   );
   const derived = project.schemas
     .filter(s => s.kind === 'relationship' && s.genealogical)
-    .flatMap(s => derivedKinship(project, s.id))
+    .flatMap(s => derivedKinship(project, s.id).map(d => ({ ...d, typeId: s.id })))
     .filter(d => d.sourceId === nodeId && !explicit.has(`${d.sourceId}|${d.targetId}`));
   if (!derived.length) return null;
+  const establish = (d: (typeof derived)[number]) => {
+    dispatch({
+      type: 'add-relation',
+      typeId: d.typeId,
+      sourceId: d.sourceId,
+      targetId: d.targetId,
+      id: uid('rel'),
+      kinshipId: d.termId,
+    });
+    toast({ message: 'Parentesco establecido como relación', undoable: true });
+  };
   return (
     <div className="derived-kin">
       <small className="muted">Deducido por el árbol (sin crear relación):</small>
@@ -300,6 +345,9 @@ function DerivedKinship({ nodeId }: { nodeId: string }) {
                 {nodeLabel(project, other)}
               </span>
               {via && <span className="muted"> · por {nodeLabel(project, via)}</span>}
+              <Button size="sm" variant="ghost" onClick={() => establish(d)}>
+                Establecer
+              </Button>
             </li>
           );
         })}

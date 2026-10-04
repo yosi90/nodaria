@@ -8,6 +8,16 @@ export interface Preferences {
   treeCollapsed: boolean;
   inspectorWidth: number;
   typeListWidth: number;
+  /** Decisiones por proyecto al entrar en la disposición Genealogía: qué se oculta y si la leyenda está abierta. */
+  genealogy: Record<string, GenealogyPreference>;
+}
+
+export interface GenealogyPreference {
+  hiddenEntityTypeIds: string[];
+  hiddenRelationTypeIds: string[];
+  legendOpen: boolean;
+  /** Filtros que había antes de entrar en Genealogía, para restaurarlos al salir. */
+  before?: { hiddenEntityTypeIds: string[]; hiddenRelationTypeIds: string[] };
 }
 
 const PREFERENCES_KEY = 'nodaria_ui_v1';
@@ -19,6 +29,7 @@ const DEFAULTS: Preferences = {
   treeCollapsed: false,
   inspectorWidth: 360,
   typeListWidth: 270,
+  genealogy: {},
 };
 
 function loadPreferences(): Preferences {

@@ -1,5 +1,5 @@
 import { Handle, Position, type Node as FlowNode, type NodeProps } from '@xyflow/react';
-import { Pin, TriangleAlert } from 'lucide-react';
+import { TriangleAlert } from 'lucide-react';
 import { createElement, memo, type CSSProperties } from 'react';
 import { typeIcon } from '../common/icon-catalog';
 
@@ -45,17 +45,24 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
             <TriangleAlert size={12} />
           </span>
         )}
-        {data.pinned && (
-          <span className="node-mark pin" title="Posición fijada en esta disposición">
-            <Pin size={11} />
-          </span>
-        )}
         {data.degree > 0 && (
           <span className="node-degree" title={`${data.degree} relaciones`}>
             {data.degree}
           </span>
         )}
       </div>
+      {data.pinned && (
+        <span className="node-pushpin" title="Posición fijada en esta disposición" aria-hidden>
+          <svg viewBox="0 0 32 40" width="30" height="38">
+            <line x1="16" y1="24" x2="16" y2="39" stroke="#8d939c" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="16" y1="24" x2="16" y2="39" stroke="#d9dde3" strokeWidth="0.9" strokeLinecap="round" />
+            <ellipse cx="16" cy="22" rx="7" ry="2.6" fill="#b3202b" />
+            <path d="M11 6 Q16 3 21 6 L20.5 20 Q16 22.5 11.5 20 Z" fill="#e1343f" />
+            <ellipse cx="16" cy="6" rx="8" ry="4.2" fill="#f25560" />
+            <ellipse cx="13.5" cy="5" rx="2.6" ry="1.2" fill="#ffffff" opacity="0.65" />
+          </svg>
+        </span>
+      )}
       <Handle
         type="source"
         position={Position.Right}

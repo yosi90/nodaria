@@ -1096,12 +1096,22 @@ button.mention:hover {
   padding-left: 18px;
 }
 .derived-kin li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
   margin: 2px 0;
+}
+.derived-kin li .btn {
+  margin-left: auto;
+}
+.node-mark.danger {
+  color: var(--danger);
 }
 .kinship-head,
 .kinship-row {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1.2fr 1.1fr 44px 48px 32px;
+  grid-template-columns: 1.2fr 1fr 1fr 1.2fr 1.1fr 44px 48px 1.2fr 32px;
   gap: 6px;
   align-items: center;
   min-width: 720px;

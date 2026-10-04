@@ -115,12 +115,14 @@ describe('parentesco deducido', () => {
       isImpliedKinship(
         implied,
         p.relations.find(r => r.id === 'r6')!,
+        p,
       ),
     ).toBe(true);
     expect(
       isImpliedKinship(
         implied,
         p.relations.find(r => r.id === 'r1')!,
+        p,
       ),
     ).toBe(false);
   });

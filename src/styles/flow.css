@@ -108,8 +108,19 @@
 .node-mark.warning {
   color: var(--warning);
 }
-.node-mark.pin {
-  color: var(--accent);
+/* Chincheta de cómic clavada en la esquina superior derecha, sobresaliendo de la tarjeta. */
+.node-pushpin {
+  position: absolute;
+  top: -19px;
+  right: -13px;
+  z-index: 2;
+  display: block;
+  width: 30px;
+  height: 38px;
+  transform: rotate(28deg);
+  transform-origin: 50% 90%;
+  filter: drop-shadow(1px 2px 2px #0000006b);
+  pointer-events: none;
 }
 .node-degree {
   min-width: 18px;

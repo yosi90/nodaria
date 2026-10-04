@@ -1,6 +1,7 @@
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { uid } from '../../domain/factories';
-import { defaultKinship, kinshipIssues } from '../../domain/kinship';
+import { DERIVED_ROLES, defaultKinship, kinshipIssues } from '../../domain/kinship';
+import type { DerivedRole } from '../../domain/types';
 import type { KinshipTerm } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { Button, IconButton } from '../common/Button';
@@ -39,6 +40,7 @@ export function KinshipEditor() {
         generation: 0,
         lineage: false,
         couple: false,
+        derived: null,
       },
     ]);
   };
@@ -94,7 +96,9 @@ export function KinshipEditor() {
         generación pero no son ascendencia, por eso van sin marcar; Hermano/a o Abuelo/a no pueden marcarse porque no
         distan exactamente una generación. <strong>Pareja</strong>: los dos nodos se dibujan juntos en la disposición
         Genealogía y sus hijos comunes quedan centrados debajo (quienes comparten hijos se dibujan juntos aunque no
-        tengan marcado ningún término).
+        tengan marcado ningún término). <strong>Deducción</strong>: qué término usa el árbol cuando deduce un parentesco
+        de la ascendencia directa (abuelo = progenitor del progenitor, tío = hermano del progenitor, primo = hijo del
+        tío…); así puedes renombrar o sustituir los términos sin perder la deducción.
       </p>
       <div className="kinship-table">
         <div className="kinship-head">
@@ -105,6 +109,7 @@ export function KinshipEditor() {
           <span>Generación</span>
           <span title="Solo los términos de una generación de distancia pueden formar el árbol">Árbol</span>
           <span title="Los dos nodos se dibujan juntos en la genealogía, con sus hijos debajo">Pareja</span>
+          <span title="El árbol deduce este parentesco de la ascendencia directa">Deducción</span>
           <span />
         </div>
         {terms.map(t => (
@@ -171,6 +176,16 @@ export function KinshipEditor() {
               disabled={t.generation !== 0}
               title={t.generation !== 0 ? 'Solo los términos de la misma generación' : undefined}
               onChange={e => update(t.id, { couple: e.target.checked })}
+            />
+            <Select
+              compact
+              aria-label="Deducción"
+              options={[
+                { value: '', label: 'No se deduce' },
+                ...DERIVED_ROLES.map(r => ({ value: r.value, label: r.label, hint: r.hint })),
+              ]}
+              value={t.derived ?? ''}
+              onChange={v => update(t.id, { derived: (v || null) as DerivedRole | null })}
             />
             <IconButton
               icon={Trash2}

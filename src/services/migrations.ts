@@ -1,6 +1,6 @@
 import { PROJECT_FORMAT_VERSION } from '../domain/constants';
 import { createView, uid } from '../domain/factories';
-import { defaultKinship } from '../domain/kinship';
+import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
 import type { FieldValue, LayoutMode, Node, Position, Project } from '../domain/types';
 
@@ -109,6 +109,7 @@ function normalizeProject(project: RawProject): Project {
           ...t,
           lineage: t.lineage || false,
           couple: t.couple ?? ['pareja', 'conyuge'].includes(t.id),
+          derived: t.derived === undefined ? (DEFAULT_DERIVED[t.id] ?? null) : t.derived,
         }))
       : defaultKinship(),
     view: { ...createView(), ...(project.view ?? {}) },

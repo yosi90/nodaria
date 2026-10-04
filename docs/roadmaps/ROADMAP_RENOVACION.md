@@ -300,6 +300,10 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 - [x] Genealogía: todo el parentesco va en trazos ortogonales (puente por encima entre parientes de la misma fila; bajada, tramo horizontal y bajada entre filas), con etiqueta y clic para seleccionar; filas más separadas; generaciones fieles a la ascendencia (camino más largo) aunque otra relación contradiga.
 - [x] Formulario de relación: en parentesco el término siempre describe a este nodo («Grugnak es…»), sin selector de sentido; el editor se desplaza a la vista al abrirse.
 - [x] Parentesco en conflicto (2026-10-04): las relaciones cuyo salto de generación no cuadra con el árbol se marcan en la ficha (aviso con explicación) y en el lienzo (trazo en color de aviso); botón «Invertir» en cada relación de parentesco.
+- [x] Columna «Deducción» en el vocabulario (2026-10-04): cada término declara qué papel deducible representa (abuelo, nieto, hermano, tío, sobrino, primo); nada queda atado a identificadores del vocabulario inicial. Botón «Establecer» en los parentescos deducidos.
+- [x] Sospechosas al revés: la relación de ascendencia que, invertida, hace cuadrar al resto se marca en rojo con su explicación y «Invertir» destacado; las fichas afectadas señalan la causa.
+- [x] Disposición Genealogía: solo disponible si existe un tipo de relación genealógico; al entrar oculta los tipos de entidad que ningún parentesco admite y abre la leyenda; lo que el usuario oculte, muestre o cierre se recuerda por proyecto (preferencias del navegador) y al salir se restauran los filtros previos.
+- [x] Chincheta de cómic clavada en la esquina de la tarjeta.
 - [x] Barra del lienzo: etiquetas «Disposición» y «Foco» dentro de su grupo, opción elegida en color de acento, menú «Vistas» con flecha.
 - [x] Genealogía: usa siempre la estructura de parentesco (aunque «Ver por» sea otra); hermanos y demás parientes sin ascendencia registrada se colocan en la fila de su generación; lugares y otros nodos sin parentesco en una fila aparte.
 
