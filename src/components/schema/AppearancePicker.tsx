@@ -1,6 +1,6 @@
-import { createElement, useCallback, useState, type CSSProperties } from 'react';
+import { useCallback, useState, type CSSProperties } from 'react';
 import { COLORS } from '../../domain/constants';
-import { TYPE_ICONS } from '../common/icon-catalog';
+import { IconGrid } from '../common/IconPicker';
 import { TypeIcon } from '../common/icons';
 import { Popover } from '../common/Popover';
 import { anchorOf, type Anchor } from '../common/anchor';
@@ -51,23 +51,13 @@ export function AppearancePicker({ icon, color, onChange }: AppearancePickerProp
       {anchor && (
         <Popover anchor={anchor} onClose={close} role="dialog" label="Iconos">
           <div className="menu-title">Icono</div>
-          <div className="icon-grid">
-            {Object.entries(TYPE_ICONS).map(([name, { icon: component, label }]) => (
-              <button
-                key={name}
-                type="button"
-                aria-label={label}
-                title={label}
-                aria-pressed={name === icon}
-                onClick={() => {
-                  onChange({ icon: name });
-                  close();
-                }}
-              >
-                {createElement(component, { size: 17, 'aria-hidden': true })}
-              </button>
-            ))}
-          </div>
+          <IconGrid
+            value={icon}
+            onPick={name => {
+              if (name) onChange({ icon: name });
+              close();
+            }}
+          />
         </Popover>
       )}
     </div>

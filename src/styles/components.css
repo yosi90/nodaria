@@ -212,6 +212,19 @@
   background: var(--surface-2);
   font-size: var(--fs-sm);
 }
+.icon-picker.empty {
+  color: var(--text-subtle);
+  border-style: dashed;
+}
+.option-chip {
+  gap: 4px;
+  padding-left: 3px;
+}
+.field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 .chip > span:not(.type-icon) {
   overflow: hidden;
   text-overflow: ellipsis;

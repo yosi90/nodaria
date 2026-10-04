@@ -6,6 +6,7 @@ import type { FieldDefinition } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { IconButton } from '../common/Button';
 import { schemaOption } from '../common/options';
+import { IconPicker } from '../common/IconPicker';
 import { MultiSelect } from '../common/Select';
 
 interface FieldEditorProps {
@@ -165,6 +166,28 @@ export function FieldEditor({
               </label>
             )}
           </div>
+          <div className="field-row">
+            <div className="field">
+              Icono
+              <div className="check-row" style={{ alignItems: 'center' }}>
+                <IconPicker value={field.icon} onChange={icon => set('icon', icon)} label="Icono del atributo" />
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={field.showOnNode}
+                    disabled={!field.icon && !Object.keys(field.optionIcons).length}
+                    onChange={event => set('showOnNode', event.target.checked)}
+                  />
+                  Mostrar en el nodo
+                </label>
+              </div>
+              <small>
+                {field.type === 'select'
+                  ? 'En el nodo se muestra el icono de la opción elegida (o el del atributo si la opción no tiene).'
+                  : 'En el nodo se muestra el icono cuando el atributo tiene valor.'}
+              </small>
+            </div>
+          </div>
           <div className="check-row">
             <label>
               <input
@@ -205,7 +228,12 @@ export function FieldEditor({
           {field.type === 'select' && (
             <div className="field">
               Opciones
-              <OptionsEditor options={field.options} onChange={options => set('options', options)} />
+              <OptionsEditor
+                options={field.options}
+                icons={field.optionIcons}
+                onChange={options => set('options', options)}
+                onIconsChange={icons => set('optionIcons', icons)}
+              />
             </div>
           )}
           {(field.type === 'nodeRef' || field.type === 'nodeRefs') && (
@@ -237,8 +265,18 @@ export function FieldEditor({
   );
 }
 
-/** Opciones de una lista: chips que se añaden con Intro o coma y se quitan con su botón. */
-function OptionsEditor({ options, onChange }: { options: string[]; onChange: (options: string[]) => void }) {
+/** Opciones de una lista: chips que se añaden con Intro o coma y se quitan con su botón; cada una puede llevar icono. */
+function OptionsEditor({
+  options,
+  icons,
+  onChange,
+  onIconsChange,
+}: {
+  options: string[];
+  icons: Record<string, string>;
+  onChange: (options: string[]) => void;
+  onIconsChange: (icons: Record<string, string>) => void;
+}) {
   const [draft, setDraft] = useState('');
   const commit = () => {
     const value = draft.trim();
@@ -256,12 +294,30 @@ function OptionsEditor({ options, onChange }: { options: string[]; onChange: (op
       {options.length > 0 && (
         <div className="chip-list">
           {options.map(option => (
-            <span className="chip" key={option}>
+            <span className="chip option-chip" key={option}>
+              <IconPicker
+                value={icons[option] ?? null}
+                size={22}
+                label={`Icono de ${option}`}
+                onChange={icon => {
+                  const next = { ...icons };
+                  if (icon) next[option] = icon;
+                  else delete next[option];
+                  onIconsChange(next);
+                }}
+              />
               <span>{option}</span>
               <button
                 type="button"
                 aria-label={`Quitar ${option}`}
-                onClick={() => onChange(options.filter(o => o !== option))}
+                onClick={() => {
+                  onChange(options.filter(o => o !== option));
+                  if (icons[option]) {
+                    const next = { ...icons };
+                    delete next[option];
+                    onIconsChange(next);
+                  }
+                }}
               >
                 <X size={12} aria-hidden />
               </button>

@@ -19,6 +19,8 @@ export interface NodeCardData extends Record<string, unknown> {
   onUnpin?: (origin: { x: number; y: number }) => void;
   /** Retrato (data URL) del primer atributo de imagen con valor. */
   image: string | null;
+  /** Iconos de atributos marcados «Mostrar en el nodo» (con valor), con su texto. */
+  badges: { icon: string; title: string }[];
 }
 
 export type CardNode = FlowNode<NodeCardData, 'card'>;
@@ -64,7 +66,14 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
       )}
       <div className="node-texts">
         <strong title={data.label}>{data.label}</strong>
-        <small>{data.typeName}</small>
+        <small>
+          {data.typeName}
+          {data.badges.map(b => (
+            <span key={b.title} className="node-badge" title={b.title}>
+              {createElement(typeIcon(b.icon), { size: 11, strokeWidth: 2.4 })}
+            </span>
+          ))}
+        </small>
       </div>
       <div className="node-marks" aria-hidden>
         {data.incomplete && (

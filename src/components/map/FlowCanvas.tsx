@@ -28,7 +28,7 @@ import {
   kinshipTerm,
 } from '../../domain/kinship';
 import { resolveStructure, structureLinks } from '../../domain/structure';
-import type { LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
+import type { LayoutMode, Position, Project, Selection, Relation, Node } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { pointAnchor, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
@@ -117,6 +117,23 @@ function isIncomplete(project: Project, typeId: string, values: Record<string, u
     const v = values[f.id];
     return v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
   });
+}
+
+/** Iconos de los atributos marcados «Mostrar en el nodo» que tienen valor: el de la opción elegida o el del atributo. */
+function fieldBadges(project: Project, n: Node): { icon: string; title: string }[] {
+  const badges: { icon: string; title: string }[] = [];
+  allFields(project, n.typeId)
+    .filter(f => f.showOnNode)
+    .forEach(f => {
+      const v = n.values[f.id];
+      const empty = v === undefined || v === null || v === '' || v === false || (Array.isArray(v) && !v.length);
+      if (empty) return;
+      const icon = (f.type === 'select' ? f.optionIcons[String(v)] : undefined) ?? f.icon;
+      if (!icon) return;
+      const text = typeof v === 'string' || typeof v === 'number' ? `: ${v}` : '';
+      badges.push({ icon, title: `${f.label}${text}` });
+    });
+  return badges.slice(0, 4);
 }
 
 function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: FlowCanvasProps) {
@@ -273,6 +290,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                 .filter(f => f.type === 'image')
                 .map(f => n.values[f.id])
                 .find(isImageValue) ?? null,
+            badges: fieldBadges(project, n),
           },
         };
       });

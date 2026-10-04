@@ -265,7 +265,15 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
                       const Wrapper = ['boolean', 'nodeRef', 'nodeRefs', 'image'].includes(f.type) ? 'div' : 'label';
                       return (
                         <Wrapper className="field" key={f.id}>
-                          <span>
+                          <span className="field-label">
+                            {(() => {
+                              const chosen =
+                                f.type === 'select'
+                                  ? f.optionIcons[String(fieldValue(f, item.values, fields) ?? '')]
+                                  : undefined;
+                              const icon = chosen ?? f.icon;
+                              return icon ? <TypeIcon icon={icon} color={schema?.color} size="sm" /> : null;
+                            })()}
                             {fieldText(f.label, schema?.name)}
                             {f.required && <span className="required"> *</span>}
                           </span>

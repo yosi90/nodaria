@@ -26,6 +26,12 @@ export interface FieldDefinition {
   options: string[];
   referenceTypeIds: string[];
   formula: string;
+  /** Icono del atributo (catálogo de iconos), o ninguno. */
+  icon: string | null;
+  /** Icono de cada opción de una lista, por su texto. */
+  optionIcons: Record<string, string>;
+  /** Mostrar el icono (del atributo o de la opción elegida) en la tarjeta del nodo. */
+  showOnNode: boolean;
 }
 /** Vínculo a un atributo de la biblioteca compartida del proyecto. */
 export interface FieldLink {

@@ -94,6 +94,17 @@
   color: var(--text-muted);
   font-size: 10.5px;
 }
+.node-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  vertical-align: -3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--type-color) 18%, transparent);
+  color: var(--type-color);
+}
 .node-marks {
   display: flex;
   flex-direction: column;

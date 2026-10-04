@@ -68,6 +68,9 @@ export function createField(): FieldDefinition {
     options: [],
     referenceTypeIds: [],
     formula: '',
+    icon: null,
+    optionIcons: {},
+    showOnNode: false,
   };
 }
 export function createView(): ProjectView {
