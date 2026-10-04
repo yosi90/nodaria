@@ -221,7 +221,11 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
                             {(() => {
                               const chosen =
                                 f.type === 'select'
-                                  ? f.optionIcons[String(fieldValue(f, item.values, fields) ?? '')]
+                                  ? f.optionIcons[
+                                      String(
+                                        fieldValue(f, item.values, fields, node ? { project, node } : undefined) ?? '',
+                                      )
+                                    ]
                                   : undefined;
                               const icon = chosen ?? f.icon;
                               return icon ? <TypeIcon icon={icon} color={schema?.color} size="sm" /> : null;
@@ -231,7 +235,7 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
                           </span>
                           <FieldControl
                             field={f}
-                            value={fieldValue(f, item.values, fields)}
+                            value={fieldValue(f, item.values, fields, node ? { project, node } : undefined)}
                             ownerId={item.id}
                             onChange={v => updateValue(f.id, v)}
                             titleField={f === titleField}

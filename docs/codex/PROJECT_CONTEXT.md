@@ -87,6 +87,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 - `duplicateNode(p, id, withRelations)` y `duplicateSchema(p, id)` en `src/domain/operations.ts` (acciones `duplicate-node` / `duplicate-schema`); nombre «(copia)» sin repetir, posiciones fijadas desplazadas, atributos del tipo con ids nuevos.
 - Tipos de campo `url`, `color`, `scale` (1–5) y `tags` (string[]); los controles viven en `FieldControl` (TagsInput compartido en `src/components/common/TagsInput.tsx`).
+- **Campos calculados** (`src/domain/formulas.ts`, `evaluateFormula(p, node, formula)`): expresiones entre llaves que leen atributos propios (por clave o etiqueta), siguen referencias (`{ref.clave}`), exponen `titulo`, `tipo` y `padre`, y cuentan o listan relaciones (por tipo), hijos y elementos de listas o referencias múltiples. `fieldValue` usa el motor cuando recibe `{ project, node }` (nodos); para relaciones mantiene la sustitución simple por clave. Los calculados anidados se cortan a profundidad 4.
 
 ## Disposición «Mapa»
 

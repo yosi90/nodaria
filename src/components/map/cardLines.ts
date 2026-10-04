@@ -1,3 +1,4 @@
+import { evaluateFormula } from '../../domain/formulas';
 import { allFields } from '../../domain/selectors';
 import type { FieldDefinition, Node, Project } from '../../domain/types';
 import { NODE_H } from './layout';
@@ -43,7 +44,7 @@ export function cardContent(p: Project, n: Node): { badges: CardBadge[]; lines: 
   const badges: CardBadge[] = [];
   const lines: CardLine[] = [];
   allFields(p, n.typeId).forEach(f => {
-    const v = n.values[f.id];
+    const v = f.type === 'computed' ? evaluateFormula(p, n, f.formula) : n.values[f.id];
     if (isEmpty(v)) return;
     const option = f.type === 'select' ? String(v) : null;
     const mode = (option && f.optionDisplay[option]) || f.nodeDisplay;

@@ -295,7 +295,14 @@ export function FieldEditor({
                 placeholder="{nombre} — {edad}"
                 onChange={event => set('formula', event.target.value)}
               />
-              <small>Escribe las claves de otros atributos entre llaves.</small>
+              <small>
+                Entre llaves: <code>{'{clave}'}</code> (un atributo; una referencia da el título del nodo),{' '}
+                <code>{'{referencia.clave}'}</code> (atributo del nodo referido), <code>{'{titulo}'}</code>,{' '}
+                <code>{'{tipo}'}</code>, <code>{'{padre}'}</code>, <code>{'{padre.clave}'}</code>,{' '}
+                <code>{'{contar(relaciones)}'}</code>, <code>{'{contar(relaciones:Amistad)}'}</code>,{' '}
+                <code>{'{contar(hijos)}'}</code>, <code>{'{contar(clave)}'}</code>, <code>{'{lista(relaciones)}'}</code>
+                , <code>{'{lista(hijos)}'}</code>.
+              </small>
             </label>
           )}
         </div>

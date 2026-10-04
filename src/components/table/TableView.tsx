@@ -89,7 +89,7 @@ export function TableView() {
       }
       if (column.id === RELATIONS_COLUMN) return String(degree.get(n.id) ?? 0);
       const f = column.field!;
-      const v = fieldValue(f, n.values, allFields(project, n.typeId));
+      const v = fieldValue(f, n.values, allFields(project, n.typeId), { project, node: n });
       if (f.type === 'nodeRef' || f.type === 'nodeRefs') {
         const ids = typeof v === 'string' ? [v] : Array.isArray(v) ? v : [];
         return ids
@@ -343,7 +343,10 @@ export function TableView() {
                             ) : (
                               <FieldControl
                                 field={c.field}
-                                value={fieldValue(c.field, n.values, allFields(project, n.typeId))}
+                                value={fieldValue(c.field, n.values, allFields(project, n.typeId), {
+                                  project,
+                                  node: n,
+                                })}
                                 ownerId={n.id}
                                 onChange={v => updateValue(n, c.field!.id, v)}
                               />

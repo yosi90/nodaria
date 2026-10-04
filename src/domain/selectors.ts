@@ -1,3 +1,4 @@
+import { evaluateFormula } from './formulas';
 import { kinshipRoles } from './kinship';
 import { declaredFields } from './library';
 import type { FieldDefinition, FieldValue, Node, Project, Relation, Schema } from './types';
@@ -175,9 +176,19 @@ export function relationRole(p: Project, r: Relation, end: 'source' | 'target') 
   return forward;
 }
 
-/** Valor efectivo de un campo. Los calculados sustituyen `{clave}` por el valor del campo con esa clave. */
-export function fieldValue(field: FieldDefinition, values: Record<string, FieldValue>, fields: FieldDefinition[]) {
+/**
+ * Valor efectivo de un campo. Con `context` (un nodo del proyecto), los calculados usan el motor de
+ * fórmulas completo (`src/domain/formulas.ts`: referencias, padre, contar, lista…); sin él (relaciones),
+ * solo sustituyen `{clave}` por el valor del campo con esa clave.
+ */
+export function fieldValue(
+  field: FieldDefinition,
+  values: Record<string, FieldValue>,
+  fields: FieldDefinition[],
+  context?: { project: Project; node: Node },
+) {
   if (field.type !== 'computed') return values[field.id];
+  if (context) return evaluateFormula(context.project, context.node, field.formula);
   return field.formula.replace(/\{([^}]+)\}/g, (_, key: string) => {
     const source = fields.find(f => f.key === key.trim());
     const value = source ? values[source.id] : undefined;

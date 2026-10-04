@@ -220,7 +220,7 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [x] (hecho: referencias dibujadas como aristas discontinuas y usables en «Ver por», ocultables en la leyenda) Opción de **dibujar los campos de referencia como aristas** ("Dios: Aurel" se ve en el grafo sin crear además una relación). Decidir y documentar cuándo usar campo de referencia y cuándo relación.
 - [x] Nuevos tipos de campo (2026-10-04): Enlace (URL, con botón para abrir), Color (selector y valor hex), Escala 1–5 (estrellas) y Etiquetas (chips libres); Imagen ya estaba. _Pendientes: lista ordenada y fecha del mundo._
 - [ ] Valores por defecto tipados y heredados.
-- [ ] Campos calculados reales (valor visible; funciones simples: contar relaciones, concatenar, referencia a un campo de otro nodo).
+- [x] Campos calculados reales (2026-10-04): motor en `src/domain/formulas.ts` con `{clave}`, `{referencia.clave}`, `{titulo}`, `{tipo}`, `{padre}`, `{padre.clave}`, `{contar(relaciones[:Tipo])}`, `{contar(hijos)}`, `{contar(clave)}`, `{lista(relaciones[:Tipo])}` y `{lista(hijos)}`; calculados anidados con límite de profundidad; ayuda en el editor de atributos.
 - [ ] Validación de campos obligatorios con avisos no bloqueantes y contador de "fichas incompletas".
 - [ ] Restricciones de cardinalidad en relaciones (p. ej. "un personaje tiene como máximo un dios patrón") y aviso al violarlas.
 - [ ] Herencia de subnodos permitidos y de restricciones de relación.
