@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { Selection } from '../domain/types';
 
 export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health';
-export type HelpTopic = 'shortcuts' | 'formulas';
+export type HelpTopic = 'start' | 'shortcuts' | 'formulas';
 
 interface NavigationState {
   view: View;
@@ -92,7 +92,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     [],
   );
   const setPaletteOpen = useCallback((paletteOpen: boolean) => setState(s => ({ ...s, paletteOpen })), []);
-  const openHelp = useCallback((topic: HelpTopic = 'shortcuts') => setState(s => ({ ...s, help: topic })), []);
+  const openHelp = useCallback((topic: HelpTopic = 'start') => setState(s => ({ ...s, help: topic })), []);
   const closeHelp = useCallback(() => setState(s => ({ ...s, help: null })), []);
 
   const value = useMemo<NavigationContextValue>(

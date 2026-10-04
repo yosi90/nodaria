@@ -152,7 +152,7 @@ export function MapView() {
           <IconButton icon={PanelLeftOpen} label="Mostrar estructura ([)" onClick={toggleTree} />
         </div>
       ) : (
-        <aside className="side-panel left" aria-label="Estructura">
+        <aside className="side-panel left" aria-label="Estructura" data-tour="structure">
           <TreePanel
             selection={activeSelection}
             onSelect={selectAndReveal}
@@ -175,7 +175,7 @@ export function MapView() {
         onConnectNodes={onConnectNodes}
       />
       {activeSelection && (
-        <aside className="side-panel right" aria-label="Inspector">
+        <aside className="side-panel right" aria-label="Inspector" data-tour="inspector">
           <Splitter
             width={preferences.inspectorWidth}
             grow="left"

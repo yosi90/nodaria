@@ -191,7 +191,11 @@ export function TableView() {
   );
 
   return (
-    <main className="table-layout" style={{ gridTemplateColumns: `${preferences.typeListWidth}px minmax(0, 1fr)` }}>
+    <main
+      className="table-layout"
+      data-tour="table"
+      style={{ gridTemplateColumns: `${preferences.typeListWidth}px minmax(0, 1fr)` }}
+    >
       <aside className="side-panel left" style={{ gridTemplateRows: 'auto minmax(0, 1fr)' }} aria-label="Tipos">
         <div className="panel-head">
           <h2>Tabla</h2>

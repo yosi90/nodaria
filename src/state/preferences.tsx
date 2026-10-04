@@ -16,6 +16,8 @@ export interface Preferences {
   matrix: Record<string, MatrixPreference>;
   /** Tipos de relación genealógicos que ya se ocultaron una vez por defecto fuera de Genealogía, por proyecto. */
   autoHiddenKinship: Record<string, string[]>;
+  /** La bienvenida ya se mostró (o el usuario ya tenía datos cuando llegó esta versión). */
+  welcomed: boolean;
 }
 
 /** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
@@ -50,6 +52,7 @@ const DEFAULTS: Preferences = {
   tables: {},
   matrix: {},
   autoHiddenKinship: {},
+  welcomed: false,
 };
 
 function loadPreferences(): Preferences {

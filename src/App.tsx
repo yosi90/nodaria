@@ -1,9 +1,14 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { isTypingTarget } from './components/common/keyboard';
 import { CommandPalette } from './components/layout/CommandPalette';
 import { RepairNotice } from './components/layout/RepairNotice';
 import { HelpDialog } from './components/layout/HelpDialog';
 import { Topbar } from './components/layout/Topbar';
+import { TemplatesDialog } from './components/onboarding/TemplatesDialog';
+import { Tour } from './components/onboarding/Tour';
+import { WelcomeDialog } from './components/onboarding/WelcomeDialog';
+import { isBlankProject } from './services/sync';
+import { usePreferences } from './state/preferences';
 import { MapView } from './components/map/MapView';
 import { PropertiesView } from './components/schema/PropertiesView';
 import { HealthView } from './components/health/HealthView';
@@ -24,12 +29,16 @@ export default function App() {
     openHelp: openHelpTopic,
     closeHelp,
   } = useNavigation();
-  const openHelp = useCallback(() => openHelpTopic('shortcuts'), [openHelpTopic]);
+  const openHelp = useCallback(() => openHelpTopic('start'), [openHelpTopic]);
   const openPalette = useCallback(() => setPaletteOpen(true), [setPaletteOpen]);
   useGlobalShortcuts(setView, openHelp, openPalette, back, forward);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const openTemplates = useCallback(() => setTemplatesOpen(true), []);
+  const closeTemplates = useCallback(() => setTemplatesOpen(false), []);
+  const welcome = useWelcome();
   return (
     <div className="app">
-      <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} />
+      <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} onTemplates={openTemplates} />
       {view === 'map' ? (
         <MapView />
       ) : view === 'table' ? (
@@ -44,10 +53,36 @@ export default function App() {
         <PropertiesView />
       )}
       <RepairNotice />
-      {help && <HelpDialog topic={help} onTopic={openHelpTopic} onClose={closeHelp} />}
+      {help && <HelpDialog topic={help} onTopic={openHelpTopic} onClose={closeHelp} onTemplates={openTemplates} />}
+      {templatesOpen && <TemplatesDialog onClose={closeTemplates} />}
+      {welcome.open && <WelcomeDialog onClose={welcome.dismiss} onTemplates={openTemplates} />}
+      <Tour />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );
+}
+
+/**
+ * La bienvenida se muestra una sola vez y solo si todavía no hay datos (un único proyecto en blanco).
+ * Quien ya tenía proyectos al llegar esta versión no la ve: se marca como vista en silencio.
+ */
+function useWelcome() {
+  const { state } = useApp();
+  const { preferences, setPreference } = usePreferences();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (preferences.welcomed) return;
+    const pristine = state.projects.length === 1 && isBlankProject(state.projects[0]);
+    if (pristine) setOpen(true);
+    else setPreference('welcomed', true);
+    // Solo se evalúa al arrancar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const dismiss = useCallback(() => {
+    setOpen(false);
+    setPreference('welcomed', true);
+  }, [setPreference]);
+  return { open, dismiss };
 }
 
 function useGlobalShortcuts(

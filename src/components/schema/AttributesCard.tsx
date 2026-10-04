@@ -121,7 +121,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   };
 
   return (
-    <div className="card">
+    <div className="card" data-tour="attributes">
       <div className="card-head">
         <h3>Atributos</h3>
         <Button

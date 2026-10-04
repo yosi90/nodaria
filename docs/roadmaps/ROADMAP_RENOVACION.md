@@ -228,7 +228,7 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [x] Herencia de subnodos permitidos y de restricciones de relación (2026-10-04): un tipo admite como subnodos los suyos más los de sus ancestros; una relación hereda «Desde»/«Hacia» del ancestro más cercano cuando los deja vacíos. El editor lo indica. Etiquetas «Datos/Esquema/Disposición» más discretas y separador centrado con el color del borde.
 - [x] Duplicar nodos (2026-10-04) desde la ficha (menú «Duplicar»: solo ficha o con relaciones), con Ctrl+D en el mapa y desde la tabla; el título lleva «(copia)» y las posiciones fijadas se desplazan. Duplicar tipos desde el editor (atributos con ids nuevos, preformas vinculadas, apariencia y restricciones; sin nodos).
 - [x] Operaciones masivas (2026-10-04): en la Tabla, casillas por fila y barra con «Cambiar tipo», «Mover a», «Etiquetar» y «Eliminar», todo deshacible.
-- [ ] **Plantillas de proyecto**: "Mundo de fantasía" (Personaje, Raza, Lugar, Reino, Deidad, Escuela de magia, Facción, Objeto, Acontecimiento; relaciones de familia, lealtad, enemistad, culto, pertenencia, práctica de magia), "Novela" (añade Capítulo y Escena con apariciones), "Vacío". Tipos y campos de una plantilla se pueden importar a un proyecto existente.
+- [x] (2026-10-04: `src/domain/templates/`, diálogo «Ejemplos y plantillas» desde el menú del proyecto y la ayuda; «Añadir sus tipos» a un proyecto existente) **Plantillas de proyecto**: "Mundo de fantasía" (Personaje, Raza, Lugar, Reino, Deidad, Escuela de magia, Facción, Objeto, Acontecimiento; relaciones de familia, lealtad, enemistad, culto, pertenencia, práctica de magia), "Novela" (añade Capítulo y Escena con apariciones), "Vacío". Tipos y campos de una plantilla se pueden importar a un proyecto existente.
 
 Criterio: el mundo del libro se puede modelar sin trucos ni duplicaciones, y la plantilla de fantasía permite empezar un mundo nuevo en minutos.
 
@@ -327,11 +327,11 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 
 Objetivo: que alguien que llega a https://nodaria.yosiftware.es sin contexto entienda en cinco minutos qué es y cómo empezar.
 
-- [ ] Mensaje de bienvenida que explique el flujo (tipos → relaciones → nodos) y enlace a los atajos. _Primera versión hecha el 2026-10-03._
-- [ ] **Proyecto de ejemplo** cargable desde la bienvenida y desde el menú de proyecto («Abrir mundo de ejemplo»): un mundo de fantasía pequeño con tipos, preformas, relaciones genealógicas, referencias, notas y una vista guardada.
-- [ ] **Recorrido guiado** (tour) la primera vez: 5–7 pasos que señalan la estructura, el lienzo, el inspector, «Ver por», el foco y la leyenda; se puede saltar y volver a lanzar desde la ayuda («?»).
-- [ ] **Ayuda contextual** en los puntos difíciles: qué es una estructura, cuándo usar atributo de referencia o relación, qué es una preforma, cómo funciona el parentesco con género.
-- [ ] Página de ayuda («?») ampliada: además de atajos, los conceptos clave con un párrafo cada uno.
+- [x] Mensaje de bienvenida que explique el flujo (tipos → relaciones → nodos) y enlace a los atajos. _Primera versión hecha el 2026-10-03; diálogo de bienvenida con cuatro caminos el 2026-10-04._
+- [x] **Proyectos de ejemplo** (2026-10-04) cargables desde la bienvenida, el menú de proyecto y la ayuda: «Coches» (básico, base del recorrido) y «Caso Puerto Norte» (complejo, no fantástico: herencia en tres niveles, preformas, familias con género, referencias, pagos, vistas guardadas, consultas y notas con menciones). Cada apertura crea una copia propia del usuario, editable y reutilizable.
+- [x] **Recorrido guiado** (2026-10-04): diez pasos sobre «Ejemplo: Coches» (proyecto, barra, estructura, lienzo, ficha, disposiciones, tipos, relaciones, tabla, salud); Escape lo cierra, flechas navegan; se relanza desde la ayuda.
+- [x] (2026-10-04, en la pestaña «Primeros pasos» de la ayuda) Ayuda contextual en los puntos difíciles: qué es una estructura, cuándo usar atributo de referencia o relación, qué es una preforma, cómo funciona el parentesco con género.
+- [x] Página de ayuda («?») ampliada (2026-10-04): pestaña «Primeros pasos» con el flujo y los conceptos clave, además de atajos y fórmulas.
 - [ ] Textos vacíos de cada vista (Tipos, Relaciones, Propiedades) con el siguiente paso sugerido.
 
 Criterio: una persona nueva crea un tipo, dos nodos y una relación sin ayuda externa; el proyecto de ejemplo muestra todas las funciones principales.

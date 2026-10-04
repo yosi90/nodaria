@@ -96,7 +96,7 @@ export function HealthView() {
 
   if (!project.nodes.length && !project.schemas.length) {
     return (
-      <main className="health-layout">
+      <main className="health-layout" data-tour="health">
         <EmptyState icon={HeartPulse} title="Nada que revisar todavía">
           Cuando el mundo tenga tipos y nodos, aquí verás qué falta por conectar, rellenar o corregir.
         </EmptyState>

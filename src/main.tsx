@@ -11,6 +11,7 @@ import { SyncProvider } from './state/sync';
 import { SyncNotices } from './components/account/SyncNotices';
 import { NavigationProvider } from './state/navigation';
 import { PreferencesProvider } from './state/preferences';
+import { TourProvider } from './state/tour';
 import '@xyflow/react/dist/style.css';
 import './styles/tokens.css';
 import './styles/base.css';
@@ -27,12 +28,14 @@ createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <SyncProvider>
             <NavigationProvider>
-              <DialogProvider>
-                <ToastProvider>
-                  <App />
-                  <SyncNotices />
-                </ToastProvider>
-              </DialogProvider>
+              <TourProvider>
+                <DialogProvider>
+                  <ToastProvider>
+                    <App />
+                    <SyncNotices />
+                  </ToastProvider>
+                </DialogProvider>
+              </TourProvider>
             </NavigationProvider>
           </SyncProvider>
         </AuthProvider>

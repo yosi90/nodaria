@@ -770,12 +770,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       <section
         ref={container}
         className={`workspace flow ${view.layout === 'image' ? 'with-tray' : ''}`}
+        data-tour="canvas"
         data-labels={view.edgeLabels}
         onDoubleClick={onDoubleClick}
       >
         <div className="workspace-toolbar flow-toolbar">
           <LensMenu />
-          <div className="segmented labeled" role="group" aria-label="Disposición">
+          <div className="segmented labeled" role="group" aria-label="Disposición" data-tour="layouts">
             <span className="segmented-label">Disposición</span>
             {LAYOUTS.map(({ mode, label, icon: Icon, hint }) => (
               <button

@@ -3,6 +3,7 @@ import * as lib from '../domain/library';
 import { reorderSchema } from '../domain/inheritance';
 import * as ops from '../domain/operations';
 import { moveInStructure, type StructureMove } from '../domain/structureMove';
+import { mergeTemplate } from '../domain/templates';
 import type { SavedQuery } from '../domain/queries';
 import type {
   AppState,
@@ -26,7 +27,8 @@ export type Action =
   | { type: 'rename-project'; name: string }
   | { type: 'delete-project' }
   | { type: 'duplicate-project' }
-  | { type: 'import-project'; project: Project }
+  | { type: 'import-project'; project: Project; replaceBlank?: boolean }
+  | { type: 'merge-template'; template: Project }
   /** Resultado de una sincronización: sustituye o añade proyectos y quita otros, sin re-sellar `updatedAt`. */
   | { type: 'sync-apply'; upsert: Project[]; remove: string[] }
   /** Vacía el navegador (al cerrar sesión sin conservar los proyectos). */
@@ -86,6 +88,9 @@ export type Action =
   | { type: 'update-relation'; relation: Relation }
   | { type: 'delete-relation'; id: string };
 
+const isUntouched = (p: Project) =>
+  !p.schemas.length && !p.fieldLibrary.length && !p.nodes.length && !p.relations.length && !p.lenses.length;
+
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'set-project':
@@ -115,7 +120,10 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'import-project': {
       const clash = state.projects.some(p => p.id === action.project.id);
       const project = clash ? { ...action.project, id: uid('project') } : action.project;
-      return { ...state, projects: [...state.projects, project], activeProjectId: project.id };
+      // Al abrir un ejemplo desde la bienvenida, el proyecto inicial vacío no se queda como huérfano.
+      const kept =
+        action.replaceBlank && state.projects.length === 1 && isUntouched(state.projects[0]) ? [] : state.projects;
+      return { ...state, projects: [...kept, project], activeProjectId: project.id };
     }
     case 'sync-apply': {
       const incoming = new Map(action.upsert.map(p => [p.id, p]));
@@ -144,6 +152,8 @@ function projectReducer(p: Project, action: Action): Project {
   switch (action.type) {
     case 'rename-project':
       return { ...p, name: action.name };
+    case 'merge-template':
+      return mergeTemplate(p, action.template);
     case 'add-schema':
       return ops.addSchema(p, action.name, action.kind, action.id);
     case 'update-schema':

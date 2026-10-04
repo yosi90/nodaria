@@ -4,6 +4,7 @@ import {
   Copy,
   Download,
   FolderOpen,
+  Layers,
   GitFork,
   HeartPulse,
   Library,
@@ -47,11 +48,13 @@ export function Topbar({
   onView,
   onHelp,
   onSearch,
+  onTemplates,
 }: {
   view: View;
   onView: (v: View) => void;
   onHelp: () => void;
   onSearch: () => void;
+  onTemplates: () => void;
 }) {
   const { state, project, dispatch, undo, redo, canUndo, canRedo, reportRepairs } = useApp();
   const { preferences, setPreference } = usePreferences();
@@ -128,6 +131,7 @@ export function Topbar({
     })),
     'separator',
     { label: 'Nuevo proyecto', icon: Plus, onSelect: create },
+    { label: 'Ejemplos y plantillas…', icon: Layers, onSelect: onTemplates },
     { label: 'Renombrar', icon: Pencil, onSelect: rename },
     { label: 'Duplicar', icon: Copy, onSelect: () => dispatch({ type: 'duplicate-project' }) },
     'separator',
@@ -148,6 +152,7 @@ export function Topbar({
       <button
         type="button"
         className="project-switcher"
+        data-tour="project"
         aria-haspopup="menu"
         aria-expanded={Boolean(menuAnchor)}
         title="Proyecto actual"
@@ -158,7 +163,7 @@ export function Topbar({
       </button>
       {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Proyecto" />}
       <span className="divider hide-narrow" aria-hidden />
-      <nav className="segmented labeled views-nav" aria-label="Vistas">
+      <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">
         <span className="segmented-label" title="Ver y revisar los datos del mundo">
           Datos
         </span>
@@ -206,7 +211,7 @@ export function Topbar({
           label={`${theme.label} (cambiar)`}
           onClick={() => setPreference('theme', theme.next)}
         />
-        <IconButton icon={CircleHelp} label="Atajos de teclado (?)" tooltipSide="left" onClick={onHelp} />
+        <IconButton icon={CircleHelp} label="Ayuda (?)" tooltipSide="left" onClick={onHelp} data-tour="help" />
         <span className="divider" aria-hidden />
         <AccountButton />
       </div>

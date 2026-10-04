@@ -475,3 +475,172 @@
 .guide li + li {
   margin-top: 4px;
 }
+
+/* ---------- Bienvenida, ejemplos y recorrido guiado ---------- */
+.welcome {
+  display: grid;
+  gap: var(--space-3);
+}
+.welcome-brand {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--accent);
+  color: #fff;
+}
+.welcome-lead {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.welcome-options {
+  display: grid;
+  gap: var(--space-2);
+}
+.welcome-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.12s var(--ease),
+    background 0.12s var(--ease);
+}
+.welcome-option:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.welcome-option.primary {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.welcome-option > svg {
+  flex: none;
+  color: var(--accent);
+}
+.welcome-option span {
+  display: grid;
+  gap: 2px;
+}
+.welcome-option small {
+  color: var(--text-muted);
+}
+.welcome-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.templates-intro {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.template-list {
+  display: grid;
+  gap: var(--space-3);
+}
+.template-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.template-text h3 {
+  margin: 0 0 4px;
+  font-size: var(--fs-md);
+}
+.template-text p {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.template-text ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+}
+.tour-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+}
+.tour-spot {
+  position: absolute;
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 9999px var(--scrim);
+  transition:
+    top 0.2s var(--ease),
+    left 0.2s var(--ease),
+    width 0.2s var(--ease),
+    height 0.2s var(--ease);
+}
+.tour-card {
+  position: absolute;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  transition:
+    top 0.2s var(--ease),
+    left 0.2s var(--ease);
+}
+.tour-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tour-count {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+}
+.tour-card h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.tour-card p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.tour-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
