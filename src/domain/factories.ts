@@ -90,5 +90,6 @@ export function createView(): ProjectView {
     edgeLabels: 'always',
     lensId: null,
     focusDepth: 0,
+    sizeByCentrality: false,
   };
 }

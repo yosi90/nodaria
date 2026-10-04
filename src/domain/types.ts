@@ -188,6 +188,8 @@ export interface ProjectView {
   hierarchyOnlyIfUnrelated: boolean;
   /** Modo foco: saltos visibles alrededor del nodo seleccionado; 0 = desactivado. */
   focusDepth: number;
+  /** Dimensionar las tarjetas del lienzo según su centralidad (intermediación). */
+  sizeByCentrality: boolean;
 }
 export interface AppState {
   version: 3;

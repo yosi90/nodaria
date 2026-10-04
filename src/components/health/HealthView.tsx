@@ -1,6 +1,17 @@
-import { AtSign, CircleCheck, HeartPulse, Link2Off, ListChecks, Shapes, Unplug, type LucideIcon } from 'lucide-react';
+import {
+  AtSign,
+  CircleCheck,
+  HeartPulse,
+  Link2Off,
+  ListChecks,
+  Network,
+  Shapes,
+  Unplug,
+  type LucideIcon,
+} from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 import { describeIssue } from '../../domain/cardinality';
+import { analysisLinks, betweenness, bridges, degreeCentrality } from '../../domain/centrality';
 import { worldHealth } from '../../domain/health';
 import { getSchema, nodeLabel } from '../../domain/selectors';
 import type { Node } from '../../domain/types';
@@ -14,6 +25,28 @@ export function HealthView() {
   const { project } = useApp();
   const { select, setView } = useNavigation();
   const report = useMemo(() => worldHealth(project), [project]);
+  const graph = useMemo(() => {
+    const links = analysisLinks(project);
+    const score = betweenness(links);
+    const degree = degreeCentrality(links);
+    const byId = new Map(project.nodes.map(n => [n.id, n]));
+    const central = [...score.entries()]
+      .filter(([, value]) => value > 0)
+      .sort((x, y) => y[1] - x[1])
+      .slice(0, 8)
+      .map(([id, value]) => ({ node: byId.get(id)!, score: value, degree: degree.get(id) ?? 0 }))
+      .filter(c => c.node);
+    const found = bridges(links);
+    return {
+      central,
+      bridgeNodes: found.nodes.map(id => byId.get(id)!).filter(Boolean),
+      bridgeLinks: found.links
+        .map(l => ({ a: byId.get(l.a)!, b: byId.get(l.b)! }))
+        .filter(l => l.a && l.b)
+        .slice(0, 20),
+    };
+  }, [project]);
+  const { central, bridgeNodes, bridgeLinks } = graph;
 
   const goTo = (node: Node) => select({ kind: 'node', id: node.id }, { reveal: true });
   const NodeButton = ({ node, children }: { node: Node; children?: ReactNode }) => {
@@ -135,6 +168,48 @@ export function HealthView() {
           ))}
         </Section>
       </div>
+      <header className="health-summary health-summary-secondary">
+        <Network size={22} aria-hidden />
+        <div>
+          <h2>Estructura del grafo</h2>
+          <p className="muted-note">
+            Quién concentra las conexiones y quién mantiene unido el mundo. Cuenta relaciones, jerarquía y referencias.
+          </p>
+        </div>
+      </header>
+      <div className="health-grid">
+        <Section
+          icon={Network}
+          title="Más centrales"
+          count={central.length}
+          hint="Por intermediación: nodos por los que pasan más caminos entre otros. El lienzo puede dimensionarlos («Tamaño por centralidad»)."
+          neutral
+        >
+          {central.map(c => (
+            <NodeButton key={c.node.id} node={c.node}>
+              {c.degree} conexiones · intermediación {Math.round(c.score)}
+            </NodeButton>
+          ))}
+        </Section>
+        <Section
+          icon={Unplug}
+          title="Puentes"
+          count={bridgeNodes.length + bridgeLinks.length}
+          hint="Nodos y vínculos que, si desaparecieran, dejarían partes del mundo sin conexión entre sí."
+          neutral
+        >
+          {bridgeNodes.map(n => (
+            <NodeButton key={n.id} node={n}>
+              Nodo puente
+            </NodeButton>
+          ))}
+          {bridgeLinks.map(l => (
+            <NodeButton key={`${l.a.id}-${l.b.id}`} node={l.a}>
+              Vínculo puente con {nodeLabel(project, l.b)}
+            </NodeButton>
+          ))}
+        </Section>
+      </div>
     </main>
   );
 }
@@ -144,21 +219,24 @@ function Section({
   title,
   count,
   hint,
+  neutral,
   children,
 }: {
   icon: LucideIcon;
   title: string;
   count: number;
   hint: string;
+  /** Información, no aviso: el contador no se pinta como advertencia. */
+  neutral?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className={`card health-card ${count ? '' : 'ok'}`}>
+    <section className={`card health-card ${count || neutral ? '' : 'ok'}`}>
       <div className="card-head">
         <h3>
           <Icon size={16} aria-hidden /> {title}
         </h3>
-        <span className={`health-count ${count ? 'warn' : ''}`}>
+        <span className={`health-count ${count && !neutral ? 'warn' : ''}`}>
           {count ? count : <CircleCheck size={16} aria-hidden />}
         </span>
       </div>

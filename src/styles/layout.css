@@ -1576,3 +1576,6 @@ button.mention:hover {
   color: var(--text-muted);
   font-size: var(--fs-xs);
 }
+.health-summary-secondary {
+  margin-top: var(--space-6);
+}

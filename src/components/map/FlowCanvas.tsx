@@ -23,6 +23,7 @@ import {
   Network,
   Orbit,
   Route,
+  Scaling,
   SlidersHorizontal,
   Sparkles,
   Tag,
@@ -62,6 +63,7 @@ import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link 
 import { LegendPanel } from './LegendPanel';
 import { PathPanel, type PathQuery } from './PathPanel';
 import { pathPairs, shortestPath } from '../../domain/paths';
+import { betweenness } from '../../domain/centrality';
 import { LensMenu } from './LensMenu';
 import { isImageValue } from './images';
 import { NodeCard, type CardNode } from './NodeCard';
@@ -346,6 +348,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   // Sobre la imagen del mapa los nodos colocados son marcadores; el que está bajo el ratón se expande.
   const hoverOnMap = view.layout === 'image' ? hoveredId : null;
+  // Escala de cada tarjeta según su intermediación (si está activado): entre 0,85 y 1,25.
+  const scaleOf = useMemo(() => {
+    if (!view.sizeByCentrality) return () => undefined;
+    const score = betweenness(links);
+    const max = Math.max(1, ...score.values());
+    return (id: string) => 0.85 + 0.4 * Math.sqrt((score.get(id) ?? 0) / max);
+  }, [view.sizeByCentrality, links]);
   const nodes = useMemo<CardNode[]>(() => {
     const degree = new Map<string, number>();
     const compactIds = new Set(
@@ -412,6 +421,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             icon: schema?.icon ?? 'circle',
             degree: degree.get(n.id) ?? 0,
             incomplete: isIncomplete(project, n),
+            scale: scaleOf(n.id),
             pinned: Boolean(n.positions[view.layout]),
             onUnpin: (origin: { x: number; y: number }) => unpin(n.id, origin),
             image:
@@ -424,7 +434,18 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           },
         };
       });
-  }, [project, view.layout, visibleIds, overrides, autoPositions, selectedNodeId, unpin, hoverOnMap, clustered]);
+  }, [
+    project,
+    view.layout,
+    visibleIds,
+    overrides,
+    autoPositions,
+    selectedNodeId,
+    unpin,
+    hoverOnMap,
+    clustered,
+    scaleOf,
+  ]);
 
   const edges = useMemo<FloatingEdgeType[]>(() => {
     const result: FloatingEdgeType[] = [];
@@ -836,6 +857,16 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                 edgeLabels: view.edgeLabels === 'always' ? 'hover' : view.edgeLabels === 'hover' ? 'never' : 'always',
               })
             }
+          />
+          <IconButton
+            icon={Scaling}
+            label={
+              view.sizeByCentrality
+                ? 'Tamaño por centralidad: activado (los nodos que unen grupos se ven más grandes)'
+                : 'Tamaño por centralidad: desactivado'
+            }
+            active={view.sizeByCentrality}
+            onClick={() => setView({ sizeByCentrality: !view.sizeByCentrality })}
           />
           <IconButton
             icon={Route}

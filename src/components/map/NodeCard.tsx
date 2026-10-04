@@ -31,6 +31,8 @@ export interface NodeCardData extends Record<string, unknown> {
   cardHeight?: number;
   /** Desplazamiento visual temporal (expansión centrada o apartarse de un vecino expandido). */
   offset?: { x: number; y: number };
+  /** Escala visual por centralidad (1 = tamaño normal). */
+  scale?: number;
 }
 
 export type CardNode = FlowNode<NodeCardData, 'card'>;
@@ -67,7 +69,13 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
       style={
         {
           '--type-color': data.color,
-          transform: data.offset ? `translate(${data.offset.x}px, ${data.offset.y}px)` : undefined,
+          transform:
+            [
+              data.offset ? `translate(${data.offset.x}px, ${data.offset.y}px)` : '',
+              data.scale && data.scale !== 1 ? `scale(${data.scale})` : '',
+            ]
+              .filter(Boolean)
+              .join(' ') || undefined,
           height: data.expanded ? data.cardHeight : undefined,
         } as CSSProperties
       }
