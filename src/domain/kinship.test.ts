@@ -5,6 +5,7 @@ import {
   derivedKinship,
   impliedKinship,
   isImpliedKinship,
+  kinshipConflicts,
   kinshipIssues,
   kinshipRoles,
   nodeGender,
@@ -122,5 +123,29 @@ describe('parentesco deducido', () => {
         p.relations.find(r => r.id === 'r1')!,
       ),
     ).toBe(false);
+  });
+});
+
+describe('conflictos de parentesco', () => {
+  it('detecta las relaciones que no cuadran con la ascendencia registrada', () => {
+    const p = project({
+      schemas: [schema('t'), schema('familia', { genealogical: true }, 'relationship')],
+      nodes: ['dragga', 'drokka', 'kunoa'].map(id => node(id, 't')),
+      relations: [
+        { ...relation('a', 'familia', 'dragga', 'drokka'), kinshipId: 'progenitor' },
+        // al revés: Kunoa «progenitora» de Drokka
+        { ...relation('b', 'familia', 'kunoa', 'drokka'), kinshipId: 'progenitor' },
+        { ...relation('c', 'familia', 'dragga', 'kunoa'), kinshipId: 'abuelo' },
+      ],
+    });
+    const conflicts = kinshipConflicts(p, 'familia');
+    expect(conflicts.map(c => c.relation.id)).toEqual(['c']);
+    expect(conflicts[0]).toMatchObject({ expected: 2, actual: 0 });
+    // Invertida, todo cuadra
+    const fixed = {
+      ...p,
+      relations: p.relations.map(r => (r.id === 'b' ? { ...r, sourceId: 'drokka', targetId: 'kunoa' } : r)),
+    };
+    expect(kinshipConflicts(fixed, 'familia')).toEqual([]);
   });
 });

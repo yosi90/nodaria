@@ -43,10 +43,13 @@ export function FamilyLinks({ units, links, positions, color, onSelect }: Family
           return (
             <g
               key={link.key}
-              className="family-kin"
+              className={`family-kin ${link.conflict ? 'conflict' : ''}`}
               data-members={`${link.a},${link.b}`}
               onClick={() => onSelect(link.key)}
             >
+              {link.conflict && (
+                <title>No cuadra con la ascendencia registrada: revisa si alguna relación está al revés</title>
+              )}
               <path className="family-link secondary" d={path.d} style={{ stroke: color }} />
               <text className="family-label" x={path.label.x} y={path.label.y}>
                 {link.label}

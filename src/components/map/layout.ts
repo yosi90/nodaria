@@ -1,6 +1,6 @@
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
 import { hierarchy, tree } from 'd3-hierarchy';
-import { kinshipStructureLink } from '../../domain/kinship';
+import { kinshipGraph, kinshipStructureLink } from '../../domain/kinship';
 import { structureChildren } from '../../domain/structure';
 import type { LayoutMode, Position, Project } from '../../domain/types';
 
@@ -207,41 +207,10 @@ export function genealogyStructure(p: Project, structureId: string | null): stri
 export function genealogyLayout(p: Project, structureId: string | null): Map<string, Position> {
   const genealogyId = genealogyStructure(p, structureId);
   const genealogical = p.schemas.some(s => s.id === genealogyId && s.genealogical);
-  if (!genealogical) return treeLayout(p, genealogyId, true);
-  const ids = new Set(p.nodes.map(n => n.id));
-  const terms = new Map(p.kinship.map(t => [t.id, t]));
-  const kin = p.relations.filter(r => r.typeId === genealogyId && ids.has(r.sourceId) && ids.has(r.targetId));
-  if (!kin.length) return treeLayout(p, genealogyId, true);
-
-  // Vecinos con el salto de generación que impone cada término (+1: el destino está una fila más abajo).
-  const neighbors = new Map<string, { other: string; delta: number }[]>();
-  const push = (a: string, b: string, delta: number) =>
-    neighbors.set(a, [...(neighbors.get(a) ?? []), { other: b, delta }]);
-  const parentsOf = new Map<string, string[]>();
-  const childrenOf = new Map<string, string[]>();
-  const couples: [string, string][] = [];
-  const peers = new Map<string, string[]>();
-  kin.forEach(r => {
-    const t = terms.get(r.kinshipId ?? '');
-    const g = t?.generation ?? 0;
-    push(r.sourceId, r.targetId, g);
-    push(r.targetId, r.sourceId, -g);
-    const link = kinshipStructureLink(p, r);
-    if (link) {
-      parentsOf.set(link.childId, [...(parentsOf.get(link.childId) ?? []), link.parentId]);
-      childrenOf.set(link.parentId, [...(childrenOf.get(link.parentId) ?? []), link.childId]);
-    } else if (g === 0) {
-      if (t?.couple) couples.push([r.sourceId, r.targetId]);
-      else {
-        peers.set(r.sourceId, [...(peers.get(r.sourceId) ?? []), r.targetId]);
-        peers.set(r.targetId, [...(peers.get(r.targetId) ?? []), r.sourceId]);
-      }
-    }
-  });
-  // Quienes comparten hijos también forman pareja.
-  parentsOf.forEach(ps => {
-    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) couples.push([ps[i], ps[j]]);
-  });
+  if (!genealogyId || !genealogical) return treeLayout(p, genealogyId, true);
+  const graph = kinshipGraph(p, genealogyId);
+  if (!graph.components.length) return treeLayout(p, genealogyId, true);
+  const { parentsOf, childrenOf, couples, peers } = graph;
 
   const rowGap = NODE_H + 120;
   const coupleGap = 96;
@@ -249,64 +218,11 @@ export function genealogyLayout(p: Project, structureId: string | null): Map<str
   const result = new Map<string, Position>();
   let offsetX = 0;
 
-  // Clústeres de ascendencia: nodos unidos por vínculos de árbol. Dentro de cada uno, la generación es
-  // el camino más largo desde una raíz, así un progenitor queda siempre por encima de sus hijos aunque
-  // otra relación (hermanos, tíos…) diga lo contrario.
-  const clusterOf = new Map<string, string>();
-  const findCluster = (id: string): string => {
-    const parent = clusterOf.get(id) ?? id;
-    if (parent === id) return id;
-    const top = findCluster(parent);
-    clusterOf.set(id, top);
-    return top;
-  };
-  parentsOf.forEach((ps, child) => ps.forEach(par => clusterOf.set(findCluster(par), findCluster(child))));
-  // Las parejas comparten generación (un cónyuge sin ascendencia registrada baja a la fila del otro).
-  couples.forEach(([x, y]) => clusterOf.set(findCluster(x), findCluster(y)));
-  const depth = new Map<string, number>();
-  neighbors.forEach((_, id) => depth.set(id, 0));
-  // Relajación: hijo = progenitor + 1, pareja = pareja. Acotada para que un ciclo de datos no la bloquee.
-  for (let pass = 0; pass < neighbors.size + 1; pass++) {
-    let changed = false;
-    const raise = (id: string, value: number) => {
-      if ((depth.get(id) ?? 0) < value) {
-        depth.set(id, value);
-        changed = true;
-      }
-    };
-    parentsOf.forEach((ps, child) => ps.forEach(par => raise(child, depth.get(par)! + 1)));
-    couples.forEach(([x, y]) => {
-      raise(x, depth.get(y)!);
-      raise(y, depth.get(x)!);
-    });
-    if (!changed) break;
-  }
-
   // Cada componente conexo se dispone por separado y se coloca a la derecha del anterior.
-  const seen = new Set<string>();
-  p.nodes.forEach(root => {
-    if (seen.has(root.id) || !neighbors.has(root.id)) return;
-    // Los clústeres se encajan entre sí por anchura con el salto que impone cada término; dentro de un
-    // clúster manda la profundidad de ascendencia. Los conflictos se resuelven con la primera asignación.
-    const offset = new Map<string, number>([[findCluster(root.id), -depth.get(root.id)!]]);
-    const genOf = (id: string) => offset.get(findCluster(id))! + depth.get(id)!;
-    const gen = new Map<string, number>();
-    const queue = [root.id];
-    seen.add(root.id);
-    while (queue.length) {
-      const id = queue.shift()!;
-      gen.set(id, genOf(id));
-      (neighbors.get(id) ?? []).forEach(({ other, delta }) => {
-        if (seen.has(other)) return;
-        const cluster = findCluster(other);
-        if (!offset.has(cluster)) offset.set(cluster, genOf(id) + delta - depth.get(other)!);
-        seen.add(other);
-        queue.push(other);
-      });
-    }
-    const minGen = Math.min(...gen.values());
-    const rowOf = (id: string) => gen.get(id)! - minGen;
-    const rowCount = Math.max(...gen.values()) - minGen + 1;
+  graph.components.forEach(componentIds => {
+    const gen = new Map(componentIds.map(id => [id, graph.gen.get(id)!]));
+    const rowOf = (id: string) => gen.get(id)!;
+    const rowCount = Math.max(...gen.values()) + 1;
 
     // Unidades por fila: parejas de la misma fila van juntas (unión de parejas encadenadas).
     const unitOf = new Map<string, string>();

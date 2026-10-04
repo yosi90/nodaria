@@ -1,5 +1,5 @@
 import { UserPlus } from 'lucide-react';
-import { kinshipName, kinshipTerm, nodeGender, typeHasGender } from '../../domain/kinship';
+import { typeHasGender } from '../../domain/kinship';
 import { getNode, getSchema, nodeLabel } from '../../domain/selectors';
 import { useApp } from '../../state/AppContext';
 import { Button } from '../common/Button';
@@ -20,16 +20,6 @@ export function KinshipFields({ sourceId, targetId, kinshipId, neutral, onChange
   const toast = useToast();
   const source = sourceId ? getNode(project, sourceId) : undefined;
   const target = targetId ? getNode(project, targetId) : undefined;
-  const term = kinshipTerm(project, kinshipId);
-  const counterpart = term ? (kinshipTerm(project, term.counterpartId) ?? term) : undefined;
-  const preview =
-    term && counterpart
-      ? `${source ? nodeLabel(project, source) : 'Origen'} es ${kinshipName(term, nodeGender(project, source), neutral)} de ${
-          target ? nodeLabel(project, target) : 'destino'
-        }; ${target ? nodeLabel(project, target) : 'destino'} es ${kinshipName(counterpart, nodeGender(project, target), neutral)} de ${
-          source ? nodeLabel(project, source) : 'origen'
-        }.`
-      : null;
   // Tipos de los dos extremos sin atributo de género: se ofrece añadirlo.
   const missing = [source, target]
     .filter((n): n is NonNullable<typeof n> => Boolean(n))
@@ -63,7 +53,6 @@ export function KinshipFields({ sourceId, targetId, kinshipId, neutral, onChange
           placeholder={target ? `Elegir parentesco con ${nodeLabel(project, target)}…` : 'Elegir parentesco…'}
           onChange={id => onChange({ kinshipId: id })}
         />
-        {preview && <small>{preview}</small>}
       </div>
       <label className="check">
         <input type="checkbox" checked={neutral} onChange={e => onChange({ neutral: e.target.checked })} />

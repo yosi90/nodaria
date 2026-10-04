@@ -961,6 +961,105 @@ button.mention:hover {
   border-radius: var(--radius-md);
   background: var(--surface-2);
 }
+/* Vista previa de la relación: origen → destino */
+.relation-preview {
+  grid-column: 1 / -1;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+.rp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rp-node {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1.2px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.rp-node.me {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+.rp-node.empty {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+.rp-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+.rp-name strong,
+.rp-name small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-name small {
+  color: var(--text-muted);
+}
+.rp-node em {
+  flex-basis: 100%;
+  font-size: var(--fs-2xs);
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+.rp-node.me em {
+  color: var(--accent);
+}
+.rp-arrow {
+  display: flex;
+  flex: 0 0 96px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--rp-color, var(--text-muted));
+}
+.rp-arrow svg {
+  width: 100%;
+  height: 12px;
+  overflow: visible;
+}
+.rp-arrow line {
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.rp-arrow polygon {
+  fill: currentColor;
+}
+.rp-label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.rp-label.back {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.rp-sentence {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+}
 .relation-item,
 .relation-row {
   min-width: 0;
@@ -977,6 +1076,13 @@ button.mention:hover {
   display: grid;
   gap: 6px;
   overflow-x: auto;
+}
+.conflict-note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: var(--space-2);
+  color: var(--warning);
 }
 .derived-kin {
   margin-top: var(--space-3);

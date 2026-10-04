@@ -194,6 +194,15 @@
   stroke-dasharray: none;
   opacity: 1;
 }
+.family-kin.conflict .family-link.secondary {
+  stroke: var(--warning) !important;
+  stroke-dasharray: 6 4;
+  opacity: 1;
+}
+.family-kin.conflict .family-label {
+  fill: var(--warning);
+  font-weight: 600;
+}
 .family-label {
   font-family: var(--font-sans);
   font-size: 10px;

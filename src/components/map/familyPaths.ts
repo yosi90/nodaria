@@ -22,6 +22,8 @@ export interface KinLink {
   a: string;
   b: string;
   label: string;
+  /** No cuadra con las generaciones del árbol: se resalta para revisarlo. */
+  conflict?: boolean;
 }
 
 /**

@@ -171,6 +171,147 @@ export function isImpliedKinship(implied: Set<string>, r: Relation): boolean {
   return implied.has(`${r.sourceId}|${r.targetId}|${term}`);
 }
 
+/** Grafo de parentesco de un tipo genealógico, con la generación de cada nodo. */
+export interface KinshipGraph {
+  /** Progenitores de cada nodo (vínculos de árbol). */
+  parentsOf: Map<string, string[]>;
+  childrenOf: Map<string, string[]>;
+  /** Parejas: término «pareja» o progenitores con hijos comunes. */
+  couples: [string, string][];
+  /** Parientes de la misma generación que no son pareja (hermanos, primos, cuñados…). */
+  peers: Map<string, string[]>;
+  /** Componentes conexos (nodos unidos por cualquier parentesco), en orden de aparición. */
+  components: string[][];
+  /** Generación de cada nodo dentro de su componente (0 = la más antigua). */
+  gen: Map<string, number>;
+}
+
+/**
+ * Generaciones: dentro de cada clúster de ascendencia (nodos unidos por vínculos de árbol o pareja),
+ * un hijo está una generación por debajo de cada progenitor (camino más largo) y las parejas comparten
+ * generación. Los clústeres se encajan entre sí con el salto que impone cada término (tíos, abuelos…),
+ * resolviendo conflictos con la primera asignación. Así un progenitor queda siempre por encima de sus
+ * hijos aunque otra relación lo contradiga, y esa contradicción se puede detectar (`kinshipConflicts`).
+ */
+export function kinshipGraph(p: Project, genealogyId: string): KinshipGraph {
+  const ids = new Set(p.nodes.map(n => n.id));
+  const terms = new Map(p.kinship.map(t => [t.id, t]));
+  const kin = p.relations.filter(r => r.typeId === genealogyId && ids.has(r.sourceId) && ids.has(r.targetId));
+  const neighbors = new Map<string, { other: string; delta: number }[]>();
+  const push = (a: string, b: string, delta: number) =>
+    neighbors.set(a, [...(neighbors.get(a) ?? []), { other: b, delta }]);
+  const parentsOf = new Map<string, string[]>();
+  const childrenOf = new Map<string, string[]>();
+  const couples: [string, string][] = [];
+  const peers = new Map<string, string[]>();
+  kin.forEach(r => {
+    const t = terms.get(r.kinshipId ?? '');
+    const g = t?.generation ?? 0;
+    push(r.sourceId, r.targetId, g);
+    push(r.targetId, r.sourceId, -g);
+    const link = kinshipStructureLink(p, r);
+    if (link) {
+      parentsOf.set(link.childId, [...(parentsOf.get(link.childId) ?? []), link.parentId]);
+      childrenOf.set(link.parentId, [...(childrenOf.get(link.parentId) ?? []), link.childId]);
+    } else if (g === 0 && r.sourceId !== r.targetId) {
+      if (t?.couple) couples.push([r.sourceId, r.targetId]);
+      else {
+        peers.set(r.sourceId, [...(peers.get(r.sourceId) ?? []), r.targetId]);
+        peers.set(r.targetId, [...(peers.get(r.targetId) ?? []), r.sourceId]);
+      }
+    }
+  });
+  parentsOf.forEach(ps => {
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) couples.push([ps[i], ps[j]]);
+  });
+
+  const clusterOf = new Map<string, string>();
+  const findCluster = (id: string): string => {
+    const parent = clusterOf.get(id) ?? id;
+    if (parent === id) return id;
+    const top = findCluster(parent);
+    clusterOf.set(id, top);
+    return top;
+  };
+  parentsOf.forEach((ps, child) => ps.forEach(par => clusterOf.set(findCluster(par), findCluster(child))));
+  couples.forEach(([x, y]) => clusterOf.set(findCluster(x), findCluster(y)));
+  const depth = new Map<string, number>();
+  neighbors.forEach((_, id) => depth.set(id, 0));
+  for (let pass = 0; pass < neighbors.size + 1; pass++) {
+    let changed = false;
+    const raise = (id: string, value: number) => {
+      if ((depth.get(id) ?? 0) < value) {
+        depth.set(id, value);
+        changed = true;
+      }
+    };
+    parentsOf.forEach((ps, child) => ps.forEach(par => raise(child, depth.get(par)! + 1)));
+    couples.forEach(([x, y]) => {
+      raise(x, depth.get(y)!);
+      raise(y, depth.get(x)!);
+    });
+    if (!changed) break;
+  }
+
+  const components: string[][] = [];
+  const gen = new Map<string, number>();
+  const seen = new Set<string>();
+  p.nodes.forEach(root => {
+    if (seen.has(root.id) || !neighbors.has(root.id)) return;
+    const offset = new Map<string, number>([[findCluster(root.id), -depth.get(root.id)!]]);
+    const genOf = (id: string) => offset.get(findCluster(id))! + depth.get(id)!;
+    const members: string[] = [];
+    const queue = [root.id];
+    seen.add(root.id);
+    while (queue.length) {
+      const id = queue.shift()!;
+      members.push(id);
+      gen.set(id, genOf(id));
+      (neighbors.get(id) ?? []).forEach(({ other, delta }) => {
+        if (seen.has(other)) return;
+        const cluster = findCluster(other);
+        if (!offset.has(cluster)) offset.set(cluster, genOf(id) + delta - depth.get(other)!);
+        seen.add(other);
+        queue.push(other);
+      });
+    }
+    const min = Math.min(...members.map(id => gen.get(id)!));
+    members.forEach(id => gen.set(id, gen.get(id)! - min));
+    components.push(members);
+  });
+  return { parentsOf, childrenOf, couples, peers, components, gen };
+}
+
+/** Relación de parentesco que no cuadra con las generaciones del árbol (p. ej., una ascendencia guardada al revés). */
+export interface KinshipConflict {
+  relation: Relation;
+  /** Generaciones que el término dice que hay del origen al destino (+ = destino más joven). */
+  expected: number;
+  /** Generaciones que hay según la ascendencia registrada. */
+  actual: number;
+}
+
+/**
+ * Relaciones cuyo salto de generación no coincide con el del árbol. Las de ascendencia definen las
+ * generaciones, así que no entran en conflicto por sí mismas: lo que avisa son las demás (abuelo,
+ * sobrino, hermano…) que las contradicen, y la causa suele ser una ascendencia guardada al revés.
+ */
+export function kinshipConflicts(
+  p: Project,
+  genealogyId: string,
+  graph = kinshipGraph(p, genealogyId),
+): KinshipConflict[] {
+  const terms = new Map(p.kinship.map(t => [t.id, t]));
+  return p.relations
+    .filter(r => r.typeId === genealogyId && graph.gen.has(r.sourceId) && graph.gen.has(r.targetId))
+    .map(r => ({
+      relation: r,
+      expected: terms.get(r.kinshipId ?? '')?.generation ?? 0,
+      actual: graph.gen.get(r.targetId)! - graph.gen.get(r.sourceId)!,
+    }))
+    .filter(c => c.expected !== c.actual);
+}
+
 /** Término por defecto al crear «dentro de» un ascendiente: el primer descendiente directo. */
 export const defaultChildTerm = (p: Project) => p.kinship.find(t => t.lineage && t.generation < 0) ?? null;
 

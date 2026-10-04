@@ -21,6 +21,7 @@ import { referenceFields, referenceLinks } from '../../domain/references';
 import {
   impliedKinship,
   isImpliedKinship,
+  kinshipConflicts,
   kinshipRoles,
   kinshipStructureLink,
   kinshipTerm,
@@ -366,6 +367,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     // Parentesco que no forma familia ni se deduce del árbol (abuelos, tíos, primos y hermanos con
     // progenitores comunes se sobreentienden y no se dibujan).
     const implied = impliedKinship(project, schema.id);
+    const conflicts = new Set(kinshipConflicts(project, schema.id).map(c => c.relation.id));
     const links = project.relations
       .filter(
         r =>
@@ -379,7 +381,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       .map(r => {
         const roles = kinshipRoles(project, r);
         const label = !roles ? '' : roles.source === roles.target ? roles.source : `${roles.source} · ${roles.target}`;
-        return { key: r.id, a: r.sourceId, b: r.targetId, label };
+        return { key: r.id, a: r.sourceId, b: r.targetId, label, conflict: conflicts.has(r.id) };
       });
     return { units, links, positions, color: schema.color };
   }, [view.layout, project, structure.id, hiddenRelations, nodes]);

@@ -299,7 +299,7 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 - [x] Parentesco deducido (2026-10-04): abuelos, nietos, hermanos, tíos, sobrinos y primos se deducen de la ascendencia directa; se listan en la ficha («Deducido por el árbol») y en Genealogía las relaciones explícitas que ya se deducen no se dibujan.
 - [x] Genealogía: todo el parentesco va en trazos ortogonales (puente por encima entre parientes de la misma fila; bajada, tramo horizontal y bajada entre filas), con etiqueta y clic para seleccionar; filas más separadas; generaciones fieles a la ascendencia (camino más largo) aunque otra relación contradiga.
 - [x] Formulario de relación: en parentesco el término siempre describe a este nodo («Grugnak es…»), sin selector de sentido; el editor se desplaza a la vista al abrirse.
-- [ ] Parentesco en conflicto (una relación de ascendencia al revés respecto al resto del árbol): avisar en integridad y ofrecer invertirla.
+- [x] Parentesco en conflicto (2026-10-04): las relaciones cuyo salto de generación no cuadra con el árbol se marcan en la ficha (aviso con explicación) y en el lienzo (trazo en color de aviso); botón «Invertir» en cada relación de parentesco.
 - [x] Barra del lienzo: etiquetas «Disposición» y «Foco» dentro de su grupo, opción elegida en color de acento, menú «Vistas» con flecha.
 - [x] Genealogía: usa siempre la estructura de parentesco (aunque «Ver por» sea otra); hermanos y demás parientes sin ascendencia registrada se colocan en la fila de su generación; lugares y otros nodos sin parentesco en una fila aparte.
 

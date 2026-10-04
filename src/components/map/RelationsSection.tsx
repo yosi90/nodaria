@@ -1,10 +1,10 @@
-import { ArrowLeftRight, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown, ChevronRight, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { nodeConnections } from '../../domain/connections';
-import { derivedKinship, kinshipName, kinshipTerm, nodeGender } from '../../domain/kinship';
+import { derivedKinship, kinshipConflicts, kinshipName, kinshipTerm, nodeGender } from '../../domain/kinship';
 import { uid } from '../../domain/factories';
 import { allFields, getNode, getSchema, nodeLabel, relationRole, typeMatches } from '../../domain/selectors';
-import type { FieldValue, Relation, Schema } from '../../domain/types';
+import type { FieldValue, Node, Relation, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { Button, IconButton } from '../common/Button';
@@ -26,7 +26,22 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
   const [creating, setCreating] = useState(false);
   const connections = nodeConnections(project, nodeId);
   const relationTypes = project.schemas.filter(s => s.kind === 'relationship');
+  // Parentescos que no cuadran con las generaciones del árbol (suele ser una ascendencia al revés).
+  const conflicts = new Map(
+    relationTypes
+      .filter(s => s.genealogical)
+      .flatMap(s => kinshipConflicts(project, s.id))
+      .map(c => [c.relation.id, c] as const),
+  );
   if (!connections) return null;
+
+  const invert = (relation: Relation) => {
+    dispatch({
+      type: 'update-relation',
+      relation: { ...relation, sourceId: relation.targetId, targetId: relation.sourceId },
+    });
+    toast({ message: 'Relación invertida: ahora cada uno tiene el papel del otro', undoable: true });
+  };
 
   const remove = (relation: Relation) => {
     toast({ message: `Relación «${relationRole(project, relation, 'source')}» eliminada`, undoable: true });
@@ -67,6 +82,10 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
             const mine = relationRole(project, relation, direction === 'out' ? 'source' : 'target');
             const theirs = relationRole(project, relation, direction === 'out' ? 'target' : 'source');
             const open = editing === relation.id;
+            const conflict = conflicts.get(relation.id);
+            const conflictText = conflict
+              ? `No cuadra con la ascendencia registrada: ${nodeLabel(project, other)} debería estar ${Math.abs(conflict.expected)} generación${Math.abs(conflict.expected) === 1 ? '' : 'es'} ${(direction === 'out' ? conflict.expected : -conflict.expected) > 0 ? 'por debajo' : 'por encima'} y está ${conflict.actual === 0 ? 'a la misma altura' : `${Math.abs(conflict.actual)} ${(direction === 'out' ? conflict.actual : -conflict.actual) > 0 ? 'por debajo' : 'por encima'}`}. Si alguna relación de progenitor o hijo está al revés, usa «Invertir» en ella.`
+              : undefined;
             return (
               <div key={relation.id} className={`relation-item ${open ? 'open' : ''}`}>
                 <div className="relation-row">
@@ -98,8 +117,23 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
                       </span>
                       {mine !== theirs && <small className="muted"> (yo: {mine})</small>}
                     </span>
+                    {conflict && (
+                      <span className="node-mark warning" title={conflictText}>
+                        <TriangleAlert size={13} aria-label="No cuadra con el árbol" />
+                      </span>
+                    )}
                     <span className="badge">{schema?.name}</span>
                   </button>
+                  {schema?.genealogical && (
+                    <IconButton
+                      icon={ArrowLeftRight}
+                      size="sm"
+                      variant="ghost"
+                      label="Invertir: intercambiar quién es quién"
+                      tooltipSide="left"
+                      onClick={() => invert(relation)}
+                    />
+                  )}
                   <IconButton
                     icon={Trash2}
                     size="sm"
@@ -121,8 +155,112 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
           </p>
         )
       )}
+      {connections.relations.some(c => conflicts.has(c.relation.id)) && (
+        <p className="muted-note conflict-note">
+          <TriangleAlert size={12} aria-hidden /> Hay parentescos que no cuadran con la ascendencia registrada. Lo más
+          habitual es una relación de progenitor o hijo guardada al revés: ábrela y comprueba la frase, o pulsa
+          «Invertir».
+        </p>
+      )}
       <DerivedKinship nodeId={nodeId} />
     </section>
+  );
+}
+
+/**
+ * Quién es quién en la relación que se está editando: origen a la izquierda, destino a la derecha, la
+ * flecha con el nombre del papel y, cuando este nodo encaja en los dos extremos, un botón para
+ * intercambiarlos.
+ */
+function RelationPreview({
+  schema,
+  me,
+  other,
+  iAmSource,
+  kinshipId,
+  kinshipNeutral,
+  reverseName,
+  onSwap,
+}: {
+  schema: Schema;
+  me: Node;
+  other: Node | undefined;
+  iAmSource: boolean;
+  kinshipId: string | null;
+  kinshipNeutral: boolean;
+  reverseName: string;
+  onSwap?: () => void;
+}) {
+  const { project } = useApp();
+  const source = iAmSource ? me : other;
+  const target = iAmSource ? other : me;
+  const term = kinshipTerm(project, kinshipId);
+  const counterpart = term ? (kinshipTerm(project, term.counterpartId) ?? term) : undefined;
+  const forward = term ? kinshipName(term, nodeGender(project, source), kinshipNeutral) : schema.name;
+  const backward = term
+    ? kinshipName(counterpart!, nodeGender(project, target), kinshipNeutral)
+    : reverseName || schema.inverseName || '';
+  const card = (node: Node | undefined, role: 'origen' | 'destino') => {
+    const s = node ? getSchema(project, node.typeId) : undefined;
+    const mine = node?.id === me.id;
+    return (
+      <div className={`rp-node ${mine ? 'me' : ''} ${node ? '' : 'empty'}`}>
+        {node ? (
+          <>
+            <TypeIcon icon={s?.icon} color={s?.color} size="sm" />
+            <span className="rp-name">
+              <strong>{nodeLabel(project, node)}</strong>
+              <small>{s?.name}</small>
+            </span>
+          </>
+        ) : (
+          <span className="rp-name">
+            <strong>¿Con quién?</strong>
+            <small>elige el nodo</small>
+          </span>
+        )}
+        <em>{mine ? `yo · ${role}` : role}</em>
+      </div>
+    );
+  };
+  const sentence = term
+    ? source && target
+      ? `${nodeLabel(project, source)} es ${forward.toLowerCase()} de ${nodeLabel(project, target)}; ${nodeLabel(project, target)} es ${backward.toLowerCase()} de ${nodeLabel(project, source)}.`
+      : `${nodeLabel(project, me)} es ${forward.toLowerCase()} de… (elige el nodo)`
+    : schema.genealogical
+      ? `${nodeLabel(project, me)} es … de ${other ? nodeLabel(project, other) : '…'} (elige el parentesco)`
+      : schema.directed
+        ? `${source ? nodeLabel(project, source) : '…'} → ${schema.name} → ${target ? nodeLabel(project, target) : '…'}${backward ? ` (visto desde ${target ? nodeLabel(project, target) : 'el destino'}: ${backward})` : ''}`
+        : `${nodeLabel(project, me)} y ${other ? nodeLabel(project, other) : '…'}: ${schema.name} (sin sentido).`;
+  return (
+    <div className="relation-preview">
+      <div className="rp-row">
+        {card(source, 'origen')}
+        <div
+          className={`rp-arrow ${schema.directed ? 'directed' : ''}`}
+          style={{ '--rp-color': schema.color } as React.CSSProperties}
+        >
+          <span className="rp-label">{forward}</span>
+          <svg viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden>
+            <line x1="0" y1="6" x2={schema.directed ? 92 : 100} y2="6" />
+            {schema.directed && <polygon points="90,1 100,6 90,11" />}
+          </svg>
+          {backward && backward !== forward && <span className="rp-label back">{backward}</span>}
+        </div>
+        {card(target, 'destino')}
+        {onSwap && (
+          <IconButton
+            icon={ArrowLeftRight}
+            size="sm"
+            variant="ghost"
+            label="Intercambiar origen y destino"
+            tooltipSide="left"
+            onClick={onSwap}
+          />
+        )}
+      </div>
+      <small className="rp-sentence">{sentence}</small>
+    </div>
   );
 }
 
@@ -313,18 +451,17 @@ function RelationForm({
             }}
           />
         </div>
-        {canChooseSide && (
-          <div className="field">
-            Sentido
-            <div className="segmented" role="group" aria-label="Sentido">
-              <button type="button" aria-pressed={iAmSource} onClick={() => setIAmSource(true)}>
-                {nodeLabel(project, me!)} → otro
-              </button>
-              <button type="button" aria-pressed={!iAmSource} onClick={() => setIAmSource(false)}>
-                otro → {nodeLabel(project, me!)}
-              </button>
-            </div>
-          </div>
+        {schema && me && (
+          <RelationPreview
+            schema={schema}
+            me={me}
+            other={validOther ? getNode(project, validOther) : undefined}
+            iAmSource={asSource}
+            kinshipId={schema.genealogical ? kinshipId : null}
+            kinshipNeutral={kinshipNeutral}
+            reverseName={reverseName}
+            onSwap={canChooseSide ? () => setIAmSource(v => !v) : undefined}
+          />
         )}
         <div className="field">
           {asSource ? 'Con' : 'Desde'}
