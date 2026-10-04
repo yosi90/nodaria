@@ -1,6 +1,7 @@
 import { PanelLeftOpen } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { uid } from '../../domain/factories';
+import { cardinalityWarning } from '../../domain/cardinality';
 import { compatibleRelationTypes, getNode, nodeLabel } from '../../domain/selectors';
 import { creatableTypesIn } from '../../domain/structure';
 import type { Position, Selection } from '../../domain/types';
@@ -131,7 +132,9 @@ export function MapView() {
 
   const createRelation = (typeId: string) => {
     if (!connectMenu) return;
+    const warning = cardinalityWarning(project, typeId, connectMenu.sourceId, connectMenu.targetId);
     dispatch({ type: 'add-relation', typeId, sourceId: connectMenu.sourceId, targetId: connectMenu.targetId });
+    if (warning) toast({ message: `Límite superado: ${warning}` });
     setConnectMenu(null);
   };
 

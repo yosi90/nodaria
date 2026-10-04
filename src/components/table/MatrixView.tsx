@@ -1,6 +1,7 @@
 import { ExternalLink, Grid3x3, Plus } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { uid } from '../../domain/factories';
+import { cardinalityWarning } from '../../domain/cardinality';
 import { compatibleRelationTypes, getSchema, nodeLabel, relationRole, typeMatches } from '../../domain/selectors';
 import type { Node, Relation } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -116,6 +117,8 @@ export function MatrixView() {
                 id: uid('rel'),
               });
               toast({ message: `Relación «${s.name}» creada`, undoable: true });
+              const warning = cardinalityWarning(project, s.id, cell.a.id, cell.b.id);
+              if (warning) toast({ message: `Límite superado: ${warning}` });
             },
           })),
         ...compatibleRelationTypes(project, cell.b.id, cell.a.id)
@@ -133,6 +136,8 @@ export function MatrixView() {
                 id: uid('rel'),
               });
               toast({ message: `Relación «${s.name}» creada`, undoable: true });
+              const warning = cardinalityWarning(project, s.id, cell.b.id, cell.a.id);
+              if (warning) toast({ message: `Límite superado: ${warning}` });
             },
           })),
       ]

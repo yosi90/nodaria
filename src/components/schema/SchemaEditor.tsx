@@ -193,6 +193,27 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                     ascendencia directa, así que «Ver por» y la disposición Genealogía la usan.
                   </p>
                 )}
+                {!schema.genealogical && (
+                  <div className="field">
+                    Límites por nodo
+                    <div className="field-row">
+                      <label className="field">
+                        {schema.directed ? 'Máximo como origen' : 'Máximo de relaciones'}
+                        <LimitInput value={schema.maxPerSource} onChange={maxPerSource => update({ maxPerSource })} />
+                      </label>
+                      {schema.directed && (
+                        <label className="field">
+                          Máximo como destino
+                          <LimitInput value={schema.maxPerTarget} onChange={maxPerTarget => update({ maxPerTarget })} />
+                        </label>
+                      )}
+                    </div>
+                    <small>
+                      Vacío: sin límite. Por ejemplo, «un personaje venera como máximo a un dios» es un máximo como
+                      origen de 1. Superarlo no se impide: se avisa en la ficha y al crear la relación.
+                    </small>
+                  </div>
+                )}
                 {schema.directed && !schema.genealogical && (
                   <label className="field">
                     Nombre visto desde el destino
@@ -268,5 +289,22 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
       </div>
       {deleting && <DeleteSchemaModal schema={schema} onClose={() => setDeleting(false)} />}
     </section>
+  );
+}
+
+/** Entero positivo o vacío (sin límite). */
+function LimitInput({ value, onChange }: { value: number | null; onChange: (value: number | null) => void }) {
+  return (
+    <input
+      type="number"
+      min={0}
+      step={1}
+      placeholder="Sin límite"
+      value={value ?? ''}
+      onChange={event => {
+        const n = Number.parseInt(event.target.value, 10);
+        onChange(Number.isFinite(n) && n >= 0 ? n : null);
+      }}
+    />
   );
 }

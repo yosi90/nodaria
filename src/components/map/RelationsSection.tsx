@@ -1,5 +1,6 @@
 import { ArrowLeftRight, ChevronDown, ChevronRight, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { cardinalityIssues, cardinalityWarning, describeIssue } from '../../domain/cardinality';
 import { nodeConnections } from '../../domain/connections';
 import {
   derivedKinship,
@@ -176,6 +177,11 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
           </p>
         )
       )}
+      {cardinalityIssues(project, nodeId).map(issue => (
+        <p className="muted-note conflict-note" key={`${issue.schema.id}-${issue.end}`}>
+          <TriangleAlert size={12} aria-hidden /> {describeIssue(project, issue)}
+        </p>
+      ))}
       {connections.relations.some(c => conflicts.has(c.relation.id) || suspects.has(c.relation.id)) && (
         <p className="muted-note conflict-note">
           <TriangleAlert size={12} aria-hidden />{' '}
@@ -367,6 +373,7 @@ function RelationForm({
   onDone: (id?: string) => void;
 }) {
   const { project, dispatch } = useApp();
+  const toast = useToast();
   const me = getNode(project, nodeId);
   const myTypeId = me?.typeId ?? '';
   // Lados en los que este nodo encaja en cada tipo de relación.
@@ -441,7 +448,9 @@ function RelationForm({
       onDone(relation.id);
     } else {
       const id = uid('rel');
+      const warning = cardinalityWarning(project, schema.id, sourceId, targetId);
       dispatch({ type: 'add-relation', typeId: schema.id, sourceId, targetId, id, values, reverseName, kinshipId });
+      if (warning) toast({ message: `Límite superado: ${warning}` });
       if (kinshipNeutral)
         dispatch({
           type: 'update-relation',

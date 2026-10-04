@@ -54,6 +54,8 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     inverseName: '',
     reciprocal: false,
     genealogical: false,
+    maxPerSource: null,
+    maxPerTarget: null,
   };
 }
 export function createField(): FieldDefinition {

@@ -92,6 +92,8 @@ function normalizeProject(project: RawProject): Project {
       inverseName: s.inverseName || '',
       reciprocal: s.reciprocal || false,
       genealogical: s.genealogical || false,
+      maxPerSource: typeof s.maxPerSource === 'number' ? s.maxPerSource : null,
+      maxPerTarget: typeof s.maxPerTarget === 'number' ? s.maxPerTarget : null,
     })),
     fieldLibrary: (project.fieldLibrary || []).map(f => ({
       ...f,

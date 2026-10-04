@@ -72,6 +72,10 @@ export interface Schema {
   reciprocal: boolean;
   /** Sus relaciones eligen un parentesco del vocabulario del proyecto en lugar de un nombre libre. */
   genealogical: boolean;
+  /** Máximo de relaciones de este tipo por nodo como origen (sin sentido: en cualquier extremo); `null` = sin límite. */
+  maxPerSource: number | null;
+  /** Máximo por nodo como destino (solo dirigidas); `null` = sin límite. */
+  maxPerTarget: number | null;
 }
 /** Género de un nodo: masculino, femenino, neutro u otro, o sin definir. */
 export type Gender = 'm' | 'f' | 'n' | '';

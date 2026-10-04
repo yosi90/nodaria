@@ -222,7 +222,7 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [ ] Valores por defecto tipados y heredados.
 - [x] Campos calculados reales (2026-10-04): motor en `src/domain/formulas.ts` con `{clave}`, `{referencia.clave}`, `{titulo}`, `{tipo}`, `{padre}`, `{padre.clave}`, `{contar(relaciones[:Tipo])}`, `{contar(hijos)}`, `{contar(clave)}`, `{lista(relaciones[:Tipo])}` y `{lista(hijos)}`; calculados anidados con límite de profundidad; ayuda en el editor de atributos.
 - [ ] Validación de campos obligatorios con avisos no bloqueantes y contador de "fichas incompletas".
-- [ ] Restricciones de cardinalidad en relaciones (p. ej. "un personaje tiene como máximo un dios patrón") y aviso al violarlas.
+- [x] Restricciones de cardinalidad en relaciones (2026-10-04): `Schema.maxPerSource` y `maxPerTarget` (sin sentido: un máximo por nodo) editables en el tipo; `src/domain/cardinality.ts` lista los límites superados y avisa antes de crear; aviso en la ficha (pestaña de relaciones) y toast al crear desde el lienzo, la ficha o la matriz. No se impide crear la relación.
 - [ ] Herencia de subnodos permitidos y de restricciones de relación.
 - [x] Duplicar nodos (2026-10-04) desde la ficha (menú «Duplicar»: solo ficha o con relaciones), con Ctrl+D en el mapa y desde la tabla; el título lleva «(copia)» y las posiciones fijadas se desplazan. Duplicar tipos desde el editor (atributos con ids nuevos, preformas vinculadas, apariencia y restricciones; sin nodos).
 - [ ] Operaciones masivas: cambiar tipo, mover, etiquetar o borrar varios nodos a la vez.
