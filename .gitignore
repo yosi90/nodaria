@@ -6,3 +6,6 @@ dist/
 vite.config.js
 vite.config.d.ts
 .firebase/
+
+# Kit de Notificapp copiado en la raiz (material de referencia, no se versiona)
+/plugin-kit/

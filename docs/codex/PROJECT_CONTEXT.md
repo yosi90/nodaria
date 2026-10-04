@@ -45,6 +45,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - Estado: `src/state/reducer.ts` (acciones a operaciones de dominio), `src/state/history.ts` (deshacer/rehacer con agrupación de ediciones) y `src/state/AppContext.tsx` (provider, guardado con retardo y volcado al ocultar o cerrar la página).
 - Migraciones versionadas en `src/services/migrations.ts`; `src/services/storage.ts` migra y repara todo lo que se carga o importa.
 - Pruebas con Vitest junto al código (`*.test.ts`) y constructores comunes en `src/test/fixtures.ts`. Formato con Prettier (`.prettierrc.json`).
+- **Backend** en `api/` (desde el 2026-10-04): Node 24 + TypeScript + Fastify, mismo patrón que `mazos lorcana/back`. Valida el ID token de Firebase (`firebase-admin`) en cada ruta privada, guarda en SQL Server Express local (`localhost\SQLEXPRESS`, base `Nodaria`, autenticación de Windows) y escucha solo en `127.0.0.1:5003`. Migraciones SQL en `api/migrations/`; pruebas con Vitest en `api/test/`; guía operativa en `docs/backend/README.md`. El lint de la raíz cubre `api/` con globales de Node. El front todavía no lo usa.
 - Dependencias de desarrollo añadidas en la Fase 0: `vitest@5.0.3` y `prettier@3.9.9`. Dependencias de la Fase 1: `lucide-react@1.51.0`, `@fontsource-variable/inter@5.3.0` y `@fontsource-variable/fraunces@5.3.0`. Fase 2: `@xyflow/react@12.12.0` (lienzo), `d3-force@3.0.0` y `d3-hierarchy@3.1.2` (disposiciones), con sus `@types`.
 - Lienzo en `src/components/map/FlowCanvas.tsx` (React Flow) con tarjeta `NodeCard`, arista `FloatingEdge` (geometría en `edgeGeometry.ts`), disposiciones puras en `layout.ts`, leyenda y menú de relación al conectar. Las posiciones del lienzo y la vista viven en el proyecto; el resaltado de vecinos se aplica sobre el DOM por rendimiento.
 
@@ -73,7 +74,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - Hay pruebas automatizadas con Vitest (`npm test`) para dominio, migraciones, importación/exportación e historial.
 - Hay deshacer/rehacer global. Cambiar de proyecto no ocupa un paso.
 - Los datos dañados (ciclos, padres o extremos inexistentes, tipos borrados) se reparan al cargar o importar, y se avisa al usuario.
-- La persistencia sigue siendo exclusivamente local.
+- La persistencia del front sigue siendo exclusivamente local. La API (`api/`) existe con cuentas (`/api/me`) y la base `Nodaria` creada (tablas `users`, `projects`, `messages`, `notificapp_outbox`), pero las rutas de proyectos y mensajes y la integración en el front están pendientes (`docs/roadmaps/ROADMAP_BACKEND.md`).
 - No quedan diálogos nativos: confirmaciones y peticiones de texto usan `useDialogs()`, y los borrados ofrecen "Deshacer" mediante un toast.
 
 ## Vista «Tabla»
@@ -95,11 +96,15 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
-- Firebase Hosting, proyecto `yosiftware-nodaria` (creado el 2026-10-03): https://yosiftware-nodaria.web.app y dominio propio https://nodaria.yosiftware.es (DNS en Cloudflare, gestionado por el usuario). `npm run deploy` compila y publica. Los datos siguen siendo locales del navegador: hostear no cambia la persistencia.
+- Firebase Hosting, proyecto `yosiftware-nodaria` (creado el 2026-10-03): https://yosiftware-nodaria.web.app y dominio propio https://nodaria.yosiftware.es (DNS en Cloudflare, gestionado por el usuario). `npm run deploy` compila y publica con el `firebase-tools` instalado en `api/` (requiere `npm ci` en `api/` y sesión de Firebase o cuenta de servicio). Los datos siguen siendo locales del navegador: hostear no cambia la persistencia.
+- Desde el 2026-10-04 el desarrollo ocurre en el servidor de Yosiftware (el mismo que aloja Libros, Fichas, Lorcana y Notificapp). La API se publicará como `https://nodaria-api.yosiftware.es` por el túnel de Cloudflare existente y correrá como tarea programada con vigilante (Fase 4 del roadmap de backend). App web de Firebase «Nodaria Web» registrada el 2026-10-04; su configuración pública está en `docs/backend/README.md`.
+- Notificapp: el kit copiable vive en `plugin-kit/` (ignorado por Git). El plugin propio irá en `notificapp-plugin/` (Fase 3). Los avisos de agente usan el emisor del servidor; ver `AGENTS.md`.
 
 ## Roadmap activo
 
-`docs/roadmaps/ROADMAP_RENOVACION.md` (creado el 2026-10-03): renovación completa en fases (estabilidad, diseño, lienzo, fichas y navegación, modelo, vistas, análisis, persistencia, IA opcional). Incluye los bugs críticos detectados: ciclos de jerarquía que cuelgan la app, hijos huérfanos al borrar un tipo y pérdida de valores al renombrar la clave de un atributo. Las prioridades de abajo quedan integradas en él.
+`docs/roadmaps/ROADMAP_BACKEND.md` (creado el 2026-10-04): backend, cuentas, sincronización entre dispositivos, mensajes de usuarios y Notificapp, por fases. La Fase 1 (base de la API) está hecha; la Fase 0 tiene pasos pendientes del propietario en la consola de Firebase.
+
+`docs/roadmaps/ROADMAP_RENOVACION.md` (creado el 2026-10-03) queda en pausa como referencia: renovación completa en fases (estabilidad, diseño, lienzo, fichas y navegación, modelo, vistas, análisis, persistencia, IA opcional). Quedaban pendientes campos calculados reales y restricciones de cardinalidad en relaciones.
 
 ## Prioridades conocidas
 

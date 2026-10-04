@@ -1,6 +1,6 @@
 # Nodaria
 
-Aplicación local para crear mapas mentales estructurados mediante esquemas, entidades y relaciones.
+Aplicación web para crear mapas mentales estructurados mediante esquemas, entidades y relaciones. Funciona en local (datos en el navegador) y está incorporando cuentas y sincronización mediante la API de `api/` (ver `docs/backend/README.md` y `docs/roadmaps/ROADMAP_BACKEND.md`).
 
 ## Desarrollo
 
@@ -33,6 +33,7 @@ npm run preview
 - `src/state`: estado global y acciones de la aplicación.
 - `src/components`: interfaz separada por funcionalidad (`layout`, `map`, `schema`, `common`).
 - `src/styles`: estilos globales y diseño adaptable.
+- `api/`: API Fastify + TypeScript con Firebase Authentication y SQL Server Express (`cd api && npm ci && npm run migrate && npm run dev`).
 
 Los proyectos siguen almacenándose en `localStorage` bajo la clave histórica `nodaria_state_v1`, por lo que la actualización conserva los datos existentes. Los proyectos se migran al formato actual (`src/services/migrations.ts`) y se reparan al cargarlos. La importación acepta tanto exportaciones antiguas como las de la versión actual.
 
@@ -44,4 +45,4 @@ La web se publica en Firebase Hosting (proyecto `yosiftware-nodaria`): https://y
 npm run deploy
 ```
 
-Requiere `firebase-tools` con sesión iniciada (`firebase login`). La configuración está en `firebase.json` (carpeta `dist`, reescritura a `index.html` y caché inmutable de `assets/`).
+Usa el `firebase-tools` instalado en `api/` (ejecuta antes `npm ci` en `api/`) con sesión iniciada (`firebase login`) o cuenta de servicio. La configuración está en `firebase.json` (carpeta `dist`, reescritura a `index.html` y caché inmutable de `assets/`).

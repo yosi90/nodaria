@@ -1,0 +1,10 @@
+node_modules
+dist
+logs
+*.log
+
+# Configuración local y secretos
+.env
+secrets/
+.runtime/
+*-firebase-adminsdk-*.json
