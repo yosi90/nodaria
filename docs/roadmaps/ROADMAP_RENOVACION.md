@@ -287,7 +287,7 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 
 ### Pendientes señalados por el usuario (2026-10-03, tercera ronda)
 
-- [ ] Árbol de estructura: arrastrar y soltar para anidar un nodo en otro, sacarlo a la raíz o reordenar hermanos (reabre el punto pospuesto de la Fase 3).
+- [x] Árbol de estructura (2026-10-04): arrastrar y soltar para anidar un nodo en otro (zona central de la fila), colocarlo antes o después de un hermano (bordes de la fila) o sacarlo a la raíz (zona libre del árbol). Funciona en cualquier estructura de «Ver por»: jerarquía, relaciones estructurales, parentesco y atributos de referencia; respeta tipos admitidos y evita ciclos (destino inválido en rojo). Deshacible.
 - [x] Etiquetas de aristas hermanas (mismo origen, destinos a distancia parecida) repartidas a lo largo de la línea para no pisarse.
 - [x] Fuerzas: radio de colisión acorde al ancho de la tarjeta, cascada por profundidad en la estructura (generales arriba) y agrupación horizontal por tipo.
 - [x] El lienzo recalcula la disposición al cambiar el tipo o el parentesco de una relación (antes solo al añadir o quitar nodos o relaciones).

@@ -1,5 +1,7 @@
 import { ChevronDown, ChevronRight, PanelLeftClose, Plus, Search } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { canMoveInStructure } from '../../domain/structureMove';
+import { useToast } from '../common/toasts';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
 import { resolveStructure, structureChildren, structureLenses } from '../../domain/structure';
 import type { Node, Selection } from '../../domain/types';
@@ -36,6 +38,11 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const toast = useToast();
+  // Arrastrar y soltar: nodo arrastrado, fila bajo el puntero y zona (antes, dentro, después).
+  const [dragging, setDragging] = useState<{ nodeId: string; parentId: string | null } | null>(null);
+  const [dropAt, setDropAt] = useState<{ key: string; zone: 'before' | 'inside' | 'after'; ok: boolean } | null>(null);
+  const [dropRoot, setDropRoot] = useState(false);
   const treeRef = useRef<HTMLDivElement>(null);
   const selectedNodeId = selection?.kind === 'node' ? selection.id : null;
 
@@ -90,6 +97,68 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
     treeRef.current?.querySelector(`[data-node="${focused}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [focused]);
 
+  const parentOfRow = (row: Row) => {
+    const path = row.key.split('/');
+    return path.length > 1 ? path[path.length - 2] : null;
+  };
+  const zoneFor = (event: DragEvent): 'before' | 'inside' | 'after' => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const y = (event.clientY - rect.top) / rect.height;
+    if (y < 0.25) return 'before';
+    if (y > 0.75) return 'after';
+    return 'inside';
+  };
+  const onRowDragOver = (event: DragEvent, row: Row) => {
+    if (!dragging) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const zone = zoneFor(event);
+    const targetParent = zone === 'inside' ? row.node.id : parentOfRow(row);
+    const ok =
+      row.node.id !== dragging.nodeId &&
+      !row.key.split('/').includes(dragging.nodeId) &&
+      canMoveInStructure(project, structure.id, dragging.nodeId, targetParent);
+    event.dataTransfer.dropEffect = ok ? 'move' : 'none';
+    setDropRoot(false);
+    setDropAt(current =>
+      current && current.key === row.key && current.zone === zone && current.ok === ok
+        ? current
+        : { key: row.key, zone, ok },
+    );
+  };
+  const onRowDrop = (event: DragEvent, row: Row) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!dragging || !dropAt || !dropAt.ok) return cleanupDrag();
+    const zone = dropAt.zone;
+    const parentId = zone === 'inside' ? row.node.id : parentOfRow(row);
+    let beforeId: string | null = null;
+    if (zone === 'before') beforeId = row.node.id;
+    else if (zone === 'after') {
+      const siblings = (children.get(parentId) ?? []).filter(n => n.id !== dragging.nodeId);
+      const index = siblings.findIndex(n => n.id === row.node.id);
+      beforeId = siblings[index + 1]?.id ?? null;
+    }
+    dispatch({
+      type: 'move-in-structure',
+      structureId: structure.id,
+      nodeId: dragging.nodeId,
+      fromParentId: dragging.parentId,
+      parentId,
+      beforeId,
+    });
+    if (zone === 'inside') toggle(row.key, true);
+    toast({
+      message: parentId === null ? 'Nodo movido a la raíz' : `Nodo movido dentro de «${nodeLabel(project, row.node)}»`,
+      undoable: true,
+    });
+    cleanupDrag();
+  };
+  const cleanupDrag = () => {
+    setDragging(null);
+    setDropAt(null);
+    setDropRoot(false);
+  };
   const toggle = (id: string, open?: boolean) =>
     setCollapsed(current => {
       const next = new Set(current);
@@ -193,6 +262,33 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
         tabIndex={rows.length ? 0 : -1}
         aria-activedescendant={focused ? `${treeId}-${focused}` : undefined}
         onKeyDown={onKeyDown}
+        onDragOver={event => {
+          // Zona libre del árbol: soltar aquí lo lleva a la raíz, al final.
+          if (!dragging) return;
+          event.preventDefault();
+          const ok = canMoveInStructure(project, structure.id, dragging.nodeId, null);
+          event.dataTransfer.dropEffect = ok ? 'move' : 'none';
+          setDropAt(null);
+          setDropRoot(ok);
+        }}
+        onDragLeave={event => {
+          if (event.currentTarget === event.target) setDropRoot(false);
+        }}
+        onDrop={event => {
+          event.preventDefault();
+          if (!dragging || !dropRoot) return cleanupDrag();
+          dispatch({
+            type: 'move-in-structure',
+            structureId: structure.id,
+            nodeId: dragging.nodeId,
+            fromParentId: dragging.parentId,
+            parentId: null,
+            beforeId: null,
+          });
+          toast({ message: 'Nodo movido a la raíz', undoable: true });
+          cleanupDrag();
+        }}
+        data-drop-root={dropRoot || undefined}
       >
         {rows.map(row => {
           const schema = getSchema(project, row.node.typeId);
@@ -207,8 +303,18 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
               aria-level={row.depth + 1}
               aria-expanded={row.hasChildren ? row.expanded : undefined}
               aria-selected={isSelected}
-              className={`tree-row ${isSelected ? 'selected' : ''} ${focused === row.node.id ? 'focused' : ''} ${row.contextOnly ? 'dimmed' : ''}`}
+              className={`tree-row ${isSelected ? 'selected' : ''} ${focused === row.node.id ? 'focused' : ''} ${row.contextOnly ? 'dimmed' : ''} ${dragging?.nodeId === row.node.id ? 'dragging' : ''} ${dropAt?.key === row.key ? `drop-${dropAt.zone} ${dropAt.ok ? '' : 'drop-invalid'}` : ''}`}
               style={{ paddingLeft: 4 + row.depth * 16 }}
+              draggable
+              onDragStart={event => {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', row.node.id);
+                setDragging({ nodeId: row.node.id, parentId: parentOfRow(row) });
+              }}
+              onDragEnd={cleanupDrag}
+              onDragOver={event => onRowDragOver(event, row)}
+              onDragLeave={() => setDropAt(current => (current?.key === row.key ? null : current))}
+              onDrop={event => onRowDrop(event, row)}
               onClick={() => {
                 setFocusedId(row.node.id);
                 onSelect({ kind: 'node', id: row.node.id });

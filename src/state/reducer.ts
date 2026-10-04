@@ -1,6 +1,7 @@
 import { createProject, now, uid } from '../domain/factories';
 import * as lib from '../domain/library';
 import * as ops from '../domain/operations';
+import { moveInStructure, type StructureMove } from '../domain/structureMove';
 import type {
   AppState,
   FieldDefinition,
@@ -45,6 +46,7 @@ export type Action =
     }
   | { type: 'move-nodes'; positions: Record<string, Position | null>; layout?: LayoutMode }
   | { type: 'update-notes'; id: string; notes: string }
+  | ({ type: 'move-in-structure' } & StructureMove)
   | { type: 'update-view'; view: Partial<ProjectView> }
   | { type: 'save-lens'; name: string; includePositions: boolean; id?: string }
   | { type: 'rename-lens'; id: string; name: string }
@@ -143,6 +145,8 @@ function projectReducer(p: Project, action: Action): Project {
       );
     case 'move-nodes':
       return ops.moveNodes(p, action.positions, action.layout);
+    case 'move-in-structure':
+      return moveInStructure(p, action);
     case 'update-notes':
       return ops.updateNotes(p, action.id, action.notes);
     case 'update-view':
