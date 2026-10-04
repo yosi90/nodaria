@@ -11,6 +11,7 @@ import {
   nodeGender,
 } from '../../domain/kinship';
 import { uid } from '../../domain/factories';
+import { relationEnds } from '../../domain/constraints';
 import { allFields, getNode, getSchema, nodeLabel, relationRole, typeMatches } from '../../domain/selectors';
 import type { FieldValue, Node, Relation, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -377,10 +378,10 @@ function RelationForm({
   const me = getNode(project, nodeId);
   const myTypeId = me?.typeId ?? '';
   // Lados en los que este nodo encaja en cada tipo de relación.
-  const sidesFor = (s: Schema) => ({
-    source: typeMatches(project, myTypeId, s.sourceTypeIds),
-    target: typeMatches(project, myTypeId, s.targetTypeIds),
-  });
+  const sidesFor = (s: Schema) => {
+    const ends = relationEnds(project, s);
+    return { source: typeMatches(project, myTypeId, ends.source), target: typeMatches(project, myTypeId, ends.target) };
+  };
   // Solo los tipos que admiten a este nodo en algún extremo.
   const relationTypes = project.schemas.filter(s => {
     if (s.kind !== 'relationship') return false;
@@ -411,12 +412,13 @@ function RelationForm({
   const fields = schema ? allFields(project, schema.id) : [];
 
   const asSource = iAmSource || Boolean(schema?.genealogical);
-  const otherEnd: 'sourceTypeIds' | 'targetTypeIds' = asSource ? 'targetTypeIds' : 'sourceTypeIds';
-  const myEnd: 'sourceTypeIds' | 'targetTypeIds' = asSource ? 'sourceTypeIds' : 'targetTypeIds';
+  const ends = schema ? relationEnds(project, schema) : { source: [], target: [] };
+  const otherEnd = asSource ? ends.target : ends.source;
+  const myEnd = asSource ? ends.source : ends.target;
   const candidates = schema
-    ? project.nodes.filter(n => n.id !== nodeId && typeMatches(project, n.typeId, schema[otherEnd]))
+    ? project.nodes.filter(n => n.id !== nodeId && typeMatches(project, n.typeId, otherEnd))
     : [];
-  const myTypeOk = schema && me ? typeMatches(project, me.typeId, schema[myEnd]) : false;
+  const myTypeOk = schema && me ? typeMatches(project, me.typeId, myEnd) : false;
   const validOther = otherId && candidates.some(n => n.id === otherId) ? otherId : null;
   const canSave = Boolean(schema && validOther && myTypeOk && (!schema.genealogical || kinshipId));
 

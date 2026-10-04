@@ -1,6 +1,7 @@
 import { defaultChildTerm, kinshipStructureLink } from './kinship';
 import { addRelation } from './operations';
 import { referencedIds } from './references';
+import { relationEnds } from './constraints';
 import { allFields, canContain, canSetParent, getNode, getSchema, typeMatches } from './selectors';
 import { fieldOfLens, structureChildren, structureEndpoints } from './structure';
 import type { Project } from './types';
@@ -56,16 +57,17 @@ export function canMoveInStructure(p: Project, structureId: string | null, nodeI
     );
   const schema = getSchema(p, structureId);
   if (!schema) return false;
+  const ends = relationEnds(p, schema);
   if (schema.genealogical)
     return (
       Boolean(defaultChildTerm(p)) &&
-      typeMatches(p, node.typeId, schema.sourceTypeIds) &&
-      typeMatches(p, parent.typeId, schema.targetTypeIds)
+      typeMatches(p, node.typeId, ends.source) &&
+      typeMatches(p, parent.typeId, ends.target)
     );
   const { sourceId, targetId } = structureEndpoints(schema, parentId, nodeId);
   const sourceType = getNode(p, sourceId)!.typeId;
   const targetType = getNode(p, targetId)!.typeId;
-  return typeMatches(p, sourceType, schema.sourceTypeIds) && typeMatches(p, targetType, schema.targetTypeIds);
+  return typeMatches(p, sourceType, ends.source) && typeMatches(p, targetType, ends.target);
 }
 
 /** Coloca `id` delante de `beforeId` en la lista (o al final si no hay), devolviendo una lista nueva. */

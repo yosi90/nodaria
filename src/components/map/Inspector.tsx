@@ -15,6 +15,7 @@ import {
   relationLabel,
   typeMatches,
 } from '../../domain/selectors';
+import { relationEnds } from '../../domain/constraints';
 import type { FieldValue, Node, Project, Relation, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
@@ -318,9 +319,12 @@ function ancestors(project: Project, node: Node): Node[] {
 function RelationEndpoints({ relation, onChange }: { relation: Relation; onChange: (r: Relation) => void }) {
   const { project } = useApp();
   const s = getSchema(project, relation.typeId);
+  const ends = s ? relationEnds(project, s) : { source: [], target: [] };
   const candidates = (key: 'sourceTypeIds' | 'targetTypeIds', exclude: string) =>
     project.nodes
-      .filter(n => n.id !== exclude && typeMatches(project, n.typeId, s?.[key] ?? []))
+      .filter(
+        n => n.id !== exclude && typeMatches(project, n.typeId, key === 'sourceTypeIds' ? ends.source : ends.target),
+      )
       .map(n => nodeOption(project, n));
   return (
     <div className="form-grid">

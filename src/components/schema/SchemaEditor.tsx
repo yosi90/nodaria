@@ -2,7 +2,8 @@ import { Copy, Trash2 } from 'lucide-react';
 import { uid } from '../../domain/factories';
 import { useState } from 'react';
 import { RELATION_STYLES } from '../../domain/constants';
-import { inheritanceCandidates, schemaUsage } from '../../domain/selectors';
+import { inheritedConstraints } from '../../domain/constraints';
+import { getSchema, inheritanceCandidates, schemaUsage } from '../../domain/selectors';
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { Button } from '../common/Button';
@@ -19,6 +20,11 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
   const [deleting, setDeleting] = useState(false);
   const update = (patch: Partial<Schema>) => dispatch({ type: 'update-schema', schema: { ...schema, ...patch } });
   const entities = project.schemas.filter(item => item.kind === 'entity');
+  const inherited = inheritedConstraints(project, schema);
+  const endHint = (from: Schema | null, ids: string[]) =>
+    from
+      ? `Heredado de «${from.name}»: ${ids.map(id => getSchema(project, id)?.name ?? id).join(', ')}.`
+      : 'Cualquier tipo.';
   const usage = schemaUsage(project, schema.id);
   const isEntity = schema.kind === 'entity';
 
@@ -111,7 +117,13 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                   addLabel="Añadir tipo"
                   emptyText="Ninguno: sus nodos no pueden contener otros."
                 />
-                <small>Los subtipos de un tipo permitido también se admiten.</small>
+                <small>
+                  Los subtipos de un tipo permitido también se admiten.
+                  {inherited.childTypeIds.length > 0 &&
+                    ` Por herencia admite además: ${inherited.childTypeIds
+                      .map(id => getSchema(project, id)?.name ?? id)
+                      .join(', ')}.`}
+                </small>
               </div>
             ) : (
               <div className="form-grid">
@@ -122,7 +134,7 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                     value={schema.sourceTypeIds}
                     onChange={sourceTypeIds => update({ sourceTypeIds })}
                     addLabel="Añadir tipo"
-                    emptyText="Cualquier tipo."
+                    emptyText={endHint(inherited.sourceFrom, inherited.ends.source)}
                   />
                 </div>
                 <div className="field">
@@ -132,7 +144,7 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                     value={schema.targetTypeIds}
                     onChange={targetTypeIds => update({ targetTypeIds })}
                     addLabel="Añadir tipo"
-                    emptyText="Cualquier tipo."
+                    emptyText={endHint(inherited.targetFrom, inherited.ends.target)}
                   />
                 </div>
                 <label className="check">

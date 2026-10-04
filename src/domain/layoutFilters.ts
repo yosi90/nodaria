@@ -1,3 +1,4 @@
+import { relationEnds } from './constraints';
 import { typeMatches } from './selectors';
 import type { LayoutFilters, LayoutMode, Project, ProjectView } from './types';
 
@@ -26,7 +27,10 @@ export function defaultFilters(p: Project, mode: LayoutMode): LayoutFilters {
   const kinship = genealogySchemas(p);
   const current = activeFilters(p.view);
   if (mode === 'genealogy') {
-    const admitted = kinship.flatMap(s => [...s.sourceTypeIds, ...s.targetTypeIds]);
+    const admitted = kinship.flatMap(s => {
+      const ends = relationEnds(p, s);
+      return [...ends.source, ...ends.target];
+    });
     return {
       hiddenEntityTypeIds: p.schemas
         .filter(s => s.kind === 'entity' && !s.isAbstract && !typeMatches(p, s.id, admitted))

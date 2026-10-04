@@ -1,6 +1,7 @@
 import { evaluateFormula } from './formulas';
 import { kinshipRoles } from './kinship';
 import { declaredFields } from './library';
+import { effectiveChildTypes, relationEnds } from './constraints';
 import type { FieldDefinition, FieldValue, Node, Project, Relation, Schema } from './types';
 
 export const getSchema = (p: Project, id: string) => p.schemas.find(x => x.id === id);
@@ -74,7 +75,7 @@ export function canChangeSchemaKind(p: Project, schemaId: string) {
 
 /** Indica si un nodo de tipo `childTypeId` puede colgar de uno de tipo `parentTypeId`. */
 export function canContain(p: Project, parentTypeId: string, childTypeId: string) {
-  const allowed = getSchema(p, parentTypeId)?.allowedChildTypeIds ?? [];
+  const allowed = effectiveChildTypes(p, parentTypeId);
   return allowed.length > 0 && typeMatches(p, childTypeId, allowed);
 }
 
@@ -203,12 +204,11 @@ export function compatibleRelationTypes(project: Project, sourceId: string, targ
   const source = project.nodes.find(n => n.id === sourceId);
   const target = project.nodes.find(n => n.id === targetId);
   if (!source || !target) return [];
-  return project.schemas.filter(
-    s =>
-      s.kind === 'relationship' &&
-      typeMatches(project, source.typeId, s.sourceTypeIds) &&
-      typeMatches(project, target.typeId, s.targetTypeIds),
-  );
+  return project.schemas.filter(s => {
+    if (s.kind !== 'relationship') return false;
+    const ends = relationEnds(project, s);
+    return typeMatches(project, source.typeId, ends.source) && typeMatches(project, target.typeId, ends.target);
+  });
 }
 
 /**
