@@ -40,6 +40,7 @@ import { FallingPins, type FallingPin } from './FallingPins';
 import { ExportMenu } from './ExportMenu';
 import { FamilyLinks } from './FamilyLinks';
 import { cardContent, cardHeight } from './cardLines';
+import { edgeSlots } from './edgeSlots';
 import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
 import { LegendPanel } from './LegendPanel';
 import { LensMenu } from './LensMenu';
@@ -435,6 +436,18 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     return { units, links, positions, color: schema.color };
   }, [view.layout, project, structure.id, hiddenRelations, nodes]);
 
+  // Lado y desplazamiento de cada extremo según las posiciones actuales (también durante el arrastre).
+  const routedEdges = useMemo<FloatingEdgeType[]>(() => {
+    const boxes = new Map(
+      nodes.map(n => [
+        n.id,
+        { x: n.position.x, y: n.position.y, width: n.width ?? NODE_W, height: n.height ?? NODE_H },
+      ]),
+    );
+    const slots = edgeSlots(boxes, edges);
+    return edges.map(e => ({ ...e, data: { ...e.data!, ends: slots.get(e.id) } }));
+  }, [nodes, edges]);
+
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
   // volver a renderizar los componentes: con cientos de nodos y miles de aristas eso costaría casi un segundo.
   useEffect(() => {
@@ -748,7 +761,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         />
         <ReactFlow
           nodes={nodes}
-          edges={edges as Edge[]}
+          edges={routedEdges as Edge[]}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}

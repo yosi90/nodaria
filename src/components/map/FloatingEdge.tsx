@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import { memo, useMemo } from 'react';
 import type { RelationStyle } from '../../domain/types';
-import { bendFor, routeRelation, type Box } from './edgeGeometry';
+import { bendFor, routeRelation, type Box, crossesBoxes, sideRoute, type Side } from './edgeGeometry';
 import { useCanvasSettings } from './canvasSettings';
 import { NODE_H, NODE_W } from './layout';
 
@@ -26,6 +26,8 @@ export interface FloatingEdgeData extends Record<string, unknown> {
   count: number;
   /** Posición de la etiqueta a lo largo de la curva (0–1); 0,5 = punto medio. */
   labelT?: number;
+  /** Lado y desplazamiento de cada extremo (ver edgeSlots). */
+  ends?: { sideSource: Side; sideTarget: Side; offsetSource: number; offsetTarget: number };
   /** Trazo recto, sin curva ni esquivar tarjetas (ascendencia en la disposición Genealogía). */
   straight?: boolean;
   /** Seleccionar la relación al pulsar su etiqueta. */
@@ -83,6 +85,8 @@ export const FloatingEdge = memo(function FloatingEdge({
   const key = a && b ? `${a.x},${a.y},${a.width},${a.height}|${b.x},${b.y},${b.width},${b.height}` : '';
   const index = data?.index ?? 0;
   const count = data?.count ?? 1;
+  const ends = data?.ends;
+  const endsKey = ends ? `${ends.sideSource},${ends.sideTarget},${ends.offsetSource},${ends.offsetTarget}` : '';
   const route = useMemo(() => {
     if (!key) return null;
     const [ra, rb] = key.split('|').map(part => {
@@ -97,8 +101,27 @@ export const FloatingEdge = memo(function FloatingEdge({
           return { x, y, width, height };
         })
       : [];
+    // Ruta preferida: por los lados enfrentados, en S. Si atraviesa alguna tarjeta, se esquiva en curva.
+    // Si las tarjetas se solapan en el eje dominante (no hay hueco entre los lados enfrentados), la S
+    // se retorcería: mejor la curva clásica.
+    const horizontal = ends && (ends.sideSource === 'left' || ends.sideSource === 'right');
+    const gap = !ends
+      ? 0
+      : horizontal
+        ? ends.sideSource === 'right'
+          ? rb.x - (ra.x + ra.width)
+          : ra.x - (rb.x + rb.width)
+        : ends.sideSource === 'bottom'
+          ? rb.y - (ra.y + ra.height)
+          : ra.y - (rb.y + rb.height);
+    if (ends && gap >= 24) {
+      const direct = sideRoute(ra, rb, ends.sideSource, ends.sideTarget, ends.offsetSource, ends.offsetTarget);
+      const nearbyBoxes = obstacles.filter(o => o !== ra && o !== rb);
+      if (!crossesBoxes(direct.pointAt, nearbyBoxes)) return { ...direct, anchor: 'middle' as const };
+    }
     return routeRelation(ra, rb, bendFor(index, count, distance), obstacles, forward ? ra : rb, forward ? rb : ra);
-  }, [key, nearby, index, count, source, target]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- endsKey resume `ends`
+  }, [key, nearby, index, count, source, target, endsKey]);
 
   if (!route || !data) return null;
   const isHierarchy = data.kind === 'hierarchy';
@@ -111,14 +134,7 @@ export const FloatingEdge = memo(function FloatingEdge({
     .join(' ');
   const labelShift = route.anchor === 'start' ? 8 : route.anchor === 'end' ? -8 : 0;
   const t = data.labelT ?? 0.5;
-  const u = 1 - t;
-  const labelPos =
-    t === 0.5
-      ? route.labelPos
-      : {
-          x: u * u * route.start.x + 2 * u * t * route.control.x + t * t * route.end.x,
-          y: u * u * route.start.y + 2 * u * t * route.control.y + t * t * route.end.y,
-        };
+  const labelPos = t === 0.5 ? route.labelPos : route.pointAt(t);
   const translateX = route.anchor === 'start' ? '0%' : route.anchor === 'end' ? '-100%' : '-50%';
   return (
     <>

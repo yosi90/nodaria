@@ -24,6 +24,93 @@ export function borderPoint(box: Box, toward: Point): Point {
   return { x: c.x + dx * scale, y: c.y + dy * scale };
 }
 
+/** Lado de una tarjeta por el que sale o entra una línea. */
+export type Side = 'left' | 'right' | 'top' | 'bottom';
+
+/**
+ * Lados que se enfrentan entre dos tarjetas: si la otra queda sobre todo a un lado, por los
+ * laterales; si queda sobre todo arriba o abajo, por arriba y abajo. Regla fija y previsible.
+ */
+export function facingSides(a: Box, b: Box): [Side, Side] {
+  const ca = center(a);
+  const cb = center(b);
+  const dx = cb.x - ca.x;
+  const dy = cb.y - ca.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ['right', 'left'] : ['left', 'right'];
+  return dy >= 0 ? ['bottom', 'top'] : ['top', 'bottom'];
+}
+
+/** Punto de un lado de la tarjeta, desplazado `offset` a lo largo de ese lado desde su centro. */
+export function sidePoint(box: Box, side: Side, offset = 0): Point {
+  const c = center(box);
+  if (side === 'left') return { x: box.x, y: c.y + offset };
+  if (side === 'right') return { x: box.x + box.width, y: c.y + offset };
+  if (side === 'top') return { x: c.x + offset, y: box.y };
+  return { x: c.x + offset, y: box.y + box.height };
+}
+
+const outward = (side: Side): Point =>
+  side === 'left'
+    ? { x: -1, y: 0 }
+    : side === 'right'
+      ? { x: 1, y: 0 }
+      : side === 'top'
+        ? { x: 0, y: -1 }
+        : { x: 0, y: 1 };
+
+export interface Route {
+  d: string;
+  start: Point;
+  end: Point;
+  labelPos: Point;
+  /** Punto de la curva en t ∈ [0, 1]. */
+  pointAt: (t: number) => Point;
+}
+
+/**
+ * Curva en S entre dos lados: sale perpendicular al lado de origen y entra perpendicular al de
+ * destino. Es la ruta preferida; solo si atraviesa tarjetas se recurre a `routeRelation`.
+ */
+export function sideRoute(a: Box, b: Box, sideA: Side, sideB: Side, offsetA = 0, offsetB = 0): Route {
+  const start = sidePoint(a, sideA, offsetA);
+  const end = sidePoint(b, sideB, offsetB);
+  const oa = outward(sideA);
+  const ob = outward(sideB);
+  const span = oa.x ? Math.abs(end.x - start.x) : Math.abs(end.y - start.y);
+  const k = Math.max(40, Math.min(160, span * 0.5));
+  const c1 = { x: start.x + oa.x * k, y: start.y + oa.y * k };
+  const c2 = { x: end.x + ob.x * k, y: end.y + ob.y * k };
+  const pointAt = (t: number): Point => {
+    const u = 1 - t;
+    return {
+      x: u * u * u * start.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * end.x,
+      y: u * u * u * start.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * end.y,
+    };
+  };
+  return {
+    d: `M${start.x},${start.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${end.x},${end.y}`,
+    start,
+    end,
+    labelPos: pointAt(0.5),
+    pointAt,
+  };
+}
+
+/** Indica si una curva (muestreada) atraviesa alguna tarjeta. */
+export function crossesBoxes(pointAt: (t: number) => Point, obstacles: Box[]) {
+  for (let i = 1; i < SAMPLES; i++) {
+    const { x, y } = pointAt(i / SAMPLES);
+    if (
+      obstacles.some(
+        o =>
+          x > o.x - CLEARANCE && x < o.x + o.width + CLEARANCE && y > o.y - CLEARANCE && y < o.y + o.height + CLEARANCE,
+      )
+    )
+      return true;
+  }
+  return false;
+}
+
 /** Separación entre relaciones paralelas del mismo par de nodos. */
 export const PARALLEL_GAP = 34;
 
@@ -44,7 +131,21 @@ export function relationPath(a: Box, b: Box, bend: number, normalFrom: Box = a, 
   const end = borderPoint(b, control);
   // Punto medio de la curva (t = 0,5), donde se coloca la etiqueta.
   const labelPos = { x: (start.x + 2 * control.x + end.x) / 4, y: (start.y + 2 * control.y + end.y) / 4 };
-  return { d: `M${start.x},${start.y} Q${control.x},${control.y} ${end.x},${end.y}`, start, control, end, labelPos };
+  const pointAt = (t: number): Point => {
+    const u = 1 - t;
+    return {
+      x: u * u * start.x + 2 * u * t * control.x + t * t * end.x,
+      y: u * u * start.y + 2 * u * t * control.y + t * t * end.y,
+    };
+  };
+  return {
+    d: `M${start.x},${start.y} Q${control.x},${control.y} ${end.x},${end.y}`,
+    start,
+    control,
+    end,
+    labelPos,
+    pointAt,
+  };
 }
 
 /**
