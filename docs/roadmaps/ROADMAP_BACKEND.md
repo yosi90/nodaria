@@ -79,12 +79,13 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 ### Fase 5 — Cuenta en el front
 
-- [ ] SDK de Firebase (`src/services/firebase.ts`) con idioma `es`; `authDomain` propio en producción.
-- [ ] Cliente de la API (`src/services/api.ts`) con errores tipados y detección de «sin conexión».
-- [ ] Estado de autenticación (`src/state/auth.tsx`): cargando, sin sesión, pendiente de verificar, con sesión.
-- [ ] Diálogo de acceso: correo y contraseña, registro con verificación, Google, recuperación de contraseña, reenvío de verificación.
-- [ ] Menú de cuenta en la barra superior: correo, estado de sincronización, sincronizar ahora, cerrar sesión (con opción de vaciar el navegador), eliminar cuenta (reautenticación).
-- [ ] Textos vacíos y ayuda: qué aporta la cuenta y que es opcional.
+- [x] SDK de Firebase (`src/services/firebase.ts`) con idioma `es`; `authDomain` propio en producción.
+- [x] Cliente de la API (`src/services/api.ts`) con errores tipados y detección de «sin conexión».
+- [x] Estado de autenticación (`src/state/auth.tsx`): cargando, sin sesión, pendiente de verificar, con sesión.
+- [x] Diálogo de acceso: correo y contraseña, registro con verificación, Google, recuperación de contraseña, reenvío de verificación.
+- [x] Menú de cuenta en la barra superior: correo, cerrar sesión y eliminar cuenta (reautenticación y confirmación escrita). El estado de sincronización, «sincronizar ahora» y la opción de vaciar el navegador al salir llegan con la Fase 6.
+- [x] El diálogo de acceso explica qué aporta la cuenta y que es opcional; al cerrar sesión o borrar la cuenta se avisa de que los proyectos del navegador se conservan.
+- [x] Prueba de extremo a extremo en Chromium (2026-10-04): alta en Firebase, inicio de sesión por la interfaz, alta en la API, menú, borrado de cuenta con reautenticación y vuelta a «sin sesión».
 
 ### Fase 6 — Sincronización en el front
 
@@ -114,7 +115,7 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 | 2 — Proyectos en el servidor   | Completada (2026-10-04)              |
 | 3 — Mensajes y Notificapp      | Aplazada                             |
 | 4 — Publicación                | Completada (2026-10-04)              |
-| 5 — Cuenta en el front         | Pendiente                            |
+| 5 — Cuenta en el front         | Completada (2026-10-04)              |
 | 6 — Sincronización en el front | Pendiente                            |
 | 7 — Mensajes en el front       | Aplazada                             |
 | 8 — Cierre                     | Pendiente                            |

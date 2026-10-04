@@ -1,0 +1,72 @@
+/* ---------- Cuenta y acceso ---------- */
+.account-slot {
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+}
+.account-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 4px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.account-button:hover,
+.account-button[aria-expanded='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+.account-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.icon-btn.account-unverified {
+  color: var(--warning);
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--space-4);
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link-button:hover {
+  color: var(--accent-strong);
+}

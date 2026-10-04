@@ -156,7 +156,9 @@ describe('duplicar', () => {
     expect(new Set(mine.map(r => r.id)).size).toBe(mine.length);
     expect(duplicateNode(base, 'aria').project.relations.length).toBe(base.relations.length);
     // Segunda copia: «(copia 2)»
-    const title = Object.keys(copy.values).find(k => typeof copy.values[k] === 'string' && String(copy.values[k]).includes('(copia)'));
+    const title = Object.keys(copy.values).find(
+      k => typeof copy.values[k] === 'string' && String(copy.values[k]).includes('(copia)'),
+    );
     if (title) {
       const again = duplicateNode(p, 'aria', false, 'aria3').project.nodes.find(n => n.id === 'aria3')!;
       expect(String(again.values[title])).toMatch(/\(copia 2\)$/);

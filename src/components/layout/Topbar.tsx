@@ -30,6 +30,7 @@ import { Menu, type MenuEntry } from '../common/Menu';
 import type { View } from '../../state/navigation';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { useToast } from '../common/toasts';
+import { AccountButton } from '../account/AccountButton';
 
 export type { View } from '../../state/navigation';
 
@@ -193,6 +194,8 @@ export function Topbar({
           onClick={() => setPreference('theme', theme.next)}
         />
         <IconButton icon={CircleHelp} label="Atajos de teclado (?)" tooltipSide="left" onClick={onHelp} />
+        <span className="divider" aria-hidden />
+        <AccountButton />
       </div>
       <input ref={file} hidden type="file" accept="application/json,.json" onChange={upload} />
     </header>
