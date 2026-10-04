@@ -2,7 +2,7 @@ import { PROJECT_FORMAT_VERSION } from '../domain/constants';
 import { createView, uid } from '../domain/factories';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
-import type { FieldValue, LayoutMode, Node, Position, Project } from '../domain/types';
+import type { FieldDefinition, FieldValue, LayoutMode, Node, NodeDisplay, Position, Project } from '../domain/types';
 
 /*
  * Historial de formatos:
@@ -46,6 +46,12 @@ function positionsOf(n: RawNode, layout: LayoutMode): Node['positions'] {
   return result;
 }
 
+/** Hasta v4 el atributo tenía un booleano `showOnNode` (solo icono). */
+function nodeDisplayOf(f: Partial<FieldDefinition> & { showOnNode?: boolean }): NodeDisplay {
+  if (f.nodeDisplay === 'none' || f.nodeDisplay === 'icon' || f.nodeDisplay === 'text') return f.nodeDisplay;
+  return f.showOnNode ? 'icon' : 'none';
+}
+
 /** Rellena los campos opcionales que las versiones antiguas podían omitir. */
 function normalizeProject(project: RawProject): Project {
   const stamp = new Date().toISOString();
@@ -72,7 +78,8 @@ function normalizeProject(project: RawProject): Project {
               formula: f.formula || '',
               icon: f.icon ?? null,
               optionIcons: f.optionIcons ?? {},
-              showOnNode: f.showOnNode ?? false,
+              nodeDisplay: nodeDisplayOf(f),
+              optionDisplay: f.optionDisplay ?? {},
             },
       ),
       allowedChildTypeIds: s.allowedChildTypeIds || [],
@@ -94,7 +101,8 @@ function normalizeProject(project: RawProject): Project {
       formula: f.formula || '',
       icon: f.icon ?? null,
       optionIcons: f.optionIcons ?? {},
-      showOnNode: f.showOnNode ?? false,
+      nodeDisplay: nodeDisplayOf(f),
+      optionDisplay: f.optionDisplay ?? {},
     })),
     nodes: (project.nodes || []).map(n => ({
       ...n,

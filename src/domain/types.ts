@@ -30,9 +30,12 @@ export interface FieldDefinition {
   icon: string | null;
   /** Icono de cada opción de una lista, por su texto. */
   optionIcons: Record<string, string>;
-  /** Mostrar el icono (del atributo o de la opción elegida) en la tarjeta del nodo. */
-  showOnNode: boolean;
+  /** Cómo se enseña en la tarjeta del nodo: nada, solo el icono, o icono y texto en una línea propia. */
+  nodeDisplay: NodeDisplay;
+  /** En una lista, cada opción puede sobrescribir `nodeDisplay`. */
+  optionDisplay: Record<string, NodeDisplay>;
 }
+export type NodeDisplay = 'none' | 'icon' | 'text';
 /** Vínculo a un atributo de la biblioteca compartida del proyecto. */
 export interface FieldLink {
   ref: string;

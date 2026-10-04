@@ -28,7 +28,7 @@ import {
   kinshipTerm,
 } from '../../domain/kinship';
 import { resolveStructure, structureLinks } from '../../domain/structure';
-import type { LayoutMode, Position, Project, Selection, Relation, Node } from '../../domain/types';
+import type { LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { pointAnchor, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
@@ -38,6 +38,7 @@ import { FloatingEdge, type FloatingEdgeType } from './FloatingEdge';
 import { CanvasSettingsContext } from './canvasSettings';
 import { FallingPins, type FallingPin } from './FallingPins';
 import { FamilyLinks } from './FamilyLinks';
+import { cardContent, cardHeight } from './cardLines';
 import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
 import { LegendPanel } from './LegendPanel';
 import { LensMenu } from './LensMenu';
@@ -119,23 +120,6 @@ function isIncomplete(project: Project, typeId: string, values: Record<string, u
   });
 }
 
-/** Iconos de los atributos marcados «Mostrar en el nodo» que tienen valor: el de la opción elegida o el del atributo. */
-function fieldBadges(project: Project, n: Node): { icon: string; title: string }[] {
-  const badges: { icon: string; title: string }[] = [];
-  allFields(project, n.typeId)
-    .filter(f => f.showOnNode)
-    .forEach(f => {
-      const v = n.values[f.id];
-      const empty = v === undefined || v === null || v === '' || v === false || (Array.isArray(v) && !v.length);
-      if (empty) return;
-      const icon = (f.type === 'select' ? f.optionIcons[String(v)] : undefined) ?? f.icon;
-      if (!icon) return;
-      const text = typeof v === 'string' || typeof v === 'number' ? `: ${v}` : '';
-      badges.push({ icon, title: `${f.label}${text}` });
-    });
-  return badges.slice(0, 4);
-}
-
 function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: FlowCanvasProps) {
   const { project, dispatch } = useApp();
   const toast = useToast();
@@ -182,6 +166,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       new Map(project.nodes.filter(n => n.positions[view.layout]).map(n => [n.id, n.positions[view.layout]!] as const)),
     [project.nodes, view.layout],
   );
+  // Las disposiciones separan las filas según la tarjeta más alta del proyecto.
+  const maxCardHeight = useMemo(
+    () => Math.max(NODE_H, ...project.nodes.map(n => cardHeight(cardContent(project, n).lines.length))),
+    [project],
+  );
   // La disposición automática solo depende de la forma del grafo, no de los valores de los nodos.
   const layoutKey = JSON.stringify([
     view.layout,
@@ -189,13 +178,14 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     view.layout === 'radial' ? selectedNodeId : null,
     view.layout === 'force' ? [...fixed] : null,
     view.layout === 'genealogy' ? structureLinks(project, genealogyStructure(project, structure.id)) : null,
+    maxCardHeight,
     project.nodes.map(n => [n.id, n.typeId, n.parentId]),
     links,
     // Cambiar el tipo o el parentesco de una relación altera la estructura sin cambiar sus extremos.
     structureLinks(project, structure.id),
   ]);
   const autoPositions = useMemo(
-    () => autoLayout(project, view.layout, structure.id, links, selectedNodeId, fixed),
+    () => autoLayout(project, view.layout, structure.id, links, selectedNodeId, fixed, maxCardHeight),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- la clave resume todas las entradas relevantes
     [layoutKey],
   );
@@ -275,12 +265,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       .filter(n => visibleIds.has(n.id))
       .map(n => {
         const schema = getSchema(project, n.typeId);
+        const content = cardContent(project, n);
         return {
           id: n.id,
           type: 'card',
           position: overrides[n.id] ?? n.positions[view.layout] ?? autoPositions.get(n.id) ?? { x: 0, y: 0 },
           width: NODE_W,
-          height: NODE_H,
+          height: cardHeight(content.lines.length),
           selected: selectedNodeId === n.id,
           data: {
             label: nodeLabel(project, n),
@@ -296,7 +287,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                 .filter(f => f.type === 'image')
                 .map(f => n.values[f.id])
                 .find(isImageValue) ?? null,
-            badges: fieldBadges(project, n),
+            badges: content.badges,
+            lines: content.lines,
           },
         };
       });
@@ -413,7 +405,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     const genealogyId = genealogyStructure(project, structure.id);
     const schema = genealogyId ? getSchema(project, genealogyId) : undefined;
     if (!schema?.genealogical || hiddenRelations.has(schema.id)) return null;
-    const positions = new Map(nodes.map(n => [n.id, n.position]));
+    const positions = new Map(nodes.map(n => [n.id, { ...n.position, h: n.height }]));
     const units = familyUnits(project, genealogyId)
       .map(u => ({
         parents: u.parents.filter(id => positions.has(id)),

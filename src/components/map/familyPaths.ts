@@ -1,4 +1,8 @@
 import type { Position } from '../../domain/types';
+
+/** Posición de una tarjeta con su altura (las tarjetas con líneas de atributos son más altas). */
+export type Placed = Position & { h?: number };
+const heightOf = (p: Placed) => p.h ?? NODE_H;
 import { NODE_H, NODE_W } from './layout';
 
 /** Una familia: conjunto de progenitores con sus hijos comunes. */
@@ -31,7 +35,7 @@ export interface KinLink {
  * distintas, bajada del superior, tramo horizontal en el hueco entre filas y bajada hasta el inferior.
  * Devuelve el trazo y el punto donde va la etiqueta.
  */
-export function kinPath(a: Position, b: Position): { d: string; label: { x: number; y: number } } | null {
+export function kinPath(a: Placed, b: Placed): { d: string; label: { x: number; y: number } } | null {
   if (Math.abs(a.y - b.y) < 1) {
     const [l, rt] = a.x < b.x ? [a, b] : [b, a];
     const lx = l.x + NODE_W / 2;
@@ -47,7 +51,7 @@ export function kinPath(a: Position, b: Position): { d: string; label: { x: numb
   }
   const [u, d] = a.y < b.y ? [a, b] : [b, a];
   const ux = u.x + NODE_W / 2;
-  const uy = u.y + NODE_H;
+  const uy = u.y + heightOf(u);
   const dx = d.x + NODE_W / 2;
   const dy = d.y;
   const busY = uy + 32;
@@ -61,9 +65,9 @@ export function kinPath(a: Position, b: Position): { d: string; label: { x: numb
 }
 
 /** Dibuja una familia: devuelve los trazos SVG (`d`). */
-export function familyPaths(unit: FamilyUnit, positions: Map<string, Position>): string[] {
-  const parents = unit.parents.map(id => positions.get(id)).filter((p): p is Position => Boolean(p));
-  const children = unit.children.map(id => positions.get(id)).filter((p): p is Position => Boolean(p));
+export function familyPaths(unit: FamilyUnit, positions: Map<string, Placed>): string[] {
+  const parents = unit.parents.map(id => positions.get(id)).filter((p): p is Placed => Boolean(p));
+  const children = unit.children.map(id => positions.get(id)).filter((p): p is Placed => Boolean(p));
   if (!parents.length) return [];
   const paths: string[] = [];
   // Puntos desde los que baja la línea de los progenitores.
@@ -71,10 +75,10 @@ export function familyPaths(unit: FamilyUnit, positions: Map<string, Position>):
   const [l, rt] = [...parents].sort((a, b) => a.x - b.x);
   if (parents.length === 2 && Math.abs(l.y - rt.y) < 1 && rt.x - l.x > NODE_W) {
     // Pareja contigua: barra entre ambos y bajada desde su centro.
-    const y = l.y + NODE_H / 2;
+    const y = l.y + Math.min(heightOf(l), heightOf(rt)) / 2;
     paths.push(`M${l.x + NODE_W},${y} L${rt.x},${y}`);
     starts.push({ x: (l.x + NODE_W + rt.x) / 2, y });
-  } else parents.forEach(p => starts.push({ x: p.x + NODE_W / 2, y: p.y + NODE_H }));
+  } else parents.forEach(p => starts.push({ x: p.x + NODE_W / 2, y: p.y + heightOf(p) }));
   if (!children.length) return paths;
 
   const ends = children.map(c => ({ x: c.x + NODE_W / 2, y: c.y }));

@@ -19,8 +19,10 @@ export interface NodeCardData extends Record<string, unknown> {
   onUnpin?: (origin: { x: number; y: number }) => void;
   /** Retrato (data URL) del primer atributo de imagen con valor. */
   image: string | null;
-  /** Iconos de atributos marcados «Mostrar en el nodo» (con valor), con su texto. */
+  /** Iconos de atributos marcados «Solo icono» (con valor), con su texto. */
   badges: { icon: string; title: string }[];
+  /** Atributos marcados «Icono y texto»: una línea cada uno bajo el nombre. */
+  lines: { icon: string | null; text: string }[];
 }
 
 export type CardNode = FlowNode<NodeCardData, 'card'>;
@@ -57,36 +59,52 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
       style={{ '--type-color': data.color } as CSSProperties}
     >
       <Handle type="target" position={Position.Left} className="node-target" isConnectableStart={false} />
-      {data.image ? (
-        <img className="node-portrait" src={data.image} alt="" />
-      ) : (
-        <span className="type-icon lg" aria-hidden>
-          {createElement(typeIcon(data.icon), { size: 16, strokeWidth: 2.2 })}
-        </span>
-      )}
-      <div className="node-texts">
-        <strong title={data.label}>{data.label}</strong>
-        <small>
-          {data.typeName}
-          {data.badges.map(b => (
-            <span key={b.title} className="node-badge" title={b.title}>
-              {createElement(typeIcon(b.icon), { size: 11, strokeWidth: 2.4 })}
+      <div className="node-main">
+        {data.image ? (
+          <img className="node-portrait" src={data.image} alt="" />
+        ) : (
+          <span className="type-icon lg" aria-hidden>
+            {createElement(typeIcon(data.icon), { size: 16, strokeWidth: 2.2 })}
+          </span>
+        )}
+        <div className="node-texts">
+          <strong title={data.label}>{data.label}</strong>
+          <small>
+            {data.typeName}
+            {data.badges.map(b => (
+              <span key={b.title} className="node-badge" title={b.title}>
+                {createElement(typeIcon(b.icon), { size: 11, strokeWidth: 2.4 })}
+              </span>
+            ))}
+          </small>
+        </div>
+        <div className="node-marks" aria-hidden>
+          {data.incomplete && (
+            <span className="node-mark warning" title="Faltan atributos obligatorios">
+              <TriangleAlert size={12} />
+            </span>
+          )}
+          {data.degree > 0 && (
+            <span className="node-degree" title={`${data.degree} relaciones`}>
+              {data.degree}
+            </span>
+          )}
+        </div>
+      </div>
+      {data.lines.length > 0 && (
+        <div className="node-lines">
+          {data.lines.map(line => (
+            <span key={line.text} className="node-line" title={line.text}>
+              {line.icon ? (
+                <span className="node-badge">{createElement(typeIcon(line.icon), { size: 11, strokeWidth: 2.4 })}</span>
+              ) : (
+                <span className="node-badge empty" />
+              )}
+              <span className="node-line-text">{line.text}</span>
             </span>
           ))}
-        </small>
-      </div>
-      <div className="node-marks" aria-hidden>
-        {data.incomplete && (
-          <span className="node-mark warning" title="Faltan atributos obligatorios">
-            <TriangleAlert size={12} />
-          </span>
-        )}
-        {data.degree > 0 && (
-          <span className="node-degree" title={`${data.degree} relaciones`}>
-            {data.degree}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
       {data.pinned && (
         <span
           ref={pinRef}

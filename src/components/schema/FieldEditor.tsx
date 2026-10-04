@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight, GripVertical, Trash2, X } from 'lucide-react
 import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { slugify } from '../../domain/factories';
-import type { FieldDefinition } from '../../domain/types';
+import type { FieldDefinition, NodeDisplay } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { IconButton } from '../common/Button';
 import { schemaOption } from '../common/options';
@@ -171,20 +171,25 @@ export function FieldEditor({
               Icono
               <div className="check-row" style={{ alignItems: 'center' }}>
                 <IconPicker value={field.icon} onChange={icon => set('icon', icon)} label="Icono del atributo" />
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={field.showOnNode}
-                    disabled={!field.icon && !Object.keys(field.optionIcons).length}
-                    onChange={event => set('showOnNode', event.target.checked)}
-                  />
+                <label className="field-inline">
                   Mostrar en el nodo
+                  <select
+                    aria-label="Mostrar en el nodo"
+                    value={field.nodeDisplay}
+                    onChange={event => set('nodeDisplay', event.target.value as NodeDisplay)}
+                  >
+                    {NODE_DISPLAYS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
               <small>
                 {field.type === 'select'
-                  ? 'En el nodo se muestra el icono de la opción elegida (o el del atributo si la opción no tiene).'
-                  : 'En el nodo se muestra el icono cuando el atributo tiene valor.'}
+                  ? 'Se muestra la opción elegida con su icono (o el del atributo). Cada opción puede decidir lo suyo abajo.'
+                  : '«Solo icono» añade el icono junto al tipo cuando el atributo tiene valor; «Icono y texto» añade una línea con el nombre y el valor.'}
               </small>
             </div>
           </div>
@@ -231,8 +236,10 @@ export function FieldEditor({
               <OptionsEditor
                 options={field.options}
                 icons={field.optionIcons}
+                display={field.optionDisplay}
                 onChange={options => set('options', options)}
                 onIconsChange={icons => set('optionIcons', icons)}
+                onDisplayChange={display => set('optionDisplay', display)}
               />
             </div>
           )}
@@ -265,17 +272,27 @@ export function FieldEditor({
   );
 }
 
+const NODE_DISPLAYS: [NodeDisplay, string][] = [
+  ['none', 'No'],
+  ['icon', 'Solo icono'],
+  ['text', 'Icono y texto'],
+];
+
 /** Opciones de una lista: chips que se añaden con Intro o coma y se quitan con su botón; cada una puede llevar icono. */
 function OptionsEditor({
   options,
   icons,
+  display,
   onChange,
   onIconsChange,
+  onDisplayChange,
 }: {
   options: string[];
   icons: Record<string, string>;
+  display: Record<string, NodeDisplay>;
   onChange: (options: string[]) => void;
   onIconsChange: (icons: Record<string, string>) => void;
+  onDisplayChange: (display: Record<string, NodeDisplay>) => void;
 }) {
   const [draft, setDraft] = useState('');
   const commit = () => {
@@ -307,6 +324,25 @@ function OptionsEditor({
                 }}
               />
               <span>{option}</span>
+              <select
+                className="option-display"
+                aria-label={`Mostrar ${option} en el nodo`}
+                title="Cómo se enseña esta opción en el nodo"
+                value={display[option] ?? ''}
+                onChange={e => {
+                  const next = { ...display };
+                  if (e.target.value) next[option] = e.target.value as NodeDisplay;
+                  else delete next[option];
+                  onDisplayChange(next);
+                }}
+              >
+                <option value="">Como el atributo</option>
+                {NODE_DISPLAYS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 aria-label={`Quitar ${option}`}

@@ -1,6 +1,5 @@
 import { ViewportPortal } from '@xyflow/react';
-import type { Position } from '../../domain/types';
-import { familyPaths, kinPath, type FamilyUnit, type KinLink } from './familyPaths';
+import { familyPaths, kinPath, type FamilyUnit, type KinLink, type Placed } from './familyPaths';
 
 /*
  * Conectores de parentesco para la disposición Genealogía, al estilo de un árbol genealógico clásico:
@@ -12,7 +11,7 @@ import { familyPaths, kinPath, type FamilyUnit, type KinLink } from './familyPat
 interface FamilyLinksProps {
   units: FamilyUnit[];
   links: KinLink[];
-  positions: Map<string, Position>;
+  positions: Map<string, Placed>;
   color: string;
   onSelect: (relationId: string) => void;
 }

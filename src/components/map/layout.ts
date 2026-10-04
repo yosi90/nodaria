@@ -51,9 +51,14 @@ function structureTree(p: Project, structureId: string | null): TreeDatum {
  * Disposición jerárquica según la estructura indicada: de izquierda a derecha, o de arriba abajo
  * (`vertical`, útil para genealogías: cada generación en una fila).
  */
-export function treeLayout(p: Project, structureId: string | null, vertical = false): Map<string, Position> {
-  const breadth = vertical ? NODE_W + 40 : NODE_H + ROW_GAP;
-  const depthGap = vertical ? NODE_H + 90 : NODE_W + COL_GAP;
+export function treeLayout(
+  p: Project,
+  structureId: string | null,
+  vertical = false,
+  h = NODE_H,
+): Map<string, Position> {
+  const breadth = vertical ? NODE_W + 40 : h + ROW_GAP;
+  const depthGap = vertical ? h + 90 : NODE_W + COL_GAP;
   const root = tree<TreeDatum>().nodeSize([breadth, depthGap])(hierarchy(structureTree(p, structureId)));
   const result = new Map<string, Position>();
   let min = Infinity;
@@ -94,6 +99,7 @@ export function forceLayout(
   seed: Map<string, Position>,
   structureId: string | null = null,
   fixed: Map<string, Position> = new Map(),
+  h = NODE_H,
 ): Map<string, Position> {
   // Profundidad en la estructura: los nodos más generales (raíces) arriba y, en cascada, sus dependientes.
   const depths = structureDepths(p, structureId);
@@ -113,9 +119,9 @@ export function forceLayout(
       id: n.id,
       typeId: n.typeId,
       x: (s?.x ?? 0) + NODE_W / 2,
-      y: (s?.y ?? 0) + NODE_H / 2,
+      y: (s?.y ?? 0) + h / 2,
       fx: f ? f.x + NODE_W / 2 : undefined,
-      fy: f ? f.y + NODE_H / 2 : undefined,
+      fy: f ? f.y + h / 2 : undefined,
     };
   });
   const ids = new Set(nodes.map(n => n.id));
@@ -133,19 +139,17 @@ export function forceLayout(
     .force('x', forceX<(typeof nodes)[number]>(d => typeX(d.typeId)).strength(0.08))
     .force(
       'y',
-      forceY<(typeof nodes)[number]>(d => ((depths.get(d.id) ?? maxDepth) - maxDepth / 2) * (NODE_H + 150)).strength(
-        0.3,
-      ),
+      forceY<(typeof nodes)[number]>(d => ((depths.get(d.id) ?? maxDepth) - maxDepth / 2) * (h + 150)).strength(0.3),
     )
     .stop();
   simulation.tick(300);
-  const result = new Map(nodes.map(n => [n.id, { x: Math.round(n.x - NODE_W / 2), y: Math.round(n.y - NODE_H / 2) }]));
+  const result = new Map(nodes.map(n => [n.id, { x: Math.round(n.x - NODE_W / 2), y: Math.round(n.y - h / 2) }]));
   // Con nodos fijados no se desplaza el conjunto: sus posiciones manuales deben seguir siendo las mismas.
   return fixed.size ? result : normalize(result);
 }
 
 /** Disposición radial: anillos por distancia (en saltos) al nodo de foco. */
-export function radialLayout(p: Project, focusId: string, links: Link[]): Map<string, Position> {
+export function radialLayout(p: Project, focusId: string, links: Link[], h = NODE_H): Map<string, Position> {
   const adjacency = new Map<string, string[]>();
   links.forEach(({ a, b }) => {
     adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
@@ -172,7 +176,7 @@ export function radialLayout(p: Project, focusId: string, links: Link[]): Map<st
   });
   // Los nodos no conectados con el foco se alinean debajo de los anillos.
   const unreached = p.nodes.filter(n => !result.has(n.id));
-  const bottom = depth * RING_GAP + NODE_H + 80;
+  const bottom = depth * RING_GAP + h + 80;
   unreached.forEach((n, i) => result.set(n.id, { x: (i - (unreached.length - 1) / 2) * (NODE_W + 40), y: bottom }));
   return normalize(result);
 }
@@ -204,15 +208,15 @@ export function genealogyStructure(p: Project, structureId: string | null): stri
  * con hijos comunes) van juntas y sus hijos centrados debajo; los hermanos, contiguos. Los nodos sin
  * ningún parentesco (lugares, objetos…) se alinean en una fila aparte, debajo.
  */
-export function genealogyLayout(p: Project, structureId: string | null): Map<string, Position> {
+export function genealogyLayout(p: Project, structureId: string | null, h = NODE_H): Map<string, Position> {
   const genealogyId = genealogyStructure(p, structureId);
   const genealogical = p.schemas.some(s => s.id === genealogyId && s.genealogical);
-  if (!genealogyId || !genealogical) return treeLayout(p, genealogyId, true);
+  if (!genealogyId || !genealogical) return treeLayout(p, genealogyId, true, h);
   const graph = kinshipGraph(p, genealogyId);
-  if (!graph.components.length) return treeLayout(p, genealogyId, true);
+  if (!graph.components.length) return treeLayout(p, genealogyId, true, h);
   const { parentsOf, childrenOf, couples, peers } = graph;
 
-  const rowGap = NODE_H + 120;
+  const rowGap = h + 120;
   const coupleGap = 96;
   const unitGap = 70;
   const result = new Map<string, Position>();
@@ -304,7 +308,7 @@ export function genealogyLayout(p: Project, structureId: string | null): Map<str
   // El resto (lugares, objetos…) se alinea en una fila aparte, debajo.
   let bottom = -Infinity;
   result.forEach(pos => (bottom = Math.max(bottom, pos.y)));
-  bottom += NODE_H + 140;
+  bottom += h + 140;
   p.nodes.filter(n => !result.has(n.id)).forEach((n, i) => result.set(n.id, { x: i * (NODE_W + 40), y: bottom }));
   return normalize(result);
 }
@@ -346,9 +350,10 @@ export function autoLayout(
   links: Link[],
   focusId: string | null,
   fixed: Map<string, Position> = new Map(),
+  h = NODE_H,
 ) {
-  if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId), structureId, fixed);
-  if (mode === 'genealogy') return genealogyLayout(p, structureId);
-  if (mode === 'radial' && focusId) return radialLayout(p, focusId, links);
-  return treeLayout(p, structureId);
+  if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId, false, h), structureId, fixed, h);
+  if (mode === 'genealogy') return genealogyLayout(p, structureId, h);
+  if (mode === 'radial' && focusId) return radialLayout(p, focusId, links, h);
+  return treeLayout(p, structureId, false, h);
 }

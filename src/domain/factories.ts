@@ -70,7 +70,8 @@ export function createField(): FieldDefinition {
     formula: '',
     icon: null,
     optionIcons: {},
-    showOnNode: false,
+    nodeDisplay: 'none',
+    optionDisplay: {},
   };
 }
 export function createView(): ProjectView {
