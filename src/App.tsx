@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { isTypingTarget } from './components/common/keyboard';
 import { CommandPalette } from './components/layout/CommandPalette';
 import { RepairNotice } from './components/layout/RepairNotice';
@@ -28,7 +28,11 @@ export default function App() {
     help,
     openHelp: openHelpTopic,
     closeHelp,
+    clearSelection,
   } = useNavigation();
+  const { project } = useApp();
+  // Al cambiar de proyecto, la selección (y su historial) pertenecen al anterior.
+  useEffect(() => clearSelection(), [project.id, clearSelection]);
   const openHelp = useCallback(() => openHelpTopic('start'), [openHelpTopic]);
   const openPalette = useCallback(() => setPaletteOpen(true), [setPaletteOpen]);
   useGlobalShortcuts(setView, openHelp, openPalette, back, forward);
@@ -39,19 +43,22 @@ export default function App() {
   return (
     <div className="app">
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} onTemplates={openTemplates} />
-      {view === 'map' ? (
-        <MapView />
-      ) : view === 'table' ? (
-        <TableView />
-      ) : view === 'schema' ? (
-        <SchemaView kind="entity" />
-      ) : view === 'relations' ? (
-        <SchemaView kind="relationship" />
-      ) : view === 'health' ? (
-        <HealthView />
-      ) : (
-        <PropertiesView />
-      )}
+      {/* Cada vista guarda estado local (tipo elegido, filtros, plegados) que solo vale para un proyecto. */}
+      <Fragment key={project.id}>
+        {view === 'map' ? (
+          <MapView />
+        ) : view === 'table' ? (
+          <TableView />
+        ) : view === 'schema' ? (
+          <SchemaView kind="entity" />
+        ) : view === 'relations' ? (
+          <SchemaView kind="relationship" />
+        ) : view === 'health' ? (
+          <HealthView />
+        ) : (
+          <PropertiesView />
+        )}
+      </Fragment>
       <RepairNotice />
       {help && <HelpDialog topic={help} onTopic={openHelpTopic} onClose={closeHelp} onTemplates={openTemplates} />}
       {templatesOpen && <TemplatesDialog onClose={closeTemplates} />}

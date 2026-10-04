@@ -44,7 +44,8 @@ export function TableView() {
   const entityTypes = project.schemas.filter(s => s.kind === 'entity' && !s.isAbstract);
   const [typeId, setTypeId] = useState<string | null>(entityTypes[0]?.id ?? null);
   const [matrix, setMatrix] = useState(false);
-  const schema = typeId ? getSchema(project, typeId) : undefined;
+  // Si el tipo elegido ya no existe (se borró), se vuelve al primero.
+  const schema = (typeId ? getSchema(project, typeId) : undefined) ?? entityTypes[0];
   const [query, setQuery] = useState('');
   const [columnsAnchor, setColumnsAnchor] = useState<Anchor | null>(null);
   // Filas marcadas para operaciones masivas (solo las que siguen siendo filas de esta hoja).

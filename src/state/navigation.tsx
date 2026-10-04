@@ -22,6 +22,8 @@ interface NavigationContextValue extends NavigationState {
   setView: (view: View) => void;
   /** Selecciona; con `reveal`, el lienzo centra el elemento. Cambia a la vista de mapa si hace falta. */
   select: (selection: Selection, options?: { reveal?: boolean }) => void;
+  /** Olvida la selección y su historial sin cambiar de vista (al cambiar de proyecto). */
+  clearSelection: () => void;
   back: () => void;
   forward: () => void;
   canBack: boolean;
@@ -57,6 +59,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         const past = selection && s.selection ? [...s.past, s.selection].slice(-HISTORY_LIMIT) : s.past;
         return { ...s, view: 'map', selection, past, future: selection ? [] : s.future, revealKey };
       }),
+    [],
+  );
+  const clearSelection = useCallback(
+    () =>
+      setState(s =>
+        s.selection || s.past.length || s.future.length ? { ...s, selection: null, past: [], future: [] } : s,
+      ),
     [],
   );
   const back = useCallback(
@@ -100,6 +109,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       ...state,
       setView,
       select,
+      clearSelection,
       back,
       forward,
       canBack: state.past.length > 0,
@@ -108,7 +118,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       openHelp,
       closeHelp,
     }),
-    [state, setView, select, back, forward, setPaletteOpen, openHelp, closeHelp],
+    [state, setView, select, clearSelection, back, forward, setPaletteOpen, openHelp, closeHelp],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
