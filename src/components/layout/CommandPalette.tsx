@@ -1,4 +1,16 @@
-import { GitFork, Library, Moon, Network, Plus, Search, Shapes, Sun, type LucideIcon, Table2 } from 'lucide-react';
+import {
+  GitFork,
+  Library,
+  Moon,
+  Network,
+  Plus,
+  Search,
+  Shapes,
+  Sun,
+  type LucideIcon,
+  Table2,
+  HeartPulse,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
@@ -130,6 +142,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(Library),
         keywords: 'vista propiedades atributos compartidos preformas biblioteca',
         run: () => setView('properties'),
+      },
+      {
+        id: 'view:health',
+        label: 'Ir a la salud del mundo',
+        group: 'Acciones',
+        leading: icon(HeartPulse),
+        keywords: 'vista salud análisis avisos nodos sin conexiones fichas incompletas',
+        run: () => setView('health'),
       },
       {
         id: 'view:table',

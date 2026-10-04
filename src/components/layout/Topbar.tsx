@@ -5,6 +5,7 @@ import {
   Download,
   FolderOpen,
   GitFork,
+  HeartPulse,
   Library,
   Monitor,
   Moon,
@@ -176,6 +177,10 @@ export function Topbar({
         <button type="button" aria-pressed={view === 'properties'} onClick={() => onView('properties')}>
           <Library size={15} aria-hidden />
           <span className="label">Propiedades</span>
+        </button>
+        <button type="button" aria-pressed={view === 'health'} onClick={() => onView('health')}>
+          <HeartPulse size={15} aria-hidden />
+          <span className="label">Salud</span>
         </button>
       </nav>
       <div className="spacer" />

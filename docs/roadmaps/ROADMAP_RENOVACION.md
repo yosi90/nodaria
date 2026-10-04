@@ -221,7 +221,7 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [x] Nuevos tipos de campo (2026-10-04): Enlace (URL, con botón para abrir), Color (selector y valor hex), Escala 1–5 (estrellas) y Etiquetas (chips libres); Imagen ya estaba. _Pendientes: lista ordenada y fecha del mundo._
 - [ ] Valores por defecto tipados y heredados.
 - [x] Campos calculados reales (2026-10-04): motor en `src/domain/formulas.ts` con `{clave}`, `{referencia.clave}`, `{titulo}`, `{tipo}`, `{padre}`, `{padre.clave}`, `{contar(relaciones[:Tipo])}`, `{contar(hijos)}`, `{contar(clave)}`, `{lista(relaciones[:Tipo])}` y `{lista(hijos)}`; calculados anidados con límite de profundidad; ayuda en el editor de atributos.
-- [ ] Validación de campos obligatorios con avisos no bloqueantes y contador de "fichas incompletas".
+- [x] Validación de campos obligatorios con avisos no bloqueantes y contador de "fichas incompletas" (2026-10-04: marca en la tarjeta y lista con detalle en la vista «Salud»).
 - [x] Restricciones de cardinalidad en relaciones (2026-10-04): `Schema.maxPerSource` y `maxPerTarget` (sin sentido: un máximo por nodo) editables en el tipo; `src/domain/cardinality.ts` lista los límites superados y avisa antes de crear; aviso en la ficha (pestaña de relaciones) y toast al crear desde el lienzo, la ficha o la matriz. No se impide crear la relación.
 - [ ] Herencia de subnodos permitidos y de restricciones de relación.
 - [x] Duplicar nodos (2026-10-04) desde la ficha (menú «Duplicar»: solo ficha o con relaciones), con Ctrl+D en el mapa y desde la tabla; el título lleva «(copia)» y las posiciones fijadas se desplazan. Duplicar tipos desde el editor (atributos con ids nuevos, preformas vinculadas, apariencia y restricciones; sin nodos).
@@ -252,7 +252,7 @@ Criterio: las preguntas del objetivo se responden cada una con la vista más ade
 
 Objetivo: que la herramienta ayude a detectar huecos, redundancias y puntos clave, que es el propósito original del producto.
 
-- [ ] Panel **Salud del mundo**: nodos sin relaciones, fichas incompletas, tipos sin instancias, relaciones que violan restricciones, referencias rotas.
+- [x] Panel **Salud del mundo** (2026-10-04): vista «Salud» (Alt+6, también en la paleta) con nodos sin conexiones, fichas incompletas (obligatorios vacíos, con el detalle), tipos sin instancias, límites de relación superados, referencias rotas (nodo inexistente o de tipo no admitido) y menciones `[[ ]]` sin destino; cada aviso salta al nodo o al tipo. Dominio en `src/domain/health.ts` (`worldHealth`), que también aporta `isIncomplete` al lienzo.
 - [ ] **Centralidad**: nodos más conectados y "puentes" que unen grupos que de otro modo estarían separados; opción de dimensionar los nodos del lienzo por centralidad.
 - [ ] **Comunidades**: detección de grupos (p. ej. Louvain) coloreables en el lienzo.
 - [ ] **Camino entre dos nodos**: "¿cómo se conecta A con B?", resaltado en el lienzo, con filtro de tipos de relación.

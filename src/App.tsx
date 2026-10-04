@@ -6,6 +6,7 @@ import { HelpDialog } from './components/layout/HelpDialog';
 import { Topbar } from './components/layout/Topbar';
 import { MapView } from './components/map/MapView';
 import { PropertiesView } from './components/schema/PropertiesView';
+import { HealthView } from './components/health/HealthView';
 import { TableView } from './components/table/TableView';
 import { SchemaView } from './components/schema/SchemaView';
 import { useApp } from './state/AppContext';
@@ -37,6 +38,8 @@ export default function App() {
         <SchemaView kind="entity" />
       ) : view === 'relations' ? (
         <SchemaView kind="relationship" />
+      ) : view === 'health' ? (
+        <HealthView />
       ) : (
         <PropertiesView />
       )}
@@ -68,8 +71,14 @@ function useGlobalShortcuts(
       if (event.defaultPrevented || isTypingTarget(event.target)) return;
       if (mod && !event.altKey && key === 'z' && !event.shiftKey) undo();
       else if (mod && !event.altKey && ((key === 'z' && event.shiftKey) || key === 'y')) redo();
-      else if (event.altKey && !mod && ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(event.code))
-        setView((['map', 'schema', 'relations', 'properties', 'table'] as const)[Number(event.code.slice(-1)) - 1]);
+      else if (
+        event.altKey &&
+        !mod &&
+        ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'].includes(event.code)
+      )
+        setView(
+          (['map', 'schema', 'relations', 'properties', 'table', 'health'] as const)[Number(event.code.slice(-1)) - 1],
+        );
       else if (event.altKey && !mod && event.key === 'ArrowLeft') back();
       else if (event.altKey && !mod && event.key === 'ArrowRight') forward();
       else if (event.key === '?' && !mod) openHelp();

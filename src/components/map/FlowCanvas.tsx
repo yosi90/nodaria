@@ -38,6 +38,7 @@ import {
   kinshipStructureLink,
   kinshipTerm,
 } from '../../domain/kinship';
+import { isIncomplete } from '../../domain/health';
 import { viewForLayout } from '../../domain/layoutFilters';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
@@ -135,14 +136,6 @@ function neighborhood(start: string, links: Link[], depth: number) {
     frontier = next;
   }
   return seen;
-}
-
-function isIncomplete(project: Project, typeId: string, values: Record<string, unknown>) {
-  return allFields(project, typeId).some(f => {
-    if (!f.required || f.type === 'computed') return false;
-    const v = values[f.id];
-    return v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
-  });
 }
 
 function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: FlowCanvasProps) {
@@ -409,7 +402,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             color: schema?.color ?? '#888',
             icon: schema?.icon ?? 'circle',
             degree: degree.get(n.id) ?? 0,
-            incomplete: isIncomplete(project, n.typeId, n.values),
+            incomplete: isIncomplete(project, n),
             pinned: Boolean(n.positions[view.layout]),
             onUnpin: (origin: { x: number; y: number }) => unpin(n.id, origin),
             image:

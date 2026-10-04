@@ -1493,3 +1493,86 @@ button.mention:hover {
   font-size: var(--fs-sm);
   color: var(--text-muted);
 }
+
+/* ---------- Vista Salud ---------- */
+.health-layout {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-6);
+}
+.health-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 1100px;
+  margin: 0 auto var(--space-5);
+  color: var(--accent);
+}
+.health-summary h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: var(--text);
+}
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.health-card .card-head h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.health-card.ok {
+  opacity: 0.75;
+}
+.health-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.health-count.warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.health-list {
+  display: grid;
+  gap: 4px;
+  margin-top: var(--space-3);
+  max-height: 320px;
+  overflow: auto;
+}
+.health-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  text-align: left;
+  font-size: var(--fs-sm);
+}
+.health-item:hover {
+  border-color: var(--border);
+  background: var(--hover);
+}
+.health-detail {
+  flex-basis: 100%;
+  padding-left: 26px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
