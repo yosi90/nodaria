@@ -64,6 +64,8 @@ const fitViewOptions = { padding: 0.2, maxZoom: 1 };
 const proOptions = { hideAttribution: true };
 /** Por encima de este tamaño las aristas dejan de esquivar tarjetas: el coste crece con nodos × relaciones. */
 const AVOID_OBSTACLES_LIMIT = 200;
+/** Lado del marcador compacto sobre la imagen del mapa. */
+const MARKER = 44;
 const edgeTypes = { floating: FloatingEdge };
 
 const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: string }[] = [
@@ -287,8 +289,42 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     [dispatch],
   );
 
+  // Sobre la imagen del mapa los nodos colocados son marcadores; el que está bajo el ratón se expande.
+  const hoverOnMap = view.layout === 'image' ? hoveredId : null;
   const nodes = useMemo<CardNode[]>(() => {
     const degree = new Map<string, number>();
+    const compactIds = new Set(
+      view.layout === 'image' ? project.nodes.filter(n => n.positions.image).map(n => n.id) : [],
+    );
+    // Caja de la tarjeta expandida (centrada en el marcador), para apartar a los marcadores que tape.
+    const hovered = hoverOnMap && compactIds.has(hoverOnMap) ? project.nodes.find(n => n.id === hoverOnMap) : undefined;
+    const hoveredPos = hovered ? (overrides[hovered.id] ?? hovered.positions.image!) : null;
+    const hoveredH = hovered ? cardHeight(cardContent(project, hovered).lines.length) : 0;
+    const expandOffset = { x: -(NODE_W - MARKER) / 2, y: -(hoveredH - MARKER) / 2 };
+    const expandedBox = hoveredPos
+      ? {
+          x: hoveredPos.x + expandOffset.x - 10,
+          y: hoveredPos.y + expandOffset.y - 10,
+          w: NODE_W + 20,
+          h: hoveredH + 20,
+        }
+      : null;
+    const pushAway = (pos: Position): { x: number; y: number } | undefined => {
+      if (!expandedBox) return undefined;
+      const overlaps =
+        pos.x < expandedBox.x + expandedBox.w &&
+        pos.x + MARKER > expandedBox.x &&
+        pos.y < expandedBox.y + expandedBox.h &&
+        pos.y + MARKER > expandedBox.y;
+      if (!overlaps) return undefined;
+      const moves = [
+        { x: expandedBox.x + expandedBox.w - pos.x, y: 0 },
+        { x: expandedBox.x - (pos.x + MARKER), y: 0 },
+        { x: 0, y: expandedBox.y + expandedBox.h - pos.y },
+        { x: 0, y: expandedBox.y - (pos.y + MARKER) },
+      ];
+      return moves.reduce((best, m) => (Math.hypot(m.x, m.y) < Math.hypot(best.x, best.y) ? m : best));
+    };
     project.relations.forEach(r => {
       degree.set(r.sourceId, (degree.get(r.sourceId) ?? 0) + 1);
       degree.set(r.targetId, (degree.get(r.targetId) ?? 0) + 1);
@@ -298,14 +334,22 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       .map(n => {
         const schema = getSchema(project, n.typeId);
         const content = cardContent(project, n);
+        const position = overrides[n.id] ?? n.positions[view.layout] ?? autoPositions.get(n.id) ?? { x: 0, y: 0 };
+        const compact = compactIds.has(n.id);
+        const expanded = compact && n.id === hoverOnMap;
+        const fullHeight = cardHeight(content.lines.length);
         return {
           id: n.id,
           type: 'card',
-          position: overrides[n.id] ?? n.positions[view.layout] ?? autoPositions.get(n.id) ?? { x: 0, y: 0 },
-          width: NODE_W,
-          height: cardHeight(content.lines.length),
+          position,
+          width: compact && !expanded ? MARKER : NODE_W,
+          height: compact && !expanded ? MARKER : fullHeight,
           selected: selectedNodeId === n.id,
           data: {
+            compact,
+            expanded,
+            cardHeight: fullHeight,
+            offset: expanded ? expandOffset : compact ? pushAway(position) : undefined,
             label: nodeLabel(project, n),
             typeName: schema?.name ?? 'Sin tipo',
             color: schema?.color ?? '#888',
@@ -324,7 +368,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           },
         };
       });
-  }, [project, view.layout, visibleIds, overrides, autoPositions, selectedNodeId, unpin]);
+  }, [project, view.layout, visibleIds, overrides, autoPositions, selectedNodeId, unpin, hoverOnMap]);
 
   const edges = useMemo<FloatingEdgeType[]>(() => {
     const result: FloatingEdgeType[] = [];

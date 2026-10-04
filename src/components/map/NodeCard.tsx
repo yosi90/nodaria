@@ -23,6 +23,14 @@ export interface NodeCardData extends Record<string, unknown> {
   badges: { icon: string; title: string }[];
   /** Atributos marcados «Icono y texto»: una línea cada uno bajo el nombre. */
   lines: { icon: string | null; text: string }[];
+  /** Marcador compacto (solo icono o retrato), como sobre la imagen del mapa. */
+  compact?: boolean;
+  /** Marcador expandido a tarjeta completa (al pasar el ratón). */
+  expanded?: boolean;
+  /** Altura de la tarjeta completa (para animar la expansión). */
+  cardHeight?: number;
+  /** Desplazamiento visual temporal (expansión centrada o apartarse de un vecino expandido). */
+  offset?: { x: number; y: number };
 }
 
 export type CardNode = FlowNode<NodeCardData, 'card'>;
@@ -55,8 +63,14 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
   };
   return (
     <div
-      className={`node-card-flow ${selected ? 'selected' : ''}`}
-      style={{ '--type-color': data.color } as CSSProperties}
+      className={`node-card-flow ${selected ? 'selected' : ''} ${data.compact ? 'compact' : ''} ${data.expanded ? 'expanded' : ''}`}
+      style={
+        {
+          '--type-color': data.color,
+          transform: data.offset ? `translate(${data.offset.x}px, ${data.offset.y}px)` : undefined,
+          height: data.expanded ? data.cardHeight : undefined,
+        } as CSSProperties
+      }
     >
       <Handle type="target" position={Position.Left} className="node-target" isConnectableStart={false} />
       <div className="node-main">
@@ -105,7 +119,7 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
           ))}
         </div>
       )}
-      {data.pinned && (
+      {data.pinned && !data.compact && (
         <span
           ref={pinRef}
           className={`node-pushpin nodrag nopan ${pulling ? 'pulling' : ''}`}
