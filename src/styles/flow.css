@@ -857,3 +857,22 @@
   transform: scale(var(--inv-zoom, 1));
   transform-origin: center;
 }
+
+/* Miniaturas de atributos de imagen en la tarjeta */
+.node-badge-img {
+  width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  vertical-align: -3px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.node-line-thumb {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}

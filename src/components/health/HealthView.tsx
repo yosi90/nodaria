@@ -33,6 +33,7 @@ import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { EmptyState } from '../common/EmptyState';
 import { TypeIcon } from '../common/icons';
+import { NodeAvatar } from '../common/NodeAvatar';
 
 /** Vista «Salud»: avisos sobre lo que suele quedar a medias en un mundo, con salto a cada nodo o tipo. */
 export function HealthView() {
@@ -86,7 +87,7 @@ export function HealthView() {
     const schema = getSchema(project, node.typeId);
     return (
       <button type="button" className="health-item" onClick={() => goTo(node)}>
-        {schema && <TypeIcon icon={schema.icon} color={schema.color} size="sm" />}
+        {schema && <NodeAvatar project={project} node={node} size="sm" />}
         <strong>{nodeLabel(project, node)}</strong>
         {children && <span className="health-detail">{children}</span>}
       </button>

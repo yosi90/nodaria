@@ -4,6 +4,7 @@ import type { FieldDefinition, FieldValue } from '../../domain/types';
 import { ExternalLink, Star } from 'lucide-react';
 import { TagsInput } from '../common/TagsInput';
 import { ImageControl } from './ImageControl';
+import { imageClasses } from '../../domain/portrait';
 import { ReferenceControl } from './ReferenceControl';
 
 /** Control de edición de un atributo según su tipo. Lo usan la ficha y la tabla. */
@@ -31,7 +32,15 @@ export function FieldControl({
   };
   if (field.type === 'nodeRef' || field.type === 'nodeRefs')
     return <ReferenceControl field={field} value={value} ownerId={ownerId} onChange={onChange} />;
-  if (field.type === 'image') return <ImageControl value={value} label={field.label} onChange={onChange} />;
+  if (field.type === 'image')
+    return (
+      <ImageControl
+        value={value}
+        label={field.label}
+        className={imageClasses({ shape: field.imageShape, border: field.imageBorder })}
+        onChange={onChange}
+      />
+    );
   if (field.type === 'gender')
     return (
       <select value={String(value ?? '')} onChange={e => onChange(e.target.value)}>

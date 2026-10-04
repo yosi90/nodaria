@@ -14,6 +14,7 @@ export type FieldType =
   | 'color'
   | 'scale'
   | 'tags';
+import type { ImageShape } from './portrait';
 import type { SavedQuery } from './queries';
 
 export type SchemaKind = 'entity' | 'relationship';
@@ -40,6 +41,12 @@ export interface FieldDefinition {
   nodeDisplay: NodeDisplay;
   /** En una lista, cada opción puede sobrescribir `nodeDisplay`. */
   optionDisplay: Record<string, NodeDisplay>;
+  /** Imágenes: forma con la que se muestra. */
+  imageShape: ImageShape;
+  /** Imágenes: con borde. */
+  imageBorder: boolean;
+  /** Imágenes: sirve de retrato del nodo (sustituye al icono del tipo). */
+  portrait: boolean;
 }
 export type NodeDisplay = 'none' | 'icon' | 'text';
 /** Vínculo a un atributo de la biblioteca compartida del proyecto. */

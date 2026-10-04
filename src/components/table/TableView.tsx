@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Columns3, Copy, ExternalLink, Grid3x3, Plus, Search, Table2, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { uid } from '../../domain/factories';
+import { imageClasses } from '../../domain/portrait';
 import { allFields, fieldValue, getSchema, nodeLabel, typeMatches } from '../../domain/selectors';
 import type { FieldDefinition, FieldValue, Node } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -336,7 +337,11 @@ export function TableView() {
                           {c.field ? (
                             c.field.type === 'image' ? (
                               isImageValue(n.values[c.field.id]) ? (
-                                <img className="table-thumb" src={String(n.values[c.field.id])} alt="" />
+                                <img
+                                  className={`table-thumb ${imageClasses({ shape: c.field.imageShape, border: c.field.imageBorder })}`}
+                                  src={String(n.values[c.field.id])}
+                                  alt=""
+                                />
                               ) : (
                                 ''
                               )

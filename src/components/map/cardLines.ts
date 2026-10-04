@@ -1,4 +1,5 @@
 import { evaluateFormula } from '../../domain/formulas';
+import { isImageData, type NodeImage } from '../../domain/portrait';
 import { allFields } from '../../domain/selectors';
 import type { FieldDefinition, Node, Project } from '../../domain/types';
 import { NODE_H } from './layout';
@@ -7,10 +8,13 @@ import { NODE_H } from './layout';
 export interface CardBadge {
   icon: string;
   title: string;
+  /** Miniatura de un atributo de imagen (en vez del icono). */
+  image?: NodeImage;
 }
 export interface CardLine {
   icon: string | null;
   text: string;
+  image?: NodeImage;
 }
 
 const LINE_H = 17;
@@ -50,11 +54,18 @@ export function cardContent(p: Project, n: Node): { badges: CardBadge[]; lines: 
     const mode = (option && f.optionDisplay[option]) || f.nodeDisplay;
     if (mode === 'none') return;
     const icon = (option ? f.optionIcons[option] : undefined) ?? f.icon;
+    // Un atributo de imagen se enseña como miniatura (el retrato ya va en su sitio).
+    const image: NodeImage | undefined =
+      f.type === 'image' && isImageData(v) && !f.portrait
+        ? { field: f, src: v, shape: f.imageShape, border: f.imageBorder }
+        : undefined;
+    if (f.type === 'image' && !image) return;
     if (mode === 'icon') {
-      if (icon) badges.push({ icon, title: describe(p, f, v) });
+      if (image) badges.push({ icon: icon ?? 'image', title: f.label, image });
+      else if (icon) badges.push({ icon, title: describe(p, f, v) });
       return;
     }
-    lines.push({ icon, text: describe(p, f, v) });
+    lines.push({ icon, text: f.type === 'image' ? f.label : describe(p, f, v), image });
   });
   return { badges: badges.slice(0, 4), lines };
 }

@@ -1,8 +1,8 @@
 import { Inbox } from 'lucide-react';
-import { createElement, type DragEvent } from 'react';
+import type { DragEvent } from 'react';
 import { getSchema, nodeLabel } from '../../domain/selectors';
 import type { Node, Project } from '../../domain/types';
-import { typeIcon } from '../common/icon-catalog';
+import { NodeAvatar } from '../common/NodeAvatar';
 
 export const TRAY_DRAG_TYPE = 'application/x-nodaria-node';
 
@@ -57,9 +57,7 @@ export function MapTray({
                   onClick={() => onSelect(n.id)}
                   style={{ '--type-color': schema?.color ?? '#888' } as React.CSSProperties}
                 >
-                  <span className="type-icon" aria-hidden>
-                    {createElement(typeIcon(schema?.icon ?? 'circle'), { size: 14, strokeWidth: 2.2 })}
-                  </span>
+                  <NodeAvatar project={project} node={n} size="sm" />
                   <span className="map-tray-texts">
                     <strong>{nodeLabel(project, n)}</strong>
                     <small>{schema?.name ?? 'Sin tipo'}</small>

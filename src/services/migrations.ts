@@ -80,6 +80,10 @@ function normalizeProject(project: RawProject): Project {
               optionIcons: f.optionIcons ?? {},
               nodeDisplay: nodeDisplayOf(f),
               optionDisplay: f.optionDisplay ?? {},
+              imageShape: f.imageShape ?? 'rounded',
+              imageBorder: f.imageBorder ?? true,
+              // Antes, cualquier imagen hacía de retrato: se conserva ese comportamiento.
+              portrait: f.portrait ?? f.type === 'image',
             },
       ),
       allowedChildTypeIds: s.allowedChildTypeIds || [],
@@ -105,6 +109,10 @@ function normalizeProject(project: RawProject): Project {
       optionIcons: f.optionIcons ?? {},
       nodeDisplay: nodeDisplayOf(f),
       optionDisplay: f.optionDisplay ?? {},
+      imageShape: f.imageShape ?? 'rounded',
+      imageBorder: f.imageBorder ?? true,
+      // Antes, cualquier imagen hacía de retrato: se conserva ese comportamiento.
+      portrait: f.portrait ?? f.type === 'image',
     })),
     nodes: (project.nodes || []).map(n => ({
       ...n,

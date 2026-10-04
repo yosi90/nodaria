@@ -8,10 +8,13 @@ import { isImageValue, shrinkImage } from './images';
 export function ImageControl({
   value,
   label,
+  className = '',
   onChange,
 }: {
   value: FieldValue | undefined;
   label: string;
+  /** Clases de forma y borde (`imageClasses`). */
+  className?: string;
   onChange: (value: FieldValue) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -31,7 +34,7 @@ export function ImageControl({
   return (
     <div className="image-control">
       {image ? (
-        <img src={image} alt={label} />
+        <img className={className} src={image} alt={label} />
       ) : (
         <button type="button" className="image-placeholder" onClick={() => input.current?.click()}>
           <ImagePlus size={20} aria-hidden />

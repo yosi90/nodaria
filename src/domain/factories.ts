@@ -76,6 +76,9 @@ export function createField(): FieldDefinition {
     optionIcons: {},
     nodeDisplay: 'none',
     optionDisplay: {},
+    imageShape: 'rounded',
+    imageBorder: true,
+    portrait: false,
   };
 }
 export function createView(): ProjectView {

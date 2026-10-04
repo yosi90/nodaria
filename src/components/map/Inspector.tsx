@@ -26,7 +26,7 @@ import { Select } from '../common/Select';
 import { ConnectionsTab } from './ConnectionsTab';
 import { NotesTab } from './NotesTab';
 import { FieldControl } from './FieldControl';
-import { isImageValue } from './images';
+import { imageClasses, nodePortrait } from '../../domain/portrait';
 import { RelationsSection } from './RelationsSection';
 import { KinshipFields } from './KinshipFields';
 
@@ -76,10 +76,7 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
   const titleField = fields.find(f => f.isTitle) ?? fields.find(f => f.type === 'text');
   const subtitle = node ? (schema?.name ?? 'Sin tipo') : relationSummary(relation!);
   const crumbs = node ? ancestors(project, node) : [];
-  const portrait = fields
-    .filter(f => f.type === 'image')
-    .map(f => item.values[f.id])
-    .find(isImageValue);
+  const portrait = node ? nodePortrait(project, node) : null;
 
   return (
     <>
@@ -89,7 +86,7 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
           <IconButton icon={ChevronRight} size="sm" label="Adelante" disabled={!canForward} onClick={forward} />
         </div>
         {portrait ? (
-          <img className="portrait" src={portrait} alt="" />
+          <img className={`portrait ${imageClasses(portrait)}`} src={portrait.src} alt="" />
         ) : (
           <TypeIcon icon={schema?.icon} color={schema?.color} size="lg" />
         )}

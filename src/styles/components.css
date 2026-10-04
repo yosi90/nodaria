@@ -562,3 +562,39 @@ label.check {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ---------- Retratos e imágenes de atributo ---------- */
+.avatar {
+  flex: none;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.avatar.sm {
+  width: 20px;
+  height: 20px;
+}
+.avatar.md {
+  width: 26px;
+  height: 26px;
+}
+.avatar.lg {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+}
+img.shape-circle {
+  border-radius: 50% !important;
+}
+img.shape-square {
+  border-radius: 0 !important;
+}
+img.shape-rounded.avatar.lg,
+img.shape-rounded.portrait,
+img.shape-rounded.node-portrait {
+  border-radius: var(--radius-md) !important;
+}
+img.no-border {
+  border: 0 !important;
+}

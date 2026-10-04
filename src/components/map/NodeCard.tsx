@@ -17,12 +17,13 @@ export interface NodeCardData extends Record<string, unknown> {
   pinned: boolean;
   /** Arrancar la chincheta (tras mantenerla pulsada): `origin` es el centro de la chincheta en pantalla. */
   onUnpin?: (origin: { x: number; y: number }) => void;
-  /** Retrato (data URL) del primer atributo de imagen con valor. */
+  /** Retrato (data URL) del atributo de imagen marcado como retrato, con su forma y borde. */
   image: string | null;
+  imageClass?: string;
   /** Iconos de atributos marcados «Solo icono» (con valor), con su texto. */
-  badges: { icon: string; title: string }[];
+  badges: { icon: string; title: string; image?: { src: string; shape: string; border: boolean } }[];
   /** Atributos marcados «Icono y texto»: una línea cada uno bajo el nombre. */
-  lines: { icon: string | null; text: string }[];
+  lines: { icon: string | null; text: string; image?: { src: string; shape: string; border: boolean } }[];
   /** Marcador compacto (solo icono o retrato), como sobre la imagen del mapa. */
   compact?: boolean;
   /** Marcador expandido a tarjeta completa (al pasar el ratón). */
@@ -83,7 +84,7 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
       <Handle type="target" position={Position.Left} className="node-target" isConnectableStart={false} />
       <div className="node-main">
         {data.image ? (
-          <img className="node-portrait" src={data.image} alt="" />
+          <img className={`node-portrait ${data.imageClass ?? ''}`} src={data.image} alt="" />
         ) : (
           <span className="type-icon lg" aria-hidden>
             {createElement(typeIcon(data.icon), { size: 16, strokeWidth: 2.2 })}
@@ -93,11 +94,21 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
           <strong title={data.label}>{data.label}</strong>
           <small>
             {data.typeName}
-            {data.badges.map(b => (
-              <span key={b.title} className="node-badge" title={b.title}>
-                {createElement(typeIcon(b.icon), { size: 11, strokeWidth: 2.4 })}
-              </span>
-            ))}
+            {data.badges.map(b =>
+              b.image ? (
+                <img
+                  key={b.title}
+                  className={`node-badge-img shape-${b.image.shape} ${b.image.border ? '' : 'no-border'}`}
+                  src={b.image.src}
+                  alt=""
+                  title={b.title}
+                />
+              ) : (
+                <span key={b.title} className="node-badge" title={b.title}>
+                  {createElement(typeIcon(b.icon), { size: 11, strokeWidth: 2.4 })}
+                </span>
+              ),
+            )}
           </small>
         </div>
         <div className="node-marks" aria-hidden>
@@ -117,7 +128,13 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
         <div className="node-lines">
           {data.lines.map(line => (
             <span key={line.text} className="node-line" title={line.text}>
-              {line.icon ? (
+              {line.image ? (
+                <img
+                  className={`node-line-thumb shape-${line.image.shape} ${line.image.border ? '' : 'no-border'}`}
+                  src={line.image.src}
+                  alt=""
+                />
+              ) : line.icon ? (
                 <span className="node-badge">{createElement(typeIcon(line.icon), { size: 11, strokeWidth: 2.4 })}</span>
               ) : (
                 <span className="node-badge empty" />

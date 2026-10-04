@@ -18,6 +18,7 @@ import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { usePreferences } from '../../state/preferences';
 import { TypeIcon } from '../common/icons';
+import { NodeAvatar } from '../common/NodeAvatar';
 
 interface Command {
   id: string;
@@ -63,7 +64,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         label: nodeLabel(project, n),
         hint: schema?.name,
         group: 'Nodos',
-        leading: <TypeIcon icon={schema?.icon} color={schema?.color} size="sm" />,
+        leading: <NodeAvatar project={project} node={n} size="sm" />,
         keywords: `${values} ${n.notes}`,
         run: () => select({ kind: 'node', id: n.id }, { reveal: true }),
       };

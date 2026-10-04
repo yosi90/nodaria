@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, GripVertical, Lock, Trash2, X } from 'lucide
 import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { slugify } from '../../domain/factories';
+import { IMAGE_SHAPES, type ImageShape } from '../../domain/portrait';
 import type { FieldDefinition, NodeDisplay } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
@@ -150,6 +151,7 @@ export function FieldEditor({
                       isTitle: false,
                       description: field.description || 'Decide el nombre de los parentescos.',
                     });
+                  else if (type === 'image') onChange({ ...field, type, portrait: true });
                   else set('type', type);
                 }}
               >
@@ -260,9 +262,48 @@ export function FieldEditor({
             </small>
           </label>
           {field.type === 'image' && (
-            <p className="field-hint">
-              La imagen se reduce al guardarla (máximo 384 px) y se muestra en la tarjeta del nodo en lugar del icono.
-            </p>
+            <div className="field">
+              Imagen
+              <div className="field-row">
+                <label className="field">
+                  Forma
+                  <select
+                    value={field.imageShape}
+                    onChange={event => set('imageShape', event.target.value as ImageShape)}
+                  >
+                    {IMAGE_SHAPES.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="check-row" style={{ alignSelf: 'end' }}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={field.imageBorder}
+                      onChange={event => set('imageBorder', event.target.checked)}
+                    />
+                    Con borde
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={field.portrait}
+                      onChange={event => set('portrait', event.target.checked)}
+                    />
+                    Retrato del nodo
+                  </label>
+                </div>
+              </div>
+              <small>
+                La imagen se reduce al guardarla (máximo 384 px). «Retrato del nodo» la pone en lugar del icono del tipo
+                en la tarjeta, el árbol, las listas y la ficha. Las demás imágenes se enseñan en la tarjeta según
+                «Mostrar en el nodo»: «Solo icono» añade una miniatura junto al tipo e «Icono y texto» una línea con la
+                miniatura y el nombre del atributo.
+              </small>
+            </div>
           )}
           {field.type === 'select' && (
             <div className="field">

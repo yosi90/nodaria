@@ -7,7 +7,7 @@ import { resolveStructure, structureChildren, structureLenses } from '../../doma
 import type { Node, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { IconButton } from '../common/Button';
-import { TypeIcon } from '../common/icons';
+import { NodeAvatar } from '../common/NodeAvatar';
 import { schemaOption } from '../common/options';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { Select } from '../common/Select';
@@ -333,7 +333,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
               >
                 {row.expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </button>
-              <TypeIcon icon={schema?.icon} color={schema?.color} size="sm" />
+              <NodeAvatar project={project} node={row.node} size="sm" />
               <span className="tree-label" title={`${label} · ${schema?.name ?? ''}`}>
                 {label}
               </span>

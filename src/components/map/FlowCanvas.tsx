@@ -30,7 +30,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
+import { getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
 import { usePreferences } from '../../state/preferences';
 import { referenceFields, referenceLinks } from '../../domain/references';
 import {
@@ -69,7 +69,7 @@ import { betweenness } from '../../domain/centrality';
 import { communityIndex } from '../../domain/communities';
 import { COLORS } from '../../domain/constants';
 import { LensMenu } from './LensMenu';
-import { isImageValue } from './images';
+import { imageClasses, nodePortrait } from '../../domain/portrait';
 import { NodeCard, type CardNode } from './NodeCard';
 
 const nodeTypes = { card: NodeCard };
@@ -411,6 +411,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       .map(n => {
         const schema = getSchema(project, n.typeId);
         const content = cardContent(project, n);
+        const portrait = nodePortrait(project, n);
         const position = overrides[n.id] ?? n.positions[view.layout] ?? autoPositions.get(n.id) ?? { x: 0, y: 0 };
         const compact = compactIds.has(n.id);
         const expanded = compact && n.id === hoverOnMap;
@@ -437,11 +438,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             scale: scaleOf(n.id),
             pinned: Boolean(n.positions[view.layout]),
             onUnpin: (origin: { x: number; y: number }) => unpin(n.id, origin),
-            image:
-              allFields(project, n.typeId)
-                .filter(f => f.type === 'image')
-                .map(f => n.values[f.id])
-                .find(isImageValue) ?? null,
+            image: portrait?.src ?? null,
+            imageClass: portrait ? imageClasses(portrait) : undefined,
             badges: content.badges,
             lines: content.lines,
           },
