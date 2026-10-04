@@ -97,7 +97,8 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Disposición «Mapa»
 
-- `Project.mapImage` (data URL JPEG hasta 2400 px de lado, con `width`/`height`) es el fondo de la disposición `image`; `MapImageLayer` lo pinta en el origen del lienzo con `ViewportPortal`, `MapImageMenu` lo sube/cambia/quita (`set-map-image`, deshacible). `trayLayout` coloca en una bandeja bajo la imagen los nodos sin posición fijada en esa disposición.
+- `Project.mapImage` (data URL JPEG hasta 2400 px de lado, con `width`/`height`) es el fondo de la disposición `image`; `MapImageLayer` lo pinta en el origen del lienzo con `ViewportPortal`, `MapImageMenu` lo sube/cambia/quita (`set-map-image`, deshacible) desde un panel en la esquina superior izquierda del lienzo (junto a exportar), y `MapScaleControl` vive sobre el minimapa. Desde el 2026-10-04 en «Mapa» solo se dibujan los nodos colocados a mano; los demás esperan en la bandeja lateral `MapTray` (fuera del lienzo, inmune al zoom) y se arrastran al mapa (`onDrop` con `TRAY_DRAG_TYPE`). Los marcadores colocados mantienen su tamaño en pantalla: `NodeCard` envuelve el marcador compacto en `.marker-zoom`, escalado por la variable `--inv-zoom` que `onMove` actualiza en el contenedor; la agrupación al alejar sigue siendo por distancia en pantalla.
+- Logo propio en `src/components/common/Logo.tsx` y favicon `public/favicon.svg`. Catálogo de iconos de tipo (`icon-catalog.ts`) ampliado a unos 230 iconos de Lucide con etiqueta en español.
 
 ## Exportación de imagen
 

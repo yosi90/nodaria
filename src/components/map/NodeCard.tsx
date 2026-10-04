@@ -63,7 +63,7 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
       if (rect) data.onUnpin?.({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     }, PULL_MS);
   };
-  return (
+  const card = (
     <div
       className={`node-card-flow ${selected ? 'selected' : ''} ${data.compact ? 'compact' : ''} ${data.expanded ? 'expanded' : ''}`}
       style={
@@ -149,4 +149,6 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
       />
     </div>
   );
+  // Sobre el mapa, el marcador mantiene su tamaño en pantalla sea cual sea el zoom (como un pin).
+  return data.compact ? <div className="marker-zoom">{card}</div> : card;
 });

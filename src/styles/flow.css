@@ -357,17 +357,20 @@
   pointer-events: all;
 }
 .map-cluster-dot {
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-width: 26px;
   height: 26px;
-  padding: 0 7px;
+  padding: 0 6px;
   border: 2px solid #fff;
   border-radius: 13px;
   background: var(--accent);
   color: var(--accent-contrast);
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   box-shadow: 0 2px 6px #0006;
   cursor: zoom-in;
 }
@@ -751,4 +754,106 @@
 }
 .path-step:hover {
   border-color: var(--accent);
+}
+
+/* ---------- Herramientas dentro del lienzo ---------- */
+.react-flow__panel.canvas-tools {
+  display: grid;
+  gap: 8px;
+}
+.canvas-tools-row {
+  display: flex;
+  gap: 6px;
+}
+.react-flow__panel.map-scale-panel {
+  /* Encima del minimapa (150 × 100 más sus márgenes). */
+  bottom: 130px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Bandeja de nodos sin colocar («Mapa») ---------- */
+.workspace.with-tray .react-flow__panel.right,
+.workspace.with-tray .react-flow__minimap {
+  right: 250px;
+}
+.map-tray {
+  position: absolute;
+  top: calc(var(--panel-head-height) + 8px);
+  right: 8px;
+  bottom: 8px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  width: 236px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(6px);
+}
+.map-tray header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+}
+.map-tray h3 {
+  flex: 1;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.map-tray-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  overflow-y: auto;
+}
+.map-tray-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  text-align: left;
+  cursor: grab;
+}
+.map-tray-item:hover {
+  border-color: var(--border-strong);
+}
+.map-tray-item.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+.map-tray-item .type-icon {
+  flex: none;
+  color: var(--type-color);
+  background: color-mix(in srgb, var(--type-color) 18%, transparent);
+}
+.map-tray-texts {
+  display: grid;
+  min-width: 0;
+}
+.map-tray-texts strong {
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-tray-texts small {
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+}
+
+/* ---------- Marcadores de tamaño constante sobre el mapa ---------- */
+.marker-zoom {
+  transform: scale(var(--inv-zoom, 1));
+  transform-origin: center;
 }

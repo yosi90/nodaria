@@ -31,6 +31,7 @@ import { Menu, type MenuEntry } from '../common/Menu';
 import type { View } from '../../state/navigation';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { useToast } from '../common/toasts';
+import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
 
 export type { View } from '../../state/navigation';
@@ -140,7 +141,7 @@ export function Topbar({
     <header className="topbar">
       <div className="brand">
         <span className="brand-mark" aria-hidden>
-          <Network size={17} strokeWidth={2.4} />
+          <Logo size={18} />
         </span>
         <span className="brand-name">Nodaria</span>
       </div>

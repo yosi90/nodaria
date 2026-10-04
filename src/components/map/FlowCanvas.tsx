@@ -56,7 +56,8 @@ import { ExportMenu } from './ExportMenu';
 import { FamilyLinks } from './FamilyLinks';
 import { MapClusters, type MapCluster } from './MapClusters';
 import { MapImageLayer } from './MapImageLayer';
-import { MapImageMenu } from './MapImageMenu';
+import { MapImageMenu, MapScaleControl } from './MapImageMenu';
+import { MapTray, TRAY_DRAG_TYPE } from './MapTray';
 import { cardContent, cardHeight } from './cardLines';
 import { edgeSlots } from './edgeSlots';
 import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
@@ -394,7 +395,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       degree.set(r.targetId, (degree.get(r.targetId) ?? 0) + 1);
     });
     return project.nodes
-      .filter(n => visibleIds.has(n.id))
+      .filter(n => visibleIds.has(n.id) && (view.layout !== 'image' || n.positions.image))
       .map(n => {
         const schema = getSchema(project, n.typeId);
         const content = cardContent(project, n);
@@ -755,7 +756,12 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   return (
     <CanvasSettingsContext.Provider value={settings}>
-      <section ref={container} className="workspace flow" data-labels={view.edgeLabels} onDoubleClick={onDoubleClick}>
+      <section
+        ref={container}
+        className={`workspace flow ${view.layout === 'image' ? 'with-tray' : ''}`}
+        data-labels={view.edgeLabels}
+        onDoubleClick={onDoubleClick}
+      >
         <div className="workspace-toolbar flow-toolbar">
           <LensMenu />
           <div className="segmented labeled" role="group" aria-label="Disposición">
@@ -880,8 +886,6 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             active={legendOpen}
             onClick={() => setLegendOpen(v => !v)}
           />
-          {view.layout === 'image' && <MapImageMenu />}
-          <ExportMenu name={project.name} container={() => container.current} />
           <span className="flow-counts">
             <span className="badge">
               {nodes.length}
@@ -914,6 +918,21 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           fitViewOptions={fitViewOptions}
           minZoom={0.1}
           maxZoom={2.5}
+          onMove={(_, viewport) => container.current?.style.setProperty('--inv-zoom', String(1 / viewport.zoom))}
+          onDragOver={event => {
+            if (event.dataTransfer.types.includes(TRAY_DRAG_TYPE)) {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+            }
+          }}
+          onDrop={event => {
+            const id = event.dataTransfer.getData(TRAY_DRAG_TYPE);
+            if (!id) return;
+            event.preventDefault();
+            const p = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+            dispatch({ type: 'move-nodes', positions: { [id]: { x: p.x - MARKER / 2, y: p.y - MARKER / 2 } } });
+            onSelect({ kind: 'node', id });
+          }}
           zoomOnDoubleClick={false}
           selectNodesOnDrag={false}
           nodesConnectable
@@ -952,8 +971,12 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
               <LegendPanel onClose={() => setLegendOpen(false)} />
             </Panel>
           )}
-          {pathQuery && (
-            <Panel position="top-left">
+          <Panel position="top-left" className="canvas-tools">
+            <div className="canvas-tools-row">
+              {view.layout === 'image' && <MapImageMenu />}
+              <ExportMenu name={project.name} container={() => container.current} />
+            </div>
+            {pathQuery && (
               <PathPanel
                 query={pathQuery}
                 path={path}
@@ -961,6 +984,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                 onPick={id => onSelect({ kind: 'node', id })}
                 onClose={() => setPathQuery(null)}
               />
+            )}
+          </Panel>
+          {view.layout === 'image' && project.mapImage && (
+            <Panel position="bottom-right" className="map-scale-panel">
+              <MapScaleControl />
             </Panel>
           )}
           <Controls position="bottom-left" showInteractive={false} />
@@ -974,6 +1002,14 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             maskColor="var(--scrim)"
           />
         </ReactFlow>
+        {view.layout === 'image' && (
+          <MapTray
+            project={project}
+            nodes={project.nodes.filter(n => visibleIds.has(n.id) && !n.positions.image)}
+            selectedId={selectedNodeId}
+            onSelect={id => onSelect({ kind: 'node', id })}
+          />
+        )}
       </section>
     </CanvasSettingsContext.Provider>
   );
