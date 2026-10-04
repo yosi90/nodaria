@@ -9,7 +9,7 @@ export interface Preferences {
   treeCollapsed: boolean;
   inspectorWidth: number;
   typeListWidth: number;
-  /** Lo que el usuario decidió en cada disposición de cada proyecto: qué se oculta y si la leyenda está abierta. */
+  /** Por proyecto y disposición, si la leyenda está abierta. */
   layouts: Record<string, Partial<Record<LayoutMode, LayoutPreference>>>;
   /** Vista Tabla: por proyecto y tipo, columnas ocultas y orden. */
   tables: Record<string, Record<string, TablePreference>>;
@@ -32,9 +32,8 @@ export interface TablePreference {
   sort: { column: string; direction: 'asc' | 'desc' } | null;
 }
 
+/** Los filtros de cada disposición viven en el proyecto (`view.layoutFilters`); aquí solo queda la leyenda. */
 export interface LayoutPreference {
-  hiddenEntityTypeIds: string[];
-  hiddenRelationTypeIds: string[];
   legendOpen: boolean;
 }
 

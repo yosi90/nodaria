@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { Selection } from '../domain/types';
 
 export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties';
+export type HelpTopic = 'shortcuts' | 'formulas';
 
 interface NavigationState {
   view: View;
@@ -13,6 +14,8 @@ interface NavigationState {
   /** Cambia cuando una selección debe centrarse en el lienzo. */
   revealKey: number;
   paletteOpen: boolean;
+  /** Tema de ayuda abierto, o ninguno. */
+  help: HelpTopic | null;
 }
 
 interface NavigationContextValue extends NavigationState {
@@ -24,6 +27,8 @@ interface NavigationContextValue extends NavigationState {
   canBack: boolean;
   canForward: boolean;
   setPaletteOpen: (open: boolean) => void;
+  openHelp: (topic?: HelpTopic) => void;
+  closeHelp: () => void;
 }
 
 const Context = createContext<NavigationContextValue | null>(null);
@@ -39,6 +44,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     future: [],
     revealKey: 0,
     paletteOpen: false,
+    help: null,
   });
 
   const setView = useCallback((view: View) => setState(s => (s.view === view ? s : { ...s, view })), []);
@@ -86,6 +92,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     [],
   );
   const setPaletteOpen = useCallback((paletteOpen: boolean) => setState(s => ({ ...s, paletteOpen })), []);
+  const openHelp = useCallback((topic: HelpTopic = 'shortcuts') => setState(s => ({ ...s, help: topic })), []);
+  const closeHelp = useCallback(() => setState(s => ({ ...s, help: null })), []);
 
   const value = useMemo<NavigationContextValue>(
     () => ({
@@ -97,8 +105,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       canBack: state.past.length > 0,
       canForward: state.future.length > 0,
       setPaletteOpen,
+      openHelp,
+      closeHelp,
     }),
-    [state, setView, select, back, forward, setPaletteOpen],
+    [state, setView, select, back, forward, setPaletteOpen, openHelp, closeHelp],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

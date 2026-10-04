@@ -82,6 +82,7 @@ export function createView(): ProjectView {
     hiddenRelationTypeIds: [],
     hiddenEntityTypeIds: [],
     hiddenReferenceFieldIds: [],
+    layoutFilters: {},
     showHierarchy: true,
     hierarchyOnlyIfUnrelated: true,
     edgeLabels: 'always',

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { isTypingTarget } from './components/common/keyboard';
 import { CommandPalette } from './components/layout/CommandPalette';
 import { RepairNotice } from './components/layout/RepairNotice';
-import { ShortcutsHelp } from './components/layout/ShortcutsHelp';
+import { HelpDialog } from './components/layout/HelpDialog';
 import { Topbar } from './components/layout/Topbar';
 import { MapView } from './components/map/MapView';
 import { PropertiesView } from './components/schema/PropertiesView';
@@ -12,9 +12,18 @@ import { useApp } from './state/AppContext';
 import { useNavigation, type View } from './state/navigation';
 
 export default function App() {
-  const { view, setView, paletteOpen, setPaletteOpen, back, forward } = useNavigation();
-  const [help, setHelp] = useState(false);
-  const openHelp = useCallback(() => setHelp(true), []);
+  const {
+    view,
+    setView,
+    paletteOpen,
+    setPaletteOpen,
+    back,
+    forward,
+    help,
+    openHelp: openHelpTopic,
+    closeHelp,
+  } = useNavigation();
+  const openHelp = useCallback(() => openHelpTopic('shortcuts'), [openHelpTopic]);
   const openPalette = useCallback(() => setPaletteOpen(true), [setPaletteOpen]);
   useGlobalShortcuts(setView, openHelp, openPalette, back, forward);
   return (
@@ -32,7 +41,7 @@ export default function App() {
         <PropertiesView />
       )}
       <RepairNotice />
-      {help && <ShortcutsHelp onClose={() => setHelp(false)} />}
+      {help && <HelpDialog topic={help} onTopic={openHelpTopic} onClose={closeHelp} />}
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );

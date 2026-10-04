@@ -27,8 +27,8 @@ import {
   Tag,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole, typeMatches } from '../../domain/selectors';
-import { usePreferences, type LayoutPreference } from '../../state/preferences';
+import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
+import { usePreferences } from '../../state/preferences';
 import { referenceFields, referenceLinks } from '../../domain/references';
 import {
   impliedKinship,
@@ -38,6 +38,7 @@ import {
   kinshipStructureLink,
   kinshipTerm,
 } from '../../domain/kinship';
+import { viewForLayout } from '../../domain/layoutFilters';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -675,50 +676,18 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   const setView = (patch: Partial<Project['view']>) => dispatch({ type: 'update-view', view: patch });
 
-  // Al cambiar de disposición se guarda lo decidido en la actual y se aplica lo recordado en la nueva.
-  // Sin recuerdo, Genealogía oculta los tipos que ningún parentesco admite y abre la leyenda; las demás
-  // conservan los filtros que había y cierran la leyenda.
+  // Al cambiar de disposición, los filtros de la actual se guardan en el proyecto y se aplican los de la
+  // nueva (`src/domain/layoutFilters.ts`); la leyenda se recuerda por disposición en este navegador.
   const switchLayout = (mode: LayoutMode) => {
     if (mode === view.layout) return;
     const mine = preferences.layouts[project.id] ?? {};
-    const current: LayoutPreference = {
-      hiddenEntityTypeIds: view.hiddenEntityTypeIds,
-      hiddenRelationTypeIds: view.hiddenRelationTypeIds,
-      legendOpen,
-    };
-    let next = mine[mode];
-    if (!next) {
-      if (mode === 'genealogy') {
-        const admitted = genealogySchemas.flatMap(s => [...s.sourceTypeIds, ...s.targetTypeIds]);
-        next = {
-          hiddenEntityTypeIds: project.schemas
-            .filter(s => s.kind === 'entity' && !s.isAbstract && !typeMatches(project, s.id, admitted))
-            .map(s => s.id),
-          hiddenRelationTypeIds: view.hiddenRelationTypeIds,
-          legendOpen: true,
-        };
-      } else {
-        // Fuera de Genealogía, el parentesco (extenso e intrincado) se oculta por defecto; al salir de
-        // Genealogía por primera vez se vuelve a ver todo lo demás.
-        const genealogicalIds = genealogySchemas.map(s => s.id);
-        const base = view.layout === 'genealogy' ? { hiddenEntityTypeIds: [], hiddenRelationTypeIds: [] } : current;
-        next = {
-          ...base,
-          hiddenRelationTypeIds: [...new Set([...base.hiddenRelationTypeIds, ...genealogicalIds])],
-          legendOpen: false,
-        };
-      }
-    }
+    const nextLegend = mine[mode]?.legendOpen ?? mode === 'genealogy';
     setPreference('layouts', {
       ...preferences.layouts,
-      [project.id]: { ...mine, [view.layout]: current, [mode]: next },
+      [project.id]: { ...mine, [view.layout]: { legendOpen }, [mode]: { legendOpen: nextLegend } },
     });
-    setLegendOpen(next.legendOpen);
-    setView({
-      layout: mode,
-      hiddenEntityTypeIds: next.hiddenEntityTypeIds,
-      hiddenRelationTypeIds: next.hiddenRelationTypeIds,
-    });
+    setLegendOpen(nextLegend);
+    setView(viewForLayout(project, mode));
   };
   // Un tipo de relación genealógico nuevo (o uno ya existente al abrir el proyecto por primera vez)
   // se oculta una sola vez por defecto fuera de Genealogía: el parentesco es extenso y ensucia las
@@ -733,29 +702,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     if (toHide.length) setView({ hiddenRelationTypeIds: [...view.hiddenRelationTypeIds, ...toHide] });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando aparece un tipo genealógico nuevo
   }, [genealogySchemas, view.layout, project.id]);
-  // Cada cambio de filtros o de la leyenda se recuerda para la disposición actual.
+  // Abrir o cerrar la leyenda se recuerda para la disposición actual.
   useEffect(() => {
     const mine = preferences.layouts[project.id] ?? {};
-    const stored = mine[view.layout];
-    const same =
-      stored &&
-      stored.legendOpen === legendOpen &&
-      JSON.stringify(stored.hiddenEntityTypeIds) === JSON.stringify(view.hiddenEntityTypeIds) &&
-      JSON.stringify(stored.hiddenRelationTypeIds) === JSON.stringify(view.hiddenRelationTypeIds);
-    if (same) return;
-    setPreference('layouts', {
-      ...preferences.layouts,
-      [project.id]: {
-        ...mine,
-        [view.layout]: {
-          legendOpen,
-          hiddenEntityTypeIds: view.hiddenEntityTypeIds,
-          hiddenRelationTypeIds: view.hiddenRelationTypeIds,
-        },
-      },
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona a lo que el usuario cambia
-  }, [view.layout, legendOpen, view.hiddenEntityTypeIds, view.hiddenRelationTypeIds]);
+    if (mine[view.layout]?.legendOpen === legendOpen) return;
+    setPreference('layouts', { ...preferences.layouts, [project.id]: { ...mine, [view.layout]: { legendOpen } } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona a la leyenda
+  }, [view.layout, legendOpen]);
   const pinnedCount = project.nodes.filter(n => n.positions[view.layout]).length;
   const selectedNode = selectedNodeId ? getNode(project, selectedNodeId) : undefined;
 

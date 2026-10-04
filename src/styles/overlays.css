@@ -417,3 +417,61 @@
 .palette-results .menu-item {
   min-height: 38px;
 }
+
+/* ---------- Ayuda: pestañas y guía ---------- */
+.help-tabs {
+  margin-bottom: var(--space-4);
+}
+.guide {
+  display: grid;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.guide h3 {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.guide code {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  font-size: var(--fs-xs);
+}
+.guide-example {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+.guide-example span {
+  color: var(--text-muted);
+}
+.guide-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.guide-table td {
+  padding: 6px 8px 6px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.guide-table td:first-child {
+  width: 42%;
+  white-space: nowrap;
+}
+.guide-table tr:last-child td {
+  border-bottom: 0;
+}
+.guide ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.guide li + li {
+  margin-top: 4px;
+}

@@ -4,6 +4,7 @@ import { FIELD_TYPES } from '../../domain/constants';
 import { slugify } from '../../domain/factories';
 import type { FieldDefinition, NodeDisplay } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useNavigation } from '../../state/navigation';
 import { IconButton } from '../common/Button';
 import { schemaOption } from '../common/options';
 import { IconPicker } from '../common/IconPicker';
@@ -38,6 +39,7 @@ export function FieldEditor({
   allowTitle = true,
 }: FieldEditorProps) {
   const { project } = useApp();
+  const { openHelp } = useNavigation();
   const [expanded, setExpanded] = useState(field.key === 'nuevo_campo' || field.key.startsWith('nuevo_campo_'));
   const set = <K extends keyof FieldDefinition>(key: K, value: FieldDefinition[K]) =>
     onChange({ ...field, [key]: value });
@@ -296,12 +298,11 @@ export function FieldEditor({
                 onChange={event => set('formula', event.target.value)}
               />
               <small>
-                Entre llaves: <code>{'{clave}'}</code> (un atributo; una referencia da el título del nodo),{' '}
-                <code>{'{referencia.clave}'}</code> (atributo del nodo referido), <code>{'{titulo}'}</code>,{' '}
-                <code>{'{tipo}'}</code>, <code>{'{padre}'}</code>, <code>{'{padre.clave}'}</code>,{' '}
-                <code>{'{contar(relaciones)}'}</code>, <code>{'{contar(relaciones:Amistad)}'}</code>,{' '}
-                <code>{'{contar(hijos)}'}</code>, <code>{'{contar(clave)}'}</code>, <code>{'{lista(relaciones)}'}</code>
-                , <code>{'{lista(hijos)}'}</code>.
+                Entre llaves: <code>{'{clave}'}</code>, <code>{'{referencia.clave}'}</code>, <code>{'{padre}'}</code>,{' '}
+                <code>{'{contar(relaciones:Tipo)}'}</code>, <code>{'{lista(hijos)}'}</code>…{' '}
+                <button type="button" className="link-button" onClick={() => openHelp('formulas')}>
+                  Ver la guía de fórmulas
+                </button>
               </small>
             </label>
           )}

@@ -158,6 +158,12 @@ export interface MapImage {
   /** Escala con la que se dibuja en el lienzo (×1 = su tamaño en píxeles). Los nodos no cambian de tamaño. */
   scale: number;
 }
+/** Lo que una disposición oculta: tipos de entidad, tipos de relación y atributos de referencia. */
+export interface LayoutFilters {
+  hiddenEntityTypeIds: string[];
+  hiddenRelationTypeIds: string[];
+  hiddenReferenceFieldIds: string[];
+}
 /** Estado de la vista del mapa. Se guarda con el proyecto pero no entra en el historial de deshacer. */
 export interface ProjectView {
   /** `null` = jerarquía "Dentro de"; si no, id de un tipo de relación estructural. */
@@ -167,6 +173,8 @@ export interface ProjectView {
   hiddenEntityTypeIds: string[];
   /** Atributos de referencia que no se dibujan como vínculos en el lienzo. */
   hiddenReferenceFieldIds: string[];
+  /** Filtros de las demás disposiciones (los de la activa son los tres anteriores); ver `src/domain/layoutFilters.ts`. */
+  layoutFilters: Partial<Record<LayoutMode, LayoutFilters>>;
   /** Cuándo mostrar las etiquetas de las aristas. */
   edgeLabels: 'always' | 'hover' | 'never';
   /** Vista guardada activa; `null` cuando la configuración es libre. */

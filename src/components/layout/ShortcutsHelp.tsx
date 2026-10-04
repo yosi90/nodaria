@@ -1,5 +1,3 @@
-import { Modal } from '../common/Modal';
-
 const GROUPS: { title: string; items: [string, string[]][] }[] = [
   {
     title: 'General',
@@ -36,9 +34,9 @@ const GROUPS: { title: string; items: [string, string[]][] }[] = [
   },
 ];
 
-export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
+export function ShortcutsContent() {
   return (
-    <Modal title="Atajos de teclado" informational onClose={onClose}>
+    <>
       {GROUPS.map(group => (
         <section className="shortcut-group" key={group.title}>
           <h3>{group.title}</h3>
@@ -59,6 +57,6 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
       <p className="muted-note" style={{ marginTop: 'var(--space-4)' }}>
         En macOS, usa ⌘ en lugar de Ctrl. Los atajos no actúan mientras escribes en un campo.
       </p>
-    </Modal>
+    </>
   );
 }
