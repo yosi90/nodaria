@@ -218,13 +218,13 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [x] (hecho en fases anteriores: nombre inverso por tipo y por relación, sentido «Bidireccional», parentesco) Relaciones con **nombre por dirección** ("padre de" / "hijo de", "venera a" / "venerado por") y relaciones **simétricas** ("hermano de", "aliado de").
 - [x] (hecho: atributos de relación en el formulario de la ficha) Atributos de relación visibles y editables (intensidad, desde cuándo, si es pública o secreta…).
 - [x] (hecho: referencias dibujadas como aristas discontinuas y usables en «Ver por», ocultables en la leyenda) Opción de **dibujar los campos de referencia como aristas** ("Dios: Aurel" se ve en el grafo sin crear además una relación). Decidir y documentar cuándo usar campo de referencia y cuándo relación.
-- [ ] Nuevos tipos de campo: URL, color, escala (1–5), etiquetas, lista ordenada, fecha del mundo (ver Fase 5). _Imagen ya hecho._
+- [x] Nuevos tipos de campo (2026-10-04): Enlace (URL, con botón para abrir), Color (selector y valor hex), Escala 1–5 (estrellas) y Etiquetas (chips libres); Imagen ya estaba. _Pendientes: lista ordenada y fecha del mundo._
 - [ ] Valores por defecto tipados y heredados.
 - [ ] Campos calculados reales (valor visible; funciones simples: contar relaciones, concatenar, referencia a un campo de otro nodo).
 - [ ] Validación de campos obligatorios con avisos no bloqueantes y contador de "fichas incompletas".
 - [ ] Restricciones de cardinalidad en relaciones (p. ej. "un personaje tiene como máximo un dios patrón") y aviso al violarlas.
 - [ ] Herencia de subnodos permitidos y de restricciones de relación.
-- [ ] Duplicar nodos (con o sin sus relaciones) y tipos.
+- [x] Duplicar nodos (2026-10-04) desde la ficha (menú «Duplicar»: solo ficha o con relaciones), con Ctrl+D en el mapa y desde la tabla; el título lleva «(copia)» y las posiciones fijadas se desplazan. Duplicar tipos desde el editor (atributos con ids nuevos, preformas vinculadas, apariencia y restricciones; sin nodos).
 - [ ] Operaciones masivas: cambiar tipo, mover, etiquetar o borrar varios nodos a la vez.
 - [ ] **Plantillas de proyecto**: "Mundo de fantasía" (Personaje, Raza, Lugar, Reino, Deidad, Escuela de magia, Facción, Objeto, Acontecimiento; relaciones de familia, lealtad, enemistad, culto, pertenencia, práctica de magia), "Novela" (añade Capítulo y Escena con apariciones), "Vacío". Tipos y campos de una plantilla se pueden importar a un proyecto existente.
 

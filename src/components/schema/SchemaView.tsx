@@ -89,7 +89,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
         />
       </aside>
       {schema ? (
-        <SchemaEditor key={schema.id} schema={schema} />
+        <SchemaEditor key={schema.id} schema={schema} onDuplicated={setSelected} />
       ) : (
         <EmptyState
           icon={isEntity ? Shapes : GitFork}

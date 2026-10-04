@@ -45,6 +45,17 @@ export function typedDefault(field: FieldDefinition): FieldValue | undefined {
   if (field.type === 'boolean')
     return typeof raw === 'boolean' ? raw : ['true', 'sí', 'si', '1'].includes(String(raw).trim().toLowerCase());
   if (field.type === 'nodeRefs') return Array.isArray(raw) ? raw : undefined;
+  if (field.type === 'tags')
+    return Array.isArray(raw)
+      ? raw
+      : String(raw)
+          .split(',')
+          .map(t => t.trim())
+          .filter(Boolean);
+  if (field.type === 'scale') {
+    const value = Math.round(Number(raw));
+    return value >= 1 && value <= 5 ? value : undefined;
+  }
   if (field.type === 'nodeRef') return undefined;
   // Una lista de opciones solo admite como inicial una de sus opciones.
   if (field.type === 'select') return field.options.includes(String(raw)) ? raw : undefined;
@@ -140,6 +151,88 @@ export function addNode(
   });
   const node: Node = { id, typeId, parentId, values, createdAt: now(), positions: {}, notes: '' };
   return { project: { ...p, nodes: [...p.nodes, node] }, nodeId: node.id };
+}
+
+/** Nombre de una copia: «X (copia)», «X (copia 2)»… sin repetir los que ya existen. */
+function copyName(name: string, taken: string[]): string {
+  const base = name.replace(/ \(copia(?: \d+)?\)$/, '');
+  let candidate = `${base} (copia)`;
+  for (let i = 2; taken.includes(candidate); i++) candidate = `${base} (copia ${i})`;
+  return candidate;
+}
+
+/**
+ * Duplica un nodo: mismos valores, padre y notas; el título lleva «(copia)»; cada posición fijada se
+ * desplaza un poco para que no tape al original. Con `withRelations`, copia también sus relaciones.
+ */
+export function duplicateNode(
+  p: Project,
+  id: string,
+  withRelations = false,
+  newId: string = uid('node'),
+): { project: Project; nodeId: string } {
+  const source = p.nodes.find(n => n.id === id);
+  if (!source) return { project: p, nodeId: id };
+  const fields = allFields(p, source.typeId);
+  const title = fields.find(f => f.isTitle) ?? fields.find(f => f.type === 'text');
+  const values = { ...source.values };
+  if (title && typeof values[title.id] === 'string' && values[title.id]) {
+    const taken = p.nodes.filter(n => n.typeId === source.typeId).map(n => String(n.values[title.id] ?? ''));
+    values[title.id] = copyName(String(values[title.id]), taken);
+  }
+  const positions: Node['positions'] = {};
+  (Object.keys(source.positions) as (keyof Node['positions'])[]).forEach(mode => {
+    const pos = source.positions[mode];
+    if (pos) positions[mode] = { x: pos.x + 32, y: pos.y + 32 };
+  });
+  const node: Node = { ...source, id: newId, values, positions, createdAt: now() };
+  const index = p.nodes.findIndex(n => n.id === id);
+  const nodes = [...p.nodes.slice(0, index + 1), node, ...p.nodes.slice(index + 1)];
+  const relations = withRelations
+    ? [
+        ...p.relations,
+        ...p.relations
+          .filter(r => r.sourceId === id || r.targetId === id)
+          .map(r => ({
+            ...r,
+            id: uid('rel'),
+            sourceId: r.sourceId === id ? newId : r.sourceId,
+            targetId: r.targetId === id ? newId : r.targetId,
+            createdAt: now(),
+          })),
+      ]
+    : p.relations;
+  return { project: { ...p, nodes, relations }, nodeId: newId };
+}
+
+/** Duplica un tipo con sus atributos propios (nuevos ids) y sus vínculos a preformas; sin nodos. */
+export function duplicateSchema(
+  p: Project,
+  id: string,
+  newId: string = uid('type'),
+): { project: Project; schemaId: string } {
+  const source = p.schemas.find(s => s.id === id);
+  if (!source) return { project: p, schemaId: id };
+  const name = copyName(
+    source.name,
+    p.schemas.filter(s => s.kind === source.kind).map(s => s.name),
+  );
+  const fields = source.fields.map(f => (isFieldLink(f) ? { ...f } : { ...f, id: uid('field') }));
+  const schema: Schema = {
+    ...source,
+    id: newId,
+    name,
+    fields,
+    // Un tipo que se admite a sí mismo como subnodo admite también a su copia.
+    allowedChildTypeIds: source.allowedChildTypeIds.map(t => (t === id ? newId : t)),
+    sourceTypeIds: source.sourceTypeIds.map(t => (t === id ? newId : t)),
+    targetTypeIds: source.targetTypeIds.map(t => (t === id ? newId : t)),
+  };
+  const index = p.schemas.findIndex(s => s.id === id);
+  return {
+    project: { ...p, schemas: [...p.schemas.slice(0, index + 1), schema, ...p.schemas.slice(index + 1)] },
+    schemaId: newId,
+  };
 }
 
 /** Actualiza valores y padre de un nodo. Un padre que crearía un ciclo se ignora. */

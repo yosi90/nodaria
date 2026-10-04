@@ -9,7 +9,11 @@ export type FieldType =
   | 'nodeRefs'
   | 'computed'
   | 'image'
-  | 'gender';
+  | 'gender'
+  | 'url'
+  | 'color'
+  | 'scale'
+  | 'tags';
 export type SchemaKind = 'entity' | 'relationship';
 export type RelationStyle = 'normal' | 'strong' | 'hidden';
 export type FieldValue = string | number | boolean | string[] | null;

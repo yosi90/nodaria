@@ -11,6 +11,10 @@ export const FIELD_TYPES: ReadonlyArray<[FieldType, string]> = [
   ['computed', 'Calculado'],
   ['image', 'Imagen'],
   ['gender', 'Género'],
+  ['url', 'Enlace (URL)'],
+  ['color', 'Color'],
+  ['scale', 'Escala (1–5)'],
+  ['tags', 'Etiquetas'],
 ];
 /** Valores del atributo de género y su etiqueta. */
 export const GENDERS: ReadonlyArray<[string, string]> = [

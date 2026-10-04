@@ -58,6 +58,8 @@ export type Action =
   | { type: 'set-map-scale'; scale: number }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
+  | { type: 'duplicate-node'; id: string; withRelations?: boolean; newId?: string }
+  | { type: 'duplicate-schema'; id: string; newId?: string }
   | {
       type: 'add-relation';
       typeId: string;
@@ -171,6 +173,10 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.updateKinship(p, action.kinship);
     case 'update-node':
       return ops.updateNode(p, action.id, action.values, action.parentId);
+    case 'duplicate-node':
+      return ops.duplicateNode(p, action.id, action.withRelations, action.newId).project;
+    case 'duplicate-schema':
+      return ops.duplicateSchema(p, action.id, action.newId).project;
     case 'delete-node':
       return ops.deleteNode(p, action.id);
     case 'add-relation':

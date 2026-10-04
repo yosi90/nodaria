@@ -1,4 +1,5 @@
-import { Trash2 } from 'lucide-react';
+import { Copy, Trash2 } from 'lucide-react';
+import { uid } from '../../domain/factories';
 import { useState } from 'react';
 import { RELATION_STYLES } from '../../domain/constants';
 import { inheritanceCandidates, schemaUsage } from '../../domain/selectors';
@@ -13,7 +14,7 @@ import { DeleteSchemaModal } from './DeleteSchemaModal';
 import { KinshipEditor } from './KinshipEditor';
 import { AttributesCard } from './AttributesCard';
 
-export function SchemaEditor({ schema }: { schema: Schema }) {
+export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDuplicated?: (id: string) => void }) {
   const { project, dispatch } = useApp();
   const [deleting, setDeleting] = useState(false);
   const update = (patch: Partial<Schema>) => dispatch({ type: 'update-schema', schema: { ...schema, ...patch } });
@@ -35,6 +36,17 @@ export function SchemaEditor({ schema }: { schema: Schema }) {
             {usage.subtypes > 0 && ` · ${usage.subtypes} ${usage.subtypes === 1 ? 'subtipo' : 'subtipos'}`}
           </p>
         </div>
+        <Button
+          icon={Copy}
+          title="Crear un tipo igual (atributos, apariencia y restricciones), sin nodos"
+          onClick={() => {
+            const newId = uid('type');
+            dispatch({ type: 'duplicate-schema', id: schema.id, newId });
+            onDuplicated?.(newId);
+          }}
+        >
+          Duplicar
+        </Button>
         <Button variant="danger" icon={Trash2} onClick={() => setDeleting(true)}>
           Eliminar tipo
         </Button>

@@ -138,3 +138,43 @@ describe('vistas guardadas', () => {
     expect(p.view.lensId).toBeNull();
   });
 });
+
+describe('duplicar', () => {
+  it('duplica un nodo con título «(copia)», posiciones desplazadas y, si se pide, sus relaciones', async () => {
+    const { duplicateNode } = await import('./operations');
+    const base = world();
+    base.nodes.find(n => n.id === 'aria')!.positions = { tree: { x: 10, y: 20 } };
+    const { project: p, nodeId } = duplicateNode(base, 'aria', true, 'aria2');
+    const copy = p.nodes.find(n => n.id === nodeId)!;
+    expect(copy.typeId).toBe('personaje');
+    expect(copy.parentId).toBe(base.nodes.find(n => n.id === 'aria')!.parentId);
+    expect(copy.positions.tree).toEqual({ x: 42, y: 52 });
+    expect(p.nodes.indexOf(copy)).toBe(p.nodes.findIndex(n => n.id === 'aria') + 1);
+    const mine = p.relations.filter(r => r.sourceId === 'aria2' || r.targetId === 'aria2');
+    const original = base.relations.filter(r => r.sourceId === 'aria' || r.targetId === 'aria');
+    expect(mine.length).toBe(original.length);
+    expect(new Set(mine.map(r => r.id)).size).toBe(mine.length);
+    expect(duplicateNode(base, 'aria').project.relations.length).toBe(base.relations.length);
+    // Segunda copia: «(copia 2)»
+    const title = Object.keys(copy.values).find(k => typeof copy.values[k] === 'string' && String(copy.values[k]).includes('(copia)'));
+    if (title) {
+      const again = duplicateNode(p, 'aria', false, 'aria3').project.nodes.find(n => n.id === 'aria3')!;
+      expect(String(again.values[title])).toMatch(/\(copia 2\)$/);
+    }
+  });
+  it('duplica un tipo con atributos nuevos y sin nodos', async () => {
+    const { duplicateSchema } = await import('./operations');
+    const base = world();
+    const { project: p, schemaId } = duplicateSchema(base, 'personaje', 'personaje2');
+    const copy = p.schemas.find(s => s.id === schemaId)!;
+    const source = base.schemas.find(s => s.id === 'personaje')!;
+    expect(copy.name).toBe(`${source.name} (copia)`);
+    expect(copy.fields.length).toBe(source.fields.length);
+    copy.fields.forEach((f, i) => {
+      const o = source.fields[i];
+      if ('ref' in f) expect(f).toEqual(o);
+      else expect(f.id).not.toBe((o as { id: string }).id);
+    });
+    expect(p.nodes.some(n => n.typeId === schemaId)).toBe(false);
+  });
+});

@@ -1,4 +1,6 @@
-import { ChevronLeft, ChevronRight, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
+import { uid } from '../../domain/factories';
+import { Menu } from '../common/Menu';
 import { useState } from 'react';
 import { nodeConnections } from '../../domain/connections';
 import {
@@ -42,6 +44,14 @@ interface InspectorProps {
 export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete }: InspectorProps) {
   const { project, dispatch } = useApp();
   const { select, back, forward, canBack, canForward } = useNavigation();
+  const [duplicateAnchor, setDuplicateAnchor] = useState<Anchor | null>(null);
+  const duplicate = (withRelations: boolean) => {
+    if (selection?.kind !== 'node') return;
+    const newId = uid('node');
+    dispatch({ type: 'duplicate-node', id: selection.id, withRelations, newId });
+    setDuplicateAnchor(null);
+    select({ kind: 'node', id: newId }, { reveal: true });
+  };
   const [tab, setTab] = useState<Tab>('fields');
   const node = selection?.kind === 'node' ? getNode(project, selection.id) : undefined;
   const relation = selection?.kind === 'relation' ? project.relations.find(r => r.id === selection.id) : undefined;
@@ -241,6 +251,34 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
                   <Button icon={Plus} size="sm" onClick={event => onAddChild(node.id, anchorOf(event.currentTarget))}>
                     Añadir subnodo
                   </Button>
+                )}
+                {node && (
+                  <Button
+                    icon={Copy}
+                    size="sm"
+                    aria-haspopup="menu"
+                    aria-expanded={Boolean(duplicateAnchor)}
+                    onClick={event =>
+                      duplicateAnchor ? setDuplicateAnchor(null) : setDuplicateAnchor(anchorOf(event.currentTarget))
+                    }
+                  >
+                    Duplicar
+                  </Button>
+                )}
+                {node && duplicateAnchor && (
+                  <Menu
+                    anchor={duplicateAnchor}
+                    label="Duplicar nodo"
+                    onClose={() => setDuplicateAnchor(null)}
+                    entries={[
+                      { label: 'Duplicar (Ctrl+D)', hint: 'solo la ficha', onSelect: () => duplicate(false) },
+                      {
+                        label: 'Duplicar con relaciones',
+                        hint: 'copia también sus relaciones',
+                        onSelect: () => duplicate(true),
+                      },
+                    ]}
+                  />
                 )}
                 <div className="spacer" />
                 <Button icon={Trash2} size="sm" variant="danger" onClick={onDelete}>

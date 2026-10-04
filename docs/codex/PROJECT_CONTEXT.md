@@ -80,6 +80,11 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 - `src/components/table/TableView.tsx`: hoja por tipo de entidad, editable en celda; reutiliza `FieldControl` (extraído del inspector a `src/components/map/FieldControl.tsx`). Preferencias por proyecto y tipo en `preferences.tables` (columnas ocultas, orden).
 
+## Duplicar y tipos de campo
+
+- `duplicateNode(p, id, withRelations)` y `duplicateSchema(p, id)` en `src/domain/operations.ts` (acciones `duplicate-node` / `duplicate-schema`); nombre «(copia)» sin repetir, posiciones fijadas desplazadas, atributos del tipo con ids nuevos.
+- Tipos de campo `url`, `color`, `scale` (1–5) y `tags` (string[]); los controles viven en `FieldControl` (TagsInput compartido en `src/components/common/TagsInput.tsx`).
+
 ## Disposición «Mapa»
 
 - `Project.mapImage` (data URL JPEG hasta 2400 px de lado, con `width`/`height`) es el fondo de la disposición `image`; `MapImageLayer` lo pinta en el origen del lienzo con `ViewportPortal`, `MapImageMenu` lo sube/cambia/quita (`set-map-image`, deshacible). `trayLayout` coloca en una bandeja bajo la imagen los nodos sin posición fijada en esa disposición.

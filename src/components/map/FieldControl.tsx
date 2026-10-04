@@ -1,6 +1,8 @@
 import type { ChangeEvent } from 'react';
 import { GENDERS } from '../../domain/constants';
 import type { FieldDefinition, FieldValue } from '../../domain/types';
+import { ExternalLink, Star } from 'lucide-react';
+import { TagsInput } from '../common/TagsInput';
 import { ImageControl } from './ImageControl';
 import { ReferenceControl } from './ReferenceControl';
 
@@ -46,6 +48,59 @@ export function FieldControl({
         <input type="checkbox" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />
         {value ? 'Sí' : 'No'}
       </label>
+    );
+  if (field.type === 'tags')
+    return <TagsInput value={Array.isArray(value) ? value : []} onChange={tags => onChange(tags)} />;
+  if (field.type === 'scale') {
+    const current = typeof value === 'number' ? value : 0;
+    return (
+      <div className="scale-field" role="radiogroup" aria-label={field.label}>
+        {[1, 2, 3, 4, 5].map(n => (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={current === n}
+            className={n <= current ? 'on' : ''}
+            title={String(n)}
+            onClick={() => onChange(current === n ? null : n)}
+          >
+            <Star size={16} aria-hidden fill={n <= current ? 'currentColor' : 'none'} />
+          </button>
+        ))}
+        <span className="scale-value">{current ? `${current} / 5` : '—'}</span>
+      </div>
+    );
+  }
+  if (field.type === 'color')
+    return (
+      <div className="color-field">
+        <input
+          type="color"
+          aria-label={`${field.label} (selector)`}
+          value={/^#[0-9a-f]{6}$/i.test(String(value ?? '')) ? String(value) : '#888888'}
+          onChange={e => onChange(e.target.value)}
+        />
+        <input {...common} placeholder="#rrggbb" />
+      </div>
+    );
+  if (field.type === 'url')
+    return (
+      <div className="url-field">
+        <input {...common} type="url" placeholder="https://…" />
+        {typeof value === 'string' && /^https?:\/\//i.test(value) && (
+          <a
+            href={value}
+            target="_blank"
+            rel="noreferrer"
+            className="icon-btn"
+            aria-label="Abrir enlace"
+            title="Abrir enlace"
+          >
+            <ExternalLink size={14} aria-hidden />
+          </a>
+        )}
+      </div>
     );
   if (field.type === 'longText') return <textarea {...common} />;
   if (field.type === 'select')

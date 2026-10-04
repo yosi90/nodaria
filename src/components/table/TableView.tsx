@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Columns3, ExternalLink, Grid3x3, Plus, Search, Table2, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Columns3, Copy, ExternalLink, Grid3x3, Plus, Search, Table2, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, fieldValue, getSchema, nodeLabel, typeMatches } from '../../domain/selectors';
@@ -366,6 +366,17 @@ export function TableView() {
                         </td>
                       ))}
                       <td className="cell-actions">
+                        <IconButton
+                          icon={Copy}
+                          size="sm"
+                          label="Duplicar"
+                          tooltipSide="left"
+                          onClick={() => {
+                            const newId = uid('node');
+                            dispatch({ type: 'duplicate-node', id: n.id, newId });
+                            toast({ message: `«${nodeLabel(project, n)}» duplicado`, undoable: true });
+                          }}
+                        />
                         <IconButton
                           icon={Trash2}
                           size="sm"

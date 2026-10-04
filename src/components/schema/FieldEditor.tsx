@@ -48,7 +48,7 @@ export function FieldEditor({
   const typeLabel = FIELD_TYPES.find(item => item[0] === field.type)?.[1];
   // «Género» es un atributo de sistema: lo usa el parentesco y no se edita (solo se reordena o se quita).
   const system = field.type === 'gender';
-  const hasDefault = !['computed', 'nodeRef', 'nodeRefs', 'image', 'gender'].includes(field.type);
+  const hasDefault = !['computed', 'nodeRef', 'nodeRefs', 'image', 'gender', 'color', 'url'].includes(field.type);
 
   const drop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();

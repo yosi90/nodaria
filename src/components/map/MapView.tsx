@@ -64,7 +64,20 @@ export function MapView() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isTypingTarget(event.target) || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isTypingTarget(event.target)) return;
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        event.key.toLowerCase() === 'd' &&
+        activeSelection?.kind === 'node'
+      ) {
+        event.preventDefault();
+        const newId = uid('node');
+        dispatch({ type: 'duplicate-node', id: activeSelection.id, newId });
+        selectAndReveal({ kind: 'node', id: newId });
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
       // Teclear con un nodo seleccionado escribe directamente en su título (aunque el lienzo haya
       // tratado la tecla: React Flow usa espacio e Intro sobre el nodo enfocado).
       if (activeSelection?.kind === 'node' && event.key.length === 1 && event.key !== '[' && event.key !== '?') {
@@ -87,7 +100,7 @@ export function MapView() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeSelection, removeSelected, toggleTree, setSelection]);
+  }, [activeSelection, removeSelected, toggleTree, setSelection, dispatch, selectAndReveal]);
 
   const createNode = (typeId: string) => {
     if (!addNodeMenu) return;
