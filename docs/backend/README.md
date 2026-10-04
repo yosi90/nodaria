@@ -43,19 +43,6 @@ npm 11 bloquea los scripts de instalación salvo los aprobados en `allowScripts`
 
 ## Firebase
 
-Configuración pública de la app web «Nodaria Web» (va en cada cliente; no es un secreto):
-
-```json
-{
-  "projectId": "yosiftware-nodaria",
-  "appId": "1:485119322480:web:d70fd1bf48e1fc648587b5",
-  "apiKey": "REDACTED_FIREBASE_WEB_API_KEY",
-  "authDomain": "yosiftware-nodaria.firebaseapp.com",
-  "storageBucket": "yosiftware-nodaria.firebasestorage.app",
-  "messagingSenderId": "485119322480"
-}
-```
-
 El front usa `authDomain: yosiftware-nodaria.firebaseapp.com`, como Lorcana. Pasar al dominio propio (`nodaria.yosiftware.es`, donde Hosting también sirve `/__/auth/handler`) exigiría autorizar `https://nodaria.yosiftware.es/__/auth/handler` como URI de redirección en el cliente OAuth de Google Cloud; el 2026-10-04 Google no mostraba el selector sin ese paso.
 
 ## Migraciones
