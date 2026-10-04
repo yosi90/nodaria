@@ -1623,3 +1623,43 @@ button.mention:hover {
 .health-chip:hover {
   border-color: var(--accent);
 }
+.stat-field {
+  margin-top: var(--space-3);
+}
+.stat-field-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: var(--fs-sm);
+}
+.stat-bar {
+  display: grid;
+  grid-template-columns: minmax(60px, 38%) 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: var(--fs-xs);
+}
+.stat-bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat-bar-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--surface-3);
+}
+.stat-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  opacity: 0.8;
+}
+.stat-bar-count {
+  min-width: 2ch;
+  color: var(--text-muted);
+  text-align: right;
+}

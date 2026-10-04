@@ -258,7 +258,7 @@ Objetivo: que la herramienta ayude a detectar huecos, redundancias y puntos clav
 - [x] **Camino entre dos nodos** (2026-10-04): botón «Camino entre dos nodos» en la barra del lienzo abre un panel con dos selectores (el origen parte del nodo seleccionado); `shortestPath` (`src/domain/paths.ts`) busca por los vínculos visibles (relaciones, jerarquía y referencias, sin sentido), el lienzo atenúa todo lo que no es el camino y el panel lista los pasos (clic para seleccionar). El filtro de tipos es el de la leyenda: lo oculto no cuenta.
 - [x] **Posibles redundancias** (2026-10-04): `src/domain/redundancy.ts` compara parejas del mismo tipo por atributos con valor (sin título ni imagen; sin distinguir mayúsculas) y vecinos (relaciones, jerarquía y referencias, sin contar el vínculo entre ambos); con al menos 3 señales y coincidencia ≥ 75 % entra en la tarjeta «Posibles redundancias» de «Salud», con el detalle de en qué coinciden y difieren.
 - [ ] **Consultas guardadas** con un constructor visual ("Personajes sin dios patrón", "Magos que no pertenecen a ninguna escuela").
-- [ ] Estadísticas por tipo: cuántos, cuántas relaciones de media, distribución de valores de un campo de lista.
+- [x] Estadísticas por tipo (2026-10-04): `src/domain/stats.ts` (`typeStats`): nodos por tipo, relaciones por nodo de media y sin ninguna, y distribución de valores de listas, etiquetas, sí/no, género y escala (con los sin valor). Bloque «Estadísticas por tipo» en «Salud» con barras por tipo.
 
 Criterio: el panel señala correctamente los huecos de un proyecto de prueba con problemas conocidos, y las métricas están cubiertas por pruebas.
 

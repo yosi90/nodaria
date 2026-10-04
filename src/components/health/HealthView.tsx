@@ -7,6 +7,7 @@ import {
   ListChecks,
   Network,
   Shapes,
+  BarChart3,
   Unplug,
   Users,
   type LucideIcon,
@@ -18,6 +19,7 @@ import { detectCommunities } from '../../domain/communities';
 import { COLORS } from '../../domain/constants';
 import { worldHealth } from '../../domain/health';
 import { redundancyPairs } from '../../domain/redundancy';
+import { typeStats } from '../../domain/stats';
 import { getSchema, nodeLabel } from '../../domain/selectors';
 import type { Node } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -53,6 +55,7 @@ export function HealthView() {
   }, [project]);
   const { central, bridgeNodes, bridgeLinks } = graph;
   const redundancies = useMemo(() => redundancyPairs(project).slice(0, 20), [project]);
+  const stats = useMemo(() => typeStats(project), [project]);
   const communities = useMemo(() => {
     const byId = new Map(project.nodes.map(n => [n.id, n]));
     const links = analysisLinks(project);
@@ -276,6 +279,59 @@ export function HealthView() {
           ))}
         </Section>
       </div>
+      {stats.length > 0 && (
+        <>
+          <header className="health-summary health-summary-secondary">
+            <BarChart3 size={22} aria-hidden />
+            <div>
+              <h2>Estadísticas por tipo</h2>
+              <p className="muted-note">
+                Cuántos nodos hay de cada tipo, cuántas relaciones tienen de media y cómo se reparten sus listas.
+              </p>
+            </div>
+          </header>
+          <div className="health-grid">
+            {stats.map(t => (
+              <section key={t.schema.id} className="card health-card">
+                <div className="card-head">
+                  <h3>
+                    <TypeIcon icon={t.schema.icon} color={t.schema.color} size="sm" /> {t.schema.name}
+                  </h3>
+                  <span className="health-count">{t.nodes}</span>
+                </div>
+                <p className="muted-note">
+                  {t.averageRelations.toFixed(1)} relaciones por nodo de media
+                  {t.withoutRelations ? `; ${t.withoutRelations} sin ninguna` : ''}.
+                </p>
+                {t.distributions.map(d => {
+                  const max = Math.max(1, ...d.values.map(v => v.count));
+                  return (
+                    <div key={d.field.id} className="stat-field">
+                      <div className="stat-field-head">
+                        <strong>{d.field.label}</strong>
+                        {d.empty > 0 && <span className="muted">{d.empty} sin valor</span>}
+                      </div>
+                      {d.values.slice(0, 8).map(v => (
+                        <div key={v.value} className="stat-bar" title={`${v.value}: ${v.count}`}>
+                          <span className="stat-bar-label">{v.value}</span>
+                          <span className="stat-bar-track">
+                            <span
+                              className="stat-bar-fill"
+                              style={{ width: `${(v.count / max) * 100}%`, background: t.schema.color }}
+                            />
+                          </span>
+                          <span className="stat-bar-count">{v.count}</span>
+                        </div>
+                      ))}
+                      {d.values.length > 8 && <span className="muted">y {d.values.length - 8} valores más</span>}
+                    </div>
+                  );
+                })}
+              </section>
+            ))}
+          </div>
+        </>
+      )}
     </main>
   );
 }
