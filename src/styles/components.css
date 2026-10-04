@@ -283,6 +283,11 @@ label.field-inline select {
   background: var(--accent-soft);
   color: var(--accent);
 }
+.badge.system {
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+}
 .badge.warning {
   background: var(--warning-soft);
   color: var(--warning);

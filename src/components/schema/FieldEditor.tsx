@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, GripVertical, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Lock, Trash2, X } from 'lucide-react';
 import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { slugify } from '../../domain/factories';
@@ -46,6 +46,8 @@ export function FieldEditor({
     onChange({ ...field, label, key: keyWasAutomatic ? slugify(label) : field.key });
   };
   const typeLabel = FIELD_TYPES.find(item => item[0] === field.type)?.[1];
+  // «Género» es un atributo de sistema: lo usa el parentesco y no se edita (solo se reordena o se quita).
+  const system = field.type === 'gender';
   const hasDefault = !['computed', 'nodeRef', 'nodeRefs', 'image', 'gender'].includes(field.type);
 
   const drop = (event: DragEvent<HTMLDivElement>) => {
@@ -56,7 +58,7 @@ export function FieldEditor({
 
   return (
     <div
-      className={`field-def ${dragging ? 'dragging' : ''}`}
+      className={`field-def ${dragging ? 'dragging' : ''} ${system ? 'system' : ''}`}
       onDragOver={event => event.preventDefault()}
       onDrop={drop}
     >
@@ -75,19 +77,33 @@ export function FieldEditor({
         >
           <GripVertical size={16} aria-hidden />
         </button>
-        <button
-          type="button"
-          className="field-def-toggle"
-          aria-expanded={expanded}
-          onClick={() => setExpanded(value => !value)}
-        >
-          <span className="field-chevron">{expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
-          <strong>{field.label || 'Atributo sin nombre'}</strong>
-          {badges}
-          {field.isTitle && <span className="badge accent">Título</span>}
-          {field.required && <span className="badge warning">Obligatorio</span>}
-          <span className="badge">{typeLabel}</span>
-        </button>
+        {system ? (
+          <div className="field-def-toggle system-row">
+            <span className="field-chevron" title="Atributo de sistema: no se edita">
+              <Lock size={13} />
+            </span>
+            <strong>{field.label || 'Género'}</strong>
+            <span className="system-note">
+              Lo usa el parentesco (Padre / Madre, Hijo / Hija…). Se rellena en cada ficha; aquí no se edita.
+            </span>
+            {badges}
+            <span className="badge system">Sistema</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="field-def-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(value => !value)}
+          >
+            <span className="field-chevron">{expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
+            <strong>{field.label || 'Atributo sin nombre'}</strong>
+            {badges}
+            {field.isTitle && <span className="badge accent">Título</span>}
+            {field.required && <span className="badge warning">Obligatorio</span>}
+            <span className="badge">{typeLabel}</span>
+          </button>
+        )}
         {actions}
         <IconButton
           icon={Trash2}
@@ -98,7 +114,7 @@ export function FieldEditor({
           onClick={onDelete}
         />
       </div>
-      {expanded && (
+      {expanded && !system && (
         <div className="field-def-content">
           <div className="field-row">
             <label className="field">
@@ -118,7 +134,23 @@ export function FieldEditor({
           <div className="field-row">
             <label className="field">
               Tipo
-              <select value={field.type} onChange={event => set('type', event.target.value as FieldDefinition['type'])}>
+              <select
+                value={field.type}
+                onChange={event => {
+                  const type = event.target.value as FieldDefinition['type'];
+                  if (type === 'gender')
+                    onChange({
+                      ...field,
+                      type,
+                      label: 'Género',
+                      key: 'genero',
+                      required: false,
+                      isTitle: false,
+                      description: field.description || 'Decide el nombre de los parentescos.',
+                    });
+                  else set('type', type);
+                }}
+              >
                 {FIELD_TYPES.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
