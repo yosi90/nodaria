@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ApiError, deleteMe } from '../../services/api';
 import { getAuthErrorMessage, reauthenticate } from '../../services/firebase';
 import { useAuth } from '../../state/auth';
+import { useSync } from '../../state/sync';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
 
@@ -11,6 +12,7 @@ import { useToast } from '../common/toasts';
  */
 export function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const { user, getToken, signOut } = useAuth();
+  const { forgetAccount } = useSync();
   const toast = useToast();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -29,6 +31,7 @@ export function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
       if (!token) throw new Error('No hay sesión iniciada.');
       await deleteMe(token);
       await signOut();
+      forgetAccount();
       toast({ message: 'Cuenta eliminada. Los proyectos de este navegador se conservan.' });
       onClose();
     } catch (failure) {

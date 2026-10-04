@@ -89,12 +89,12 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 ### Fase 6 — Sincronización en el front
 
-- [ ] Reglas puras y probadas (`src/services/sync.ts`): qué subir, bajar, borrar en local o en remoto a partir de local, remoto y metadatos (`nodaria_sync_v1`: uid, versión y `updatedAt` sincronizados por proyecto).
-- [ ] Último cambio gana por `updatedAt` cuando ambos lados cambiaron; aviso al usuario. Los proyectos vacíos sin tocar no se suben.
-- [ ] Motor: sincronización completa al iniciar sesión, subida con retardo tras cambios locales, borrado remoto al borrar en local, cada 5 minutos, al recuperar conexión y al volver a la pestaña.
-- [ ] Acción `sync-apply` fuera del historial de deshacer; `reset-state` al vaciar el navegador.
-- [ ] Indicador de estado (sincronizado, guardando, sin conexión, error) en el botón de cuenta.
-- [ ] Pruebas de extremo a extremo con dos navegadores.
+- [x] Reglas puras y probadas (`src/services/sync.ts`): qué subir, bajar, borrar en local o en remoto a partir de local, remoto y metadatos (`nodaria_sync_v1`: uid, versión y `updatedAt` sincronizados por proyecto).
+- [x] Último cambio gana por `updatedAt` cuando ambos lados cambiaron; aviso al usuario. Los proyectos vacíos sin tocar no se suben.
+- [x] Motor (`src/state/sync.tsx`): sincronización completa al iniciar sesión, subida con retardo tras cambios locales, borrado remoto al borrar en local, cada 5 minutos, al recuperar conexión y al volver a la pestaña.
+- [x] Acción `sync-apply` fuera del historial de deshacer; `reset-state` al vaciar el navegador.
+- [x] Indicador de estado (sincronizado, guardando, sin conexión, error) en el botón de cuenta.
+- [x] Pruebas de extremo a extremo con dos navegadores (Chromium, 2026-10-04): subida del proyecto local al entrar, descarga en un navegador nuevo (su proyecto vacío desaparece), renombrado en uno y visto en el otro, borrado en uno y aplicado en el otro.
 
 ### Fase 7 — Mensajes en el front — aplazada (ver Fase 3)
 
@@ -116,7 +116,7 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 | 3 — Mensajes y Notificapp      | Aplazada                             |
 | 4 — Publicación                | Completada (2026-10-04)              |
 | 5 — Cuenta en el front         | Completada (2026-10-04)              |
-| 6 — Sincronización en el front | Pendiente                            |
+| 6 — Sincronización en el front | Completada (2026-10-04)              |
 | 7 — Mensajes en el front       | Aplazada                             |
 | 8 — Cierre                     | Pendiente                            |
 

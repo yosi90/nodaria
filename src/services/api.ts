@@ -69,3 +69,32 @@ export interface MeResponse {
 
 export const fetchMe = (token: string) => apiRequest<MeResponse>('GET', '/api/me', token);
 export const deleteMe = (token: string) => apiRequest<void>('DELETE', '/api/me', token);
+
+export interface RemoteProjectSummary {
+  id: string;
+  name: string;
+  version: number;
+  updatedAt: string;
+  serverUpdatedAt: string;
+  deletedAt: string | null;
+  sizeBytes: number;
+}
+
+export interface RemoteProject extends RemoteProjectSummary {
+  document: unknown;
+}
+
+export interface WriteResult {
+  id: string;
+  version: number;
+  serverUpdatedAt: string;
+}
+
+export const listRemoteProjects = (token: string) =>
+  apiRequest<{ projects: RemoteProjectSummary[] }>('GET', '/api/projects', token).then(r => r.projects);
+export const getRemoteProject = (token: string, id: string) =>
+  apiRequest<RemoteProject>('GET', `/api/projects/${encodeURIComponent(id)}`, token);
+export const putRemoteProject = (token: string, id: string, document: unknown, baseVersion: number) =>
+  apiRequest<WriteResult>('PUT', `/api/projects/${encodeURIComponent(id)}`, token, { document, baseVersion });
+export const deleteRemoteProject = (token: string, id: string, baseVersion: number) =>
+  apiRequest<WriteResult>('DELETE', `/api/projects/${encodeURIComponent(id)}?baseVersion=${baseVersion}`, token);

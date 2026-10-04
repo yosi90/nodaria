@@ -1,4 +1,4 @@
-import { createProject, now, uid } from '../domain/factories';
+import { createInitialState, createProject, now, uid } from '../domain/factories';
 import * as lib from '../domain/library';
 import * as ops from '../domain/operations';
 import { moveInStructure, type StructureMove } from '../domain/structureMove';
@@ -25,6 +25,10 @@ export type Action =
   | { type: 'delete-project' }
   | { type: 'duplicate-project' }
   | { type: 'import-project'; project: Project }
+  /** Resultado de una sincronización: sustituye o añade proyectos y quita otros, sin re-sellar `updatedAt`. */
+  | { type: 'sync-apply'; upsert: Project[]; remove: string[] }
+  /** Vacía el navegador (al cerrar sesión sin conservar los proyectos). */
+  | { type: 'reset-state' }
   | { type: 'add-schema'; name: string; kind: SchemaKind; id?: string }
   | { type: 'update-schema'; schema: Schema }
   | { type: 'delete-schema'; id: string; strategy: OrphanStrategy }
@@ -104,6 +108,20 @@ export function appReducer(state: AppState, action: Action): AppState {
       const project = clash ? { ...action.project, id: uid('project') } : action.project;
       return { ...state, projects: [...state.projects, project], activeProjectId: project.id };
     }
+    case 'sync-apply': {
+      const incoming = new Map(action.upsert.map(p => [p.id, p]));
+      const removed = new Set(action.remove);
+      const kept = state.projects.filter(p => !removed.has(p.id)).map(p => incoming.get(p.id) ?? p);
+      const added = action.upsert.filter(p => !state.projects.some(existing => existing.id === p.id));
+      const projects = [...kept, ...added];
+      if (!projects.length) projects.push(createProject());
+      const activeProjectId = projects.some(p => p.id === state.activeProjectId)
+        ? state.activeProjectId
+        : projects[0].id;
+      return { ...state, projects, activeProjectId };
+    }
+    case 'reset-state':
+      return createInitialState();
   }
   const active = state.projects.find(p => p.id === state.activeProjectId);
   if (!active) return state;

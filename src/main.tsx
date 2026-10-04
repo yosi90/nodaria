@@ -7,6 +7,8 @@ import { DialogProvider } from './components/common/dialogs';
 import { ToastProvider } from './components/common/toasts';
 import { AppProvider } from './state/AppContext';
 import { AuthProvider } from './state/auth';
+import { SyncProvider } from './state/sync';
+import { SyncNotices } from './components/account/SyncNotices';
 import { NavigationProvider } from './state/navigation';
 import { PreferencesProvider } from './state/preferences';
 import '@xyflow/react/dist/style.css';
@@ -23,13 +25,16 @@ createRoot(document.getElementById('root')!).render(
     <PreferencesProvider>
       <AppProvider>
         <AuthProvider>
-          <NavigationProvider>
-            <DialogProvider>
-              <ToastProvider>
-                <App />
-              </ToastProvider>
-            </DialogProvider>
-          </NavigationProvider>
+          <SyncProvider>
+            <NavigationProvider>
+              <DialogProvider>
+                <ToastProvider>
+                  <App />
+                  <SyncNotices />
+                </ToastProvider>
+              </DialogProvider>
+            </NavigationProvider>
+          </SyncProvider>
         </AuthProvider>
       </AppProvider>
     </PreferencesProvider>

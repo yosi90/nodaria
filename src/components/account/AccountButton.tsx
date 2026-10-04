@@ -1,4 +1,4 @@
-import { LogIn, LogOut, MailWarning, Trash2, UserRound } from 'lucide-react';
+import { CloudOff, CloudAlert, Cloud, LogIn, LogOut, MailWarning, RefreshCw, Trash2, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, fetchMe, OfflineError } from '../../services/api';
 import { useAuth, type AccountUser, type AuthStatus } from '../../state/auth';
@@ -8,11 +8,15 @@ import { Menu, type MenuEntry } from '../common/Menu';
 import { useToast } from '../common/toasts';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { SignInDialog, type SignInMode } from './SignInDialog';
+import { SignOutDialog } from './SignOutDialog';
+import { useSync } from '../../state/sync';
 
 /** Botón de cuenta de la barra superior: entrar, estado de verificación y menú de la sesión. */
 export function AccountButton() {
-  const { status, user, getToken, signOut } = useAuth();
+  const { status, user, getToken } = useAuth();
+  const sync = useSync();
   const toast = useToast();
+  const [signingOut, setSigningOut] = useState(false);
   const [signIn, setSignIn] = useState<SignInMode | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
@@ -44,15 +48,34 @@ export function AccountButton() {
     );
   }
 
+  const syncLabel =
+    sync.state === 'syncing'
+      ? 'Sincronizando…'
+      : sync.state === 'offline'
+        ? 'Sin conexión con el servidor'
+        : sync.state === 'error'
+          ? `Error al sincronizar: ${sync.error ?? ''}`
+          : 'Proyectos sincronizados';
+  const syncHint = sync.lastSyncAt
+    ? `Última vez: ${new Date(sync.lastSyncAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`
+    : undefined;
   const entries: MenuEntry[] = [
     { section: user?.email ?? 'Cuenta' },
     {
-      label: 'Cerrar sesión',
-      icon: LogOut,
-      onSelect: () => {
-        void signOut().then(() => toast({ message: 'Sesión cerrada. Los proyectos siguen en este navegador.' }));
-      },
+      label: syncLabel,
+      hint: syncHint,
+      icon: sync.state === 'offline' ? CloudOff : sync.state === 'error' ? CloudAlert : Cloud,
+      disabled: true,
+      onSelect: () => undefined,
     },
+    {
+      label: 'Sincronizar ahora',
+      icon: RefreshCw,
+      disabled: sync.state === 'syncing',
+      onSelect: () => void sync.syncNow(),
+    },
+    'separator',
+    { label: 'Cerrar sesión', icon: LogOut, onSelect: () => setSigningOut(true) },
     'separator',
     { label: 'Eliminar cuenta', icon: Trash2, danger: true, onSelect: () => setDeleting(true) },
   ];
@@ -63,7 +86,7 @@ export function AccountButton() {
     <>
       <button
         type="button"
-        className="account-button"
+        className={`account-button sync-${sync.state}`}
         aria-haspopup="menu"
         aria-expanded={Boolean(menuAnchor)}
         aria-label={`Cuenta: ${user?.email ?? ''}`}
@@ -80,6 +103,7 @@ export function AccountButton() {
         )}
       </button>
       {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Cuenta" />}
+      {signingOut && <SignOutDialog onClose={() => setSigningOut(false)} />}
       {deleting && <DeleteAccountDialog onClose={() => setDeleting(false)} />}
     </>
   );

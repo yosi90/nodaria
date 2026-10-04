@@ -56,8 +56,11 @@ export function historyReducer(history: History, action: HistoryAction): History
 
   const present = appReducer(history.present, action.action);
   if (present === history.present) return history;
+  // Vaciar el navegador deja un estado nuevo sin pasado al que volver.
+  if (action.action.type === 'reset-state') return createHistory(present);
   // Cambiar de proyecto o de vista es navegación, no una edición: no ocupa un paso de deshacer.
-  if (['set-project', 'update-view', 'apply-lens'].includes(action.action.type))
+  // Lo que llega de la sincronización tampoco: viene de otro dispositivo, no de esta sesión.
+  if (['set-project', 'update-view', 'apply-lens', 'sync-apply'].includes(action.action.type))
     return { ...history, present, lastGroup: null };
 
   const group = groupOf(action.action);
