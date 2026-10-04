@@ -29,11 +29,11 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 - [x] Proyecto Firebase `yosiftware-nodaria` (existía para Hosting).
 - [x] App web «Nodaria Web» registrada (2026-10-04, `1:485119322480:web:d70fd1bf48e1fc648587b5`; configuración pública en `docs/backend/README.md`).
-- [ ] Activar los proveedores Email/Password y Google en Firebase Authentication.
-- [ ] Añadir `nodaria.yosiftware.es` a los dominios autorizados de Authentication (`localhost` y `yosiftware-nodaria.firebaseapp.com` ya lo están).
-- [ ] Configurar el SMTP de Hostinger (`correo@yosiftware.es`, remitente `noreply@yosiftware.es`) y las plantillas en español; URL de acción `https://nodaria.yosiftware.es/__/auth/action`.
-- [ ] Generar la cuenta de servicio de Firebase Admin, guardarla en `api/secrets/` (ignorado) y apuntar `GOOGLE_APPLICATION_CREDENTIALS` en `api/.env`.
-- [ ] Confirmar que Claude en Nodaria usa el emisor de agentes del servidor (`notificapp/.runtime/agent-server.json`, el mismo que Codex en este equipo) o crear uno con `agent_cli add`.
+- [x] Activar los proveedores Email/Password y Google en Firebase Authentication (2026-10-04).
+- [x] Añadir `nodaria.yosiftware.es` a los dominios autorizados de Authentication (`localhost` y `yosiftware-nodaria.firebaseapp.com` ya lo están).
+- [x] Configurar el SMTP de Hostinger (`correo@yosiftware.es`, remitente `noreply@yosiftware.es`) y las plantillas en español; URL de acción `https://nodaria.yosiftware.es/__/auth/action`.
+- [x] Cuenta de servicio de Firebase Admin en `api/secrets/` (ignorado) y `GOOGLE_APPLICATION_CREDENTIALS` en `api/.env` (2026-10-04).
+- [x] Claude en Nodaria usa el emisor de agentes del servidor (`notificapp/.runtime/agent-server.json`, el mismo que Codex); primer aviso recibido en el móvil el 2026-10-04.
 
 ### Fase 1 — Base del backend
 
@@ -48,7 +48,7 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 - [x] Límites de peticiones por IP (`CF-Connecting-IP`) y por usuario.
 - [x] Pruebas: 22 en verde, incluida la integración con SQL Server (`DB_TESTS=1`).
 - [ ] Prueba con el emulador de Firebase Auth (`npm run test:emulator`, proyecto `demo-nodaria`).
-- [ ] Arranque real con la cuenta de servicio y una llamada autenticada de extremo a extremo (depende de la Fase 0).
+- [x] Arranque real con la cuenta de servicio y prueba de extremo a extremo (2026-10-04): usuario temporal por custom token, `GET /api/me` 200, `DELETE /api/me` 204 y cuenta de Firebase eliminada.
 
 ### Fase 2 — Proyectos en el servidor (API)
 
@@ -58,7 +58,9 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 - [ ] `DELETE /api/projects/{id}`: borrado lógico con control de versión.
 - [ ] Pruebas con almacén en memoria y con SQL Server.
 
-### Fase 3 — Mensajes y Notificapp (API)
+### Fase 3 — Mensajes y Notificapp (API) — aplazada
+
+> Decisión del propietario (2026-10-04): por ahora la web no monta peticiones, así que no se crea el plugin de proyecto. Esta fase se retomará si la app incorpora mensajes o solicitudes de usuarios; las tablas `messages` y `notificapp_outbox` ya existen.
 
 - [ ] `POST /api/messages` (tipo, asunto, cuerpo, contexto), `GET /api/messages`, `PUT /api/messages/{id}/read`.
 - [ ] Cola `notificapp_outbox` escrita en la misma transacción y drenador en proceso con reintentos; credencial de emisor en `api/.runtime/notificapp-sender.token`.
@@ -93,7 +95,7 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 - [ ] Indicador de estado (sincronizado, guardando, sin conexión, error) en el botón de cuenta.
 - [ ] Pruebas de extremo a extremo con dos navegadores.
 
-### Fase 7 — Mensajes en el front
+### Fase 7 — Mensajes en el front — aplazada (ver Fase 3)
 
 - [ ] «Enviar un mensaje» (desde el menú de cuenta y la ayuda): tipo, asunto y cuerpo; requiere sesión.
 - [ ] «Mis mensajes»: lista con estado y respuesta; marcar respuestas como leídas; distintivo de respuestas sin leer.
@@ -105,22 +107,21 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 ## Estado
 
-| Fase                           | Estado                                  |
-| ------------------------------ | --------------------------------------- |
-| 0 — Preparación externa        | En curso (faltan pasos del propietario) |
-| 1 — Base del backend           | Hecha salvo emulador y arranque real    |
-| 2 — Proyectos en el servidor   | Pendiente                               |
-| 3 — Mensajes y Notificapp      | Pendiente                               |
-| 4 — Publicación                | Pendiente                               |
-| 5 — Cuenta en el front         | Pendiente                               |
-| 6 — Sincronización en el front | Pendiente                               |
-| 7 — Mensajes en el front       | Pendiente                               |
-| 8 — Cierre                     | Pendiente                               |
+| Fase                           | Estado                               |
+| ------------------------------ | ------------------------------------ |
+| 0 — Preparación externa        | Completada (2026-10-04)              |
+| 1 — Base del backend           | Completada salvo prueba con emulador |
+| 2 — Proyectos en el servidor   | Pendiente                            |
+| 3 — Mensajes y Notificapp      | Aplazada                             |
+| 4 — Publicación                | Pendiente                            |
+| 5 — Cuenta en el front         | Pendiente                            |
+| 6 — Sincronización en el front | Pendiente                            |
+| 7 — Mensajes en el front       | Aplazada                             |
+| 8 — Cierre                     | Pendiente                            |
 
 ## Criterios de finalización
 
 - Un usuario puede crear cuenta, iniciar sesión en dos navegadores y ver el mismo proyecto en ambos tras editarlo en uno.
 - Sin cuenta, la aplicación funciona exactamente igual que hoy.
-- Un mensaje enviado desde la app llega a Notificapp y su respuesta aparece en la app.
 - `npm test`, `npm run lint` y `npm run build` pasan en la raíz y `npm test` en `api/`; la API se reinicia sola y tiene copia diaria.
 - `PROJECT_CONTEXT.md` y `docs/backend/README.md` reflejan la arquitectura resultante.

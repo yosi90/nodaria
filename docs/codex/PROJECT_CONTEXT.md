@@ -102,7 +102,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Roadmap activo
 
-`docs/roadmaps/ROADMAP_BACKEND.md` (creado el 2026-10-04): backend, cuentas, sincronización entre dispositivos, mensajes de usuarios y Notificapp, por fases. La Fase 1 (base de la API) está hecha; la Fase 0 tiene pasos pendientes del propietario en la consola de Firebase.
+`docs/roadmaps/ROADMAP_BACKEND.md` (creado el 2026-10-04): backend, cuentas, sincronización entre dispositivos, mensajes de usuarios y Notificapp, por fases. Fases 0 y 1 completadas el 2026-10-04 (Firebase configurado, cuenta de servicio en `api/secrets/`, API probada de extremo a extremo). Las fases de mensajes y plugin de Notificapp quedan aplazadas por decisión del propietario: la web no monta peticiones por ahora.
 
 `docs/roadmaps/ROADMAP_RENOVACION.md` (creado el 2026-10-03) queda en pausa como referencia: renovación completa en fases (estabilidad, diseño, lienzo, fichas y navegación, modelo, vistas, análisis, persistencia, IA opcional). Quedaban pendientes campos calculados reales y restricciones de cardinalidad en relaciones.
 
