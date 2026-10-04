@@ -39,8 +39,8 @@ describe('disposiciones', () => {
   it('la de fuerzas es determinista y separa los nodos', () => {
     const p = world();
     const links = p.relations.map(r => ({ a: r.sourceId, b: r.targetId }));
-    const one = forceLayout(p, links, treeLayout(p, null));
-    const two = forceLayout(p, links, treeLayout(p, null));
+    const one = forceLayout(p, links);
+    const two = forceLayout(p, links);
     expect([...one.entries()]).toEqual([...two.entries()]);
     const points = [...one.values()];
     points.forEach((a, i) =>
@@ -55,7 +55,7 @@ describe('disposiciones', () => {
       ['reino', { x: 300, y: 300 }],
       ['ciudad', { x: 420, y: 320 }],
     ]);
-    const pos = forceLayout(p, links, treeLayout(p, null), null, fixed);
+    const pos = forceLayout(p, links, null, fixed);
     expect(pos.get('reino')).toEqual({ x: 300, y: 300 });
     expect(pos.get('ciudad')).toEqual({ x: 420, y: 320 });
     const free = ['a', 'b', 'suelto'].map(id => pos.get(id)!);

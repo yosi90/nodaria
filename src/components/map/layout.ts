@@ -1,7 +1,7 @@
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
 import { hierarchy, tree } from 'd3-hierarchy';
 import { kinshipGraph, kinshipStructureLink } from '../../domain/kinship';
-import { structureChildren } from '../../domain/structure';
+import { structureChildren, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project } from '../../domain/types';
 
 /*
@@ -96,7 +96,6 @@ function structureDepths(p: Project, structureId: string | null): Map<string, nu
 export function forceLayout(
   p: Project,
   links: Link[],
-  seed: Map<string, Position>,
   structureId: string | null = null,
   fixed: Map<string, Position> = new Map(),
   h = NODE_H,
@@ -114,33 +113,110 @@ export function forceLayout(
   const typeX = (typeId: string) => (typeOrder.indexOf(typeId) - (typeOrder.length - 1) / 2) * (NODE_W + 160);
   const nodes = p.nodes.map(n => {
     const f = fixed.get(n.id);
-    const s = f ?? seed.get(n.id);
     return {
       id: n.id,
       typeId: n.typeId,
-      x: (s?.x ?? 0) + NODE_W / 2,
-      y: (s?.y ?? 0) + h / 2,
+      x: (f?.x ?? 0) + NODE_W / 2,
+      y: (f?.y ?? 0) + h / 2,
       fx: f ? f.x + NODE_W / 2 : undefined,
       fy: f ? f.y + h / 2 : undefined,
+      vx: 0,
+      vy: 0,
     };
   });
   const ids = new Set(nodes.map(n => n.id));
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  // Ancla de cada nodo: su superior en la estructura o, si no tiene, el vecino más general al que esté
+  // vinculado (un personaje con «Origen: Ahmaru» se agrupa bajo Ahmaru y no entre los de otra ciudad).
+  const anchorOf = new Map<string, string>();
+  structureLinks(p, structureId).forEach(l => {
+    if (!anchorOf.has(l.childId) && ids.has(l.parentId)) anchorOf.set(l.childId, l.parentId);
+  });
+  const neighbours = new Map<string, string[]>();
+  links.forEach(({ a, b }) => {
+    if (!ids.has(a) || !ids.has(b) || a === b) return;
+    neighbours.set(a, [...(neighbours.get(a) ?? []), b]);
+    neighbours.set(b, [...(neighbours.get(b) ?? []), a]);
+  });
+  const degree = (id: string) => neighbours.get(id)?.length ?? 0;
+  const hasChildren = new Set(structureLinks(p, structureId).map(l => l.parentId));
+  // Forma parte de la estructura: tiene superior o subordinados en ella.
+  const structural = (id: string) => anchorOf.has(id) || hasChildren.has(id);
+  nodes.forEach(n => {
+    // Solo los nodos sueltos en la estructura buscan ancla; los demás ya tienen su sitio.
+    if (structural(n.id)) return;
+    const candidates = (neighbours.get(n.id) ?? []).filter(other => anchorOf.get(other) !== n.id);
+    if (!candidates.length) return;
+    // Preferir un vecino de la estructura y, entre iguales, el más conectado (el «centro» del grupo).
+    const best = candidates
+      .map(id => ({ id, structural: structural(id) ? 1 : 0, degree: degree(id) }))
+      .sort((x, y) => y.structural - x.structural || y.degree - x.degree)[0];
+    if (best.structural || best.degree > degree(n.id)) anchorOf.set(n.id, best.id);
+  });
+  // Separación vertical con el ancla: la misma distancia que pide el vínculo, para que ambas fuerzas coincidan.
+  const gap = Math.max(h + 150, NODE_W + 70);
+  // Semilla: el bosque de anclas (cada nodo bajo la suya; los sin ancla, como raíces ordenadas por tipo)
+  // colocado con un árbol de anchuras reales, de modo que cada grupo arranca con sitio propio y las
+  // fuerzas solo relajan. Los nodos fijados conservan su posición manual.
+  const childrenOf = new Map<string | null, string[]>();
+  nodes
+    .slice()
+    .sort((a, b) => typeOrder.indexOf(a.typeId) - typeOrder.indexOf(b.typeId))
+    .forEach(n => {
+      const anchor = anchorOf.get(n.id) ?? null;
+      childrenOf.set(anchor, [...(childrenOf.get(anchor) ?? []), n.id]);
+    });
+  const forest = (id: string | null): TreeDatum => ({ id, children: (childrenOf.get(id) ?? []).map(forest) });
+  const laid = tree<TreeDatum>().nodeSize([NODE_W + 40, gap])(hierarchy(forest(null)));
+  const seedX = new Map<string, number>();
+  laid.each(d => {
+    if (!d.data.id) return;
+    seedX.set(d.data.id, d.x);
+    const n = byId.get(d.data.id);
+    if (!n || n.fx !== undefined) return;
+    n.x = d.x;
+    n.y = (d.depth - 1) * gap;
+  });
+  // Desplazamiento horizontal respecto al ancla que fijó la semilla: conserva la anchura de cada subárbol.
+  const offsetX = (id: string) => (seedX.get(id) ?? 0) - (seedX.get(anchorOf.get(id) ?? '') ?? 0);
+  const isAnchorPair = (a: string, b: string) => anchorOf.get(a) === b || anchorOf.get(b) === a;
+  // Fuerza de agrupación: cada nodo anclado tiende a colocarse bajo su ancla, cerca de ella.
+  const cluster = (alpha: number) => {
+    nodes.forEach(n => {
+      const anchor = anchorOf.get(n.id) && byId.get(anchorOf.get(n.id)!);
+      if (!anchor || n.fx !== undefined) return;
+      n.vx += (anchor.x + offsetX(n.id) - n.x) * 0.3 * alpha;
+      n.vy += (anchor.y + gap - n.y) * 0.5 * alpha;
+    });
+  };
   const simulation = forceSimulation(nodes)
     .force(
       'link',
       forceLink(links.filter(l => ids.has(l.a) && ids.has(l.b)).map(l => ({ source: l.a, target: l.b })))
         .id(d => (d as { id: string }).id)
         .distance(NODE_W + 70)
-        .strength(0.6),
+        // Entre un nodo y su ancla la agrupación ya fija la geometría: el vínculo apenas tira.
+        .strength(l =>
+          isAnchorPair((l.source as unknown as { id: string }).id, (l.target as unknown as { id: string }).id)
+            ? 0.05
+            : 0.6,
+        ),
     )
     .force('charge', forceManyBody().strength(-1400).distanceMax(900))
     // Radio algo mayor que la media diagonal de la tarjeta: las tarjetas son anchas y no deben pisarse.
     .force('collide', forceCollide(NODE_W * 0.62).iterations(3))
-    .force('x', forceX<(typeof nodes)[number]>(d => typeX(d.typeId)).strength(0.08))
+    // Los nodos sin ancla se agrupan por tipo y profundidad; los anclados siguen a su ancla.
+    .force(
+      'x',
+      forceX<(typeof nodes)[number]>(d => typeX(d.typeId)).strength(d => (anchorOf.has(d.id) ? 0.01 : 0.08)),
+    )
     .force(
       'y',
-      forceY<(typeof nodes)[number]>(d => ((depths.get(d.id) ?? maxDepth) - maxDepth / 2) * (h + 150)).strength(0.3),
+      forceY<(typeof nodes)[number]>(d => ((depths.get(d.id) ?? maxDepth) - maxDepth / 2) * gap).strength(d =>
+        anchorOf.has(d.id) ? 0 : 0.3,
+      ),
     )
+    .force('cluster', cluster)
     .stop();
   simulation.tick(300);
   const result = new Map(nodes.map(n => [n.id, { x: Math.round(n.x - NODE_W / 2), y: Math.round(n.y - h / 2) }]));
@@ -370,7 +446,7 @@ export function autoLayout(
   h = NODE_H,
 ) {
   if (mode === 'image') return trayLayout(p, fixed, (p.mapImage?.height ?? 0) * (p.mapImage?.scale ?? 1), h);
-  if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId, false, h), structureId, fixed, h);
+  if (mode === 'force') return forceLayout(p, links, structureId, fixed, h);
   if (mode === 'genealogy') return genealogyLayout(p, structureId, h);
   if (mode === 'radial' && focusId) return radialLayout(p, focusId, links, h);
   return treeLayout(p, structureId, false, h);
