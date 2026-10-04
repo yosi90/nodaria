@@ -298,9 +298,18 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   const edges = useMemo<FloatingEdgeType[]>(() => {
     const result: FloatingEdgeType[] = [];
+    // Pares con alguna relación visible (o referencia): «Dentro de» sobra entre ellos si así se pide.
+    const related = new Set<string>();
+    if (view.hierarchyOnlyIfUnrelated) {
+      project.relations
+        .filter(r => !hiddenRelations.has(r.typeId))
+        .forEach(r => related.add([r.sourceId, r.targetId].sort().join('|')));
+      refLinks.forEach(l => related.add([l.sourceId, l.targetId].sort().join('|')));
+    }
     if (view.showHierarchy)
       structureLinks(project, null).forEach(l => {
         if (!visibleIds.has(l.parentId) || !visibleIds.has(l.childId)) return;
+        if (related.has([l.parentId, l.childId].sort().join('|'))) return;
         result.push({
           id: `h-${l.childId}`,
           type: 'floating',
@@ -391,6 +400,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   }, [
     project,
     view.showHierarchy,
+    view.hierarchyOnlyIfUnrelated,
     view.layout,
     structure.id,
     visibleIds,

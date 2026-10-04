@@ -82,6 +82,7 @@ export function createView(): ProjectView {
     hiddenEntityTypeIds: [],
     hiddenReferenceFieldIds: [],
     showHierarchy: true,
+    hierarchyOnlyIfUnrelated: true,
     edgeLabels: 'always',
     lensId: null,
     focusDepth: 0,

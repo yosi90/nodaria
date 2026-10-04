@@ -158,6 +158,8 @@ export interface ProjectView {
   /** Vista guardada activa; `null` cuando la configuración es libre. */
   lensId: string | null;
   showHierarchy: boolean;
+  /** No dibujar «Dentro de» entre dos nodos que ya tienen una relación visible (la relación lo explica). */
+  hierarchyOnlyIfUnrelated: boolean;
   /** Modo foco: saltos visibles alrededor del nodo seleccionado; 0 = desactivado. */
   focusDepth: number;
 }

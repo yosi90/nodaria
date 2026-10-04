@@ -59,6 +59,21 @@ export function LegendPanel({ onClose }: { onClose: () => void }) {
           <span className="label">Dentro de</span>
           <span className="count">{hierarchyCount}</span>
         </label>
+        {view.showHierarchy && (
+          <label
+            className="legend-row legend-sub"
+            title="Si entre padre e hijo ya hay una relación visible, esa línea explica la jerarquía y «Dentro de» no se dibuja"
+          >
+            <input
+              type="checkbox"
+              checked={view.hierarchyOnlyIfUnrelated}
+              onChange={() =>
+                dispatch({ type: 'update-view', view: { hierarchyOnlyIfUnrelated: !view.hierarchyOnlyIfUnrelated } })
+              }
+            />
+            <span className="label muted">Solo si no hay otra relación</span>
+          </label>
+        )}
         {relations.map(s => (
           <label key={s.id} className="legend-row">
             <input
