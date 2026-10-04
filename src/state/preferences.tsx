@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- provider y hook forman una única API de contexto */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { LayoutMode } from '../domain/types';
 
 /** Preferencias de interfaz del navegador actual. No forman parte de los proyectos ni se exportan. */
 export interface Preferences {
@@ -8,16 +9,14 @@ export interface Preferences {
   treeCollapsed: boolean;
   inspectorWidth: number;
   typeListWidth: number;
-  /** Decisiones por proyecto al entrar en la disposición Genealogía: qué se oculta y si la leyenda está abierta. */
-  genealogy: Record<string, GenealogyPreference>;
+  /** Lo que el usuario decidió en cada disposición de cada proyecto: qué se oculta y si la leyenda está abierta. */
+  layouts: Record<string, Partial<Record<LayoutMode, LayoutPreference>>>;
 }
 
-export interface GenealogyPreference {
+export interface LayoutPreference {
   hiddenEntityTypeIds: string[];
   hiddenRelationTypeIds: string[];
   legendOpen: boolean;
-  /** Filtros que había antes de entrar en Genealogía, para restaurarlos al salir. */
-  before?: { hiddenEntityTypeIds: string[]; hiddenRelationTypeIds: string[] };
 }
 
 const PREFERENCES_KEY = 'nodaria_ui_v1';
@@ -29,7 +28,7 @@ const DEFAULTS: Preferences = {
   treeCollapsed: false,
   inspectorWidth: 360,
   typeListWidth: 270,
-  genealogy: {},
+  layouts: {},
 };
 
 function loadPreferences(): Preferences {
