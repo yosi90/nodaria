@@ -15,6 +15,7 @@ import type {
   Schema,
   SchemaKind,
   LayoutMode,
+  MapImage,
 } from '../domain/types';
 
 export type Action =
@@ -53,6 +54,7 @@ export type Action =
   | { type: 'delete-lens'; id: string }
   | { type: 'apply-lens'; id: string }
   | { type: 'update-kinship'; kinship: KinshipTerm[] }
+  | { type: 'set-map-image'; image: MapImage | null }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
   | {
@@ -160,6 +162,8 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.deleteLens(p, action.id);
     case 'apply-lens':
       return ops.applyLens(p, action.id);
+    case 'set-map-image':
+      return ops.setMapImage(p, action.image);
     case 'update-kinship':
       return ops.updateKinship(p, action.kinship);
     case 'update-node':

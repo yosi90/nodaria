@@ -80,6 +80,10 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 - `src/components/table/TableView.tsx`: hoja por tipo de entidad, editable en celda; reutiliza `FieldControl` (extraído del inspector a `src/components/map/FieldControl.tsx`). Preferencias por proyecto y tipo en `preferences.tables` (columnas ocultas, orden).
 
+## Disposición «Mapa»
+
+- `Project.mapImage` (data URL JPEG hasta 2400 px de lado, con `width`/`height`) es el fondo de la disposición `image`; `MapImageLayer` lo pinta en el origen del lienzo con `ViewportPortal`, `MapImageMenu` lo sube/cambia/quita (`set-map-image`, deshacible). `trayLayout` coloca en una bandeja bajo la imagen los nodos sin posición fijada en esa disposición.
+
 ## Exportación de imagen
 
 - `src/components/map/ExportMenu.tsx` usa `html-to-image` (`toPng` / `toSvg`) sobre `.react-flow__viewport`; «todo el mapa» recalcula el transform a escala 1 con margen fijo (máximo 8192 px) y «vista actual» captura el encuadre en pantalla.

@@ -265,6 +265,16 @@
 }
 
 /* Aristas */
+.map-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px #0000004d;
+  user-select: none;
+  pointer-events: none;
+}
 .family-links {
   position: absolute;
   top: 0;

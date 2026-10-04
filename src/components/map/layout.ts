@@ -342,6 +342,23 @@ export function familyUnits(p: Project, genealogyId: string | null): { parents: 
   return [...units.values()];
 }
 
+/**
+ * Disposición «Mapa»: los nodos colocados a mano se quedan donde están; los demás esperan en una
+ * bandeja en filas bajo la imagen (o en el origen si no hay imagen), listos para arrastrarlos.
+ */
+export function trayLayout(p: Project, fixed: Map<string, Position>, imageHeight: number, h = NODE_H) {
+  const result = new Map<string, Position>();
+  const pending = p.nodes.filter(n => !fixed.has(n.id));
+  const perRow = 6;
+  pending.forEach((n, i) => {
+    result.set(n.id, {
+      x: (i % perRow) * (NODE_W + 24),
+      y: imageHeight + 60 + Math.floor(i / perRow) * (h + 24),
+    });
+  });
+  return result;
+}
+
 /** Disposición automática según el modo. `links` son las conexiones visibles (relaciones y jerarquía). */
 export function autoLayout(
   p: Project,
@@ -352,6 +369,7 @@ export function autoLayout(
   fixed: Map<string, Position> = new Map(),
   h = NODE_H,
 ) {
+  if (mode === 'image') return trayLayout(p, fixed, p.mapImage?.height ?? 0, h);
   if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId, false, h), structureId, fixed, h);
   if (mode === 'genealogy') return genealogyLayout(p, structureId, h);
   if (mode === 'radial' && focusId) return radialLayout(p, focusId, links, h);

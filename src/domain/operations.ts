@@ -24,6 +24,7 @@ import type {
   Schema,
   SchemaKind,
   LayoutMode,
+  MapImage,
 } from './types';
 
 /*
@@ -380,6 +381,11 @@ export function applyLens(p: Project, id: string): Project {
     next = moveNodes(next, positions);
   }
   return next;
+}
+
+/** Pone o quita la imagen de fondo de la disposición «Mapa». */
+export function setMapImage(p: Project, image: MapImage | null): Project {
+  return { ...p, mapImage: image };
 }
 
 /** Sustituye el vocabulario de parentesco; las relaciones con términos borrados quedan sin término. */

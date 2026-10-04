@@ -130,6 +130,8 @@ export interface Project {
   fieldLibrary: FieldDefinition[];
   nodes: Node[];
   relations: Relation[];
+  /** Imagen de fondo de la disposición «Mapa», o ninguna. */
+  mapImage: MapImage | null;
   view: ProjectView;
   /** Vistas guardadas del mapa. */
   lenses: Lens[];
@@ -143,7 +145,13 @@ export interface Lens {
   view: ProjectView;
   positions: Record<string, Position> | null;
 }
-export type LayoutMode = 'tree' | 'genealogy' | 'force' | 'radial';
+export type LayoutMode = 'tree' | 'genealogy' | 'force' | 'radial' | 'image';
+/** Imagen de fondo de la disposición «Mapa» (data URL reducida) con su tamaño en píxeles del lienzo. */
+export interface MapImage {
+  data: string;
+  width: number;
+  height: number;
+}
 /** Estado de la vista del mapa. Se guarda con el proyecto pero no entra en el historial de deshacer. */
 export interface ProjectView {
   /** `null` = jerarquía "Dentro de"; si no, id de un tipo de relación estructural. */

@@ -126,6 +126,10 @@ function normalizeProject(project: RawProject): Project {
           derived: t.derived === undefined ? (DEFAULT_DERIVED[t.id] ?? null) : t.derived,
         }))
       : defaultKinship(),
+    mapImage:
+      project.mapImage && typeof project.mapImage.data === 'string' && project.mapImage.data.startsWith('data:image/')
+        ? project.mapImage
+        : null,
     view: { ...createView(), ...(project.view ?? {}) },
     lenses: (project.lenses || []).map(l => ({
       ...l,

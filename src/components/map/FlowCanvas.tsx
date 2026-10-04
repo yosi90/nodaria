@@ -14,7 +14,17 @@ import {
   type OnConnectEnd,
   type OnNodeDrag,
 } from '@xyflow/react';
-import { Crosshair, GitBranch, LayoutGrid, Network, Orbit, SlidersHorizontal, Sparkles, Tag } from 'lucide-react';
+import {
+  Crosshair,
+  GitBranch,
+  LayoutGrid,
+  Map as MapIcon,
+  Network,
+  Orbit,
+  SlidersHorizontal,
+  Sparkles,
+  Tag,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole, typeMatches } from '../../domain/selectors';
 import { usePreferences, type LayoutPreference } from '../../state/preferences';
@@ -39,6 +49,8 @@ import { CanvasSettingsContext } from './canvasSettings';
 import { FallingPins, type FallingPin } from './FallingPins';
 import { ExportMenu } from './ExportMenu';
 import { FamilyLinks } from './FamilyLinks';
+import { MapImageLayer } from './MapImageLayer';
+import { MapImageMenu } from './MapImageMenu';
 import { cardContent, cardHeight } from './cardLines';
 import { edgeSlots } from './edgeSlots';
 import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
@@ -69,6 +81,12 @@ const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: st
     hint: 'Los nodos relacionados se acercan; los fijados con chincheta no se mueven',
   },
   { mode: 'radial', label: 'Radial', icon: Orbit, hint: 'Anillos alrededor del nodo seleccionado' },
+  {
+    mode: 'image',
+    label: 'Mapa',
+    icon: MapIcon,
+    hint: 'Tu imagen de fondo (el mapa del mundo) con los nodos colocados a mano sobre ella',
+  },
 ];
 
 interface FlowCanvasProps {
@@ -178,7 +196,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     view.layout,
     structure.id,
     view.layout === 'radial' ? selectedNodeId : null,
-    view.layout === 'force' ? [...fixed] : null,
+    view.layout === 'force' || view.layout === 'image' ? [...fixed] : null,
+    view.layout === 'image' ? (project.mapImage?.height ?? 0) : null,
     view.layout === 'genealogy' ? structureLinks(project, genealogyStructure(project, structure.id)) : null,
     maxCardHeight,
     project.nodes.map(n => [n.id, n.typeId, n.parentId]),
@@ -211,6 +230,17 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando se pide centrar
   }, [revealKey]);
+
+  // En «Mapa», al entrar o al cambiar la imagen se encuadran la imagen y la bandeja de nodos sin colocar.
+  useEffect(() => {
+    if (view.layout !== 'image' || !project.mapImage) return;
+    const { width, height } = project.mapImage;
+    const timer = window.setTimeout(
+      () => flow.fitBounds({ x: 0, y: 0, width, height: height + 220 }, { padding: 0.04, duration: 350 }),
+      80,
+    );
+    return () => window.clearTimeout(timer);
+  }, [view.layout, project.mapImage, flow]);
 
   // Al cambiar de disposición o de estructura, se vuelve a encuadrar el conjunto.
   useEffect(() => {
@@ -755,6 +785,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             active={legendOpen}
             onClick={() => setLegendOpen(v => !v)}
           />
+          {view.layout === 'image' && <MapImageMenu />}
           <ExportMenu name={project.name} container={() => container.current} />
           <span className="flow-counts">
             <span className="badge">
@@ -797,6 +828,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           proOptions={proOptions}
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--canvas-dot)" />
+          {view.layout === 'image' && project.mapImage && <MapImageLayer image={project.mapImage} />}
           {family && (
             <FamilyLinks
               units={family.units}

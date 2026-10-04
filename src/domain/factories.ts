@@ -23,6 +23,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     fieldLibrary: [],
     nodes: [],
     relations: [],
+    mapImage: null,
     view: createView(),
     lenses: [],
     kinship: defaultKinship(),
