@@ -6,7 +6,10 @@ import { IMAGE_SHAPES, type ImageShape } from '../../domain/portrait';
 import type { FieldDefinition, NodeDisplay } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
-import { IconButton } from '../common/Button';
+import { Button, IconButton } from '../common/Button';
+import { FieldControl } from '../map/FieldControl';
+import { nodesMissingValue, typedDefault } from '../../domain/operations';
+import { useToast } from '../common/toasts';
 import { schemaOption } from '../common/options';
 import { IconPicker } from '../common/IconPicker';
 import { MultiSelect } from '../common/Select';
@@ -45,8 +48,9 @@ export function FieldEditor({
   note,
   allowTitle = true,
 }: FieldEditorProps) {
-  const { project } = useApp();
+  const { project, dispatch } = useApp();
   const { openHelp } = useNavigation();
+  const toast = useToast();
   const [expanded, setExpanded] = useState(field.key === 'nuevo_campo' || field.key.startsWith('nuevo_campo_'));
   const set = <K extends keyof FieldDefinition>(key: K, value: FieldDefinition[K]) =>
     onChange({ ...field, [key]: value });
@@ -57,7 +61,9 @@ export function FieldEditor({
   const typeLabel = FIELD_TYPES.find(item => item[0] === field.type)?.[1];
   // «Género» es un atributo de sistema: lo usa el parentesco y no se edita (solo se reordena o se quita).
   const system = field.type === 'gender';
-  const hasDefault = !['computed', 'nodeRef', 'nodeRefs', 'image', 'gender', 'color', 'url'].includes(field.type);
+  const hasDefault = !['computed', 'image', 'gender'].includes(field.type);
+  const defaultSet = typedDefault(field) !== undefined;
+  const missing = hasDefault && defaultSet ? nodesMissingValue(project, field.id).length : 0;
 
   const over = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -174,43 +180,36 @@ export function FieldEditor({
               </select>
             </label>
             {hasDefault && (
-              <label className="field">
+              <div className="field">
                 Valor inicial
-                {field.type === 'select' ? (
-                  <select
-                    value={field.options.includes(String(field.defaultValue ?? '')) ? String(field.defaultValue) : ''}
-                    onChange={event => set('defaultValue', event.target.value)}
-                  >
-                    <option value="">Sin valor inicial</option>
-                    {field.options.map(option => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                ) : field.type === 'boolean' ? (
-                  <select
-                    value={
-                      ['true', 'sí', 'si', '1'].includes(
-                        String(field.defaultValue ?? '')
-                          .trim()
-                          .toLowerCase(),
-                      )
-                        ? 'sí'
-                        : 'no'
-                    }
-                    onChange={event => set('defaultValue', event.target.value)}
-                  >
-                    <option value="no">No</option>
-                    <option value="sí">Sí</option>
-                  </select>
-                ) : (
-                  <input
-                    value={String(field.defaultValue ?? '')}
-                    onChange={event => set('defaultValue', event.target.value)}
-                  />
-                )}
-              </label>
+                <FieldControl
+                  field={field}
+                  value={field.defaultValue ?? undefined}
+                  ownerId=""
+                  onChange={value => set('defaultValue', value)}
+                />
+                <small>
+                  Lo reciben las fichas nuevas de este tipo y de los que heredan de él.
+                  {missing > 0 && (
+                    <>
+                      {' '}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          dispatch({ type: 'fill-defaults', fieldId: field.id });
+                          toast({
+                            message: `${missing} ${missing === 1 ? 'ficha rellenada' : 'fichas rellenadas'} con el valor inicial`,
+                            undoable: true,
+                          });
+                        }}
+                      >
+                        Rellenar {missing} {missing === 1 ? 'ficha vacía' : 'fichas vacías'}
+                      </Button>
+                    </>
+                  )}
+                </small>
+              </div>
             )}
           </div>
           <div className="field-row">

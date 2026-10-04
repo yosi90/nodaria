@@ -68,6 +68,9 @@ export type Action =
   | { type: 'delete-query'; id: string }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
+  | { type: 'delete-nodes'; ids: string[] }
+  | { type: 'bulk-update-nodes'; ids: string[]; patch: ops.BulkPatch }
+  | { type: 'fill-defaults'; fieldId: string }
   | { type: 'duplicate-node'; id: string; withRelations?: boolean; newId?: string }
   | { type: 'duplicate-schema'; id: string; newId?: string }
   | {
@@ -216,6 +219,12 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.duplicateSchema(p, action.id, action.newId).project;
     case 'delete-node':
       return ops.deleteNode(p, action.id);
+    case 'delete-nodes':
+      return ops.deleteNodes(p, action.ids);
+    case 'bulk-update-nodes':
+      return ops.bulkUpdateNodes(p, action.ids, action.patch);
+    case 'fill-defaults':
+      return ops.fillDefaults(p, action.fieldId);
     case 'add-relation':
       return ops.addRelation(p, action.typeId, action.sourceId, action.targetId, {
         id: action.id,

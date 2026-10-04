@@ -1017,6 +1017,42 @@ button.mention:hover {
 .data-table td.cell-title {
   min-width: 200px;
 }
+.data-table th.cell-check,
+.data-table td.cell-check {
+  min-width: 0;
+  width: 1%;
+  padding: 0 4px 0 10px;
+  text-align: center;
+}
+.data-table tr.checked td {
+  background: var(--accent-soft);
+}
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-2);
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+}
+.bulk-bar > strong {
+  margin-right: var(--space-1);
+  white-space: nowrap;
+}
+.bulk-menu {
+  display: grid;
+  gap: var(--space-2);
+  width: 280px;
+  padding: var(--space-2);
+}
+.bulk-menu small {
+  color: var(--text-muted);
+}
+.bulk-menu .btn {
+  justify-self: end;
+}
 .data-table td.cell-actions {
   min-width: 0;
   width: 1%;

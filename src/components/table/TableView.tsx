@@ -17,6 +17,7 @@ import { Splitter } from '../common/Splitter';
 import { useToast } from '../common/toasts';
 import { FieldControl } from '../map/FieldControl';
 import { isImageValue } from '../map/images';
+import { BulkBar } from './BulkBar';
 import { MatrixView } from './MatrixView';
 
 /*
@@ -46,6 +47,8 @@ export function TableView() {
   const schema = typeId ? getSchema(project, typeId) : undefined;
   const [query, setQuery] = useState('');
   const [columnsAnchor, setColumnsAnchor] = useState<Anchor | null>(null);
+  // Filas marcadas para operaciones masivas (solo las que siguen siendo filas de esta hoja).
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
 
   const prefs: TablePreference = (schema && preferences.tables[project.id]?.[schema.id]) ?? {
     hiddenColumns: [],
@@ -130,6 +133,17 @@ export function TableView() {
     return list;
   }, [project, schema, query, columns, cellText, prefs.sort]);
 
+  const selectedIds = useMemo(() => rows.filter(n => checked.has(n.id)).map(n => n.id), [rows, checked]);
+  const allChecked = rows.length > 0 && selectedIds.length === rows.length;
+  const toggleRow = (id: string, on: boolean) =>
+    setChecked(prev => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  const toggleAll = () => setChecked(allChecked ? new Set() : new Set(rows.map(n => n.id)));
+  const clearChecked = () => setChecked(new Set());
   const updateValue = (n: Node, fieldId: string, value: FieldValue) =>
     dispatch({ type: 'update-node', id: n.id, values: { ...n.values, [fieldId]: value }, parentId: n.parentId });
   const sortBy = (columnId: string) => {
@@ -195,6 +209,7 @@ export function TableView() {
                 setTypeId(item.id);
                 setMatrix(false);
                 setQuery('');
+                clearChecked();
               }}
             >
               <TypeIcon icon={item.icon} color={item.color} />
@@ -250,6 +265,9 @@ export function TableView() {
                 onChange={e => setQuery(e.target.value)}
               />
             </div>
+            {selectedIds.length > 0 && (
+              <BulkBar ids={selectedIds} schema={schema} fields={fields} onDone={clearChecked} />
+            )}
             <div className="spacer" />
             <Button
               size="sm"
@@ -293,6 +311,17 @@ export function TableView() {
               <table className="data-table" aria-label={`Nodos de tipo ${schema.name}`}>
                 <thead>
                   <tr>
+                    <th className="cell-check">
+                      <input
+                        type="checkbox"
+                        aria-label={allChecked ? 'Desmarcar todas las filas' : 'Marcar todas las filas'}
+                        checked={allChecked}
+                        ref={el => {
+                          if (el) el.indeterminate = selectedIds.length > 0 && !allChecked;
+                        }}
+                        onChange={toggleAll}
+                      />
+                    </th>
                     <th aria-sort={ariaSort('__title')}>
                       <button type="button" className="col-head" onClick={() => sortBy('__title')}>
                         {titleField?.label ?? 'Nombre'} {sortIcon('__title')}
@@ -311,7 +340,15 @@ export function TableView() {
                 </thead>
                 <tbody>
                   {rows.map(n => (
-                    <tr key={n.id} data-row={n.id}>
+                    <tr key={n.id} data-row={n.id} className={checked.has(n.id) ? 'checked' : ''}>
+                      <td className="cell-check">
+                        <input
+                          type="checkbox"
+                          aria-label={`Marcar «${nodeLabel(project, n)}»`}
+                          checked={checked.has(n.id)}
+                          onChange={e => toggleRow(n.id, e.target.checked)}
+                        />
+                      </td>
                       <td className="cell-title">
                         <div className="cell-title-wrap">
                           {titleField ? (

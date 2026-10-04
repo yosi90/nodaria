@@ -2,8 +2,10 @@ import { createField, createSchema, now, uid } from './factories';
 import {
   allFields,
   canChangeSchemaKind,
+  canContain,
   canSetParent,
   descendants,
+  getNode,
   getSchema,
   inheritanceCandidates,
 } from './selectors';
@@ -58,7 +60,7 @@ export function typedDefault(field: FieldDefinition): FieldValue | undefined {
     const value = Math.round(Number(raw));
     return value >= 1 && value <= 5 ? value : undefined;
   }
-  if (field.type === 'nodeRef') return undefined;
+  if (field.type === 'nodeRef') return typeof raw === 'string' && raw ? raw : undefined;
   // Una lista de opciones solo admite como inicial una de sus opciones.
   if (field.type === 'select') return field.options.includes(String(raw)) ? raw : undefined;
   return raw;
@@ -158,17 +160,50 @@ export function deleteField(p: Project, schemaId: string, fieldId: string): Proj
   };
 }
 
+/** Valores iniciales de un tipo (propios y heredados), ya tipados; las referencias a nodos inexistentes se omiten. */
+export function defaultValues(p: Project, typeId: string): Record<string, FieldValue> {
+  const values: Record<string, FieldValue> = {};
+  const exists = (id: string) => p.nodes.some(n => n.id === id);
+  allFields(p, typeId).forEach(f => {
+    let value = typedDefault(f);
+    if (f.type === 'nodeRef' && typeof value === 'string' && !exists(value)) value = undefined;
+    if (f.type === 'nodeRefs' && Array.isArray(value)) value = value.filter(exists);
+    if (value !== undefined && !(Array.isArray(value) && !value.length)) values[f.id] = value;
+  });
+  return values;
+}
+
+/** Un valor «vacío» a efectos de rellenar con el inicial. */
+export function isBlank(value: FieldValue | undefined): boolean {
+  return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0);
+}
+
+/** Nodos cuyo tipo tiene el atributo `fieldId` y que no tienen valor en él. */
+export function nodesMissingValue(p: Project, fieldId: string): Node[] {
+  return p.nodes.filter(n => isBlank(n.values[fieldId]) && allFields(p, n.typeId).some(f => f.id === fieldId));
+}
+
+/** Rellena con el valor inicial del atributo todas las fichas que lo tienen vacío. */
+export function fillDefaults(p: Project, fieldId: string): Project {
+  const missing = new Set(nodesMissingValue(p, fieldId).map(n => n.id));
+  if (!missing.size) return p;
+  return {
+    ...p,
+    nodes: p.nodes.map(n => {
+      if (!missing.has(n.id)) return n;
+      const value = defaultValues(p, n.typeId)[fieldId];
+      return value === undefined ? n : { ...n, values: { ...n.values, [fieldId]: value } };
+    }),
+  };
+}
+
 export function addNode(
   p: Project,
   typeId: string,
   parentId: string | null,
   id: string = uid('node'),
 ): { project: Project; nodeId: string } {
-  const values: Record<string, FieldValue> = {};
-  allFields(p, typeId).forEach(f => {
-    const value = typedDefault(f);
-    if (value !== undefined) values[f.id] = value;
-  });
+  const values = defaultValues(p, typeId);
   const node: Node = { id, typeId, parentId, values, createdAt: now(), positions: {}, notes: '' };
   return { project: { ...p, nodes: [...p.nodes, node] }, nodeId: node.id };
 }
@@ -264,6 +299,87 @@ export function updateNode(p: Project, id: string, values: Record<string, FieldV
       n.id === id ? { ...n, values, parentId: canSetParent(p, id, parentId) ? parentId : n.parentId } : n,
     ),
   };
+}
+
+/** Elimina varios nodos (y sus descendientes) de una vez. */
+export function deleteNodes(p: Project, ids: string[]): Project {
+  const removed = new Set<string>();
+  ids.forEach(id => descendants(p, id).forEach(d => removed.add(d)));
+  return removeNodes(p, removed);
+}
+
+/** Cambios aplicables a varios nodos a la vez. Lo que no cabe en un nodo concreto se omite para ese nodo. */
+export interface BulkPatch {
+  /** Nuevo tipo: los valores se conservan por id de atributo y, entre atributos propios, por clave. */
+  typeId?: string;
+  /** Nuevo padre (`null` = raíz). Se omite en los nodos cuyo nuevo padre no los admite o crearía un ciclo. */
+  parentId?: string | null;
+  /** Etiquetas que añadir a un atributo de tipo «Etiquetas» (solo en los nodos cuyo tipo lo tiene). */
+  tags?: { fieldId: string; add: string[] };
+}
+
+/** Cuántos de los nodos recibirían cada cambio de `patch`. */
+export function bulkPreview(p: Project, ids: string[], patch: BulkPatch) {
+  const nodes = ids.map(id => p.nodes.find(n => n.id === id)).filter((n): n is Node => Boolean(n));
+  const typeId = patch.typeId;
+  const moved =
+    patch.parentId === undefined
+      ? 0
+      : nodes.filter(n => canMoveTo(p, n, patch.parentId!, typeId ?? n.typeId, ids)).length;
+  const tagged = patch.tags
+    ? nodes.filter(n => allFields(p, typeId ?? n.typeId).some(f => f.id === patch.tags!.fieldId)).length
+    : 0;
+  return { total: nodes.length, moved, tagged };
+}
+
+function canMoveTo(p: Project, node: Node, parentId: string | null, typeId: string, selected: string[]) {
+  if (parentId === null) return node.parentId !== null;
+  if (selected.includes(parentId) && parentId !== node.id && descendants(p, parentId).has(node.id)) return false;
+  const parent = getNode(p, parentId);
+  return Boolean(parent) && canSetParent(p, node.id, parentId) && canContain(p, parent!.typeId, typeId);
+}
+
+export function bulkUpdateNodes(p: Project, ids: string[], patch: BulkPatch): Project {
+  const chosen = new Set(ids);
+  return {
+    ...p,
+    nodes: p.nodes.map(n => {
+      if (!chosen.has(n.id)) return n;
+      let next = n;
+      if (patch.typeId && patch.typeId !== n.typeId && getSchema(p, patch.typeId)?.kind === 'entity')
+        next = { ...next, typeId: patch.typeId, values: remapValues(p, n, patch.typeId) };
+      if (patch.parentId !== undefined && canMoveTo(p, n, patch.parentId, next.typeId, ids))
+        next = { ...next, parentId: patch.parentId };
+      if (patch.tags && allFields(p, next.typeId).some(f => f.id === patch.tags!.fieldId)) {
+        const current = next.values[patch.tags.fieldId];
+        const list = Array.isArray(current) ? current : [];
+        const merged = [...list, ...patch.tags.add.filter(t => !list.includes(t))];
+        if (merged.length !== list.length) next = { ...next, values: { ...next.values, [patch.tags.fieldId]: merged } };
+      }
+      return next;
+    }),
+  };
+}
+
+/** Valores de un nodo al cambiarlo de tipo: mismos ids se conservan; entre atributos distintos, misma clave. */
+function remapValues(p: Project, node: Node, typeId: string): Record<string, FieldValue> {
+  const from = allFields(p, node.typeId);
+  const to = allFields(p, typeId);
+  const values: Record<string, FieldValue> = {};
+  to.forEach(f => {
+    if (f.type === 'computed') return;
+    if (node.values[f.id] !== undefined) {
+      values[f.id] = node.values[f.id];
+      return;
+    }
+    const same = from.find(g => g.key === f.key && g.type === f.type && node.values[g.id] !== undefined);
+    if (same) values[f.id] = node.values[same.id];
+  });
+  const defaults = defaultValues(p, typeId);
+  Object.entries(defaults).forEach(([id, value]) => {
+    if (isBlank(values[id])) values[id] = value;
+  });
+  return values;
 }
 
 /** Elimina un nodo con todos sus descendientes. */
