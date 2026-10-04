@@ -1,4 +1,4 @@
-import { GitFork, Library, Moon, Network, Plus, Search, Shapes, Sun, type LucideIcon } from 'lucide-react';
+import { GitFork, Library, Moon, Network, Plus, Search, Shapes, Sun, type LucideIcon, Table2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
@@ -130,6 +130,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(Library),
         keywords: 'vista propiedades atributos compartidos preformas biblioteca',
         run: () => setView('properties'),
+      },
+      {
+        id: 'view:table',
+        label: 'Ir a la tabla',
+        group: 'Acciones',
+        leading: icon(Table2),
+        keywords: 'vista tabla hoja filas columnas editar muchos',
+        run: () => setView('table'),
       },
       {
         id: 'theme',

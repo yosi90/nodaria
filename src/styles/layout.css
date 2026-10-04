@@ -929,6 +929,157 @@ button.mention:hover {
   overflow: auto;
 }
 
+/* ---------- Vista Tabla ---------- */
+.table-layout {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+.table-main {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+.table-scroll {
+  overflow: auto;
+  padding: 0 var(--space-4) var(--space-4);
+}
+.data-table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-sm);
+}
+.data-table th,
+.data-table td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-1);
+  text-align: left;
+  white-space: nowrap;
+}
+.data-table th button.col-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+.data-table th button.col-head:hover {
+  color: var(--text);
+}
+.data-table th[aria-sort] button.col-head {
+  color: var(--accent);
+}
+.data-table td {
+  min-width: 120px;
+  max-width: 320px;
+}
+.data-table td.cell-title {
+  min-width: 200px;
+}
+.data-table td.cell-actions {
+  min-width: 0;
+  width: 1%;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.data-table tr:hover td {
+  background: var(--hover);
+}
+.data-table td input:not([type='checkbox']),
+.data-table td select,
+.data-table td textarea {
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.data-table td textarea {
+  height: 34px;
+  resize: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.data-table td textarea:focus {
+  height: 96px;
+  white-space: normal;
+}
+.data-table td input:focus,
+.data-table td select:focus,
+.data-table td textarea:focus {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+.data-table td .check {
+  padding: 0 10px;
+}
+.data-table td .chip-list,
+.data-table td .reference-control {
+  padding: 2px 6px;
+}
+.data-table td.cell-readonly {
+  padding: 0 10px;
+  color: var(--text-muted);
+}
+.cell-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.cell-title-wrap input {
+  font-weight: 600;
+}
+.table-thumb {
+  width: 28px;
+  height: 28px;
+  margin: 3px 0;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+.table-empty {
+  padding: var(--space-5);
+  color: var(--text-muted);
+}
+.columns-menu {
+  display: grid;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px;
+}
+.columns-menu label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.columns-menu label:hover {
+  background: var(--hover);
+}
+
 /* ---------- Relaciones en la ficha ---------- */
 .section-head {
   display: flex;

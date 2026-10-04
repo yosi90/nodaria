@@ -6,6 +6,7 @@ import { ShortcutsHelp } from './components/layout/ShortcutsHelp';
 import { Topbar } from './components/layout/Topbar';
 import { MapView } from './components/map/MapView';
 import { PropertiesView } from './components/schema/PropertiesView';
+import { TableView } from './components/table/TableView';
 import { SchemaView } from './components/schema/SchemaView';
 import { useApp } from './state/AppContext';
 import { useNavigation, type View } from './state/navigation';
@@ -21,6 +22,8 @@ export default function App() {
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} />
       {view === 'map' ? (
         <MapView />
+      ) : view === 'table' ? (
+        <TableView />
       ) : view === 'schema' ? (
         <SchemaView kind="entity" />
       ) : view === 'relations' ? (
@@ -56,8 +59,8 @@ function useGlobalShortcuts(
       if (event.defaultPrevented || isTypingTarget(event.target)) return;
       if (mod && !event.altKey && key === 'z' && !event.shiftKey) undo();
       else if (mod && !event.altKey && ((key === 'z' && event.shiftKey) || key === 'y')) redo();
-      else if (event.altKey && !mod && ['Digit1', 'Digit2', 'Digit3', 'Digit4'].includes(event.code))
-        setView((['map', 'schema', 'relations', 'properties'] as const)[Number(event.code.slice(-1)) - 1]);
+      else if (event.altKey && !mod && ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(event.code))
+        setView((['map', 'schema', 'relations', 'properties', 'table'] as const)[Number(event.code.slice(-1)) - 1]);
       else if (event.altKey && !mod && event.key === 'ArrowLeft') back();
       else if (event.altKey && !mod && event.key === 'ArrowRight') forward();
       else if (event.key === '?' && !mod) openHelp();

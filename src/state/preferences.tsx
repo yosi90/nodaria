@@ -11,6 +11,13 @@ export interface Preferences {
   typeListWidth: number;
   /** Lo que el usuario decidió en cada disposición de cada proyecto: qué se oculta y si la leyenda está abierta. */
   layouts: Record<string, Partial<Record<LayoutMode, LayoutPreference>>>;
+  /** Vista Tabla: por proyecto y tipo, columnas ocultas y orden. */
+  tables: Record<string, Record<string, TablePreference>>;
+}
+
+export interface TablePreference {
+  hiddenColumns: string[];
+  sort: { column: string; direction: 'asc' | 'desc' } | null;
 }
 
 export interface LayoutPreference {
@@ -29,6 +36,7 @@ const DEFAULTS: Preferences = {
   inspectorWidth: 360,
   typeListWidth: 270,
   layouts: {},
+  tables: {},
 };
 
 function loadPreferences(): Preferences {

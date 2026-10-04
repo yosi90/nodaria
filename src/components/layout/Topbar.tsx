@@ -18,6 +18,7 @@ import {
   Trash2,
   Undo2,
   Upload,
+  Table2,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { parseProject, serializeProject } from '../../services/storage';
@@ -158,6 +159,10 @@ export function Topbar({
         <button type="button" aria-pressed={view === 'map'} onClick={() => onView('map')}>
           <Network size={15} aria-hidden />
           <span className="label">Mapa</span>
+        </button>
+        <button type="button" aria-pressed={view === 'table'} onClick={() => onView('table')}>
+          <Table2 size={15} aria-hidden />
+          <span className="label">Tabla</span>
         </button>
         <button type="button" aria-pressed={view === 'schema'} onClick={() => onView('schema')}>
           <Shapes size={15} aria-hidden />

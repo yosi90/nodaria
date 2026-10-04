@@ -76,6 +76,10 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - La persistencia sigue siendo exclusivamente local.
 - No quedan diálogos nativos: confirmaciones y peticiones de texto usan `useDialogs()`, y los borrados ofrecen "Deshacer" mediante un toast.
 
+## Vista «Tabla»
+
+- : hoja por tipo de entidad, editable en celda; reutiliza (extraído del inspector a ). Preferencias por proyecto y tipo en (columnas ocultas, orden).
+
 ## Despliegue
 
 - Firebase Hosting, proyecto `yosiftware-nodaria` (creado el 2026-10-03): https://yosiftware-nodaria.web.app y dominio propio https://nodaria.yosiftware.es (DNS en Cloudflare, gestionado por el usuario). `npm run deploy` compila y publica. Los datos siguen siendo locales del navegador: hostear no cambia la persistencia.
