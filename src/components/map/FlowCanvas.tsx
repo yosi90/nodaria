@@ -204,6 +204,26 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     () => Math.max(NODE_H, ...project.nodes.map(n => cardHeight(cardContent(project, n).lines.length))),
     [project],
   );
+  const visibleIds = useMemo(() => {
+    let ids = new Set(project.nodes.filter(n => !hiddenEntities.has(n.typeId)).map(n => n.id));
+    if (view.focusDepth > 0 && selectedNodeId && ids.has(selectedNodeId)) {
+      const near = neighborhood(selectedNodeId, links, view.focusDepth);
+      ids = new Set([...ids].filter(id => near.has(id)));
+    }
+    return ids;
+  }, [project.nodes, hiddenEntities, view.focusDepth, selectedNodeId, links]);
+
+  // La disposición solo cuenta lo visible: un nodo oculto no reserva sitio ni separa a los demás, y al
+  // mostrar u ocultar tipos (o cambiar el foco) todo se redistribuye con lo que queda.
+  const layoutProject = useMemo<Project>(
+    () => ({
+      ...project,
+      nodes: project.nodes.filter(n => visibleIds.has(n.id)),
+      relations: project.relations.filter(r => visibleIds.has(r.sourceId) && visibleIds.has(r.targetId)),
+    }),
+    [project, visibleIds],
+  );
+  const layoutLinks = useMemo(() => links.filter(l => visibleIds.has(l.a) && visibleIds.has(l.b)), [links, visibleIds]);
   // La disposición automática solo depende de la forma del grafo, no de los valores de los nodos.
   const layoutKey = JSON.stringify([
     view.layout,
@@ -211,17 +231,17 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     view.layout === 'radial' ? selectedNodeId : null,
     view.layout === 'force' || view.layout === 'image' ? [...fixed] : null,
     view.layout === 'image' ? (project.mapImage?.height ?? 0) * (project.mapImage?.scale ?? 1) : null,
-    view.layout === 'genealogy' ? structureLinks(project, genealogyStructure(project, structure.id)) : null,
+    view.layout === 'genealogy' ? structureLinks(layoutProject, genealogyStructure(layoutProject, structure.id)) : null,
     maxCardHeight,
     view.layout === 'tree' ? view.looseNearLinks : null,
-    project.nodes.map(n => [n.id, n.typeId, n.parentId]),
-    links,
+    layoutProject.nodes.map(n => [n.id, n.typeId, n.parentId]),
+    layoutLinks,
     // Cambiar el tipo o el parentesco de una relación altera la estructura sin cambiar sus extremos.
-    structureLinks(project, structure.id),
+    structureLinks(layoutProject, structure.id),
   ]);
   const autoPositions = useMemo(
     () =>
-      autoLayout(project, view.layout, structure.id, links, selectedNodeId, fixed, maxCardHeight, {
+      autoLayout(layoutProject, view.layout, structure.id, layoutLinks, selectedNodeId, fixed, maxCardHeight, {
         looseNearLinks: view.looseNearLinks,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- la clave resume todas las entradas relevantes
@@ -268,15 +288,6 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     const timer = window.setTimeout(() => flow.fitView({ padding: 0.2, maxZoom: 1, duration: 350 }), 60);
     return () => window.clearTimeout(timer);
   }, [view.layout, structure.id, view.focusDepth, view.hiddenEntityTypeIds, flow]);
-
-  const visibleIds = useMemo(() => {
-    let ids = new Set(project.nodes.filter(n => !hiddenEntities.has(n.typeId)).map(n => n.id));
-    if (view.focusDepth > 0 && selectedNodeId && ids.has(selectedNodeId)) {
-      const near = neighborhood(selectedNodeId, links, view.focusDepth);
-      ids = new Set([...ids].filter(id => near.has(id)));
-    }
-    return ids;
-  }, [project.nodes, hiddenEntities, view.focusDepth, selectedNodeId, links]);
 
   const settings = useMemo(
     () => ({ avoidObstacles: project.nodes.length <= AVOID_OBSTACLES_LIMIT }),
