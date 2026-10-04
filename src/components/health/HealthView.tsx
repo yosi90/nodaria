@@ -1,6 +1,7 @@
 import {
   AtSign,
   CircleCheck,
+  CopyCheck,
   HeartPulse,
   Link2Off,
   ListChecks,
@@ -13,6 +14,7 @@ import { useMemo, type ReactNode } from 'react';
 import { describeIssue } from '../../domain/cardinality';
 import { analysisLinks, betweenness, bridges, degreeCentrality } from '../../domain/centrality';
 import { worldHealth } from '../../domain/health';
+import { redundancyPairs } from '../../domain/redundancy';
 import { getSchema, nodeLabel } from '../../domain/selectors';
 import type { Node } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -47,6 +49,7 @@ export function HealthView() {
     };
   }, [project]);
   const { central, bridgeNodes, bridgeLinks } = graph;
+  const redundancies = useMemo(() => redundancyPairs(project).slice(0, 20), [project]);
 
   const goTo = (node: Node) => select({ kind: 'node', id: node.id }, { reveal: true });
   const NodeButton = ({ node, children }: { node: Node; children?: ReactNode }) => {
@@ -189,6 +192,26 @@ export function HealthView() {
             <NodeButton key={c.node.id} node={c.node}>
               {c.degree} conexiones · intermediación {Math.round(c.score)}
             </NodeButton>
+          ))}
+        </Section>
+        <Section
+          icon={CopyCheck}
+          title="Posibles redundancias"
+          count={redundancies.length}
+          hint="Parejas del mismo tipo que coinciden en casi todos sus atributos y vecinos: ¿son el mismo nodo repetido o dos que ocupan el mismo hueco?"
+          neutral
+        >
+          {redundancies.map(r => (
+            <div key={`${r.a.id}-${r.b.id}`} className="health-pair">
+              <NodeButton node={r.a} />
+              <NodeButton node={r.b}>
+                {Math.round(r.score * 100)}% parecidos: {r.sharedFields.length} atributo
+                {r.sharedFields.length === 1 ? '' : 's'} igual{r.sharedFields.length === 1 ? '' : 'es'}
+                {r.differingFields.length
+                  ? ` (difieren en ${r.differingFields.map(f => f.label).join(', ')})`
+                  : ''}, {r.sharedNeighbours} de {r.totalNeighbours} vecinos en común
+              </NodeButton>
+            </div>
           ))}
         </Section>
         <Section

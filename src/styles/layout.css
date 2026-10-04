@@ -1579,3 +1579,11 @@ button.mention:hover {
 .health-summary-secondary {
   margin-top: var(--space-6);
 }
+.health-pair {
+  display: grid;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--border);
+}
+.health-pair:last-child {
+  border-bottom: 0;
+}
