@@ -24,8 +24,12 @@ import {
  * (`nodaria.yosiftware.es`) exigiría autorizar `https://nodaria.yosiftware.es/__/auth/handler`
  * como URI de redirección en el cliente OAuth de Google Cloud; sin eso Google no muestra el selector.
  */
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY as string | undefined;
+if (!apiKey)
+  throw new Error('Falta VITE_FIREBASE_API_KEY: copia .env.example a .env.local y pon la clave web de Firebase.');
 const firebaseConfig = {
-  apiKey: 'REDACTED_FIREBASE_WEB_API_KEY',
+  // Clave web de Firebase (pública por diseño, pero fuera del repositorio para no disparar los avisos de GitHub).
+  apiKey,
   authDomain: 'yosiftware-nodaria.firebaseapp.com',
   projectId: 'yosiftware-nodaria',
   storageBucket: 'yosiftware-nodaria.firebasestorage.app',
