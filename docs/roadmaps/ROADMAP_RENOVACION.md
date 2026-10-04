@@ -295,6 +295,7 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 - [x] Fuerzas: respetan los nodos fijados con chincheta (entran como obstáculos inmóviles) y el resto se acomoda sin pisarlos.
 - [x] Genealogía (2026-10-04): disposición propia con parejas juntas (término «Pareja» o progenitores con hijos comunes), hijos centrados bajo sus padres, hermanos contiguos y líneas rectas para la ascendencia.
 - [x] Chincheta por disposición (2026-10-04): las posiciones fijadas pertenecen a la disposición en la que se arrastró el nodo (formato de proyecto v4, `Node.positions[layout]`); la chincheta se dibuja en color de acento.
+- [x] Conectores de familia en Genealogía (2026-10-04): barra entre la pareja, bajada única, bus horizontal y bajadas en ángulo recto con esquinas redondeadas a cada hijo; sustituyen a las flechas de progenitor y cónyuge en esa disposición.
 - [x] Barra del lienzo: etiquetas «Disposición» y «Foco» dentro de su grupo, opción elegida en color de acento, menú «Vistas» con flecha.
 - [x] Genealogía: usa siempre la estructura de parentesco (aunque «Ver por» sea otra); hermanos y demás parientes sin ascendencia registrada se colocan en la fila de su generación; lugares y otros nodos sin parentesco en una fila aparte.
 

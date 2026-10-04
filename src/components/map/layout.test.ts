@@ -130,7 +130,7 @@ describe('genealogía', () => {
     const at = (id: string) => pos.get(id)!;
     // Pareja en la misma fila y contigua
     expect(at('arnold').y).toBe(at('obkea').y);
-    expect(Math.abs(at('arnold').x - at('obkea').x)).toBeLessThan(NODE_W + 60);
+    expect(Math.abs(at('arnold').x - at('obkea').x)).toBeLessThan(NODE_W + 120);
     // Hijos, hijastra y sobrina una fila más abajo
     ['guayota', 'achaman', 'araluna', 'kunoa'].forEach(id => expect(at(id).y).toBeGreaterThan(at('arnold').y));
     expect(new Set(['guayota', 'achaman', 'araluna', 'kunoa'].map(id => at(id).y)).size).toBe(1);

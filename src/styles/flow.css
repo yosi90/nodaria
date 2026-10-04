@@ -162,6 +162,23 @@
 }
 
 /* Aristas */
+.family-links {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.family-link {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: opacity 0.15s var(--ease);
+}
+.family-link.dimmed {
+  opacity: 0.15;
+}
 .react-flow__edge-path.edge-flow {
   stroke-width: 2;
   transition: opacity 0.15s var(--ease);

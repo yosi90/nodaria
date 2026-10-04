@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import { memo, useMemo } from 'react';
 import type { RelationStyle } from '../../domain/types';
-import { bendFor, routeRelation, type Box, relationPath } from './edgeGeometry';
+import { bendFor, routeRelation, type Box } from './edgeGeometry';
 import { useCanvasSettings } from './canvasSettings';
 import { NODE_H, NODE_W } from './layout';
 
@@ -83,14 +83,12 @@ export const FloatingEdge = memo(function FloatingEdge({
   const key = a && b ? `${a.x},${a.y},${a.width},${a.height}|${b.x},${b.y},${b.width},${b.height}` : '';
   const index = data?.index ?? 0;
   const count = data?.count ?? 1;
-  const straight = Boolean(data?.straight) && count === 1;
   const route = useMemo(() => {
     if (!key) return null;
     const [ra, rb] = key.split('|').map(part => {
       const [x, y, width, height] = part.split(',').map(Number);
       return { x, y, width, height };
     });
-    if (straight) return { ...relationPath(ra, rb, 0), anchor: 'middle' as const };
     const forward = source < target;
     const distance = Math.hypot(rb.x - ra.x, rb.y - ra.y);
     const obstacles: Box[] = nearby
@@ -100,7 +98,7 @@ export const FloatingEdge = memo(function FloatingEdge({
         })
       : [];
     return routeRelation(ra, rb, bendFor(index, count, distance), obstacles, forward ? ra : rb, forward ? rb : ra);
-  }, [key, nearby, index, count, source, target, straight]);
+  }, [key, nearby, index, count, source, target]);
 
   if (!route || !data) return null;
   const isHierarchy = data.kind === 'hierarchy';

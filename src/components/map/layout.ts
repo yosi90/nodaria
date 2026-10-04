@@ -244,7 +244,7 @@ export function genealogyLayout(p: Project, structureId: string | null): Map<str
   });
 
   const rowGap = NODE_H + 90;
-  const coupleGap = 28;
+  const coupleGap = 96;
   const unitGap = 70;
   const result = new Map<string, Position>();
   let offsetX = 0;
@@ -353,6 +353,35 @@ export function genealogyLayout(p: Project, structureId: string | null): Map<str
   bottom += NODE_H + 140;
   p.nodes.filter(n => !result.has(n.id)).forEach((n, i) => result.set(n.id, { x: i * (NODE_W + 40), y: bottom }));
   return normalize(result);
+}
+
+/**
+ * Familias de la estructura genealógica: cada conjunto de progenitores con sus hijos comunes, y las
+ * parejas (término «pareja») aunque no tengan hijos. Sirve para dibujar los conectores de familia.
+ */
+export function familyUnits(p: Project, genealogyId: string | null): { parents: string[]; children: string[] }[] {
+  const terms = new Map(p.kinship.map(t => [t.id, t]));
+  const kin = p.relations.filter(r => r.typeId === genealogyId);
+  const parentsOf = new Map<string, Set<string>>();
+  kin.forEach(r => {
+    const link = kinshipStructureLink(p, r);
+    if (link) parentsOf.set(link.childId, new Set([...(parentsOf.get(link.childId) ?? []), link.parentId]));
+  });
+  const units = new Map<string, { parents: string[]; children: string[] }>();
+  const unitFor = (parents: string[]) => {
+    const key = [...parents].sort().join('|');
+    if (!units.has(key)) units.set(key, { parents: [...parents].sort(), children: [] });
+    return units.get(key)!;
+  };
+  kin.forEach(r => {
+    if (terms.get(r.kinshipId ?? '')?.couple && r.sourceId !== r.targetId) unitFor([r.sourceId, r.targetId]);
+  });
+  // El orden de los hijos sigue el de los nodos del proyecto (estable).
+  p.nodes.forEach(n => {
+    const parents = parentsOf.get(n.id);
+    if (parents) unitFor([...parents]).children.push(n.id);
+  });
+  return [...units.values()];
 }
 
 /** Disposición automática según el modo. `links` son las conexiones visibles (relaciones y jerarquía). */

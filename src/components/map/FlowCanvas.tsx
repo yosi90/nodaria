@@ -18,9 +18,9 @@ import { Crosshair, GitBranch, LayoutGrid, Network, Orbit, SlidersHorizontal, Sp
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
 import { referenceFields, referenceLinks } from '../../domain/references';
-import { kinshipStructureLink } from '../../domain/kinship';
+import { kinshipStructureLink, kinshipTerm } from '../../domain/kinship';
 import { resolveStructure, structureLinks } from '../../domain/structure';
-import type { LayoutMode, Position, Project, Selection } from '../../domain/types';
+import type { LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { pointAnchor, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
@@ -28,7 +28,8 @@ import { EmptyState } from '../common/EmptyState';
 import { useToast } from '../common/toasts';
 import { FloatingEdge, type FloatingEdgeType } from './FloatingEdge';
 import { CanvasSettingsContext } from './canvasSettings';
-import { autoLayout, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
+import { FamilyLinks } from './FamilyLinks';
+import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
 import { LegendPanel } from './LegendPanel';
 import { LensMenu } from './LensMenu';
 import { isImageValue } from './images';
@@ -253,8 +254,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         });
       });
     const pairs = new Map<string, string[]>();
+    // En Genealogía, progenitores y parejas se dibujan como conectores de familia, no como flechas.
+    const genealogyId = view.layout === 'genealogy' ? genealogyStructure(project, structure.id) : null;
+    const asFamily = (r: Relation) =>
+      r.typeId === genealogyId &&
+      Boolean(kinshipStructureLink(project, r) || kinshipTerm(project, r.kinshipId)?.couple);
     const shown = project.relations.filter(
-      r => !hiddenRelations.has(r.typeId) && visibleIds.has(r.sourceId) && visibleIds.has(r.targetId),
+      r => !hiddenRelations.has(r.typeId) && visibleIds.has(r.sourceId) && visibleIds.has(r.targetId) && !asFamily(r),
     );
     const shownRefs = refLinks.filter(l => visibleIds.has(l.sourceId) && visibleIds.has(l.targetId));
     const refId = (l: (typeof shownRefs)[number]) => `ref-${l.fieldId}-${l.sourceId}-${l.targetId}`;
@@ -327,7 +333,34 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       });
     });
     return result;
-  }, [project, view.showHierarchy, view.layout, visibleIds, hiddenRelations, selection, onSelect, refLinks, refFields]);
+  }, [
+    project,
+    view.showHierarchy,
+    view.layout,
+    structure.id,
+    visibleIds,
+    hiddenRelations,
+    selection,
+    onSelect,
+    refLinks,
+    refFields,
+  ]);
+
+  // Conectores de familia (solo en Genealogía): siguen a los nodos mientras se arrastran.
+  const family = useMemo(() => {
+    if (view.layout !== 'genealogy') return null;
+    const genealogyId = genealogyStructure(project, structure.id);
+    const schema = genealogyId ? getSchema(project, genealogyId) : undefined;
+    if (!schema?.genealogical || hiddenRelations.has(schema.id)) return null;
+    const positions = new Map(nodes.map(n => [n.id, n.position]));
+    const units = familyUnits(project, genealogyId)
+      .map(u => ({
+        parents: u.parents.filter(id => positions.has(id)),
+        children: u.children.filter(id => positions.has(id)),
+      }))
+      .filter(u => u.parents.length);
+    return { units, positions, color: schema.color };
+  }, [view.layout, project, structure.id, hiddenRelations, nodes]);
 
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
   // volver a renderizar los componentes: con cientos de nodos y miles de aristas eso costaría casi un segundo.
@@ -338,6 +371,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     const ends = new Map(edges.map(e => [e.id, [e.source, e.target]]));
     root.querySelectorAll<HTMLElement>('.react-flow__node').forEach(el => {
       el.classList.toggle('dimmed', Boolean(near && !near.has(el.dataset.id ?? '')));
+    });
+    root.querySelectorAll<SVGElement>('.family-link').forEach(el => {
+      const members = (el.dataset.members ?? '').split(',');
+      el.classList.toggle('dimmed', Boolean(hoveredId && !members.includes(hoveredId)));
     });
     root.querySelectorAll<HTMLElement>('.react-flow__edge, .edge-label').forEach(el => {
       const id = el.dataset.id ?? el.dataset.edge ?? '';
@@ -562,6 +599,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           proOptions={proOptions}
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--canvas-dot)" />
+          {family && <FamilyLinks units={family.units} positions={family.positions} color={family.color} />}
           {legendOpen && (
             <Panel position="top-right">
               <LegendPanel onClose={() => setLegendOpen(false)} />
