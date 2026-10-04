@@ -82,7 +82,23 @@ Las tres tablas de datos cuelgan de `users` con `ON DELETE CASCADE`: `DELETE /ap
 | GET    | `/api/me`     | Sí   | Perfil del usuario; lo crea en SQL en su primera petición.                                                      |
 | DELETE | `/api/me`     | Sí   | Borra el usuario en SQL (y sus datos) y su cuenta de Firebase. Exige un inicio de sesión de menos de 5 minutos. |
 
-Las rutas de proyectos, mensajes y panel de Notificapp llegan en las fases 2 y 3 del roadmap.
+| GET | `/api/projects` | Sí | Resumen de los proyectos de la cuenta (id, nombre, `version`, `updatedAt`, `deletedAt`, tamaño), borrados incluidos. |
+| GET | `/api/projects/{id}` | Sí | Documento completo con su versión. 404 `project_not_found` o `project_deleted`. |
+| PUT | `/api/projects/{id}` | Sí | `{ document, baseVersion }`: crea (`baseVersion` 0) o actualiza. 409 `version_conflict` con `current`; 413 `project_too_large`; 400 `project_id_mismatch`. |
+| DELETE | `/api/projects/{id}` | Sí | Borrado lógico; `?baseVersion=n` opcional para exigir la versión. Idempotente sobre un borrado. |
+
+El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista: el cliente guarda la versión que sincronizó y la envía como `baseVersion`. Las rutas de mensajes y del panel de Notificapp están aplazadas (Fase 3 del roadmap).
+
+## Producción
+
+La API corre en este servidor y se publica en `https://nodaria-api.yosiftware.es` por el Cloudflare Tunnel (`C:\cloudflared\config.yml` → `http://127.0.0.1:5003`; copia previa en `config.yml.bak-20261004-nodaria`).
+
+- `ops\install-autostart.ps1` (una vez, **como administrador**): registra las tareas `Nodaria API` y `Nodaria DB Backup` como el usuario `Yosi` (S4U), da permiso de escritura a SQL Server en la carpeta de copias y reinicia `Cloudflared`.
+- `ops\run-api.ps1`: vigilante que ejecuta `dist/server.js` con `NODE_ENV=production` y `LOG_DIR=api\logs`, y lo reinicia si se cae (espera creciente hasta 5 min).
+- Desplegar un cambio: `npm run build` y `ops\restart-api.ps1` (crea `logs\restart.request`; la API lo detecta, se cierra y el vigilante arranca el build nuevo).
+- `ops\stop-api.ps1` para el vigilante y la API; `ops\status.ps1` muestra tareas, proceso, salud local y pública y la última copia.
+- Logs: `api\logs\api.<fecha>.<n>.log` (JSON de pino, rotación diaria, 30 días), `supervisor.log` y `stderr.log` del último arranque.
+- Copias: `ops\backup-db.ps1` → `C:\Users\Yosi\nodaria-backups\db\Nodaria-<fecha>.bak`, 30 días. Restaurar con `RESTORE DATABASE [Nodaria] FROM DISK = N'…' WITH REPLACE` (parando antes la API).
 
 Errores con formato `{ "error": "<codigo>", "message": "<texto en español>" }`. Límite general de 300 peticiones/minuto por IP (`CF-Connecting-IP` detrás del túnel) y 120 por usuario autenticado.
 

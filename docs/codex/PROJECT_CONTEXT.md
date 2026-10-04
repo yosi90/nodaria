@@ -74,7 +74,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - Hay pruebas automatizadas con Vitest (`npm test`) para dominio, migraciones, importación/exportación e historial.
 - Hay deshacer/rehacer global. Cambiar de proyecto no ocupa un paso.
 - Los datos dañados (ciclos, padres o extremos inexistentes, tipos borrados) se reparan al cargar o importar, y se avisa al usuario.
-- La persistencia del front sigue siendo exclusivamente local. La API (`api/`) existe con cuentas (`/api/me`) y la base `Nodaria` creada (tablas `users`, `projects`, `messages`, `notificapp_outbox`), pero las rutas de proyectos y mensajes y la integración en el front están pendientes (`docs/roadmaps/ROADMAP_BACKEND.md`).
+- La persistencia del front sigue siendo exclusivamente local. La API (`api/`) existe con cuentas (`/api/me`) y la base `Nodaria` creada (tablas `users`, `projects`, `messages`, `notificapp_outbox`), y rutas de proyectos (`/api/projects`, documento JSON por proyecto con control de versión), pero la integración en el front está pendiente (`docs/roadmaps/ROADMAP_BACKEND.md`).
 - No quedan diálogos nativos: confirmaciones y peticiones de texto usan `useDialogs()`, y los borrados ofrecen "Deshacer" mediante un toast.
 
 ## Vista «Tabla»
@@ -97,7 +97,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 ## Despliegue
 
 - Firebase Hosting, proyecto `yosiftware-nodaria` (creado el 2026-10-03): https://yosiftware-nodaria.web.app y dominio propio https://nodaria.yosiftware.es (DNS en Cloudflare, gestionado por el usuario). `npm run deploy` compila y publica con el `firebase-tools` instalado en `api/` (requiere `npm ci` en `api/` y sesión de Firebase o cuenta de servicio). Los datos siguen siendo locales del navegador: hostear no cambia la persistencia.
-- Desde el 2026-10-04 el desarrollo ocurre en el servidor de Yosiftware (el mismo que aloja Libros, Fichas, Lorcana y Notificapp). La API se publicará como `https://nodaria-api.yosiftware.es` por el túnel de Cloudflare existente y correrá como tarea programada con vigilante (Fase 4 del roadmap de backend). App web de Firebase «Nodaria Web» registrada el 2026-10-04; su configuración pública está en `docs/backend/README.md`.
+- Desde el 2026-10-04 el desarrollo ocurre en el servidor de Yosiftware (el mismo que aloja Libros, Fichas, Lorcana y Notificapp). La API se publica como `https://nodaria-api.yosiftware.es` por el túnel de Cloudflare existente (ingress y CNAME creados el 2026-10-04; pendiente reiniciar `Cloudflared` con `api/ops/install-autostart.ps1` como administrador) y corre con el vigilante `api/ops/run-api.ps1` (arrancado a mano hasta registrar la tarea programada). App web de Firebase «Nodaria Web» registrada el 2026-10-04; su configuración pública está en `docs/backend/README.md`.
 - Notificapp: el kit copiable vive en `plugin-kit/` (ignorado por Git). El plugin propio irá en `notificapp-plugin/` (Fase 3). Los avisos de agente usan el emisor del servidor; ver `AGENTS.md`.
 
 ## Roadmap activo

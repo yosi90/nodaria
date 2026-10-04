@@ -52,11 +52,11 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 ### Fase 2 — Proyectos en el servidor (API)
 
-- [ ] `GET /api/projects`: resumen de los proyectos del usuario (id, nombre, versión, `updatedAt`, `deletedAt`, tamaño), borrados incluidos.
-- [ ] `GET /api/projects/{id}`: documento completo con su versión.
-- [ ] `PUT /api/projects/{id}` con `{ document, baseVersion }`: crea o actualiza; 409 `version_conflict` con la versión vigente si `baseVersion` no coincide; 413 si supera `PROJECT_MAX_BYTES`; validación mínima del documento (id, nombre, listas).
-- [ ] `DELETE /api/projects/{id}`: borrado lógico con control de versión.
-- [ ] Pruebas con almacén en memoria y con SQL Server.
+- [x] `GET /api/projects`: resumen de los proyectos del usuario (id, nombre, versión, `updatedAt`, `deletedAt`, tamaño), borrados incluidos.
+- [x] `GET /api/projects/{id}`: documento completo con su versión.
+- [x] `PUT /api/projects/{id}` con `{ document, baseVersion }`: crea o actualiza; 409 `version_conflict` con la versión vigente si `baseVersion` no coincide; 413 si supera `PROJECT_MAX_BYTES`; validación mínima del documento (id, nombre, listas).
+- [x] `DELETE /api/projects/{id}`: borrado lógico con control de versión.
+- [x] Pruebas con almacén en memoria y con SQL Server (mismo contrato para ambos; 2026-10-04).
 
 ### Fase 3 — Mensajes y Notificapp (API) — aplazada
 
@@ -71,11 +71,11 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 ### Fase 4 — Publicación
 
-- [ ] `api/ops/`: `run-api.ps1` (vigilante), `restart-api.ps1`, `stop-api.ps1`, `status.ps1`, `backup-db.ps1`, `install-autostart.ps1` (tareas «Nodaria API» y «Nodaria DB Backup», copias en `C:\Users\Yosi\nodaria-backups\db`).
-- [ ] Ingress `nodaria-api.yosiftware.es → http://127.0.0.1:5003` en `C:\cloudflared\config.yml` (copia previa) y CNAME con `cloudflared tunnel route dns`.
-- [ ] Ejecutar `install-autostart.ps1` como administrador (registra tareas y reinicia `Cloudflared`).
+- [x] `api/ops/`: `run-api.ps1` (vigilante), `restart-api.ps1`, `stop-api.ps1`, `status.ps1`, `backup-db.ps1`, `install-autostart.ps1` (tareas «Nodaria API» y «Nodaria DB Backup», copias en `C:\Users\Yosi\nodaria-backups\db`).
+- [x] Ingress `nodaria-api.yosiftware.es → http://127.0.0.1:5003` en `C:\cloudflared\config.yml` (copia previa) y CNAME con `cloudflared tunnel route dns`.
+- [ ] Ejecutar `install-autostart.ps1` como administrador (registra tareas y reinicia `Cloudflared`). Mientras tanto, el vigilante se arrancó a mano el 2026-10-04 y la API de producción (`dist/`) responde en `127.0.0.1:5003`.
 - [ ] Despliegue del front desde el servidor con `npm run deploy` (usa el `firebase-tools` de `api/`).
-- [ ] Comprobar `/api/health` en local y por el dominio público.
+- [x] `/api/health` en local (2026-10-04). Pendiente por el dominio público (tras reiniciar Cloudflared).
 
 ### Fase 5 — Cuenta en el front
 
@@ -111,9 +111,9 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 | ------------------------------ | ------------------------------------ |
 | 0 — Preparación externa        | Completada (2026-10-04)              |
 | 1 — Base del backend           | Completada salvo prueba con emulador |
-| 2 — Proyectos en el servidor   | Pendiente                            |
+| 2 — Proyectos en el servidor   | Completada (2026-10-04)              |
 | 3 — Mensajes y Notificapp      | Aplazada                             |
-| 4 — Publicación                | Pendiente                            |
+| 4 — Publicación                | Falta el instalador como admin       |
 | 5 — Cuenta en el front         | Pendiente                            |
 | 6 — Sincronización en el front | Pendiente                            |
 | 7 — Mensajes en el front       | Aplazada                             |

@@ -4,6 +4,7 @@ import { buildApp } from './app.ts';
 import { createFirebaseAuthProvider } from './auth/firebase.ts';
 import { loadConfig } from './config.ts';
 import { connectDatabase } from './db/pool.ts';
+import { createSqlProjectStore } from './projects/repository.ts';
 import { createSqlUserStore } from './users/repository.ts';
 
 const config = loadConfig();
@@ -13,6 +14,7 @@ const app = await buildApp({
   db,
   auth: createFirebaseAuthProvider(config),
   users: createSqlUserStore(db),
+  projects: createSqlProjectStore(db),
 });
 
 const shutdown = async (signal: string) => {

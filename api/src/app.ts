@@ -9,6 +9,8 @@ import type { AppConfig } from './config.ts';
 import type { Database } from './db/pool.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meRoutes } from './routes/me.ts';
+import { projectRoutes } from './routes/projects.ts';
+import type { ProjectStore } from './projects/repository.ts';
 import type { UserStore } from './users/repository.ts';
 
 export interface AppDependencies {
@@ -16,6 +18,7 @@ export interface AppDependencies {
   db: Pick<Database, 'request'>;
   auth: AuthProvider;
   users: UserStore;
+  projects: ProjectStore;
 }
 
 // Peticiones por minuto de cada usuario con sesión, además del límite por IP.
@@ -56,7 +59,7 @@ function loggerOptions(config: AppConfig): FastifyServerOptions['logger'] {
   };
 }
 
-export async function buildApp({ config, db, auth, users }: AppDependencies) {
+export async function buildApp({ config, db, auth, users, projects }: AppDependencies) {
   const app = Fastify({
     logger: loggerOptions(config),
     trustProxy: 'loopback',
@@ -133,6 +136,7 @@ export async function buildApp({ config, db, auth, users }: AppDependencies) {
         return reply.status(429).send(tooManyRequests(request, limit));
       });
       await privateApp.register(meRoutes, { auth, users });
+      await privateApp.register(projectRoutes, { projects, config });
     },
     { prefix: '/api' },
   );
