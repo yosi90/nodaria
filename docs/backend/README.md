@@ -43,6 +43,8 @@ npm 11 bloquea los scripts de instalación salvo los aprobados en `allowScripts`
 
 ## Firebase
 
+La clave web (`apiKey`) no está en el repositorio: el front la lee de `VITE_FIREBASE_API_KEY` en `.env.local` (ignorado por Git; plantilla en `.env.example`). Es una clave pública por diseño (viaja en el bundle), pero fuera del repositorio no dispara los avisos de secretos de GitHub. El resto de la configuración (projectId, appId, authDomain…) va en `src/services/firebase.ts`.
+
 El front usa `authDomain: yosiftware-nodaria.firebaseapp.com`, como Lorcana. Pasar al dominio propio (`nodaria.yosiftware.es`, donde Hosting también sirve `/__/auth/handler`) exigiría autorizar `https://nodaria.yosiftware.es/__/auth/handler` como URI de redirección en el cliente OAuth de Google Cloud; el 2026-10-04 Google no mostraba el selector sin ese paso.
 
 ## Migraciones
