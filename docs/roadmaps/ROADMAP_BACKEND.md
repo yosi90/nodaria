@@ -1,6 +1,6 @@
 # Roadmap: backend, cuentas y sincronización
 
-> Roadmap activo principal desde el 2026-10-04. Mientras dure, `ROADMAP_RENOVACION.md` queda en pausa como referencia de las fases de producto pendientes; se retoma al cerrar este.
+> **Finalizado el 2026-10-04.** Fases 0, 1, 2, 4, 5, 6 y 8 completadas; 3 y 7 (mensajes y plugin de Notificapp) aplazadas hasta que la web monte peticiones. El roadmap activo vuelve a ser `ROADMAP_RENOVACION.md`.
 > Mantener la checklist sincronizada con el estado real durante la ejecución.
 
 ## Objetivo
@@ -103,23 +103,23 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 ### Fase 8 — Cierre
 
-- [ ] Migrar el proyecto real del libro a la cuenta principal y comprobar en dos dispositivos (propietario: basta con iniciar sesión en el navegador que tiene el proyecto; se sube solo).
+- [x] Proyecto real del libro migrado a la cuenta principal por el propietario (2026-10-04); el acceso con Google funcionó tras volver al `authDomain` de Firebase.
 - [x] Documentación (`docs/backend/README.md`, `PROJECT_CONTEXT.md`, README) al día (2026-10-04).
-- [ ] Retomar `ROADMAP_RENOVACION.md` cuando el propietario confirme la migración.
+- [x] `ROADMAP_RENOVACION.md` retomado como roadmap activo (2026-10-04).
 
 ## Estado
 
-| Fase                           | Estado                             |
-| ------------------------------ | ---------------------------------- |
-| 0 — Preparación externa        | Completada (2026-10-04)            |
-| 1 — Base del backend           | Completada (2026-10-04)            |
-| 2 — Proyectos en el servidor   | Completada (2026-10-04)            |
-| 3 — Mensajes y Notificapp      | Aplazada                           |
-| 4 — Publicación                | Completada (2026-10-04)            |
-| 5 — Cuenta en el front         | Completada (2026-10-04)            |
-| 6 — Sincronización en el front | Completada (2026-10-04)            |
-| 7 — Mensajes en el front       | Aplazada                           |
-| 8 — Cierre                     | Falta la migración del propietario |
+| Fase                           | Estado                  |
+| ------------------------------ | ----------------------- |
+| 0 — Preparación externa        | Completada (2026-10-04) |
+| 1 — Base del backend           | Completada (2026-10-04) |
+| 2 — Proyectos en el servidor   | Completada (2026-10-04) |
+| 3 — Mensajes y Notificapp      | Aplazada                |
+| 4 — Publicación                | Completada (2026-10-04) |
+| 5 — Cuenta en el front         | Completada (2026-10-04) |
+| 6 — Sincronización en el front | Completada (2026-10-04) |
+| 7 — Mensajes en el front       | Aplazada                |
+| 8 — Cierre                     | Completada (2026-10-04) |
 
 ## Criterios de finalización
 

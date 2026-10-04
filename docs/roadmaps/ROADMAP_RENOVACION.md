@@ -22,7 +22,7 @@ El núcleo sigue siendo generalista: nada de lo anterior introduce conceptos nar
 
 Incluido: estabilidad e integridad de datos, sistema de diseño, lienzo de grafo interactivo, fichas y navegación, modelo de datos enriquecido, vistas alternativas (tabla, matriz, genealogía, mapa, línea temporal), análisis del grafo, persistencia robusta y exportaciones, asistente IA opcional.
 
-Excluido (por ahora): colaboración en tiempo real y aplicación móvil nativa. Servidor propio, cuentas de usuario y sincronización pasaron a `ROADMAP_BACKEND.md` (2026-10-04), que es el roadmap activo mientras dure; este queda en pausa.
+Excluido (por ahora): colaboración en tiempo real y aplicación móvil nativa. Servidor propio, cuentas de usuario y sincronización pasaron a `ROADMAP_BACKEND.md` (2026-10-04), finalizado ese mismo día; este vuelve a ser el roadmap activo.
 
 ## Hallazgos del estudio
 
