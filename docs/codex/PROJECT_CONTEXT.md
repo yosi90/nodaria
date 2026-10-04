@@ -80,6 +80,10 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 - `src/components/table/TableView.tsx`: hoja por tipo de entidad, editable en celda; reutiliza `FieldControl` (extraído del inspector a `src/components/map/FieldControl.tsx`). Preferencias por proyecto y tipo en `preferences.tables` (columnas ocultas, orden).
 
+## Exportación de imagen
+
+-  usa  (toPng / toSvg) sobre ; «todo el mapa» recalcula el transform a escala 1 con margen fijo (máximo 8192 px), «vista actual» captura el encuadre en pantalla.
+
 ## Despliegue
 
 - Firebase Hosting, proyecto `yosiftware-nodaria` (creado el 2026-10-03): https://yosiftware-nodaria.web.app y dominio propio https://nodaria.yosiftware.es (DNS en Cloudflare, gestionado por el usuario). `npm run deploy` compila y publica. Los datos siguen siendo locales del navegador: hostear no cambia la persistencia.

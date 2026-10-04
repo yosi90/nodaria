@@ -240,7 +240,7 @@ Objetivo: mirar el mismo mundo desde ángulos distintos.
 - [x] **Genealogía**: disposición «Genealogía» (árbol vertical, una generación por fila) sobre la estructura elegida en «Ver por». Sustituido a petición del usuario por **relaciones genealógicas** (`Schema.genealogical`): sus relaciones eligen un término del **vocabulario de parentesco** del proyecto (`Project.kinship`, `src/domain/kinship.ts`: nombre neutro/masculino/femenino, contraparte, generación, ascendencia directa) en lugar de un nombre libre; editable en el tipo de relación. El papel de cada extremo se calcula con el término y el género del nodo (nuevo tipo de atributo **Género**), con contraparte para el destino y opción «usar nombre neutro». Al crear una relación genealógica se ofrece añadir «Género» a los tipos que no lo tienen. Solo la ascendencia directa forma el árbol («Ver por» y Genealogía). Se retiró el selector «Clase» de los tipos.
 - [ ] **Mapa**: subir una imagen del mapa del mundo y colocar sobre ella los nodos de tipo lugar (y ver quién pertenece a cada uno).
 - [ ] **Línea temporal**: acontecimientos y nodos con fechas, con calendario del mundo configurable (eras, años, meses propios) además del calendario real.
-- [ ] Exportar cualquier vista a PNG / SVG.
+- [x] Exportar el mapa a PNG / SVG (2026-10-04): menú «Exportar imagen» en la barra del lienzo; todo el mapa (encuadre automático, PNG a doble resolución) o la vista actual; respeta tema, disposición, filtros y conectores.
 
 Criterio: las preguntas del objetivo se responden cada una con la vista más adecuada, no forzando el grafo.
 
@@ -302,6 +302,7 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 - [x] Parentesco en conflicto (2026-10-04): las relaciones cuyo salto de generación no cuadra con el árbol se marcan en la ficha (aviso con explicación) y en el lienzo (trazo en color de aviso); botón «Invertir» en cada relación de parentesco.
 - [x] Columna «Deducción» en el vocabulario (2026-10-04): cada término declara qué papel deducible representa (abuelo, nieto, hermano, tío, sobrino, primo); nada queda atado a identificadores del vocabulario inicial. Botón «Establecer» en los parentescos deducidos.
 - [x] Sospechosas al revés: la relación de ascendencia que, invertida, hace cuadrar al resto se marca en rojo con su explicación y «Invertir» destacado; las fichas afectadas señalan la causa.
+- [x] Relaciones genealógicas ocultas por defecto fuera de Genealogía (una sola vez por tipo y proyecto; si el usuario las muestra, se respeta).
 - [x] Cada disposición recuerda sus propios filtros (entidades y relaciones ocultas) y si la leyenda está abierta, por proyecto (preferencias del navegador), también al recargar. Genealogía solo está disponible con un tipo de relación genealógico y, sin recuerdo previo, oculta los tipos que ningún parentesco admite y abre la leyenda.
 - [x] Atributo de sistema «Género»: fila bloqueada con candado y explicación (no se edita, solo se reordena o se quita); puede elegirse a mano como tipo y entonces toma nombre y clave fijos.
 - [x] «Mostrar en el nodo» con tres modos (No, Solo icono, Icono y texto) por atributo y por opción de lista; «Icono y texto» añade líneas bajo el nombre y la tarjeta crece en altura; las disposiciones y los conectores usan la altura real.

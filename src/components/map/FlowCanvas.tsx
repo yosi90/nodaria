@@ -37,6 +37,7 @@ import { useToast } from '../common/toasts';
 import { FloatingEdge, type FloatingEdgeType } from './FloatingEdge';
 import { CanvasSettingsContext } from './canvasSettings';
 import { FallingPins, type FallingPin } from './FallingPins';
+import { ExportMenu } from './ExportMenu';
 import { FamilyLinks } from './FamilyLinks';
 import { cardContent, cardHeight } from './cardLines';
 import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
@@ -546,10 +547,17 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           hiddenRelationTypeIds: view.hiddenRelationTypeIds,
           legendOpen: true,
         };
-      } else if (view.layout === 'genealogy') {
-        // Al salir de Genealogía por primera vez, lo razonable es volver a ver todo.
-        next = { hiddenEntityTypeIds: [], hiddenRelationTypeIds: [], legendOpen: false };
-      } else next = { ...current, legendOpen: false };
+      } else {
+        // Fuera de Genealogía, el parentesco (extenso e intrincado) se oculta por defecto; al salir de
+        // Genealogía por primera vez se vuelve a ver todo lo demás.
+        const genealogicalIds = genealogySchemas.map(s => s.id);
+        const base = view.layout === 'genealogy' ? { hiddenEntityTypeIds: [], hiddenRelationTypeIds: [] } : current;
+        next = {
+          ...base,
+          hiddenRelationTypeIds: [...new Set([...base.hiddenRelationTypeIds, ...genealogicalIds])],
+          legendOpen: false,
+        };
+      }
     }
     setPreference('layouts', {
       ...preferences.layouts,
@@ -562,6 +570,19 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       hiddenRelationTypeIds: next.hiddenRelationTypeIds,
     });
   };
+  // Un tipo de relación genealógico nuevo (o uno ya existente al abrir el proyecto por primera vez)
+  // se oculta una sola vez por defecto fuera de Genealogía: el parentesco es extenso y ensucia las
+  // vistas donde no aporta. Si el usuario lo vuelve a mostrar, se respeta.
+  useEffect(() => {
+    if (view.layout === 'genealogy') return;
+    const done = preferences.autoHiddenKinship[project.id] ?? [];
+    const pending = genealogySchemas.map(s => s.id).filter(id => !done.includes(id));
+    if (!pending.length) return;
+    setPreference('autoHiddenKinship', { ...preferences.autoHiddenKinship, [project.id]: [...done, ...pending] });
+    const toHide = pending.filter(id => !view.hiddenRelationTypeIds.includes(id));
+    if (toHide.length) setView({ hiddenRelationTypeIds: [...view.hiddenRelationTypeIds, ...toHide] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando aparece un tipo genealógico nuevo
+  }, [genealogySchemas, view.layout, project.id]);
   // Cada cambio de filtros o de la leyenda se recuerda para la disposición actual.
   useEffect(() => {
     const mine = preferences.layouts[project.id] ?? {};
@@ -711,6 +732,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             active={legendOpen}
             onClick={() => setLegendOpen(v => !v)}
           />
+          <ExportMenu name={project.name} container={() => container.current} />
           <span className="flow-counts">
             <span className="badge">
               {nodes.length}

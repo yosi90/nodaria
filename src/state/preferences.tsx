@@ -14,6 +14,8 @@ export interface Preferences {
   /** Vista Tabla: por proyecto y tipo, columnas ocultas y orden. */
   tables: Record<string, Record<string, TablePreference>>;
   matrix: Record<string, MatrixPreference>;
+  /** Tipos de relación genealógicos que ya se ocultaron una vez por defecto fuera de Genealogía, por proyecto. */
+  autoHiddenKinship: Record<string, string[]>;
 }
 
 /** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
@@ -48,6 +50,7 @@ const DEFAULTS: Preferences = {
   layouts: {},
   tables: {},
   matrix: {},
+  autoHiddenKinship: {},
 };
 
 function loadPreferences(): Preferences {
