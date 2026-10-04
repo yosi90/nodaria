@@ -1,6 +1,6 @@
 # Nodaria
 
-Aplicación web para crear mapas mentales estructurados mediante esquemas, entidades y relaciones. Funciona en local (datos en el navegador) y está incorporando cuentas y sincronización mediante la API de `api/` (ver `docs/backend/README.md` y `docs/roadmaps/ROADMAP_BACKEND.md`).
+Aplicación web para crear mapas mentales estructurados mediante esquemas, entidades y relaciones. Funciona en local (datos en el navegador) y, con una cuenta opcional, sincroniza los proyectos entre dispositivos mediante la API de `api/` (ver `docs/backend/README.md` y `docs/roadmaps/ROADMAP_BACKEND.md`).
 
 ## Desarrollo
 
@@ -35,7 +35,7 @@ npm run preview
 - `src/styles`: estilos globales y diseño adaptable.
 - `api/`: API Fastify + TypeScript con Firebase Authentication y SQL Server Express (`cd api && npm ci && npm run migrate && npm run dev`).
 
-Los proyectos siguen almacenándose en `localStorage` bajo la clave histórica `nodaria_state_v1`, por lo que la actualización conserva los datos existentes. Los proyectos se migran al formato actual (`src/services/migrations.ts`) y se reparan al cargarlos. La importación acepta tanto exportaciones antiguas como las de la versión actual.
+Los proyectos se almacenan en `localStorage` bajo la clave histórica `nodaria_state_v1`, por lo que la actualización conserva los datos existentes. Con sesión iniciada (Firebase Authentication: correo y contraseña o Google), además se guardan en la cuenta y se sincronizan entre dispositivos; el recuerdo de lo sincronizado vive en `nodaria_sync_v1`. Los proyectos se migran al formato actual (`src/services/migrations.ts`) y se reparan al cargarlos. La importación acepta tanto exportaciones antiguas como las de la versión actual.
 
 ## Despliegue
 

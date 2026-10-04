@@ -47,7 +47,7 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 - [x] `GET /api/me` y `DELETE /api/me` (borrado de cuenta y datos en cascada, Firebase dentro de la transacción, login reciente obligatorio).
 - [x] Límites de peticiones por IP (`CF-Connecting-IP`) y por usuario.
 - [x] Pruebas: 22 en verde, incluida la integración con SQL Server (`DB_TESTS=1`).
-- [ ] Prueba con el emulador de Firebase Auth (`npm run test:emulator`, proyecto `demo-nodaria`).
+- [x] Prueba con el emulador de Firebase Auth (`npm run test:emulator`, proyecto `demo-nodaria`; 3 pruebas, 2026-10-04).
 - [x] Arranque real con la cuenta de servicio y prueba de extremo a extremo (2026-10-04): usuario temporal por custom token, `GET /api/me` 200, `DELETE /api/me` 204 y cuenta de Firebase eliminada.
 
 ### Fase 2 — Proyectos en el servidor (API)
@@ -103,22 +103,23 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 ### Fase 8 — Cierre
 
-- [ ] Migrar el proyecto real del libro a la cuenta principal y comprobar en dos dispositivos.
-- [ ] Documentación (`docs/backend/README.md`, `PROJECT_CONTEXT.md`, README) al día; retomar `ROADMAP_RENOVACION.md`.
+- [ ] Migrar el proyecto real del libro a la cuenta principal y comprobar en dos dispositivos (propietario: basta con iniciar sesión en el navegador que tiene el proyecto; se sube solo).
+- [x] Documentación (`docs/backend/README.md`, `PROJECT_CONTEXT.md`, README) al día (2026-10-04).
+- [ ] Retomar `ROADMAP_RENOVACION.md` cuando el propietario confirme la migración.
 
 ## Estado
 
-| Fase                           | Estado                               |
-| ------------------------------ | ------------------------------------ |
-| 0 — Preparación externa        | Completada (2026-10-04)              |
-| 1 — Base del backend           | Completada salvo prueba con emulador |
-| 2 — Proyectos en el servidor   | Completada (2026-10-04)              |
-| 3 — Mensajes y Notificapp      | Aplazada                             |
-| 4 — Publicación                | Completada (2026-10-04)              |
-| 5 — Cuenta en el front         | Completada (2026-10-04)              |
-| 6 — Sincronización en el front | Completada (2026-10-04)              |
-| 7 — Mensajes en el front       | Aplazada                             |
-| 8 — Cierre                     | Pendiente                            |
+| Fase                           | Estado                             |
+| ------------------------------ | ---------------------------------- |
+| 0 — Preparación externa        | Completada (2026-10-04)            |
+| 1 — Base del backend           | Completada (2026-10-04)            |
+| 2 — Proyectos en el servidor   | Completada (2026-10-04)            |
+| 3 — Mensajes y Notificapp      | Aplazada                           |
+| 4 — Publicación                | Completada (2026-10-04)            |
+| 5 — Cuenta en el front         | Completada (2026-10-04)            |
+| 6 — Sincronización en el front | Completada (2026-10-04)            |
+| 7 — Mensajes en el front       | Aplazada                           |
+| 8 — Cierre                     | Falta la migración del propietario |
 
 ## Criterios de finalización
 
