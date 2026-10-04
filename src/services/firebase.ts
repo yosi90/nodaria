@@ -20,12 +20,13 @@ import {
 
 /**
  * Configuración pública de la app web «Nodaria Web» (viaja en cada cliente; no es un secreto).
- * En producción el dominio de autenticación es el propio: Firebase Hosting sirve `/__/auth/handler`
- * en `nodaria.yosiftware.es`, lo que evita depender de cookies de terceros en la ventana de Google.
+ * El dominio de autenticación es el de Firebase, como en Lorcana. Usar el dominio propio
+ * (`nodaria.yosiftware.es`) exigiría autorizar `https://nodaria.yosiftware.es/__/auth/handler`
+ * como URI de redirección en el cliente OAuth de Google Cloud; sin eso Google no muestra el selector.
  */
 const firebaseConfig = {
   apiKey: 'REDACTED_FIREBASE_WEB_API_KEY',
-  authDomain: import.meta.env.DEV ? 'yosiftware-nodaria.firebaseapp.com' : 'nodaria.yosiftware.es',
+  authDomain: 'yosiftware-nodaria.firebaseapp.com',
   projectId: 'yosiftware-nodaria',
   storageBucket: 'yosiftware-nodaria.firebasestorage.app',
   messagingSenderId: '485119322480',
