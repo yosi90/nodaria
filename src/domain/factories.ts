@@ -27,6 +27,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     view: createView(),
     lenses: [],
     kinship: defaultKinship(),
+    queries: [],
   };
 }
 export function createInitialState(): AppState {

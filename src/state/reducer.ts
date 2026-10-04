@@ -2,6 +2,7 @@ import { createInitialState, createProject, now, uid } from '../domain/factories
 import * as lib from '../domain/library';
 import * as ops from '../domain/operations';
 import { moveInStructure, type StructureMove } from '../domain/structureMove';
+import type { SavedQuery } from '../domain/queries';
 import type {
   AppState,
   FieldDefinition,
@@ -60,6 +61,8 @@ export type Action =
   | { type: 'update-kinship'; kinship: KinshipTerm[] }
   | { type: 'set-map-image'; image: MapImage | null }
   | { type: 'set-map-scale'; scale: number }
+  | { type: 'save-query'; query: SavedQuery }
+  | { type: 'delete-query'; id: string }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
   | { type: 'duplicate-node'; id: string; withRelations?: boolean; newId?: string }
@@ -185,6 +188,15 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.applyLens(p, action.id);
     case 'set-map-image':
       return ops.setMapImage(p, action.image);
+    case 'save-query':
+      return {
+        ...p,
+        queries: p.queries.some(q => q.id === action.query.id)
+          ? p.queries.map(q => (q.id === action.query.id ? action.query : q))
+          : [...p.queries, action.query],
+      };
+    case 'delete-query':
+      return { ...p, queries: p.queries.filter(q => q.id !== action.id) };
     case 'set-map-scale':
       return ops.setMapScale(p, action.scale);
     case 'update-kinship':

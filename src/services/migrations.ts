@@ -136,6 +136,7 @@ function normalizeProject(project: RawProject): Project {
           }
         : null,
     view: { ...createView(), ...(project.view ?? {}) },
+    queries: Array.isArray(project.queries) ? project.queries : [],
     lenses: (project.lenses || []).map(l => ({
       ...l,
       view: { ...createView(), ...(l.view ?? {}) },

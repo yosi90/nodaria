@@ -14,6 +14,8 @@ export type FieldType =
   | 'color'
   | 'scale'
   | 'tags';
+import type { SavedQuery } from './queries';
+
 export type SchemaKind = 'entity' | 'relationship';
 export type RelationStyle = 'normal' | 'strong' | 'hidden';
 export type FieldValue = string | number | boolean | string[] | null;
@@ -145,6 +147,8 @@ export interface Project {
   lenses: Lens[];
   /** Vocabulario de parentesco para las relaciones genealógicas. */
   kinship: KinshipTerm[];
+  /** Consultas guardadas (`src/domain/queries.ts`). */
+  queries: SavedQuery[];
 }
 /** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
 export interface Lens {

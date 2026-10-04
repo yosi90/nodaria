@@ -8,11 +8,14 @@ import {
   Network,
   Shapes,
   BarChart3,
+  Pencil,
+  Search,
+  Trash2,
   Unplug,
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { describeIssue } from '../../domain/cardinality';
 import { analysisLinks, betweenness, bridges, degreeCentrality } from '../../domain/centrality';
 import { detectCommunities } from '../../domain/communities';
@@ -20,6 +23,10 @@ import { COLORS } from '../../domain/constants';
 import { worldHealth } from '../../domain/health';
 import { redundancyPairs } from '../../domain/redundancy';
 import { typeStats } from '../../domain/stats';
+import { describeCondition, runQuery, type SavedQuery } from '../../domain/queries';
+import { QueryDialog } from './QueryDialog';
+import { Button } from '../common/Button';
+import { useToast } from '../common/toasts';
 import { getSchema, nodeLabel } from '../../domain/selectors';
 import type { Node } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -29,8 +36,10 @@ import { TypeIcon } from '../common/icons';
 
 /** Vista «Salud»: avisos sobre lo que suele quedar a medias en un mundo, con salto a cada nodo o tipo. */
 export function HealthView() {
-  const { project } = useApp();
+  const { project, dispatch } = useApp();
   const { select, setView } = useNavigation();
+  const toast = useToast();
+  const [editing, setEditing] = useState<SavedQuery | null | 'new'>(null);
   const report = useMemo(() => worldHealth(project), [project]);
   const graph = useMemo(() => {
     const links = analysisLinks(project);
@@ -97,6 +106,67 @@ export function HealthView() {
   return (
     <main className="health-layout">
       <header className="health-summary">
+        <Search size={22} aria-hidden />
+        <div>
+          <h2>Consultas guardadas</h2>
+          <p className="muted-note">
+            Preguntas al mundo que se guardan con el proyecto: «Personajes sin dios patrón», «Magos sin escuela»…
+          </p>
+        </div>
+        <Button size="sm" variant="primary" onClick={() => setEditing('new')}>
+          Nueva consulta
+        </Button>
+      </header>
+      {project.queries.length > 0 && (
+        <div className="health-grid">
+          {project.queries.map(q => {
+            const results = runQuery(project, q);
+            const type = project.schemas.find(s => s.id === q.typeId);
+            return (
+              <section key={q.id} className="card health-card">
+                <div className="card-head">
+                  <h3>
+                    <Search size={16} aria-hidden /> {q.name}
+                  </h3>
+                  <span className="health-count">{results.length}</span>
+                </div>
+                <p className="muted-note">
+                  {type?.name ?? '?'}
+                  {q.conditions.length
+                    ? `: ${q.conditions.map(c => describeCondition(project, q.typeId, c)).join(' · ')}`
+                    : ''}
+                </p>
+                {results.length > 0 && (
+                  <div className="health-list">
+                    {results.slice(0, 30).map(n => (
+                      <NodeButton key={n.id} node={n} />
+                    ))}
+                    {results.length > 30 && <span className="muted">y {results.length - 30} más</span>}
+                  </div>
+                )}
+                <div className="query-actions">
+                  <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setEditing(q)}>
+                    Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={Trash2}
+                    onClick={() => {
+                      toast({ message: `Consulta «${q.name}» eliminada`, undoable: true });
+                      dispatch({ type: 'delete-query', id: q.id });
+                    }}
+                  >
+                    Eliminar
+                  </Button>
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+      {editing && <QueryDialog initial={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      <header className="health-summary health-summary-secondary">
         <HeartPulse size={22} aria-hidden />
         <div>
           <h2>Salud del mundo</h2>

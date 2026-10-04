@@ -1663,3 +1663,42 @@ button.mention:hover {
   color: var(--text-muted);
   text-align: right;
 }
+.health-summary .btn {
+  margin-left: auto;
+}
+.query-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: var(--space-3);
+}
+.query-conditions {
+  display: grid;
+  gap: 6px;
+}
+.query-condition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+.query-condition select,
+.query-condition input {
+  width: auto;
+  min-width: 120px;
+  flex: 1;
+}
+.query-add {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.query-add select {
+  width: auto;
+}
+.query-preview {
+  font-weight: 400;
+}
