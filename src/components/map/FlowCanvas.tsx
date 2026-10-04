@@ -36,6 +36,7 @@ import { EmptyState } from '../common/EmptyState';
 import { useToast } from '../common/toasts';
 import { FloatingEdge, type FloatingEdgeType } from './FloatingEdge';
 import { CanvasSettingsContext } from './canvasSettings';
+import { FallingPins, type FallingPin } from './FallingPins';
 import { FamilyLinks } from './FamilyLinks';
 import { autoLayout, familyUnits, genealogyStructure, NODE_H, NODE_W, type Link } from './layout';
 import { LegendPanel } from './LegendPanel';
@@ -216,6 +217,30 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     [project.nodes.length],
   );
   const container = useRef<HTMLElement>(null);
+  // Chinchetas arrancadas que caen por el lienzo.
+  const [fallingPins, setFallingPins] = useState<FallingPin[]>([]);
+  const [bounds, setBounds] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const el = container.current;
+    if (!el) return;
+    const measure = () => setBounds({ width: el.clientWidth, height: el.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const unpin = useCallback(
+    (id: string, origin: { x: number; y: number }) => {
+      const rect = container.current?.getBoundingClientRect();
+      if (rect)
+        setFallingPins(pins => [
+          ...pins,
+          { id: Date.now() + Math.random(), x: origin.x - rect.left - 15, y: origin.y - rect.top - 19 },
+        ]);
+      dispatch({ type: 'move-nodes', positions: { [id]: null } });
+    },
+    [dispatch],
+  );
 
   const nodes = useMemo<CardNode[]>(() => {
     const degree = new Map<string, number>();
@@ -242,6 +267,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             degree: degree.get(n.id) ?? 0,
             incomplete: isIncomplete(project, n.typeId, n.values),
             pinned: Boolean(n.positions[view.layout]),
+            onUnpin: (origin: { x: number; y: number }) => unpin(n.id, origin),
             image:
               allFields(project, n.typeId)
                 .filter(f => f.type === 'image')
@@ -250,7 +276,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           },
         };
       });
-  }, [project, view.layout, visibleIds, overrides, autoPositions, selectedNodeId]);
+  }, [project, view.layout, visibleIds, overrides, autoPositions, selectedNodeId, unpin]);
 
   const edges = useMemo<FloatingEdgeType[]>(() => {
     const result: FloatingEdgeType[] = [];
@@ -682,6 +708,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             <span className="badge">{edges.filter(e => e.data?.kind === 'relation').length} relaciones</span>
           </span>
         </div>
+        <FallingPins
+          pins={fallingPins}
+          bounds={bounds}
+          onDone={id => setFallingPins(pins => pins.filter(p => p.id !== id))}
+        />
         <ReactFlow
           nodes={nodes}
           edges={edges as Edge[]}

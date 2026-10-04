@@ -1,6 +1,7 @@
 import { Handle, Position, type Node as FlowNode, type NodeProps } from '@xyflow/react';
 import { TriangleAlert } from 'lucide-react';
-import { createElement, memo, type CSSProperties } from 'react';
+import { createElement, memo, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { PushpinIcon } from './Pushpin';
 import { typeIcon } from '../common/icon-catalog';
 
 export interface NodeCardData extends Record<string, unknown> {
@@ -14,6 +15,8 @@ export interface NodeCardData extends Record<string, unknown> {
   incomplete: boolean;
   /** Posición fijada por el usuario. */
   pinned: boolean;
+  /** Arrancar la chincheta (tras mantenerla pulsada): `origin` es el centro de la chincheta en pantalla. */
+  onUnpin?: (origin: { x: number; y: number }) => void;
   /** Retrato (data URL) del primer atributo de imagen con valor. */
   image: string | null;
 }
@@ -21,7 +24,31 @@ export interface NodeCardData extends Record<string, unknown> {
 export type CardNode = FlowNode<NodeCardData, 'card'>;
 
 /** Tarjeta de un nodo en el lienzo. Todo el borde admite conexiones; el asa de la derecha las inicia. */
+/** Tiempo que hay que mantener pulsada la chincheta para arrancarla. */
+export const PULL_MS = 1500;
+
 export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<CardNode>) {
+  const [pulling, setPulling] = useState(false);
+  const timer = useRef<number | null>(null);
+  const pinRef = useRef<HTMLSpanElement>(null);
+  const cancelPull = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    setPulling(false);
+  };
+  useEffect(() => cancelPull, []);
+  const startPull = (event: PointerEvent) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    setPulling(true);
+    timer.current = window.setTimeout(() => {
+      timer.current = null;
+      setPulling(false);
+      const rect = pinRef.current?.getBoundingClientRect();
+      if (rect) data.onUnpin?.({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    }, PULL_MS);
+  };
   return (
     <div
       className={`node-card-flow ${selected ? 'selected' : ''}`}
@@ -52,15 +79,17 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
         )}
       </div>
       {data.pinned && (
-        <span className="node-pushpin" title="Posición fijada en esta disposición" aria-hidden>
-          <svg viewBox="0 0 32 40" width="30" height="38">
-            <line x1="16" y1="24" x2="16" y2="39" stroke="#8d939c" strokeWidth="2.2" strokeLinecap="round" />
-            <line x1="16" y1="24" x2="16" y2="39" stroke="#d9dde3" strokeWidth="0.9" strokeLinecap="round" />
-            <ellipse cx="16" cy="22" rx="7" ry="2.6" fill="#b3202b" />
-            <path d="M11 6 Q16 3 21 6 L20.5 20 Q16 22.5 11.5 20 Z" fill="#e1343f" />
-            <ellipse cx="16" cy="6" rx="8" ry="4.2" fill="#f25560" />
-            <ellipse cx="13.5" cy="5" rx="2.6" ry="1.2" fill="#ffffff" opacity="0.65" />
-          </svg>
+        <span
+          ref={pinRef}
+          className={`node-pushpin nodrag nopan ${pulling ? 'pulling' : ''}`}
+          title="Posición fijada en esta disposición. Mantén pulsado para arrancar la chincheta."
+          onPointerDown={startPull}
+          onPointerUp={cancelPull}
+          onPointerLeave={cancelPull}
+          onPointerCancel={cancelPull}
+          onClick={e => e.stopPropagation()}
+        >
+          <PushpinIcon />
         </span>
       )}
       <Handle

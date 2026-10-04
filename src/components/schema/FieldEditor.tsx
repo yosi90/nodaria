@@ -128,11 +128,40 @@ export function FieldEditor({
             {hasDefault && (
               <label className="field">
                 Valor inicial
-                <input
-                  value={String(field.defaultValue ?? '')}
-                  placeholder={field.type === 'boolean' ? 'sí / no' : ''}
-                  onChange={event => set('defaultValue', event.target.value)}
-                />
+                {field.type === 'select' ? (
+                  <select
+                    value={field.options.includes(String(field.defaultValue ?? '')) ? String(field.defaultValue) : ''}
+                    onChange={event => set('defaultValue', event.target.value)}
+                  >
+                    <option value="">Sin valor inicial</option>
+                    {field.options.map(option => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : field.type === 'boolean' ? (
+                  <select
+                    value={
+                      ['true', 'sí', 'si', '1'].includes(
+                        String(field.defaultValue ?? '')
+                          .trim()
+                          .toLowerCase(),
+                      )
+                        ? 'sí'
+                        : 'no'
+                    }
+                    onChange={event => set('defaultValue', event.target.value)}
+                  >
+                    <option value="no">No</option>
+                    <option value="sí">Sí</option>
+                  </select>
+                ) : (
+                  <input
+                    value={String(field.defaultValue ?? '')}
+                    onChange={event => set('defaultValue', event.target.value)}
+                  />
+                )}
               </label>
             )}
           </div>

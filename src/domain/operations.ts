@@ -45,6 +45,8 @@ export function typedDefault(field: FieldDefinition): FieldValue | undefined {
     return typeof raw === 'boolean' ? raw : ['true', 'sí', 'si', '1'].includes(String(raw).trim().toLowerCase());
   if (field.type === 'nodeRefs') return Array.isArray(raw) ? raw : undefined;
   if (field.type === 'nodeRef') return undefined;
+  // Una lista de opciones solo admite como inicial una de sus opciones.
+  if (field.type === 'select') return field.options.includes(String(raw)) ? raw : undefined;
   return raw;
 }
 

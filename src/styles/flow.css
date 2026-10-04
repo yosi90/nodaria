@@ -120,7 +120,55 @@
   transform: rotate(28deg);
   transform-origin: 50% 90%;
   filter: drop-shadow(1px 2px 2px #0000006b);
+  cursor: grab;
+}
+.node-pushpin:active {
+  cursor: grabbing;
+}
+/* Mantener pulsada: se tambalea y va saliendo de la pared hasta soltarse. */
+.node-pushpin.pulling {
+  animation: pin-pull 1.5s ease-in forwards;
+}
+@keyframes pin-pull {
+  0% {
+    transform: rotate(28deg) translateY(0);
+  }
+  15% {
+    transform: rotate(20deg) translateY(-1px);
+  }
+  30% {
+    transform: rotate(36deg) translateY(-2px);
+  }
+  45% {
+    transform: rotate(18deg) translateY(-3px);
+  }
+  60% {
+    transform: rotate(38deg) translateY(-5px);
+  }
+  75% {
+    transform: rotate(16deg) translateY(-7px);
+  }
+  90% {
+    transform: rotate(40deg) translateY(-9px);
+  }
+  100% {
+    transform: rotate(28deg) translateY(-12px) scale(1.1);
+  }
+}
+/* Chinchetas cayendo por el lienzo. */
+.falling-pins {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  overflow: hidden;
   pointer-events: none;
+}
+.node-pushpin.falling {
+  top: 0;
+  right: auto;
+  left: 0;
+  transform-origin: 50% 50%;
+  will-change: transform;
 }
 .node-degree {
   min-width: 18px;
@@ -456,4 +504,12 @@
 }
 .workspace[data-labels='hover'] .react-flow__node.dimmed .node-card-flow {
   opacity: 0.18;
+}
+
+/* La tarjeta con chincheta queda por encima de sus vecinas: la chincheta sobresale y debe poder pulsarse. */
+.react-flow__node:has(.node-pushpin) {
+  z-index: 5 !important;
+}
+.react-flow__node.selected:has(.node-pushpin) {
+  z-index: 1001 !important;
 }

@@ -303,7 +303,8 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 - [x] Columna «Deducción» en el vocabulario (2026-10-04): cada término declara qué papel deducible representa (abuelo, nieto, hermano, tío, sobrino, primo); nada queda atado a identificadores del vocabulario inicial. Botón «Establecer» en los parentescos deducidos.
 - [x] Sospechosas al revés: la relación de ascendencia que, invertida, hace cuadrar al resto se marca en rojo con su explicación y «Invertir» destacado; las fichas afectadas señalan la causa.
 - [x] Disposición Genealogía: solo disponible si existe un tipo de relación genealógico; al entrar oculta los tipos de entidad que ningún parentesco admite y abre la leyenda; lo que el usuario oculte, muestre o cierre se recuerda por proyecto (preferencias del navegador) y al salir se restauran los filtros previos.
-- [x] Chincheta de cómic clavada en la esquina de la tarjeta.
+- [x] Chincheta de cómic clavada en la esquina de la tarjeta. Mantenerla pulsada segundo y medio la arranca (se tambalea y sale), el nodo vuelve a su sitio automático y la chincheta cae por el lienzo, rebota en el suelo, queda tumbada y se desvanece.
+- [x] Valor inicial de «Lista de opciones» elegido entre sus opciones (y «Sí/No» para booleanos); un valor fuera de la lista se ignora.
 - [x] Barra del lienzo: etiquetas «Disposición» y «Foco» dentro de su grupo, opción elegida en color de acento, menú «Vistas» con flecha.
 - [x] Genealogía: usa siempre la estructura de parentesco (aunque «Ver por» sea otra); hermanos y demás parientes sin ascendencia registrada se colocan en la fila de su generación; lugares y otros nodos sin parentesco en una fila aparte.
 
