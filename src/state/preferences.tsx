@@ -13,6 +13,16 @@ export interface Preferences {
   layouts: Record<string, Partial<Record<LayoutMode, LayoutPreference>>>;
   /** Vista Tabla: por proyecto y tipo, columnas ocultas y orden. */
   tables: Record<string, Record<string, TablePreference>>;
+  matrix: Record<string, MatrixPreference>;
+}
+
+/** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
+export interface MatrixPreference {
+  rowType: string;
+  colType: string;
+  relationType: string | null;
+  hideEmpty: boolean;
+  sortByCount: boolean;
 }
 
 export interface TablePreference {
@@ -37,6 +47,7 @@ const DEFAULTS: Preferences = {
   typeListWidth: 270,
   layouts: {},
   tables: {},
+  matrix: {},
 };
 
 function loadPreferences(): Preferences {

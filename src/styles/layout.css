@@ -1080,6 +1080,138 @@ button.mention:hover {
   background: var(--hover);
 }
 
+/* Matriz de relaciones */
+.matrix-toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-sm);
+}
+.matrix th,
+.matrix td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface-1);
+  vertical-align: bottom;
+}
+.matrix th.matrix-corner {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  min-width: 180px;
+  padding: 6px 10px;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  text-align: left;
+}
+.matrix th.matrix-row {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface-1);
+  text-align: left;
+}
+.matrix th.matrix-col {
+  width: 44px;
+  max-width: 44px;
+  height: 150px;
+}
+.matrix-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.matrix-head:hover span {
+  color: var(--accent);
+}
+.matrix-head span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.matrix-head small {
+  flex: none;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  text-align: center;
+}
+.matrix-col .matrix-head {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 150px;
+  padding: 8px 2px 6px;
+}
+.matrix-col .matrix-head span {
+  max-height: 112px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.matrix-toolbar .select-trigger {
+  flex: none;
+  width: 200px;
+}
+.matrix td {
+  width: 44px;
+  height: 36px;
+}
+.matrix td.matrix-self {
+  background: repeating-linear-gradient(45deg, transparent 0 4px, var(--border) 4px 5px);
+}
+.matrix-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 36px;
+  padding: 2px;
+  border: 0;
+  background: color-mix(in srgb, var(--accent) calc(var(--heat, 0) * 28%), transparent);
+  cursor: pointer;
+}
+.matrix-cell.empty:hover {
+  background: var(--hover);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.matrix-cell.filled:hover {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.matrix-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #0003;
+}
+.matrix-cell small {
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+}
+
 /* ---------- Relaciones en la ficha ---------- */
 .section-head {
   display: flex;

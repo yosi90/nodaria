@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Columns3, ExternalLink, Plus, Search, Table2, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Columns3, ExternalLink, Grid3x3, Plus, Search, Table2, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, fieldValue, getSchema, nodeLabel, typeMatches } from '../../domain/selectors';
@@ -16,6 +16,7 @@ import { Splitter } from '../common/Splitter';
 import { useToast } from '../common/toasts';
 import { FieldControl } from '../map/FieldControl';
 import { isImageValue } from '../map/images';
+import { MatrixView } from './MatrixView';
 
 /*
  * Vista «Tabla»: una hoja por tipo de entidad con una fila por nodo y una columna por atributo,
@@ -40,6 +41,7 @@ export function TableView() {
   const toast = useToast();
   const entityTypes = project.schemas.filter(s => s.kind === 'entity' && !s.isAbstract);
   const [typeId, setTypeId] = useState<string | null>(entityTypes[0]?.id ?? null);
+  const [matrix, setMatrix] = useState(false);
   const schema = typeId ? getSchema(project, typeId) : undefined;
   const [query, setQuery] = useState('');
   const [columnsAnchor, setColumnsAnchor] = useState<Anchor | null>(null);
@@ -185,11 +187,12 @@ export function TableView() {
             <button
               key={item.id}
               type="button"
-              className={`type-item ${item.id === schema?.id ? 'active' : ''}`}
+              className={`type-item ${!matrix && item.id === schema?.id ? 'active' : ''}`}
               data-type-id={item.id}
-              aria-current={item.id === schema?.id ? 'page' : undefined}
+              aria-current={!matrix && item.id === schema?.id ? 'page' : undefined}
               onClick={() => {
                 setTypeId(item.id);
+                setMatrix(false);
                 setQuery('');
               }}
             >
@@ -202,6 +205,21 @@ export function TableView() {
               </span>
             </button>
           ))}
+          <div className="type-group-title">Cruces</div>
+          <button
+            type="button"
+            className={`type-item ${matrix ? 'active' : ''}`}
+            aria-current={matrix ? 'page' : undefined}
+            onClick={() => setMatrix(true)}
+          >
+            <span className="type-icon" aria-hidden>
+              <Grid3x3 size={13} strokeWidth={2.2} />
+            </span>
+            <span className="names">
+              <strong>Matriz de relaciones</strong>
+              <small>tipo × tipo, huecos y concentraciones</small>
+            </span>
+          </button>
         </nav>
         <Splitter
           width={preferences.typeListWidth}
@@ -210,7 +228,9 @@ export function TableView() {
           onChange={width => setPreference('typeListWidth', width)}
         />
       </aside>
-      {schema ? (
+      {matrix ? (
+        <MatrixView />
+      ) : schema ? (
         <section className="table-main">
           <div className="workspace-toolbar">
             <TypeIcon icon={schema.icon} color={schema.color} />
