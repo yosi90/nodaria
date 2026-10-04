@@ -78,7 +78,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Vista «Tabla»
 
-- : hoja por tipo de entidad, editable en celda; reutiliza (extraído del inspector a ). Preferencias por proyecto y tipo en (columnas ocultas, orden).
+- `src/components/table/TableView.tsx`: hoja por tipo de entidad, editable en celda; reutiliza `FieldControl` (extraído del inspector a `src/components/map/FieldControl.tsx`). Preferencias por proyecto y tipo en `preferences.tables` (columnas ocultas, orden).
 
 ## Despliegue
 
