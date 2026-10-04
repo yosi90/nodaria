@@ -56,7 +56,7 @@ Configuración pública de la app web «Nodaria Web» (va en cada cliente; no es
 }
 ```
 
-En producción el front usará `authDomain: nodaria.yosiftware.es` (Hosting sirve `/__/auth/handler` en el dominio propio), que debe figurar en los dominios autorizados de Authentication.
+El front usa `authDomain: yosiftware-nodaria.firebaseapp.com`, como Lorcana. Pasar al dominio propio (`nodaria.yosiftware.es`, donde Hosting también sirve `/__/auth/handler`) exigiría autorizar `https://nodaria.yosiftware.es/__/auth/handler` como URI de redirección en el cliente OAuth de Google Cloud; el 2026-10-04 Google no mostraba el selector sin ese paso.
 
 ## Migraciones
 

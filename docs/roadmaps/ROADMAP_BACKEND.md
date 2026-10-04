@@ -79,7 +79,7 @@ Excluido (por ahora): colaboración en tiempo real sobre un mismo proyecto, comp
 
 ### Fase 5 — Cuenta en el front
 
-- [x] SDK de Firebase (`src/services/firebase.ts`) con idioma `es`; `authDomain` propio en producción.
+- [x] SDK de Firebase (`src/services/firebase.ts`) con idioma `es`. El `authDomain` propio se descartó el 2026-10-04 (Google no llegaba al selector de cuenta sin autorizar su URI de redirección en Google Cloud); se usa el de `firebaseapp.com`, como Lorcana.
 - [x] Cliente de la API (`src/services/api.ts`) con errores tipados y detección de «sin conexión».
 - [x] Estado de autenticación (`src/state/auth.tsx`): cargando, sin sesión, pendiente de verificar, con sesión.
 - [x] Diálogo de acceso: correo y contraseña, registro con verificación, Google, recuperación de contraseña, reenvío de verificación.
