@@ -80,9 +80,10 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 - `src/components/table/TableView.tsx`: hoja por tipo de entidad, editable en celda; reutiliza `FieldControl` (extraído del inspector a `src/components/map/FieldControl.tsx`). Preferencias por proyecto y tipo en `preferences.tables` (columnas ocultas, orden).
 
+
 ## Exportación de imagen
 
--  usa  (toPng / toSvg) sobre ; «todo el mapa» recalcula el transform a escala 1 con margen fijo (máximo 8192 px), «vista actual» captura el encuadre en pantalla.
+- `src/components/map/ExportMenu.tsx` usa `html-to-image` (`toPng` / `toSvg`) sobre `.react-flow__viewport`; «todo el mapa» recalcula el transform a escala 1 con margen fijo (máximo 8192 px) y «vista actual» captura el encuadre en pantalla.
 
 ## Despliegue
 
