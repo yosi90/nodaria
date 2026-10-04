@@ -215,9 +215,9 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [x] **Tipo de atributo «Imagen»**: la imagen se reduce a 384 px de lado mayor (JPEG) y se guarda en el valor del nodo; se muestra en la tarjeta del lienzo y en la cabecera del inspector en lugar del icono del tipo. Las búsquedas no indexan estos valores. _Límite mientras los datos vivan en `localStorage` (~5 MB en total): unos 20–40 KB por retrato._
 - [x] Corrección derivada: `allFields` solo sustituye por clave entre niveles de herencia; dentro de un mismo tipo se conservan todos los atributos aunque repitan clave.
 
-- [ ] Relaciones con **nombre por dirección** ("padre de" / "hijo de", "venera a" / "venerado por") y relaciones **simétricas** ("hermano de", "aliado de").
-- [ ] Atributos de relación visibles y editables (intensidad, desde cuándo, si es pública o secreta…).
-- [ ] Opción de **dibujar los campos de referencia como aristas** ("Dios: Aurel" se ve en el grafo sin crear además una relación). Decidir y documentar cuándo usar campo de referencia y cuándo relación.
+- [x] (hecho en fases anteriores: nombre inverso por tipo y por relación, sentido «Bidireccional», parentesco) Relaciones con **nombre por dirección** ("padre de" / "hijo de", "venera a" / "venerado por") y relaciones **simétricas** ("hermano de", "aliado de").
+- [x] (hecho: atributos de relación en el formulario de la ficha) Atributos de relación visibles y editables (intensidad, desde cuándo, si es pública o secreta…).
+- [x] (hecho: referencias dibujadas como aristas discontinuas y usables en «Ver por», ocultables en la leyenda) Opción de **dibujar los campos de referencia como aristas** ("Dios: Aurel" se ve en el grafo sin crear además una relación). Decidir y documentar cuándo usar campo de referencia y cuándo relación.
 - [ ] Nuevos tipos de campo: URL, color, escala (1–5), etiquetas, lista ordenada, fecha del mundo (ver Fase 5). _Imagen ya hecho._
 - [ ] Valores por defecto tipados y heredados.
 - [ ] Campos calculados reales (valor visible; funciones simples: contar relaciones, concatenar, referencia a un campo de otro nodo).
