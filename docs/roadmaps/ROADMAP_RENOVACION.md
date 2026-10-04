@@ -354,7 +354,7 @@ Criterio: una persona nueva crea un tipo, dos nodos y una relación sin ayuda ex
 | 1 — Sistema de diseño          | Pendiente               |
 | 2 — Lienzo de grafo            | Completada (2026-10-03) |
 | 3 — Fichas y navegación        | Pendiente               |
-| 4 — Modelo enriquecido         | Pendiente               |
+| 4 — Modelo enriquecido         | Completada (2026-10-04) |
 | 5 — Vistas y lentes            | Pendiente               |
 | 6 — Análisis                   | Pendiente               |
 | 7 — Persistencia y exportación | Pendiente               |
