@@ -129,8 +129,10 @@ describe('vistas guardadas', () => {
     p = applyLens(p, 'l1');
     expect(p.view.layout).toBe('force');
     expect(p.view.hiddenRelationTypeIds).toEqual(['venera']);
-    expect(p.nodes.find(n => n.id === 'aria')!.position).toEqual({ x: 10, y: 20 });
-    expect(p.nodes.find(n => n.id === 'hijo')!.position).toBeNull();
+    expect(p.nodes.find(n => n.id === 'aria')!.positions.force).toEqual({ x: 10, y: 20 });
+    expect(p.nodes.find(n => n.id === 'hijo')!.positions.force).toBeUndefined();
+    // Lo fijado en otra disposición no se toca.
+    expect(p.nodes.find(n => n.id === 'hijo')!.positions.tree).toEqual({ x: 5, y: 5 });
     p = deleteLens(p, 'l1');
     expect(p.lenses).toEqual([]);
     expect(p.view.lensId).toBeNull();

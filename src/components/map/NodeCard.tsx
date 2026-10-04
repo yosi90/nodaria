@@ -46,7 +46,7 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
           </span>
         )}
         {data.pinned && (
-          <span className="node-mark" title="Posición fijada">
+          <span className="node-mark pin" title="Posición fijada en esta disposición">
             <Pin size={11} />
           </span>
         )}

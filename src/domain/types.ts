@@ -74,6 +74,8 @@ export interface KinshipTerm {
   generation: number;
   /** Ascendencia directa: estas relaciones forman el árbol genealógico. */
   lineage: boolean;
+  /** Pareja: en la disposición genealógica los dos nodos se dibujan juntos, con sus hijos debajo. */
+  couple: boolean;
 }
 export type Position = { x: number; y: number };
 /** Los valores de nodos y relaciones se indexan por `FieldDefinition.id`, no por su clave. */
@@ -84,7 +86,8 @@ export interface Node {
   values: Record<string, FieldValue>;
   createdAt: string;
   /** Posición fijada por el usuario en el lienzo; `null` deja que la disposición automática la coloque. */
-  position: Position | null;
+  /** Posición fijada a mano en cada disposición del lienzo; sin entrada, se coloca automáticamente. */
+  positions: Partial<Record<LayoutMode, Position>>;
   /** Texto libre con menciones `[[Nombre]]` a otros nodos. */
   notes: string;
 }

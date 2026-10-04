@@ -15,7 +15,8 @@ const term = (
   counterpartId: string,
   generation: number,
   lineage = false,
-): KinshipTerm => ({ id, neutral, masculine, feminine, counterpartId, generation, lineage });
+  couple = false,
+): KinshipTerm => ({ id, neutral, masculine, feminine, counterpartId, generation, lineage, couple });
 
 /** Vocabulario inicial de un proyecto; el usuario puede cambiarlo, ampliarlo o reducirlo. */
 export function defaultKinship(): KinshipTerm[] {
@@ -34,8 +35,8 @@ export function defaultKinship(): KinshipTerm[] {
     term('tio', 'Tío/a', 'Tío', 'Tía', 'sobrino', 1),
     term('sobrino', 'Sobrino/a', 'Sobrino', 'Sobrina', 'tio', -1),
     term('primo', 'Primo/a', 'Primo', 'Prima', 'primo', 0),
-    term('pareja', 'Pareja', 'Pareja', 'Pareja', 'pareja', 0),
-    term('conyuge', 'Cónyuge', 'Esposo', 'Esposa', 'conyuge', 0),
+    term('pareja', 'Pareja', 'Pareja', 'Pareja', 'pareja', 0, false, true),
+    term('conyuge', 'Cónyuge', 'Esposo', 'Esposa', 'conyuge', 0, false, true),
     term('expareja', 'Expareja', 'Expareja', 'Expareja', 'expareja', 0),
     term('suegro', 'Suegro/a', 'Suegro', 'Suegra', 'yerno', 1),
     term('yerno', 'Yerno o nuera', 'Yerno', 'Nuera', 'suegro', -1),

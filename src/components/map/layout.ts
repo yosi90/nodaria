@@ -1,6 +1,7 @@
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
 import { hierarchy, tree } from 'd3-hierarchy';
-import { structureChildren, structureLinks } from '../../domain/structure';
+import { kinshipStructureLink } from '../../domain/kinship';
+import { structureChildren } from '../../domain/structure';
 import type { LayoutMode, Position, Project } from '../../domain/types';
 
 /*
@@ -199,57 +200,159 @@ export function genealogyStructure(p: Project, structureId: string | null): stri
 }
 
 /**
- * Disposición genealógica: generaciones en filas según el parentesco. Los nodos que no participan en
- * ningún vínculo de parentesco (lugares, objetos…) se alinean en una fila aparte, debajo.
+ * Disposición genealógica: cada generación en una fila; las parejas (término «pareja» o progenitores
+ * con hijos comunes) van juntas y sus hijos centrados debajo; los hermanos, contiguos. Los nodos sin
+ * ningún parentesco (lugares, objetos…) se alinean en una fila aparte, debajo.
  */
 export function genealogyLayout(p: Project, structureId: string | null): Map<string, Position> {
   const genealogyId = genealogyStructure(p, structureId);
   const genealogical = p.schemas.some(s => s.id === genealogyId && s.genealogical);
   if (!genealogical) return treeLayout(p, genealogyId, true);
-  const inTree = new Set<string>();
-  structureLinks(p, genealogyId).forEach(l => {
-    inTree.add(l.parentId);
-    inTree.add(l.childId);
-  });
-  const kin = p.relations.filter(r => r.typeId === genealogyId);
-  const family = p.nodes.filter(n => inTree.has(n.id));
-  if (!family.length) return treeLayout(p, genealogyId, true);
-  const result = treeLayout({ ...p, nodes: family }, genealogyId, true);
-  const rowGap = NODE_H + 90;
-  // Parientes sin ascendencia registrada (hermanos, tíos, primos…): a la altura que marca su término
-  // de parentesco respecto a un pariente ya colocado, a la derecha de esa fila.
-  const rightOf = (y: number) => {
-    let right = -Infinity;
-    result.forEach(pos => {
-      if (Math.abs(pos.y - y) < 1) right = Math.max(right, pos.x);
-    });
-    return right === -Infinity ? 0 : right + NODE_W + 40;
-  };
+  const ids = new Set(p.nodes.map(n => n.id));
   const terms = new Map(p.kinship.map(t => [t.id, t]));
-  let placed = true;
-  while (placed) {
-    placed = false;
-    kin.forEach(r => {
-      const g = terms.get(r.kinshipId ?? '')?.generation ?? 0;
-      const source = result.get(r.sourceId);
-      const target = result.get(r.targetId);
-      if (source && !target && p.nodes.some(n => n.id === r.targetId)) {
-        const y = source.y + g * rowGap;
-        result.set(r.targetId, { x: rightOf(y), y });
-        placed = true;
-      } else if (target && !source && p.nodes.some(n => n.id === r.sourceId)) {
-        const y = target.y - g * rowGap;
-        result.set(r.sourceId, { x: rightOf(y), y });
-        placed = true;
+  const kin = p.relations.filter(r => r.typeId === genealogyId && ids.has(r.sourceId) && ids.has(r.targetId));
+  if (!kin.length) return treeLayout(p, genealogyId, true);
+
+  // Vecinos con el salto de generación que impone cada término (+1: el destino está una fila más abajo).
+  const neighbors = new Map<string, { other: string; delta: number }[]>();
+  const push = (a: string, b: string, delta: number) =>
+    neighbors.set(a, [...(neighbors.get(a) ?? []), { other: b, delta }]);
+  const parentsOf = new Map<string, string[]>();
+  const childrenOf = new Map<string, string[]>();
+  const couples: [string, string][] = [];
+  const peers = new Map<string, string[]>();
+  kin.forEach(r => {
+    const t = terms.get(r.kinshipId ?? '');
+    const g = t?.generation ?? 0;
+    push(r.sourceId, r.targetId, g);
+    push(r.targetId, r.sourceId, -g);
+    const link = kinshipStructureLink(p, r);
+    if (link) {
+      parentsOf.set(link.childId, [...(parentsOf.get(link.childId) ?? []), link.parentId]);
+      childrenOf.set(link.parentId, [...(childrenOf.get(link.parentId) ?? []), link.childId]);
+    } else if (g === 0) {
+      if (t?.couple) couples.push([r.sourceId, r.targetId]);
+      else {
+        peers.set(r.sourceId, [...(peers.get(r.sourceId) ?? []), r.targetId]);
+        peers.set(r.targetId, [...(peers.get(r.targetId) ?? []), r.sourceId]);
       }
+    }
+  });
+  // Quienes comparten hijos también forman pareja.
+  parentsOf.forEach(ps => {
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) couples.push([ps[i], ps[j]]);
+  });
+
+  const rowGap = NODE_H + 90;
+  const coupleGap = 28;
+  const unitGap = 70;
+  const result = new Map<string, Position>();
+  let offsetX = 0;
+
+  // Cada componente conexo se dispone por separado y se coloca a la derecha del anterior.
+  const seen = new Set<string>();
+  p.nodes.forEach(root => {
+    if (seen.has(root.id) || !neighbors.has(root.id)) return;
+    // Generación de cada nodo, por anchura desde el primero (los conflictos se resuelven con la primera asignación).
+    const gen = new Map<string, number>([[root.id, 0]]);
+    const queue = [root.id];
+    seen.add(root.id);
+    while (queue.length) {
+      const id = queue.shift()!;
+      (neighbors.get(id) ?? []).forEach(({ other, delta }) => {
+        if (gen.has(other)) return;
+        gen.set(other, gen.get(id)! + delta);
+        seen.add(other);
+        queue.push(other);
+      });
+    }
+    const minGen = Math.min(...gen.values());
+    const rowOf = (id: string) => gen.get(id)! - minGen;
+    const rowCount = Math.max(...gen.values()) - minGen + 1;
+
+    // Unidades por fila: parejas de la misma fila van juntas (unión de parejas encadenadas).
+    const unitOf = new Map<string, string>();
+    const find = (id: string): string => {
+      const parent = unitOf.get(id) ?? id;
+      if (parent === id) return id;
+      const top = find(parent);
+      unitOf.set(id, top);
+      return top;
+    };
+    couples.forEach(([a, b]) => {
+      if (gen.has(a) && gen.has(b) && rowOf(a) === rowOf(b)) unitOf.set(find(a), find(b));
     });
-  }
+    const members = new Map<string, string[]>();
+    [...gen.keys()].forEach(id => members.set(find(id), [...(members.get(find(id)) ?? []), id]));
+    const rows: string[][] = Array.from({ length: rowCount }, () => []);
+    members.forEach((_, unit) => rows[rowOf(unit)].push(unit));
+
+    // Posición x (centro) de cada unidad; el centro de un nodo se deriva de su unidad.
+    const unitX = new Map<string, number>();
+    const widthOf = (unit: string) => members.get(unit)!.length * NODE_W + (members.get(unit)!.length - 1) * coupleGap;
+    const nodeX = (id: string) => {
+      const unit = find(id);
+      const list = members.get(unit)!;
+      const left = (unitX.get(unit) ?? 0) - widthOf(unit) / 2;
+      return left + list.indexOf(id) * (NODE_W + coupleGap) + NODE_W / 2;
+    };
+    const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+    // Punto preferido de una unidad: media de sus parientes en la fila indicada (o de sus iguales en la misma fila).
+    const desired = (unit: string, related: (id: string) => string[]) => {
+      const list = members.get(unit)!;
+      const xs = list.flatMap(id =>
+        related(id)
+          .filter(o => gen.has(o) && unitX.has(find(o)))
+          .map(nodeX),
+      );
+      if (xs.length) return mean(xs)!;
+      const same = list.flatMap(id =>
+        (peers.get(id) ?? []).filter(o => gen.has(o) && find(o) !== unit && unitX.has(find(o))).map(nodeX),
+      );
+      return mean(same) ?? unitX.get(unit) ?? 0;
+    };
+    // Coloca las unidades de una fila lo más cerca posible de su punto preferido, sin pisarse.
+    const place = (units: string[], want: Map<string, number>) => {
+      const order = [...units].sort((a, b) => want.get(a)! - want.get(b)!);
+      let right = -Infinity;
+      const xs: number[] = [];
+      order.forEach(unit => {
+        const half = widthOf(unit) / 2;
+        const x = Math.max(want.get(unit)!, right + unitGap + half);
+        xs.push(x);
+        right = x + half;
+      });
+      // El desplazamiento acumulado se reparte: la fila queda centrada sobre lo que pedía.
+      const shift = mean(order.map((u, i) => xs[i] - want.get(u)!)) ?? 0;
+      order.forEach((unit, i) => unitX.set(unit, xs[i] - shift));
+    };
+    rows.forEach(units => place(units, new Map(units.map((u, i) => [u, i * (NODE_W + unitGap)]))));
+    for (let pass = 0; pass < 4; pass++) {
+      for (let r = 1; r < rowCount; r++)
+        place(rows[r], new Map(rows[r].map(u => [u, desired(u, id => parentsOf.get(id) ?? [])])));
+      for (let r = rowCount - 2; r >= 0; r--)
+        place(rows[r], new Map(rows[r].map(u => [u, desired(u, id => childrenOf.get(id) ?? [])])));
+    }
+    // Última pasada hacia abajo: los hijos quedan centrados bajo sus padres.
+    for (let r = 1; r < rowCount; r++)
+      place(rows[r], new Map(rows[r].map(u => [u, desired(u, id => parentsOf.get(id) ?? [])])));
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    gen.forEach((_, id) => {
+      minX = Math.min(minX, nodeX(id) - NODE_W / 2);
+      maxX = Math.max(maxX, nodeX(id) + NODE_W / 2);
+    });
+    gen.forEach((_, id) => result.set(id, { x: offsetX + nodeX(id) - NODE_W / 2 - minX, y: rowOf(id) * rowGap }));
+    offsetX += maxX - minX + NODE_W / 2 + unitGap;
+  });
+
   // El resto (lugares, objetos…) se alinea en una fila aparte, debajo.
   let bottom = -Infinity;
   result.forEach(pos => (bottom = Math.max(bottom, pos.y)));
   bottom += NODE_H + 140;
   p.nodes.filter(n => !result.has(n.id)).forEach((n, i) => result.set(n.id, { x: i * (NODE_W + 40), y: bottom }));
-  return result;
+  return normalize(result);
 }
 
 /** Disposición automática según el modo. `links` son las conexiones visibles (relaciones y jerarquía). */

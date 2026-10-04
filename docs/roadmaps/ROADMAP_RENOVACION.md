@@ -293,6 +293,9 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 - [x] El lienzo recalcula la disposición al cambiar el tipo o el parentesco de una relación (antes solo al añadir o quitar nodos o relaciones).
 - [x] Vocabulario de parentesco: término nuevo vacío y enfocado; contraparte con sus formas; explicación de «Árbol».
 - [x] Fuerzas: respetan los nodos fijados con chincheta (entran como obstáculos inmóviles) y el resto se acomoda sin pisarlos.
+- [x] Genealogía (2026-10-04): disposición propia con parejas juntas (término «Pareja» o progenitores con hijos comunes), hijos centrados bajo sus padres, hermanos contiguos y líneas rectas para la ascendencia.
+- [x] Chincheta por disposición (2026-10-04): las posiciones fijadas pertenecen a la disposición en la que se arrastró el nodo (formato de proyecto v4, `Node.positions[layout]`); la chincheta se dibuja en color de acento.
+- [x] Barra del lienzo: etiquetas «Disposición» y «Foco» dentro de su grupo, opción elegida en color de acento, menú «Vistas» con flecha.
 - [x] Genealogía: usa siempre la estructura de parentesco (aunque «Ver por» sea otra); hermanos y demás parientes sin ascendencia registrada se colocan en la fila de su generación; lugares y otros nodos sin parentesco en una fila aparte.
 
 ### Fase 9 — Tutorial y primeros pasos

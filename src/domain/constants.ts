@@ -26,4 +26,4 @@ export const RELATION_STYLES: Record<RelationStyle, { label: string; dash?: stri
 };
 export const COLORS = ['#8d7dff', '#5bd6c4', '#ff9f68', '#67a9ff', '#e37ad8', '#d7c45d', '#77d28f', '#ff7f9d'];
 /** Versión actual del formato de proyecto. Cada incremento requiere un paso en `src/services/migrations.ts`. */
-export const PROJECT_FORMAT_VERSION = 3;
+export const PROJECT_FORMAT_VERSION = 4;

@@ -23,6 +23,7 @@ import type {
   Relation,
   Schema,
   SchemaKind,
+  LayoutMode,
 } from './types';
 
 /*
@@ -134,7 +135,7 @@ export function addNode(
     const value = typedDefault(f);
     if (value !== undefined) values[f.id] = value;
   });
-  const node: Node = { id, typeId, parentId, values, createdAt: now(), position: null, notes: '' };
+  const node: Node = { id, typeId, parentId, values, createdAt: now(), positions: {}, notes: '' };
   return { project: { ...p, nodes: [...p.nodes, node] }, nodeId: node.id };
 }
 
@@ -255,15 +256,25 @@ function removeTypeReferences(schemas: Schema[], typeIds: Set<string>, exceptSch
   });
 }
 
-/** Fija (o suelta, con `null`) la posición de varios nodos en el lienzo. */
-export function moveNodes(p: Project, positions: Record<string, Position | null>): Project {
+/** Posición fijada de un nodo en una disposición (la actual si no se indica). */
+export const pinnedPosition = (p: Project, n: Node, layout: LayoutMode = p.view.layout) => n.positions[layout];
+
+/** Fija (o suelta, con `null`) la posición de varios nodos en una disposición del lienzo (la actual si no se indica). */
+export function moveNodes(
+  p: Project,
+  positions: Record<string, Position | null>,
+  layout: LayoutMode = p.view.layout,
+): Project {
   let changed = false;
   const nodes = p.nodes.map(n => {
     if (!(n.id in positions)) return n;
     const next = positions[n.id];
-    if (next === n.position || (next && n.position && next.x === n.position.x && next.y === n.position.y)) return n;
+    const current = n.positions[layout];
+    if ((!next && !current) || (next && current && next.x === current.x && next.y === current.y)) return n;
     changed = true;
-    return { ...n, position: next ? { x: Math.round(next.x), y: Math.round(next.y) } : null };
+    const rest = { ...n.positions };
+    delete rest[layout];
+    return { ...n, positions: next ? { ...rest, [layout]: { x: Math.round(next.x), y: Math.round(next.y) } } : rest };
   });
   return changed ? { ...p, nodes } : p;
 }
@@ -325,7 +336,11 @@ export function updateNotes(p: Project, nodeId: string, notes: string): Project 
 /** Guarda la configuración actual del mapa como vista nueva (o sobrescribe `id`). */
 export function saveLens(p: Project, name: string, includePositions: boolean, id: string = uid('lens')): Project {
   const positions: Record<string, Position> = {};
-  if (includePositions) p.nodes.forEach(n => n.position && (positions[n.id] = n.position));
+  if (includePositions)
+    p.nodes.forEach(n => {
+      const pos = pinnedPosition(p, n);
+      if (pos) positions[n.id] = pos;
+    });
   const lens: Lens = {
     id,
     name,

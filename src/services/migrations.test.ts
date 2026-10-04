@@ -73,4 +73,17 @@ describe('importación y exportación', () => {
     expect(project.nodes[1].parentId).toBeNull();
     expect(issues).toHaveLength(1);
   });
+
+  it('conserva la posición fijada de v3 en la disposición que estaba activa', () => {
+    const p = migrateProject({
+      ...legacy(),
+      formatVersion: 3,
+      view: { layout: 'force' },
+      nodes: [
+        { id: 'n1', typeId: 't', parentId: null, values: {}, createdAt: '2026', position: { x: 3, y: 4 }, notes: '' },
+      ],
+    } as never);
+    expect(p.nodes[0].positions).toEqual({ force: { x: 3, y: 4 } });
+    expect(p.formatVersion).toBe(4);
+  });
 });

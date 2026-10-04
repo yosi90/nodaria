@@ -192,10 +192,10 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
                   <div className="field">
                     Posición en el lienzo
                     <div className="check-row">
-                      {node.position ? (
+                      {node.positions[project.view.layout] ? (
                         <>
                           <span className="badge">
-                            <Pin size={10} aria-hidden /> Fijada
+                            <Pin size={10} aria-hidden /> Fijada en esta disposición
                           </span>
                           <Button
                             size="sm"

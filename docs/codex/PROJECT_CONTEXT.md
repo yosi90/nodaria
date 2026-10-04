@@ -64,7 +64,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - `src/domain/connections.ts` reúne todo lo que conecta a un nodo (jerarquía, relaciones, referencias, menciones) para la pestaña Conexiones.
 - **Estructuras** (`src/domain/structure.ts`): la jerarquía «Dentro de» (`parentId`) es la estructura base. Un tipo de relación con `structural: true` define otra, con `parentEnd` indicando qué extremo es el superior; en ellas un nodo puede colgar de varios superiores. El árbol («Ver por») y la disposición jerárquica usan la estructura elegida en `Project.view.structureId`.
 
-`Project.formatVersion` indica la versión del formato (actual: 3; los datos sin versión se tratan como v2). `AppState.version` es 3. La clave histórica de persistencia es `nodaria_state_v1`. Debe mantenerse mientras sea posible para conservar los proyectos creados con la versión monolítica anterior.
+`Project.formatVersion` indica la versión del formato (actual: 4, posiciones fijadas por disposición en `Node.positions[layout]`; los datos sin versión se tratan como v2). `AppState.version` es 3. La clave histórica de persistencia es `nodaria_state_v1`. Debe mantenerse mientras sea posible para conservar los proyectos creados con la versión monolítica anterior.
 
 ## Estado técnico
 

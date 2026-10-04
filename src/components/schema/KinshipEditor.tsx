@@ -38,6 +38,7 @@ export function KinshipEditor() {
         counterpartId: id,
         generation: 0,
         lineage: false,
+        couple: false,
       },
     ]);
   };
@@ -91,7 +92,9 @@ export function KinshipEditor() {
         <strong>Árbol</strong>: marca los términos de ascendencia directa (Progenitor/a ↔ Hijo/a, Padrastro ↔ Hijastro).
         Solo esos cuelgan a un nodo de otro en «Ver por» y en la disposición Genealogía. Tío/a o Padrino/a están a una
         generación pero no son ascendencia, por eso van sin marcar; Hermano/a o Abuelo/a no pueden marcarse porque no
-        distan exactamente una generación.
+        distan exactamente una generación. <strong>Pareja</strong>: los dos nodos se dibujan juntos en la disposición
+        Genealogía y sus hijos comunes quedan centrados debajo (quienes comparten hijos se dibujan juntos aunque no
+        tengan marcado ningún término).
       </p>
       <div className="kinship-table">
         <div className="kinship-head">
@@ -101,6 +104,7 @@ export function KinshipEditor() {
           <span>Contraparte</span>
           <span>Generación</span>
           <span title="Solo los términos de una generación de distancia pueden formar el árbol">Árbol</span>
+          <span title="Los dos nodos se dibujan juntos en la genealogía, con sus hijos debajo">Pareja</span>
           <span />
         </div>
         {terms.map(t => (
@@ -144,7 +148,12 @@ export function KinshipEditor() {
               options={GENERATIONS.map(([g, label]) => ({ value: String(g), label }))}
               value={String(t.generation)}
               onChange={g =>
-                g !== null && update(t.id, { generation: Number(g), lineage: t.lineage && Math.abs(Number(g)) === 1 })
+                g !== null &&
+                update(t.id, {
+                  generation: Number(g),
+                  lineage: t.lineage && Math.abs(Number(g)) === 1,
+                  couple: t.couple && Number(g) === 0,
+                })
               }
             />
             <input
@@ -154,6 +163,14 @@ export function KinshipEditor() {
               disabled={Math.abs(t.generation) !== 1}
               title={Math.abs(t.generation) !== 1 ? 'Solo los términos de ascendencia directa (±1)' : undefined}
               onChange={e => update(t.id, { lineage: e.target.checked })}
+            />
+            <input
+              type="checkbox"
+              aria-label="Pareja"
+              checked={t.couple}
+              disabled={t.generation !== 0}
+              title={t.generation !== 0 ? 'Solo los términos de la misma generación' : undefined}
+              onChange={e => update(t.id, { couple: e.target.checked })}
             />
             <IconButton
               icon={Trash2}

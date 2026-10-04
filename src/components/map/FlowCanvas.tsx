@@ -18,6 +18,7 @@ import { Crosshair, GitBranch, LayoutGrid, Network, Orbit, SlidersHorizontal, Sp
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
 import { referenceFields, referenceLinks } from '../../domain/references';
+import { kinshipStructureLink } from '../../domain/kinship';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -139,8 +140,9 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   // Nodos con posición manual: la disposición por fuerzas los respeta y acomoda el resto alrededor.
   const fixed = useMemo(
-    () => new Map(project.nodes.filter(n => n.position).map(n => [n.id, n.position!])),
-    [project.nodes],
+    () =>
+      new Map(project.nodes.filter(n => n.positions[view.layout]).map(n => [n.id, n.positions[view.layout]!] as const)),
+    [project.nodes, view.layout],
   );
   // La disposición automática solo depende de la forma del grafo, no de los valores de los nodos.
   const layoutKey = JSON.stringify([
@@ -214,7 +216,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         return {
           id: n.id,
           type: 'card',
-          position: overrides[n.id] ?? n.position ?? autoPositions.get(n.id) ?? { x: 0, y: 0 },
+          position: overrides[n.id] ?? n.positions[view.layout] ?? autoPositions.get(n.id) ?? { x: 0, y: 0 },
           width: NODE_W,
           height: NODE_H,
           selected: selectedNodeId === n.id,
@@ -225,7 +227,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             icon: schema?.icon ?? 'circle',
             degree: degree.get(n.id) ?? 0,
             incomplete: isIncomplete(project, n.typeId, n.values),
-            pinned: n.position !== null,
+            pinned: Boolean(n.positions[view.layout]),
             image:
               allFields(project, n.typeId)
                 .filter(f => f.type === 'image')
@@ -234,7 +236,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           },
         };
       });
-  }, [project, visibleIds, overrides, autoPositions, selectedNodeId]);
+  }, [project, view.layout, visibleIds, overrides, autoPositions, selectedNodeId]);
 
   const edges = useMemo<FloatingEdgeType[]>(() => {
     const result: FloatingEdgeType[] = [];
@@ -319,12 +321,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           index: group.indexOf(r.id),
           count: group.length,
           labelT: labelT(r.sourceId, r.id),
+          straight: view.layout === 'genealogy' && schema?.genealogical && Boolean(kinshipStructureLink(project, r)),
           onSelect: () => onSelect({ kind: 'relation', id: r.id }),
         },
       });
     });
     return result;
-  }, [project, view.showHierarchy, visibleIds, hiddenRelations, selection, onSelect, refLinks, refFields]);
+  }, [project, view.showHierarchy, view.layout, visibleIds, hiddenRelations, selection, onSelect, refLinks, refFields]);
 
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
   // volver a renderizar los componentes: con cientos de nodos y miles de aristas eso costaría casi un segundo.
@@ -405,13 +408,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   const resetPositions = () => {
     const positions: Record<string, null> = {};
     project.nodes.forEach(n => (positions[n.id] = null));
-    toast({ message: 'Posiciones restablecidas a la disposición automática', undoable: true });
+    toast({ message: 'Posiciones de esta disposición restablecidas a la automática', undoable: true });
     dispatch({ type: 'move-nodes', positions });
     window.setTimeout(() => flow.fitView({ padding: 0.2, duration: 300 }), 50);
   };
 
   const setView = (patch: Partial<Project['view']>) => dispatch({ type: 'update-view', view: patch });
-  const pinnedCount = project.nodes.filter(n => n.position).length;
+  const pinnedCount = project.nodes.filter(n => n.positions[view.layout]).length;
   const selectedNode = selectedNodeId ? getNode(project, selectedNodeId) : undefined;
 
   if (!project.nodes.length)
@@ -431,7 +434,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       <section ref={container} className="workspace flow" data-labels={view.edgeLabels} onDoubleClick={onDoubleClick}>
         <div className="workspace-toolbar flow-toolbar">
           <LensMenu />
-          <div className="segmented" role="group" aria-label="Disposición">
+          <div className="segmented labeled" role="group" aria-label="Disposición">
+            <span className="segmented-label">Disposición</span>
             {LAYOUTS.map(({ mode, label, icon: Icon, hint }) => (
               <button
                 key={mode}
@@ -458,13 +462,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
               </button>
             ))}
           </div>
-          <span
-            className="flow-toolbar-label"
-            title="Con un nodo seleccionado, muestra solo lo que está a 1, 2 o 3 saltos"
-          >
-            Foco
-          </span>
-          <div className="segmented" role="group" aria-label="Modo foco">
+          <div className="segmented labeled" role="group" aria-label="Modo foco">
+            <span
+              className="segmented-label"
+              title="Con un nodo seleccionado, muestra solo lo que está a 1, 2 o 3 saltos"
+            >
+              Foco
+            </span>
             <button
               type="button"
               aria-pressed={view.focusDepth === 0}

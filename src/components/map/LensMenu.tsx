@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkPlus, Check, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Bookmark, BookmarkPlus, Check, ChevronDown, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useApp } from '../../state/AppContext';
 import { anchorOf, type Anchor } from '../common/anchor';
@@ -78,8 +78,9 @@ export function LensMenu() {
         onClick={event => (anchor ? close() : setAnchor(anchorOf(event.currentTarget)))}
       >
         <Bookmark size={14} aria-hidden />
-        {active ? active.name : 'Vista'}
+        {active ? active.name : 'Vistas'}
         {active && <Check size={12} aria-hidden />}
+        <ChevronDown size={12} aria-hidden className="menu-caret" />
       </button>
       {anchor && <Menu anchor={anchor} entries={entries} onClose={close} label="Vistas guardadas" />}
       {saving && <SaveLensModal onClose={() => setSaving(false)} />}
@@ -91,8 +92,8 @@ function SaveLensModal({ onClose }: { onClose: () => void }) {
   const { project, dispatch } = useApp();
   const toast = useToast();
   const [name, setName] = useState('');
-  const [includePositions, setIncludePositions] = useState(project.nodes.some(n => n.position));
-  const pinned = project.nodes.filter(n => n.position).length;
+  const pinned = project.nodes.filter(n => n.positions[project.view.layout]).length;
+  const [includePositions, setIncludePositions] = useState(pinned > 0);
   return (
     <Modal
       title="Guardar vista"

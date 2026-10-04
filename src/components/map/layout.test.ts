@@ -103,4 +103,48 @@ describe('genealogía', () => {
     expect(pos.get('tio')!.y).toBe(pos.get('madre')!.y);
     expect(pos.get('ciudad')!.y).toBeGreaterThan(pos.get('hija')!.y);
   });
+
+  it('coloca a las parejas juntas, a los hijos centrados debajo y a los hermanos contiguos', () => {
+    const p = project({
+      schemas: [schema('t'), schema('familia', { genealogical: true }, 'relationship'), schema('lugar')],
+      nodes: [
+        node('arnold', 't'),
+        node('obkea', 't'),
+        node('guayota', 't'),
+        node('achaman', 't'),
+        node('kunoa', 't'),
+        node('araluna', 't'),
+        node('ciudad', 'lugar'),
+      ],
+      relations: [
+        { ...relation('m', 'familia', 'arnold', 'obkea'), kinshipId: 'conyuge' },
+        { ...relation('h1', 'familia', 'arnold', 'guayota'), kinshipId: 'progenitor' },
+        { ...relation('h2', 'familia', 'obkea', 'guayota'), kinshipId: 'progenitor' },
+        { ...relation('h3', 'familia', 'arnold', 'achaman'), kinshipId: 'progenitor' },
+        { ...relation('h4', 'familia', 'obkea', 'achaman'), kinshipId: 'progenitor' },
+        { ...relation('s', 'familia', 'kunoa', 'obkea'), kinshipId: 'sobrino' },
+        { ...relation('e', 'familia', 'araluna', 'obkea'), kinshipId: 'hijastro' },
+      ],
+    });
+    const pos = genealogyLayout(p, null);
+    const at = (id: string) => pos.get(id)!;
+    // Pareja en la misma fila y contigua
+    expect(at('arnold').y).toBe(at('obkea').y);
+    expect(Math.abs(at('arnold').x - at('obkea').x)).toBeLessThan(NODE_W + 60);
+    // Hijos, hijastra y sobrina una fila más abajo
+    ['guayota', 'achaman', 'araluna', 'kunoa'].forEach(id => expect(at(id).y).toBeGreaterThan(at('arnold').y));
+    expect(new Set(['guayota', 'achaman', 'araluna', 'kunoa'].map(id => at(id).y)).size).toBe(1);
+    // Los hijos comunes quedan centrados bajo la pareja
+    const coupleCenter = (at('arnold').x + at('obkea').x) / 2;
+    const kidsCenter = (at('guayota').x + at('achaman').x) / 2;
+    expect(Math.abs(coupleCenter - kidsCenter)).toBeLessThan(NODE_W);
+    // Nadie se pisa y la ciudad va en su propia fila, debajo
+    const all = [...pos.entries()];
+    all.forEach(([a, m]) =>
+      all.forEach(
+        ([b, n]) => a !== b && expect(Math.abs(m.x - n.x) >= NODE_W || Math.abs(m.y - n.y) >= NODE_H).toBe(true),
+      ),
+    );
+    expect(at('ciudad').y).toBeGreaterThan(at('guayota').y);
+  });
 });

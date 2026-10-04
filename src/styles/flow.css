@@ -108,6 +108,9 @@
 .node-mark.warning {
   color: var(--warning);
 }
+.node-mark.pin {
+  color: var(--accent);
+}
 .node-degree {
   min-width: 18px;
   padding: 0 5px;
@@ -231,6 +234,12 @@
 }
 .flow-toolbar .segmented {
   background: var(--surface-2);
+}
+.flow-toolbar .segmented.labeled {
+  background: var(--surface-inset);
+}
+.flow-toolbar .segmented.labeled button:not([aria-pressed='true']) {
+  background: transparent;
 }
 .flow-toolbar-group {
   display: flex;

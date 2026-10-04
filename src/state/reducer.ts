@@ -13,6 +13,7 @@ import type {
   Relation,
   Schema,
   SchemaKind,
+  LayoutMode,
 } from '../domain/types';
 
 export type Action =
@@ -42,7 +43,7 @@ export type Action =
       structureId?: string | null;
       position?: Position | null;
     }
-  | { type: 'move-nodes'; positions: Record<string, Position | null> }
+  | { type: 'move-nodes'; positions: Record<string, Position | null>; layout?: LayoutMode }
   | { type: 'update-notes'; id: string; notes: string }
   | { type: 'update-view'; view: Partial<ProjectView> }
   | { type: 'save-lens'; name: string; includePositions: boolean; id?: string }
@@ -141,7 +142,7 @@ function projectReducer(p: Project, action: Action): Project {
         action.position,
       );
     case 'move-nodes':
-      return ops.moveNodes(p, action.positions);
+      return ops.moveNodes(p, action.positions, action.layout);
     case 'update-notes':
       return ops.updateNotes(p, action.id, action.notes);
     case 'update-view':
