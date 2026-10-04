@@ -16,6 +16,48 @@ function drop(x: number, from: number, to: number, turn: 0 | 1 | -1) {
   return `M${x},${from} L${x},${to - dir * R} Q${x},${to} ${x + turn * R},${to}`;
 }
 
+/** Parentesco que no forma familia (hermanos sin progenitores comunes, tíos, padrinos…). */
+export interface KinLink {
+  key: string;
+  a: string;
+  b: string;
+  label: string;
+}
+
+/**
+ * Trazo ortogonal entre dos parientes: en la misma fila, un puente por encima de las tarjetas; en filas
+ * distintas, bajada del superior, tramo horizontal en el hueco entre filas y bajada hasta el inferior.
+ * Devuelve el trazo y el punto donde va la etiqueta.
+ */
+export function kinPath(a: Position, b: Position): { d: string; label: { x: number; y: number } } | null {
+  if (Math.abs(a.y - b.y) < 1) {
+    const [l, rt] = a.x < b.x ? [a, b] : [b, a];
+    const lx = l.x + NODE_W / 2;
+    const rx = rt.x + NODE_W / 2;
+    if (rx - lx < 2) return null;
+    const top = l.y;
+    const y = top - 26;
+    const r = Math.min(R, (rx - lx) / 2);
+    return {
+      d: `M${lx},${top} L${lx},${y + r} Q${lx},${y} ${lx + r},${y} L${rx - r},${y} Q${rx},${y} ${rx},${y + r} L${rx},${top}`,
+      label: { x: (lx + rx) / 2, y: y - 5 },
+    };
+  }
+  const [u, d] = a.y < b.y ? [a, b] : [b, a];
+  const ux = u.x + NODE_W / 2;
+  const uy = u.y + NODE_H;
+  const dx = d.x + NODE_W / 2;
+  const dy = d.y;
+  const busY = uy + 32;
+  if (Math.abs(ux - dx) < 2) return { d: `M${ux},${uy} L${dx},${dy}`, label: { x: ux + 6, y: busY } };
+  const dir = dx > ux ? 1 : -1;
+  const r = Math.min(R, Math.abs(dx - ux) / 2, busY - uy, Math.max(1, dy - busY));
+  return {
+    d: `M${ux},${uy} L${ux},${busY - r} Q${ux},${busY} ${ux + dir * r},${busY} L${dx - dir * r},${busY} Q${dx},${busY} ${dx},${busY + r} L${dx},${dy}`,
+    label: { x: (ux + dx) / 2, y: busY - 5 },
+  };
+}
+
 /** Dibuja una familia: devuelve los trazos SVG (`d`). */
 export function familyPaths(unit: FamilyUnit, positions: Map<string, Position>): string[] {
   const parents = unit.parents.map(id => positions.get(id)).filter((p): p is Position => Boolean(p));

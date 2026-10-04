@@ -296,6 +296,10 @@ Criterio: todas las funciones son opcionales, desactivables y no modifican datos
 - [x] Genealogía (2026-10-04): disposición propia con parejas juntas (término «Pareja» o progenitores con hijos comunes), hijos centrados bajo sus padres, hermanos contiguos y líneas rectas para la ascendencia.
 - [x] Chincheta por disposición (2026-10-04): las posiciones fijadas pertenecen a la disposición en la que se arrastró el nodo (formato de proyecto v4, `Node.positions[layout]`); la chincheta se dibuja en color de acento.
 - [x] Conectores de familia en Genealogía (2026-10-04): barra entre la pareja, bajada única, bus horizontal y bajadas en ángulo recto con esquinas redondeadas a cada hijo; sustituyen a las flechas de progenitor y cónyuge en esa disposición.
+- [x] Parentesco deducido (2026-10-04): abuelos, nietos, hermanos, tíos, sobrinos y primos se deducen de la ascendencia directa; se listan en la ficha («Deducido por el árbol») y en Genealogía las relaciones explícitas que ya se deducen no se dibujan.
+- [x] Genealogía: todo el parentesco va en trazos ortogonales (puente por encima entre parientes de la misma fila; bajada, tramo horizontal y bajada entre filas), con etiqueta y clic para seleccionar; filas más separadas; generaciones fieles a la ascendencia (camino más largo) aunque otra relación contradiga.
+- [x] Formulario de relación: en parentesco el término siempre describe a este nodo («Grugnak es…»), sin selector de sentido; el editor se desplaza a la vista al abrirse.
+- [ ] Parentesco en conflicto (una relación de ascendencia al revés respecto al resto del árbol): avisar en integridad y ofrecer invertirla.
 - [x] Barra del lienzo: etiquetas «Disposición» y «Foco» dentro de su grupo, opción elegida en color de acento, menú «Vistas» con flecha.
 - [x] Genealogía: usa siempre la estructura de parentesco (aunque «Ver por» sea otra); hermanos y demás parientes sin ascendencia registrada se colocan en la fila de su generación; lugares y otros nodos sin parentesco en una fila aparte.
 

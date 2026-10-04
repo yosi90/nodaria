@@ -1,6 +1,7 @@
 import { ArrowLeftRight, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { nodeConnections } from '../../domain/connections';
+import { derivedKinship, kinshipName, kinshipTerm, nodeGender } from '../../domain/kinship';
 import { uid } from '../../domain/factories';
 import { allFields, getNode, getSchema, nodeLabel, relationRole, typeMatches } from '../../domain/selectors';
 import type { FieldValue, Relation, Schema } from '../../domain/types';
@@ -120,7 +121,52 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
           </p>
         )
       )}
+      <DerivedKinship nodeId={nodeId} />
     </section>
+  );
+}
+
+/** Parentescos que el árbol deduce para este nodo (abuelos, hermanos, tíos, primos…) sin que haya relación explícita. */
+function DerivedKinship({ nodeId }: { nodeId: string }) {
+  const { project } = useApp();
+  const { select } = useNavigation();
+  const me = getNode(project, nodeId);
+  if (!me) return null;
+  const explicit = new Set(
+    project.relations.flatMap(r => [`${r.sourceId}|${r.targetId}`, `${r.targetId}|${r.sourceId}`]),
+  );
+  const derived = project.schemas
+    .filter(s => s.kind === 'relationship' && s.genealogical)
+    .flatMap(s => derivedKinship(project, s.id))
+    .filter(d => d.sourceId === nodeId && !explicit.has(`${d.sourceId}|${d.targetId}`));
+  if (!derived.length) return null;
+  return (
+    <div className="derived-kin">
+      <small className="muted">Deducido por el árbol (sin crear relación):</small>
+      <ul>
+        {derived.map(d => {
+          const term = kinshipTerm(project, d.termId);
+          const other = getNode(project, d.targetId);
+          const via = getNode(project, d.via);
+          if (!term || !other) return null;
+          return (
+            <li key={`${d.targetId}|${d.termId}`}>
+              {kinshipName(term, nodeGender(project, me))} de{' '}
+              <span
+                className="relation-other"
+                role="link"
+                tabIndex={0}
+                onClick={() => select({ kind: 'node', id: other.id }, { reveal: true })}
+                onKeyDown={e => e.key === 'Enter' && select({ kind: 'node', id: other.id }, { reveal: true })}
+              >
+                {nodeLabel(project, other)}
+              </span>
+              {via && <span className="muted"> · por {nodeLabel(project, via)}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -160,13 +206,20 @@ function RelationForm({
   );
   const [values, setValues] = useState<Record<string, FieldValue>>(relation?.values ?? {});
   const [reverseName, setReverseName] = useState(relation?.reverseName ?? '');
-  const [kinshipId, setKinshipId] = useState<string | null>(relation?.kinshipId ?? null);
+  // En parentesco el término siempre describe a este nodo: si la relación se guardó desde el otro
+  // extremo, se muestra la contraparte y al guardar se normaliza con este nodo como origen.
+  const [kinshipId, setKinshipId] = useState<string | null>(() => {
+    if (!relation?.kinshipId) return null;
+    if (relation.sourceId === nodeId) return relation.kinshipId;
+    return kinshipTerm(project, relation.kinshipId)?.counterpartId ?? relation.kinshipId;
+  });
   const [kinshipNeutral, setKinshipNeutral] = useState(relation?.kinshipNeutral ?? false);
   const schema = getSchema(project, typeId);
   const fields = schema ? allFields(project, schema.id) : [];
 
-  const otherEnd: 'sourceTypeIds' | 'targetTypeIds' = iAmSource ? 'targetTypeIds' : 'sourceTypeIds';
-  const myEnd: 'sourceTypeIds' | 'targetTypeIds' = iAmSource ? 'sourceTypeIds' : 'targetTypeIds';
+  const asSource = iAmSource || Boolean(schema?.genealogical);
+  const otherEnd: 'sourceTypeIds' | 'targetTypeIds' = asSource ? 'targetTypeIds' : 'sourceTypeIds';
+  const myEnd: 'sourceTypeIds' | 'targetTypeIds' = asSource ? 'sourceTypeIds' : 'targetTypeIds';
   const candidates = schema
     ? project.nodes.filter(n => n.id !== nodeId && typeMatches(project, n.typeId, schema[otherEnd]))
     : [];
@@ -174,10 +227,17 @@ function RelationForm({
   const validOther = otherId && candidates.some(n => n.id === otherId) ? otherId : null;
   const canSave = Boolean(schema && validOther && myTypeOk && (!schema.genealogical || kinshipId));
 
+  const formRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // El editor se abre dentro de la ficha: se trae a la vista para que no quede oculto abajo.
+    formRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, []);
+
   const save = () => {
     if (!schema || !validOther) return;
-    const sourceId = iAmSource ? nodeId : validOther;
-    const targetId = iAmSource ? validOther : nodeId;
+    const asSource = iAmSource || schema.genealogical;
+    const sourceId = asSource ? nodeId : validOther;
+    const targetId = asSource ? validOther : nodeId;
     if (relation) {
       dispatch({
         type: 'update-relation',
@@ -218,7 +278,7 @@ function RelationForm({
   const typeOptions = relationTypes.map(s => schemaOption(s));
   const sides = schema ? sidesFor(schema) : { source: true, target: true };
   // El sentido solo se elige cuando este nodo encaja en los dos extremos.
-  const canChooseSide = Boolean(schema?.directed && sides.source && sides.target);
+  const canChooseSide = Boolean(schema?.directed && !schema.genealogical && sides.source && sides.target);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     const target = event.target as HTMLElement;
@@ -232,7 +292,7 @@ function RelationForm({
   };
 
   return (
-    <div className="relation-form" onKeyDown={onKeyDown}>
+    <div className="relation-form" ref={formRef} onKeyDown={onKeyDown}>
       <div className="form-grid">
         <div className="field">
           Tipo de relación
@@ -267,7 +327,7 @@ function RelationForm({
           </div>
         )}
         <div className="field">
-          {iAmSource ? 'Con' : 'Desde'}
+          {asSource ? 'Con' : 'Desde'}
           <Select
             aria-label="Otro nodo"
             options={candidates.map(n => nodeOption(project, n))}
@@ -283,8 +343,8 @@ function RelationForm({
         </div>
         {schema?.genealogical && (
           <KinshipFields
-            sourceId={iAmSource ? nodeId : validOther}
-            targetId={iAmSource ? validOther : nodeId}
+            sourceId={nodeId}
+            targetId={validOther}
             kinshipId={kinshipId}
             neutral={kinshipNeutral}
             onChange={patch => {

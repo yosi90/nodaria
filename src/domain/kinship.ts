@@ -94,6 +94,83 @@ export function kinshipStructureLink(p: Project, r: Relation): { parentId: strin
     : { parentId: r.targetId, childId: r.sourceId };
 }
 
+/** Parentesco deducido del árbol: `sourceId` es `termId` de `targetId`, a través de `via`. */
+export interface DerivedKin {
+  sourceId: string;
+  targetId: string;
+  termId: string;
+  via: string;
+}
+
+/** Términos que describen a hermanos (comparten al menos un progenitor). */
+const SIBLING_TERMS = ['hermano', 'medio_hermano', 'gemelo'];
+
+/**
+ * Parentescos que se deducen de la ascendencia directa: abuelos y nietos (progenitor del
+ * progenitor), hermanos (comparten progenitor), tíos y sobrinos (hermanos del progenitor, explícitos
+ * o deducidos) y primos (hijos de los tíos). Solo se emiten los términos que existan en el
+ * vocabulario, por su identificador original (`abuelo`, `nieto`, `hermano`, `tio`, `sobrino`, `primo`).
+ */
+export function derivedKinship(p: Project, genealogyId: string): DerivedKin[] {
+  const has = (id: string) => p.kinship.some(t => t.id === id);
+  const parentsOf = new Map<string, string[]>();
+  const childrenOf = new Map<string, string[]>();
+  const explicitSiblings = new Map<string, string[]>();
+  p.relations
+    .filter(r => r.typeId === genealogyId)
+    .forEach(r => {
+      const link = kinshipStructureLink(p, r);
+      if (link) {
+        parentsOf.set(link.childId, [...(parentsOf.get(link.childId) ?? []), link.parentId]);
+        childrenOf.set(link.parentId, [...(childrenOf.get(link.parentId) ?? []), link.childId]);
+      } else if (r.kinshipId && SIBLING_TERMS.includes(r.kinshipId)) {
+        explicitSiblings.set(r.sourceId, [...(explicitSiblings.get(r.sourceId) ?? []), r.targetId]);
+        explicitSiblings.set(r.targetId, [...(explicitSiblings.get(r.targetId) ?? []), r.sourceId]);
+      }
+    });
+  const out: DerivedKin[] = [];
+  const seen = new Set<string>();
+  const add = (sourceId: string, targetId: string, termId: string, via: string) => {
+    if (sourceId === targetId || !has(termId)) return;
+    const key = `${sourceId}|${targetId}|${termId}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ sourceId, targetId, termId, via });
+  };
+  const siblingsOf = (id: string) => {
+    const result = new Set(explicitSiblings.get(id) ?? []);
+    (parentsOf.get(id) ?? []).forEach(par => (childrenOf.get(par) ?? []).forEach(s => s !== id && result.add(s)));
+    return [...result];
+  };
+  p.nodes.forEach(n => {
+    (parentsOf.get(n.id) ?? []).forEach(par => {
+      (parentsOf.get(par) ?? []).forEach(gp => {
+        add(gp, n.id, 'abuelo', par);
+        add(n.id, gp, 'nieto', par);
+      });
+      (childrenOf.get(par) ?? []).forEach(sib => add(n.id, sib, 'hermano', par));
+      siblingsOf(par).forEach(uncle => {
+        add(uncle, n.id, 'tio', par);
+        add(n.id, uncle, 'sobrino', par);
+        (childrenOf.get(uncle) ?? []).forEach(cousin => add(n.id, cousin, 'primo', uncle));
+      });
+    });
+  });
+  return out;
+}
+
+/** Claves `origen|destino|término` de los parentescos deducidos, para saber si una relación explícita ya se deduce. */
+export function impliedKinship(p: Project, genealogyId: string): Set<string> {
+  return new Set(derivedKinship(p, genealogyId).map(d => `${d.sourceId}|${d.targetId}|${d.termId}`));
+}
+
+/** Una relación de parentesco explícita que el árbol ya deduce (abuelo, hermano, tío, sobrino, primo). */
+export function isImpliedKinship(implied: Set<string>, r: Relation): boolean {
+  if (!r.kinshipId) return false;
+  const term = SIBLING_TERMS.includes(r.kinshipId) ? 'hermano' : r.kinshipId;
+  return implied.has(`${r.sourceId}|${r.targetId}|${term}`);
+}
+
 /** Término por defecto al crear «dentro de» un ascendiente: el primer descendiente directo. */
 export const defaultChildTerm = (p: Project) => p.kinship.find(t => t.lineage && t.generation < 0) ?? null;
 

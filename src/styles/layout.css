@@ -978,6 +978,20 @@ button.mention:hover {
   gap: 6px;
   overflow-x: auto;
 }
+.derived-kin {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+}
+.derived-kin ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.derived-kin li {
+  margin: 2px 0;
+}
 .kinship-head,
 .kinship-row {
   display: grid;

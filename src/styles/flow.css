@@ -176,8 +176,30 @@
   stroke-linejoin: round;
   transition: opacity 0.15s var(--ease);
 }
-.family-link.dimmed {
+.family-link.dimmed,
+.family-kin.dimmed {
   opacity: 0.15;
+}
+.family-kin {
+  cursor: pointer;
+  pointer-events: visibleStroke;
+  transition: opacity 0.15s var(--ease);
+}
+.family-link.secondary {
+  stroke-width: 1.5;
+  stroke-dasharray: 3 5;
+  opacity: 0.85;
+}
+.family-kin:hover .family-link.secondary {
+  stroke-dasharray: none;
+  opacity: 1;
+}
+.family-label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+  pointer-events: none;
 }
 .react-flow__edge-path.edge-flow {
   stroke-width: 2;

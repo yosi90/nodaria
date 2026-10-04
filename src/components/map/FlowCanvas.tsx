@@ -18,7 +18,13 @@ import { Crosshair, GitBranch, LayoutGrid, Network, Orbit, SlidersHorizontal, Sp
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
 import { referenceFields, referenceLinks } from '../../domain/references';
-import { kinshipStructureLink, kinshipTerm } from '../../domain/kinship';
+import {
+  impliedKinship,
+  isImpliedKinship,
+  kinshipRoles,
+  kinshipStructureLink,
+  kinshipTerm,
+} from '../../domain/kinship';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -254,11 +260,9 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         });
       });
     const pairs = new Map<string, string[]>();
-    // En Genealogía, progenitores y parejas se dibujan como conectores de familia, no como flechas.
+    // En Genealogía, el parentesco se dibuja con conectores ortogonales (FamilyLinks), no como flechas.
     const genealogyId = view.layout === 'genealogy' ? genealogyStructure(project, structure.id) : null;
-    const asFamily = (r: Relation) =>
-      r.typeId === genealogyId &&
-      Boolean(kinshipStructureLink(project, r) || kinshipTerm(project, r.kinshipId)?.couple);
+    const asFamily = (r: Relation) => r.typeId === genealogyId && getSchema(project, r.typeId)?.genealogical === true;
     const shown = project.relations.filter(
       r => !hiddenRelations.has(r.typeId) && visibleIds.has(r.sourceId) && visibleIds.has(r.targetId) && !asFamily(r),
     );
@@ -359,7 +363,25 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         children: u.children.filter(id => positions.has(id)),
       }))
       .filter(u => u.parents.length);
-    return { units, positions, color: schema.color };
+    // Parentesco que no forma familia ni se deduce del árbol (abuelos, tíos, primos y hermanos con
+    // progenitores comunes se sobreentienden y no se dibujan).
+    const implied = impliedKinship(project, schema.id);
+    const links = project.relations
+      .filter(
+        r =>
+          r.typeId === genealogyId &&
+          positions.has(r.sourceId) &&
+          positions.has(r.targetId) &&
+          !kinshipStructureLink(project, r) &&
+          !kinshipTerm(project, r.kinshipId)?.couple &&
+          !isImpliedKinship(implied, r),
+      )
+      .map(r => {
+        const roles = kinshipRoles(project, r);
+        const label = !roles ? '' : roles.source === roles.target ? roles.source : `${roles.source} · ${roles.target}`;
+        return { key: r.id, a: r.sourceId, b: r.targetId, label };
+      });
+    return { units, links, positions, color: schema.color };
   }, [view.layout, project, structure.id, hiddenRelations, nodes]);
 
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
@@ -372,7 +394,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     root.querySelectorAll<HTMLElement>('.react-flow__node').forEach(el => {
       el.classList.toggle('dimmed', Boolean(near && !near.has(el.dataset.id ?? '')));
     });
-    root.querySelectorAll<SVGElement>('.family-link').forEach(el => {
+    root.querySelectorAll<SVGElement>('.family-link, .family-kin').forEach(el => {
       const members = (el.dataset.members ?? '').split(',');
       el.classList.toggle('dimmed', Boolean(hoveredId && !members.includes(hoveredId)));
     });
@@ -599,7 +621,15 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           proOptions={proOptions}
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--canvas-dot)" />
-          {family && <FamilyLinks units={family.units} positions={family.positions} color={family.color} />}
+          {family && (
+            <FamilyLinks
+              units={family.units}
+              links={family.links}
+              positions={family.positions}
+              color={family.color}
+              onSelect={id => onSelect({ kind: 'relation', id })}
+            />
+          )}
           {legendOpen && (
             <Panel position="top-right">
               <LegendPanel onClose={() => setLegendOpen(false)} />

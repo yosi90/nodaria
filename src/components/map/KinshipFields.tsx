@@ -50,7 +50,7 @@ export function KinshipFields({ sourceId, targetId, kinshipId, neutral, onChange
   return (
     <>
       <div className="field">
-        Parentesco
+        {source ? `${nodeLabel(project, source)} es…` : 'Parentesco'}
         <Select
           aria-label="Parentesco"
           options={project.kinship.map(t => ({
@@ -60,7 +60,7 @@ export function KinshipFields({ sourceId, targetId, kinshipId, neutral, onChange
               t.masculine && t.feminine && t.masculine !== t.feminine ? `${t.masculine} / ${t.feminine}` : undefined,
           }))}
           value={kinshipId}
-          placeholder="Elegir parentesco…"
+          placeholder={target ? `Elegir parentesco con ${nodeLabel(project, target)}…` : 'Elegir parentesco…'}
           onChange={id => onChange({ kinshipId: id })}
         />
         {preview && <small>{preview}</small>}

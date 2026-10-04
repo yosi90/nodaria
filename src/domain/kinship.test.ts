@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, relation, schema } from '../test/fixtures';
-import { defaultKinship, kinshipIssues, kinshipRoles, nodeGender } from './kinship';
+import {
+  defaultKinship,
+  derivedKinship,
+  impliedKinship,
+  isImpliedKinship,
+  kinshipIssues,
+  kinshipRoles,
+  nodeGender,
+} from './kinship';
 import { addNodeUnder } from './operations';
 import { relationLabel, relationRole } from './selectors';
 import { creatableTypesIn, structureChildren, structureLenses } from './structure';
@@ -68,5 +76,51 @@ describe('parentesco', () => {
     expect(created.sourceId).toBe('nuevo');
     expect(created.targetId).toBe('arnold');
     expect(created.kinshipId).toBe('hijo');
+  });
+});
+
+describe('parentesco deducido', () => {
+  const fam = () =>
+    project({
+      schemas: [schema('t'), schema('familia', { genealogical: true }, 'relationship')],
+      nodes: ['abuelo', 'madre', 'tia', 'hijo', 'hija', 'primo'].map(id => node(id, 't')),
+      relations: [
+        { ...relation('r1', 'familia', 'abuelo', 'madre'), kinshipId: 'progenitor' },
+        { ...relation('r2', 'familia', 'abuelo', 'tia'), kinshipId: 'progenitor' },
+        { ...relation('r3', 'familia', 'madre', 'hijo'), kinshipId: 'progenitor' },
+        { ...relation('r4', 'familia', 'hija', 'madre'), kinshipId: 'hijo' },
+        { ...relation('r5', 'familia', 'tia', 'primo'), kinshipId: 'progenitor' },
+        // explícita pero deducible: no debe dibujarse
+        { ...relation('r6', 'familia', 'abuelo', 'hijo'), kinshipId: 'abuelo' },
+      ],
+    });
+  it('deduce abuelos, hermanos, tíos, sobrinos y primos de la ascendencia directa', () => {
+    const d = derivedKinship(fam(), 'familia');
+    const has = (s: string, t: string, term: string) =>
+      d.some(x => x.sourceId === s && x.targetId === t && x.termId === term);
+    expect(has('abuelo', 'hijo', 'abuelo')).toBe(true);
+    expect(has('hijo', 'abuelo', 'nieto')).toBe(true);
+    expect(has('hijo', 'hija', 'hermano')).toBe(true);
+    expect(has('madre', 'tia', 'hermano')).toBe(true);
+    expect(has('tia', 'hijo', 'tio')).toBe(true);
+    expect(has('hijo', 'tia', 'sobrino')).toBe(true);
+    expect(has('hijo', 'primo', 'primo')).toBe(true);
+    expect(has('madre', 'hijo', 'hermano')).toBe(false);
+  });
+  it('reconoce las relaciones explícitas que el árbol ya deduce', () => {
+    const p = fam();
+    const implied = impliedKinship(p, 'familia');
+    expect(
+      isImpliedKinship(
+        implied,
+        p.relations.find(r => r.id === 'r6')!,
+      ),
+    ).toBe(true);
+    expect(
+      isImpliedKinship(
+        implied,
+        p.relations.find(r => r.id === 'r1')!,
+      ),
+    ).toBe(false);
   });
 });

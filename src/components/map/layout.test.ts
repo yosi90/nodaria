@@ -147,4 +147,24 @@ describe('genealogía', () => {
     );
     expect(at('ciudad').y).toBeGreaterThan(at('guayota').y);
   });
+
+  it('un progenitor queda siempre por encima de sus hijos aunque otra relación lo contradiga', () => {
+    const p = project({
+      schemas: [schema('t'), schema('familia', { genealogical: true }, 'relationship')],
+      nodes: [node('obkea', 't'), node('drokka', 't'), node('kunoa', 't'), node('araluna', 't')],
+      relations: [
+        { ...relation('a', 'familia', 'obkea', 'drokka'), kinshipId: 'hermano' },
+        { ...relation('b', 'familia', 'kunoa', 'obkea'), kinshipId: 'sobrino' },
+        // guardada al revés: Araluna como madrastra de Obkea
+        { ...relation('c', 'familia', 'araluna', 'obkea'), kinshipId: 'padrastro' },
+        { ...relation('d', 'familia', 'drokka', 'kunoa'), kinshipId: 'progenitor' },
+      ],
+    });
+    const pos = genealogyLayout(p, null);
+    const at = (id: string) => pos.get(id)!;
+    expect(at('kunoa').y).toBeGreaterThan(at('drokka').y);
+    expect(at('obkea').y).toBe(at('drokka').y);
+    // La relación al revés se ve al revés: Araluna por encima de Obkea, no escondida en otra fila.
+    expect(at('araluna').y).toBeLessThan(at('obkea').y);
+  });
 });
