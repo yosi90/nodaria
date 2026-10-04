@@ -143,8 +143,15 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   const { view } = project;
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Position>>({});
-  const [legendOpen, setLegendOpen] = useState(false);
   const { preferences, setPreference } = usePreferences();
+  // Si se carga ya en Genealogía (recarga de la web, cambio de proyecto), la leyenda sigue la decisión recordada.
+  const [legendOpen, setLegendOpen] = useState(
+    () => view.layout === 'genealogy' && (preferences.genealogy[project.id]?.legendOpen ?? true),
+  );
+  useEffect(() => {
+    if (view.layout === 'genealogy') setLegendOpen(preferences.genealogy[project.id]?.legendOpen ?? true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar de proyecto
+  }, [project.id]);
   const genealogySchemas = useMemo(
     () => project.schemas.filter(s => s.kind === 'relationship' && s.genealogical),
     [project.schemas],
