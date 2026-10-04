@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { node, project, relation, schema } from '../../test/fixtures';
-import { forceLayout, genealogyLayout, NODE_H, NODE_W, radialLayout, treeLayout } from './layout';
+import { forceLayout, genealogyLayout, hierarchySatellites, NODE_H, NODE_W, radialLayout, treeLayout } from './layout';
 
 const world = () =>
   project({
@@ -166,5 +166,58 @@ describe('genealogía', () => {
     expect(at('obkea').y).toBe(at('drokka').y);
     // La relación al revés se ve al revés: Araluna por encima de Obkea, no escondida en otra fila.
     expect(at('araluna').y).toBeLessThan(at('obkea').y);
+  });
+});
+
+describe('satélites de la jerarquía', () => {
+  const cars = () =>
+    project({
+      schemas: [
+        schema('marca', { allowedChildTypeIds: ['modelo'] }),
+        schema('modelo'),
+        schema('pieza'),
+        schema('monta', {}, 'relationship'),
+      ],
+      nodes: [
+        node('ibex', 'marca'),
+        node('corsa', 'modelo', 'ibex'),
+        node('cumbre', 'modelo', 'ibex'),
+        node('motor', 'pieza'),
+        node('pantalla', 'pieza'),
+        node('huerfana', 'pieza'),
+      ],
+      relations: [
+        relation('r1', 'monta', 'corsa', 'motor'),
+        relation('r2', 'monta', 'cumbre', 'motor'),
+        relation('r3', 'monta', 'corsa', 'pantalla'),
+      ],
+    });
+  const links = () => [
+    { a: 'corsa', b: 'motor' },
+    { a: 'cumbre', b: 'motor' },
+    { a: 'corsa', b: 'pantalla' },
+  ];
+
+  it('detecta como satélites las raíces hoja con vínculos, no las sueltas de verdad', () => {
+    expect([...hierarchySatellites(cars(), null, links())].sort()).toEqual(['motor', 'pantalla']);
+  });
+
+  it('coloca los satélites un nivel más allá de sus vecinos, a su altura y sin pisarse', () => {
+    const pos = treeLayout(cars(), null, false, NODE_H, links());
+    expect(pos.size).toBe(6);
+    const col = pos.get('corsa')!.x + NODE_W + 110;
+    expect(pos.get('motor')!.x).toBe(col);
+    expect(pos.get('pantalla')!.x).toBe(col);
+    // El motor queda entre sus dos modelos; la pantalla, cerca del Corsa pero sin solapar al motor.
+    const mid = (pos.get('corsa')!.y + pos.get('cumbre')!.y) / 2;
+    expect(Math.abs(pos.get('motor')!.y - mid)).toBeLessThan(1);
+    expect(Math.abs(pos.get('pantalla')!.y - pos.get('motor')!.y)).toBeGreaterThanOrEqual(NODE_H + 34);
+    // La pieza sin vínculos sigue en la columna de raíces.
+    expect(pos.get('huerfana')!.x).toBe(0);
+  });
+
+  it('se puede desactivar y entonces todas las raíces van a la primera columna', () => {
+    const pos = treeLayout(cars(), null, false, NODE_H, links(), false);
+    expect(pos.get('motor')!.x).toBe(0);
   });
 });

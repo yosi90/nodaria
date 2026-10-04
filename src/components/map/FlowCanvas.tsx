@@ -213,13 +213,17 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     view.layout === 'image' ? (project.mapImage?.height ?? 0) * (project.mapImage?.scale ?? 1) : null,
     view.layout === 'genealogy' ? structureLinks(project, genealogyStructure(project, structure.id)) : null,
     maxCardHeight,
+    view.layout === 'tree' ? view.looseNearLinks : null,
     project.nodes.map(n => [n.id, n.typeId, n.parentId]),
     links,
     // Cambiar el tipo o el parentesco de una relación altera la estructura sin cambiar sus extremos.
     structureLinks(project, structure.id),
   ]);
   const autoPositions = useMemo(
-    () => autoLayout(project, view.layout, structure.id, links, selectedNodeId, fixed, maxCardHeight),
+    () =>
+      autoLayout(project, view.layout, structure.id, links, selectedNodeId, fixed, maxCardHeight, {
+        looseNearLinks: view.looseNearLinks,
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- la clave resume todas las entradas relevantes
     [layoutKey],
   );

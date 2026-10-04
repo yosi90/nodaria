@@ -74,6 +74,19 @@ export function LegendPanel({ onClose }: { onClose: () => void }) {
             <span className="label muted">Solo si no hay otra relación</span>
           </label>
         )}
+        {view.layout === 'tree' && (
+          <label
+            className="legend-row legend-sub"
+            title="Una raíz sin subnodos pero con vínculos (una pieza que montan varios modelos) se coloca junto a los nodos a los que se une, en vez de en la columna de raíces"
+          >
+            <input
+              type="checkbox"
+              checked={view.looseNearLinks}
+              onChange={() => dispatch({ type: 'update-view', view: { looseNearLinks: !view.looseNearLinks } })}
+            />
+            <span className="label muted">Sueltos junto a sus vínculos</span>
+          </label>
+        )}
         {relations.map(s => (
           <label key={s.id} className="legend-row">
             <input

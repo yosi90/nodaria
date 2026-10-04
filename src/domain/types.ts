@@ -199,6 +199,8 @@ export interface ProjectView {
   showHierarchy: boolean;
   /** No dibujar «Dentro de» entre dos nodos que ya tienen una relación visible (la relación lo explica). */
   hierarchyOnlyIfUnrelated: boolean;
+  /** Jerárquica: las raíces sin subnodos pero con vínculos se colocan junto a los nodos a los que se unen. */
+  looseNearLinks: boolean;
   /** Modo foco: saltos visibles alrededor del nodo seleccionado; 0 = desactivado. */
   focusDepth: number;
   /** Dimensionar las tarjetas del lienzo según su centralidad (intermediación). */
