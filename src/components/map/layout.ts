@@ -140,16 +140,22 @@ export function forceLayout(
   });
   const degree = (id: string) => neighbours.get(id)?.length ?? 0;
   const hasChildren = new Set(structureLinks(p, structureId).map(l => l.parentId));
-  // Forma parte de la estructura: tiene superior o subordinados en ella.
-  const structural = (id: string) => anchorOf.has(id) || hasChildren.has(id);
+  // Forma parte de la estructura (tiene superior o subordinados en ella). Se fija antes de anclar por
+  // vínculos: un ancla asignada por vínculo no convierte al nodo en «estructural».
+  const structural = new Set([...anchorOf.keys(), ...hasChildren]);
+  // ¿Siguiendo las anclas desde `id` se llega a `target`? Evita cadenas circulares.
+  const reaches = (id: string, target: string) => {
+    for (let step = anchorOf.get(id); step; step = anchorOf.get(step)) if (step === target) return true;
+    return false;
+  };
   nodes.forEach(n => {
     // Solo los nodos sueltos en la estructura buscan ancla; los demás ya tienen su sitio.
-    if (structural(n.id)) return;
-    const candidates = (neighbours.get(n.id) ?? []).filter(other => anchorOf.get(other) !== n.id);
+    if (structural.has(n.id)) return;
+    const candidates = (neighbours.get(n.id) ?? []).filter(other => !reaches(other, n.id));
     if (!candidates.length) return;
     // Preferir un vecino de la estructura y, entre iguales, el más conectado (el «centro» del grupo).
     const best = candidates
-      .map(id => ({ id, structural: structural(id) ? 1 : 0, degree: degree(id) }))
+      .map(id => ({ id, structural: structural.has(id) ? 1 : 0, degree: degree(id) }))
       .sort((x, y) => y.structural - x.structural || y.degree - x.degree)[0];
     if (best.structural || best.degree > degree(n.id)) anchorOf.set(n.id, best.id);
   });
@@ -185,8 +191,16 @@ export function forceLayout(
     nodes.forEach(n => {
       const anchor = anchorOf.get(n.id) && byId.get(anchorOf.get(n.id)!);
       if (!anchor || n.fx !== undefined) return;
-      n.vx += (anchor.x + offsetX(n.id) - n.x) * 0.3 * alpha;
-      n.vy += (anchor.y + gap - n.y) * 0.5 * alpha;
+      // Muelle en los dos sentidos (el ancla también cede un poco): con una fuerza de un solo lado el
+      // grupo entero se iría desplazando sin límite.
+      const dx = (anchor.x + offsetX(n.id) - n.x) * 0.2 * alpha;
+      const dy = (anchor.y + gap - n.y) * 0.3 * alpha;
+      n.vx += dx;
+      n.vy += dy;
+      if (anchor.fx === undefined) {
+        anchor.vx -= dx * 0.25;
+        anchor.vy -= dy * 0.25;
+      }
     });
   };
   const simulation = forceSimulation(nodes)
