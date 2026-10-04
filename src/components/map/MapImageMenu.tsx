@@ -48,8 +48,28 @@ export function MapImageMenu() {
       : []),
   ];
 
+  const scale = project.mapImage?.scale ?? 1;
   return (
     <>
+      {has && (
+        <label
+          className="field-inline map-scale"
+          title="Escala del mapa en el lienzo. Los nodos no cambian de tamaño: con más escala caben más en cada lugar."
+        >
+          <span className="flow-toolbar-label">Escala</span>
+          <select
+            aria-label="Escala del mapa"
+            value={String(scale)}
+            onChange={e => dispatch({ type: 'set-map-scale', scale: Number(e.target.value) })}
+          >
+            {[0.5, 1, 1.5, 2, 3, 4, 6, 8].map(s => (
+              <option key={s} value={String(s)}>
+                ×{s}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <Button
         size="sm"
         icon={ImageIcon}

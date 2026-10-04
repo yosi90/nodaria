@@ -369,7 +369,7 @@ export function autoLayout(
   fixed: Map<string, Position> = new Map(),
   h = NODE_H,
 ) {
-  if (mode === 'image') return trayLayout(p, fixed, p.mapImage?.height ?? 0, h);
+  if (mode === 'image') return trayLayout(p, fixed, (p.mapImage?.height ?? 0) * (p.mapImage?.scale ?? 1), h);
   if (mode === 'force') return forceLayout(p, links, treeLayout(p, structureId, false, h), structureId, fixed, h);
   if (mode === 'genealogy') return genealogyLayout(p, structureId, h);
   if (mode === 'radial' && focusId) return radialLayout(p, focusId, links, h);

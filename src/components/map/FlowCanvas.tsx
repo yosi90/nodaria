@@ -9,6 +9,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
   type Edge,
   type NodeChange,
   type OnConnectEnd,
@@ -49,6 +50,7 @@ import { CanvasSettingsContext } from './canvasSettings';
 import { FallingPins, type FallingPin } from './FallingPins';
 import { ExportMenu } from './ExportMenu';
 import { FamilyLinks } from './FamilyLinks';
+import { MapClusters, type MapCluster } from './MapClusters';
 import { MapImageLayer } from './MapImageLayer';
 import { MapImageMenu } from './MapImageMenu';
 import { cardContent, cardHeight } from './cardLines';
@@ -199,7 +201,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     structure.id,
     view.layout === 'radial' ? selectedNodeId : null,
     view.layout === 'force' || view.layout === 'image' ? [...fixed] : null,
-    view.layout === 'image' ? (project.mapImage?.height ?? 0) : null,
+    view.layout === 'image' ? (project.mapImage?.height ?? 0) * (project.mapImage?.scale ?? 1) : null,
     view.layout === 'genealogy' ? structureLinks(project, genealogyStructure(project, structure.id)) : null,
     maxCardHeight,
     project.nodes.map(n => [n.id, n.typeId, n.parentId]),
@@ -236,9 +238,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   // En «Mapa», al entrar o al cambiar la imagen se encuadran la imagen y la bandeja de nodos sin colocar.
   useEffect(() => {
     if (view.layout !== 'image' || !project.mapImage) return;
-    const { width, height } = project.mapImage;
+    const { width, height, scale } = project.mapImage;
     const timer = window.setTimeout(
-      () => flow.fitBounds({ x: 0, y: 0, width, height: height + 220 }, { padding: 0.04, duration: 350 }),
+      () =>
+        flow.fitBounds(
+          { x: 0, y: 0, width: width * scale, height: height * scale + 220 },
+          { padding: 0.04, duration: 350 },
+        ),
       80,
     );
     return () => window.clearTimeout(timer);
@@ -288,6 +294,52 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     },
     [dispatch],
   );
+
+  // Zoom actual (en cuantos de 0,05 por debajo de 0,7) para agrupar marcadores que se amontonan al alejar.
+  const zoomBucket = useStore(s =>
+    view.layout === 'image' && s.transform[2] < 0.7 ? Math.max(0.05, Math.round(s.transform[2] * 20) / 20) : 1,
+  );
+  const clusters = useMemo<MapCluster[]>(() => {
+    if (view.layout !== 'image' || zoomBucket >= 0.7) return [];
+    // Agrupación por distancia en pantalla: cada marcador se une al grupo cuyo centro tenga a menos
+    // de ~36 px (en coordenadas del lienzo, 36 / zoom). Al alejar, el radio crece y solo puede agrupar más.
+    const radius = 36 / zoomBucket;
+    const placed = project.nodes
+      .filter(n => n.positions.image && visibleIds.has(n.id))
+      .map(n => ({ n, x: n.positions.image!.x + MARKER / 2, y: n.positions.image!.y + MARKER / 2 }))
+      .sort((p, q) => p.x - q.x || p.y - q.y || p.n.id.localeCompare(q.n.id));
+    const groups: { x: number; y: number; items: typeof placed }[] = [];
+    placed.forEach(item => {
+      let best: (typeof groups)[number] | null = null;
+      let bestDistance = radius;
+      groups.forEach(g => {
+        const d = Math.hypot(g.x - item.x, g.y - item.y);
+        if (d < bestDistance) {
+          best = g;
+          bestDistance = d;
+        }
+      });
+      if (best) {
+        const g: (typeof groups)[number] = best;
+        g.items.push(item);
+        g.x = g.items.reduce((s, i) => s + i.x, 0) / g.items.length;
+        g.y = g.items.reduce((s, i) => s + i.y, 0) / g.items.length;
+      } else groups.push({ x: item.x, y: item.y, items: [item] });
+    });
+    return groups
+      .filter(g => g.items.length > 1)
+      .map(g => ({
+        id: g.items.map(i => i.n.id).join('|'),
+        x: g.x,
+        y: g.y,
+        members: g.items.map(i => ({
+          id: i.n.id,
+          label: nodeLabel(project, i.n),
+          color: getSchema(project, i.n.typeId)?.color ?? '#888',
+        })),
+      }));
+  }, [view.layout, zoomBucket, project, visibleIds]);
+  const clustered = useMemo(() => new Set(clusters.flatMap(c => c.members.map(m => m.id))), [clusters]);
 
   // Sobre la imagen del mapa los nodos colocados son marcadores; el que está bajo el ratón se expande.
   const hoverOnMap = view.layout === 'image' ? hoveredId : null;
@@ -342,6 +394,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           id: n.id,
           type: 'card',
           position,
+          hidden: clustered.has(n.id) || undefined,
           width: compact && !expanded ? MARKER : NODE_W,
           height: compact && !expanded ? MARKER : fullHeight,
           selected: selectedNodeId === n.id,
@@ -368,7 +421,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           },
         };
       });
-  }, [project, view.layout, visibleIds, overrides, autoPositions, selectedNodeId, unpin, hoverOnMap]);
+  }, [project, view.layout, visibleIds, overrides, autoPositions, selectedNodeId, unpin, hoverOnMap, clustered]);
 
   const edges = useMemo<FloatingEdgeType[]>(() => {
     const result: FloatingEdgeType[] = [];
@@ -873,6 +926,20 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--canvas-dot)" />
           {view.layout === 'image' && project.mapImage && <MapImageLayer image={project.mapImage} />}
+          {clusters.length > 0 && (
+            <MapClusters
+              clusters={clusters}
+              zoom={zoomBucket}
+              onSelect={id => onSelect({ kind: 'node', id })}
+              onZoomTo={c => {
+                const r = 80;
+                flow.fitBounds(
+                  { x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r },
+                  { padding: 0.2, duration: 400 },
+                );
+              }}
+            />
+          )}
           {family && (
             <FamilyLinks
               units={family.units}

@@ -55,6 +55,7 @@ export type Action =
   | { type: 'apply-lens'; id: string }
   | { type: 'update-kinship'; kinship: KinshipTerm[] }
   | { type: 'set-map-image'; image: MapImage | null }
+  | { type: 'set-map-scale'; scale: number }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
   | { type: 'delete-node'; id: string }
   | {
@@ -164,6 +165,8 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.applyLens(p, action.id);
     case 'set-map-image':
       return ops.setMapImage(p, action.image);
+    case 'set-map-scale':
+      return ops.setMapScale(p, action.scale);
     case 'update-kinship':
       return ops.updateKinship(p, action.kinship);
     case 'update-node':

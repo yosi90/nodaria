@@ -20,7 +20,9 @@ export async function shrinkImage(file: File): Promise<string> {
 const MAP_MAX_SIDE = 2400;
 
 /** Carga una imagen de mapa: hasta 2400 px de lado mayor, JPEG; devuelve data URL y tamaño final. */
-export async function loadMapImage(file: File): Promise<{ data: string; width: number; height: number }> {
+export async function loadMapImage(
+  file: File,
+): Promise<{ data: string; width: number; height: number; scale: number }> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAP_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
@@ -30,7 +32,7 @@ export async function loadMapImage(file: File): Promise<{ data: string; width: n
   if (!ctx) throw new Error('Sin canvas');
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  return { data: canvas.toDataURL('image/jpeg', 0.82), width: canvas.width, height: canvas.height };
+  return { data: canvas.toDataURL('image/jpeg', 0.82), width: canvas.width, height: canvas.height, scale: 1 };
 }
 
 export const isImageValue = (value: unknown): value is string =>

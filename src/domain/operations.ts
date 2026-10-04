@@ -388,6 +388,30 @@ export function setMapImage(p: Project, image: MapImage | null): Project {
   return { ...p, mapImage: image };
 }
 
+/**
+ * Cambia la escala del mapa. Los nodos colocados se reubican en proporción (por el centro del
+ * marcador) para que sigan señalando el mismo lugar de la imagen.
+ */
+export function setMapScale(p: Project, scale: number, marker = 44): Project {
+  if (!p.mapImage || !(scale > 0)) return p;
+  const ratio = scale / p.mapImage.scale;
+  const nodes = p.nodes.map(n => {
+    const pos = n.positions.image;
+    if (!pos) return n;
+    return {
+      ...n,
+      positions: {
+        ...n.positions,
+        image: {
+          x: Math.round((pos.x + marker / 2) * ratio - marker / 2),
+          y: Math.round((pos.y + marker / 2) * ratio - marker / 2),
+        },
+      },
+    };
+  });
+  return { ...p, mapImage: { ...p.mapImage, scale }, nodes };
+}
+
 /** Sustituye el vocabulario de parentesco; las relaciones con términos borrados quedan sin término. */
 export function updateKinship(p: Project, kinship: KinshipTerm[]): Project {
   const ids = new Set(kinship.map(t => t.id));

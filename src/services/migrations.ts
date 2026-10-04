@@ -128,7 +128,10 @@ function normalizeProject(project: RawProject): Project {
       : defaultKinship(),
     mapImage:
       project.mapImage && typeof project.mapImage.data === 'string' && project.mapImage.data.startsWith('data:image/')
-        ? project.mapImage
+        ? {
+            ...project.mapImage,
+            scale: Number.isFinite(project.mapImage.scale) && project.mapImage.scale > 0 ? project.mapImage.scale : 1,
+          }
         : null,
     view: { ...createView(), ...(project.view ?? {}) },
     lenses: (project.lenses || []).map(l => ({

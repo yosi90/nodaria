@@ -151,6 +151,8 @@ export interface MapImage {
   data: string;
   width: number;
   height: number;
+  /** Escala con la que se dibuja en el lienzo (×1 = su tamaño en píxeles). Los nodos no cambian de tamaño. */
+  scale: number;
 }
 /** Estado de la vista del mapa. Se guarda con el proyecto pero no entra en el historial de deshacer. */
 export interface ProjectView {

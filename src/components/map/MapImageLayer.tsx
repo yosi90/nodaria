@@ -8,11 +8,9 @@ export function MapImageLayer({ image }: { image: MapImage }) {
       <img
         className="map-image"
         src={image.data}
-        width={image.width}
-        height={image.height}
         alt=""
         draggable={false}
-        style={{ width: image.width, height: image.height }}
+        style={{ width: image.width * image.scale, height: image.height * image.scale }}
       />
     </ViewportPortal>
   );

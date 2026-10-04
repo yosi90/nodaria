@@ -123,10 +123,7 @@
 .react-flow__node:has(.node-card-flow.expanded) {
   z-index: 1003 !important;
 }
-/* La imagen del mapa va debajo de aristas y nodos, también mientras se arrastra uno desde la bandeja. */
-.react-flow__viewport-portal {
-  z-index: -1;
-}
+
 .node-card-flow:hover {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-md);
@@ -343,11 +340,81 @@
   position: absolute;
   top: 0;
   left: 0;
+  /* Debajo de aristas y nodos (también mientras se arrastra uno desde la bandeja). */
+  z-index: -1;
   max-width: none;
   border-radius: 6px;
   box-shadow: 0 2px 12px #0000004d;
   user-select: none;
   pointer-events: none;
+}
+/* Puntos de agrupación sobre el mapa (tamaño constante en pantalla) */
+.map-cluster {
+  position: absolute;
+  z-index: 5;
+  transform-origin: center;
+  /* El portal del viewport no recibe el puntero; el punto y su panel sí. */
+  pointer-events: all;
+}
+.map-cluster-dot {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border: 2px solid #fff;
+  border-radius: 13px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px #0006;
+  cursor: zoom-in;
+}
+.map-cluster-panel {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  z-index: 6;
+  display: grid;
+  gap: 2px;
+  min-width: 160px;
+  max-width: 240px;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-md);
+  transform: translateX(-50%);
+  font-size: var(--fs-sm);
+}
+.map-cluster-panel button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.map-cluster-panel button:hover {
+  background: var(--hover);
+}
+.map-cluster-swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.map-scale select {
+  min-height: 30px;
+  padding: 0 24px 0 8px;
 }
 .family-links {
   position: absolute;
