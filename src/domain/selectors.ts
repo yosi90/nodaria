@@ -22,14 +22,16 @@ export function inheritedSchemas(p: Project, typeId: string) {
 /** Campos efectivos de un tipo. Un campo propio sustituye a uno heredado con la misma clave. */
 export function allFields(p: Project, typeId: string) {
   // Un tipo sustituye los atributos heredados que repiten clave; dentro de un mismo tipo se conservan todos.
+  // Un propio marcado en `yieldFieldIds` cede ante el heredado con su misma clave (ver `inheritance.ts`).
   let result: FieldDefinition[] = [];
   inheritedSchemas(p, typeId).forEach(s => {
-    const declared = declaredFields(p, s);
+    const declared = declaredFields(p, s)
+      .filter((f, i, all) => all.findIndex(x => x.id === f.id) === i)
+      // La misma preforma que ya llega por herencia se conserva en su sitio (no se repite).
+      .filter(f => !result.some(r => r.id === f.id))
+      .filter(f => !(s.yieldFieldIds.includes(f.id) && result.some(r => r.key === f.key)));
     const keys = new Set(declared.map(f => f.key));
-    result = [
-      ...result.filter(f => !keys.has(f.key)),
-      ...declared.filter((f, i, all) => all.findIndex(x => x.id === f.id) === i),
-    ];
+    result = [...result.filter(f => !keys.has(f.key)), ...declared];
   });
   return result;
 }

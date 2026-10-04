@@ -1,8 +1,9 @@
-import { Library, Link2, Plus, Unlink } from 'lucide-react';
-import { useCallback, useState, type DragEvent } from 'react';
+import { Library, Link2, Plus, Unlink, TriangleAlert } from 'lucide-react';
+import { useCallback, useState, type DragEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { isFieldLink, usersOfLibraryField } from '../../domain/library';
 import { inheritedSchemas } from '../../domain/selectors';
+import { fieldOverlaps, type FieldOverlap } from '../../domain/inheritance';
 import type { FieldDefinition, FieldLink, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
@@ -29,6 +30,49 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   const closeLink = useCallback(() => setLinkAnchor(null), []);
   const update = (fields: Schema['fields']) => dispatch({ type: 'update-schema', schema: { ...schema, fields } });
   const ancestors = inheritedSchemas(project, schema.id).slice(0, -1);
+  const overlaps = new Map(fieldOverlaps(project, schema).map(o => [o.field.id, o]));
+  const setYield = (fieldId: string, yields: boolean) =>
+    dispatch({
+      type: 'update-schema',
+      schema: {
+        ...schema,
+        yieldFieldIds: yields
+          ? [...new Set([...schema.yieldFieldIds, fieldId])]
+          : schema.yieldFieldIds.filter(id => id !== fieldId),
+      },
+    });
+  const overlapNote = (overlap: FieldOverlap | undefined, onRemove: () => void) => {
+    if (!overlap) return null;
+    if (overlap.kind === 'duplicate') {
+      return (
+        <div className="overlap-note">
+          <TriangleAlert size={13} aria-hidden />
+          <span>
+            Ya llega por herencia desde «{overlap.from.name}»: aquí sobra.{' '}
+            <button type="button" className="link-button" onClick={onRemove}>
+              Quitar de este tipo
+            </button>
+          </span>
+        </div>
+      );
+    }
+    return (
+      <div className="overlap-note">
+        <TriangleAlert size={13} aria-hidden />
+        <span>
+          Repite la clave «{overlap.field.key}» de «{overlap.inherited.label}», heredado de «{overlap.from.name}».
+          Prevalece:{' '}
+          <select
+            value={overlap.yields ? 'inherited' : 'own'}
+            onChange={event => setYield(overlap.field.id, event.target.value === 'inherited')}
+          >
+            <option value="own">este (más específico)</option>
+            <option value="inherited">el heredado</option>
+          </select>
+        </span>
+      </div>
+    );
+  };
   const linkedIds = new Set(schema.fields.filter(isFieldLink).map(f => f.ref));
   const linkable = project.fieldLibrary.filter(f => !linkedIds.has(f.id));
 
@@ -135,6 +179,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
                   onDrop={reorder}
                   onEdit={onOpenLibrary}
                   onUnlink={() => unlink(field)}
+                  note={overlapNote(overlaps.get(field.id), () => unlink(field))}
                 />
               );
             }
@@ -151,6 +196,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
                   update(schema.fields.map(item => (!isFieldLink(item) && item.id === changed.id ? changed : item)))
                 }
                 onDelete={() => removeOwn(entry)}
+                note={overlapNote(overlaps.get(entry.id), () => removeOwn(entry))}
                 actions={
                   <IconButton
                     icon={Library}
@@ -183,6 +229,7 @@ function LinkedFieldRow({
   onDrop,
   onEdit,
   onUnlink,
+  note,
 }: {
   field: FieldDefinition;
   users: number;
@@ -192,6 +239,7 @@ function LinkedFieldRow({
   onDrop: (targetId: string, after: boolean) => void;
   onEdit: () => void;
   onUnlink: () => void;
+  note?: ReactNode;
 }) {
   const drop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -227,6 +275,7 @@ function LinkedFieldRow({
         </button>
         <IconButton icon={Unlink} size="sm" label="Desvincular de este tipo" tooltipSide="left" onClick={onUnlink} />
       </div>
+      {note}
     </div>
   );
 }

@@ -12,9 +12,12 @@ import { defaultChildTerm } from './kinship';
 import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
   FieldDefinition,
-  KinshipTerm,
-  Lens,
+  FieldLink,
   FieldValue,
+  KinshipTerm,
+  LayoutMode,
+  Lens,
+  MapImage,
   Node,
   OrphanStrategy,
   Position,
@@ -22,9 +25,8 @@ import type {
   ProjectView,
   Relation,
   Schema,
+  SchemaField,
   SchemaKind,
-  LayoutMode,
-  MapImage,
 } from './types';
 
 /*
@@ -94,17 +96,35 @@ export function deleteSchema(p: Project, schemaId: string, strategy: OrphanStrat
   const direct = p.nodes.filter(n => n.typeId === schemaId).map(n => n.id);
   const removed = new Set(direct);
   if (strategy === 'cascade') direct.forEach(id => descendants(p, id).forEach(d => removed.add(d)));
-  const deletedFieldIds = new Set(ownFields(deleted).map(f => f.id));
+  // Si tiene subtipos, sus atributos no se pierden: los propios pasan a la biblioteca y cada subtipo
+  // directo los vincula (los valores se guardan por id de atributo, así que se conservan).
+  const subtypes = p.schemas.filter(s => s.parentTypeId === schemaId);
+  const own = ownFields(deleted);
+  const library = subtypes.length
+    ? [...p.fieldLibrary, ...own.filter(f => !p.fieldLibrary.some(l => l.id === f.id))]
+    : p.fieldLibrary;
+  const handDown: FieldLink[] = subtypes.length ? deleted.fields.map(f => (isFieldLink(f) ? f : { ref: f.id })) : [];
+  const deletedFieldIds = new Set(subtypes.length ? [] : own.map(f => f.id));
+  const entryRef = (f: SchemaField) => (isFieldLink(f) ? f.ref : f.id);
 
   let next = removeNodes(p, removed);
   next = {
     ...next,
+    fieldLibrary: library,
     relations: next.relations.filter(r => r.typeId !== schemaId).map(r => withoutValues(r, deletedFieldIds)),
     nodes: next.nodes.map(n => withoutValues(n, deletedFieldIds)),
     schemas: removeTypeReferences(
       p.schemas
         .filter(s => s.id !== schemaId)
-        .map(s => (s.parentTypeId === schemaId ? { ...s, parentTypeId: deleted.parentTypeId } : s)),
+        .map(s =>
+          s.parentTypeId === schemaId
+            ? {
+                ...s,
+                parentTypeId: deleted.parentTypeId,
+                fields: [...handDown.filter(h => !s.fields.some(e => entryRef(e) === h.ref)), ...s.fields],
+              }
+            : s,
+        ),
       new Set([schemaId]),
     ),
   };

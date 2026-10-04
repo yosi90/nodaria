@@ -22,6 +22,8 @@ interface FieldEditorProps {
   /** Insignias y acciones extra en la cabecera (p. ej. «Compartido», «Usado en 3 tipos»). */
   badges?: ReactNode;
   actions?: ReactNode;
+  /** Aviso bajo la cabecera (p. ej. solape con un atributo heredado). */
+  note?: ReactNode;
   /** Mostrar «Título del nodo»: no aplica a los atributos de relación. */
   allowTitle?: boolean;
 }
@@ -37,6 +39,7 @@ export function FieldEditor({
   onDrop,
   badges,
   actions,
+  note,
   allowTitle = true,
 }: FieldEditorProps) {
   const { project } = useApp();
@@ -117,6 +120,7 @@ export function FieldEditor({
           onClick={onDelete}
         />
       </div>
+      {note}
       {expanded && !system && (
         <div className="field-def-content">
           <div className="field-row">

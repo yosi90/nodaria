@@ -57,6 +57,7 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     genealogical: false,
     maxPerSource: null,
     maxPerTarget: null,
+    yieldFieldIds: [],
   };
 }
 export function createField(): FieldDefinition {

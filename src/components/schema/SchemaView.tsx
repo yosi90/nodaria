@@ -1,6 +1,7 @@
 import { GitFork, Plus, Shapes } from 'lucide-react';
 import { useState } from 'react';
 import { uid } from '../../domain/factories';
+import { schemaTree } from '../../domain/inheritance';
 import type { SchemaKind } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { usePreferences } from '../../state/preferences';
@@ -19,6 +20,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
   const [selected, setSelected] = useState<string | null>(ofKind[0]?.id || null);
   const [creating, setCreating] = useState<SchemaKind | null>(null);
   const [name, setName] = useState('');
+  const [dragged, setDragged] = useState<string | null>(null);
   const schema = ofKind.find(item => item.id === selected) ?? ofKind[0];
 
   const openCreateModal = () => {
@@ -47,19 +49,42 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
         </div>
         <nav className="type-items" aria-label="Lista de tipos">
           {groups.map(group => {
-            const items = project.schemas.filter(s => s.kind === group.kind);
+            const items = schemaTree(project, group.kind);
             return (
               <div key={group.kind}>
                 <div className="type-group-title">{group.title}</div>
-                {items.map(item => (
+                {items.map(({ schema: item, depth }) => (
                   <button
                     key={item.id}
                     type="button"
-                    className={`type-item ${item.id === schema?.id ? 'active' : ''}`}
+                    className={`type-item ${item.id === schema?.id ? 'active' : ''} ${dragged === item.id ? 'dragging' : ''}`}
+                    style={{ paddingLeft: 8 + depth * 18 }}
                     data-type-id={item.id}
                     aria-current={item.id === schema?.id ? 'page' : undefined}
+                    draggable
+                    onDragStart={event => {
+                      event.dataTransfer.effectAllowed = 'move';
+                      setDragged(item.id);
+                    }}
+                    onDragEnd={() => setDragged(null)}
+                    onDragOver={event => {
+                      if (dragged && dragged !== item.id) event.preventDefault();
+                    }}
+                    onDrop={event => {
+                      event.preventDefault();
+                      if (!dragged || dragged === item.id) return;
+                      const bounds = event.currentTarget.getBoundingClientRect();
+                      dispatch({
+                        type: 'reorder-schema',
+                        id: dragged,
+                        targetId: item.id,
+                        after: event.clientY > bounds.top + bounds.height / 2,
+                      });
+                      setDragged(null);
+                    }}
                     onClick={() => setSelected(item.id)}
                   >
+                    {depth > 0 && <span className="type-branch" aria-hidden />}
                     <TypeIcon icon={item.icon} color={item.color} />
                     <span className="names">
                       <strong>{item.name || 'Sin nombre'}</strong>

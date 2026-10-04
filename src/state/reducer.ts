@@ -1,5 +1,6 @@
 import { createInitialState, createProject, now, uid } from '../domain/factories';
 import * as lib from '../domain/library';
+import { reorderSchema } from '../domain/inheritance';
 import * as ops from '../domain/operations';
 import { moveInStructure, type StructureMove } from '../domain/structureMove';
 import type { SavedQuery } from '../domain/queries';
@@ -33,6 +34,7 @@ export type Action =
   | { type: 'add-schema'; name: string; kind: SchemaKind; id?: string }
   | { type: 'update-schema'; schema: Schema }
   | { type: 'delete-schema'; id: string; strategy: OrphanStrategy }
+  | { type: 'reorder-schema'; id: string; targetId: string; after: boolean }
   | { type: 'add-field'; schemaId: string; preset?: Partial<FieldDefinition> }
   | { type: 'add-library-field'; id?: string }
   | { type: 'update-library-field'; field: FieldDefinition }
@@ -144,6 +146,8 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.updateSchema(p, action.schema);
     case 'delete-schema':
       return ops.deleteSchema(p, action.id, action.strategy);
+    case 'reorder-schema':
+      return reorderSchema(p, action.id, action.targetId, action.after);
     case 'add-field':
       return ops.addField(p, action.schemaId, action.preset);
     case 'add-library-field':

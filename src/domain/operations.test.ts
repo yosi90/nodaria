@@ -37,10 +37,13 @@ describe('deleteSchema', () => {
     expect(p.relations).toEqual([]);
   });
 
-  it('los subtipos heredan del padre del tipo borrado y pierden sus valores', () => {
+  it('los subtipos heredan del padre del tipo borrado y reciben sus atributos como preformas', () => {
     const p = deleteSchema(world(), 'casa', 'lift');
-    expect(p.schemas.find(s => s.id === 'dios')!.parentTypeId).toBeNull();
-    expect(p.nodes.find(n => n.id === 'aurel')!.values).toEqual({});
+    const dios = p.schemas.find(s => s.id === 'dios')!;
+    expect(dios.parentTypeId).toBeNull();
+    expect(dios.fields).toEqual([{ ref: 'lema' }]);
+    expect(p.fieldLibrary.map(f => f.id)).toEqual(['lema']);
+    expect(p.nodes.find(n => n.id === 'aurel')!.values).toEqual({ lema: 'Luz' });
   });
 
   it('limpia las restricciones que apuntaban al tipo borrado', () => {

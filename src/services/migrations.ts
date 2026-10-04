@@ -98,6 +98,7 @@ function normalizeProject(project: RawProject): Project {
       genealogical: s.genealogical || false,
       maxPerSource: typeof s.maxPerSource === 'number' ? s.maxPerSource : null,
       maxPerTarget: typeof s.maxPerTarget === 'number' ? s.maxPerTarget : null,
+      yieldFieldIds: s.yieldFieldIds || [],
     })),
     fieldLibrary: (project.fieldLibrary || []).map(f => ({
       ...f,

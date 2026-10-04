@@ -85,6 +85,8 @@ export interface Schema {
   maxPerSource: number | null;
   /** Máximo por nodo como destino (solo dirigidas); `null` = sin límite. */
   maxPerTarget: number | null;
+  /** Atributos propios que ceden ante el heredado con la misma clave (ver `src/domain/inheritance.ts`). */
+  yieldFieldIds: string[];
 }
 /** Género de un nodo: masculino, femenino, neutro u otro, o sin definir. */
 export type Gender = 'm' | 'f' | 'n' | '';
