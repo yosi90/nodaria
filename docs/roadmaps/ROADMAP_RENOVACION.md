@@ -197,7 +197,7 @@ Objetivo: que cada elemento del mundo tenga una ficha rica y se pueda saltar de 
 - [x] **Paleta de comandos** (Ctrl+K): nodos (por nombre, valores y notas), relaciones, tipos y acciones (crear nodo de un tipo, cambiar de vista, tema).
 - [x] Búsqueda global: la paleta busca en nombres, valores y notas; el árbol sigue filtrando por nombre y valores.
 - [x] Selección sincronizada: elegir en el árbol, en conexiones, en una mención o en la paleta centra el elemento en el lienzo.
-- [ ] Árbol: arrastrar y soltar para cambiar de padre y reordenar hermanos: pospuesto (el selector «Dentro de» y «Ver por» cubren el caso).
+- [x] Árbol: arrastrar y soltar para cambiar de padre y reordenar hermanos: hecho el 2026-10-04 (ver «Pendientes señalados por el usuario»).
 
 **Decisión de modelo (2026-10-03):** el usuario preguntó si modelar la pertenencia a una ciudad como relación o como atributo de referencia. Se acordó que ambos existen con una regla: **atributo de referencia** cuando es una propiedad del nodo (ciudad, dios patrón, escuela de magia), y **relación** cuando el vínculo tiene datos propios, es entre iguales o necesita estilo. Para que el atributo valga como vínculo, se dibuja, se lista como conexión y sirve de estructura (`src/domain/references.ts`).
 
