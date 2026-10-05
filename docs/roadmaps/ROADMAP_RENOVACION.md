@@ -226,6 +226,7 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [x] Barra superior en dos grupos, «Datos» y «Esquema» (2026-10-04); arrastre con previsualización en vivo (fantasma) para tipos, atributos y preformas; mensaje de atributo desactivado por herencia (se puede conservar).
 - [x] Herencia de atributos afinada (2026-10-04): duplicados y conflictos de clave con lo heredado señalados en la tarjeta de atributos (quitar el duplicado o elegir cuál prevalece); al borrar un tipo con subtipos, estos conservan sus atributos como preformas y los valores no se pierden; lista de tipos como árbol de herencia y reordenable arrastrando.
 - [x] Herencia de subnodos permitidos y de restricciones de relación (2026-10-04): un tipo admite como subnodos los suyos más los de sus ancestros; una relación hereda «Desde»/«Hacia» del ancestro más cercano cuando los deja vacíos. El editor lo indica. Etiquetas «Datos/Esquema/Disposición» más discretas y separador centrado con el color del borde.
+- [x] El árbol de estructura recuerda las ramas plegadas por proyecto (2026-10-05).
 - [x] Aislar un nodo desde su ficha (2026-10-05): solo sus vecinos, en fuerzas, con el foco fijo aunque pinches otros; al salir vuelve la disposición y los filtros previos.
 - [x] Árbol de herencia con guías continuas que unen a los hermanos (2026-10-05).
 - [x] Condiciones entre atributos (2026-10-05): visible solo cuando otra lista vale X, referencias limitadas a lo que cuelga de otra referencia, y máximo de elementos según la opción de otra lista (aviso en ficha y Salud).

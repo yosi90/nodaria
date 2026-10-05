@@ -18,6 +18,8 @@ export interface Preferences {
   autoHiddenKinship: Record<string, string[]>;
   /** La bienvenida ya se mostró (o el usuario ya tenía datos cuando llegó esta versión). */
   welcomed: boolean;
+  /** Ramas plegadas del árbol de estructura, por proyecto y estructura («proyecto:estructura» → claves de fila). */
+  collapsedRows: Record<string, string[]>;
 }
 
 /** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
@@ -53,6 +55,7 @@ const DEFAULTS: Preferences = {
   matrix: {},
   autoHiddenKinship: {},
   welcomed: false,
+  collapsedRows: {},
 };
 
 function loadPreferences(): Preferences {

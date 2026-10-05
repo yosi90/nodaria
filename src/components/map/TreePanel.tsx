@@ -6,6 +6,7 @@ import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
 import { resolveStructure, structureChildren, structureLenses } from '../../domain/structure';
 import type { Node, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { usePreferences } from '../../state/preferences';
 import { IconButton } from '../common/Button';
 import { NodeAvatar } from '../common/NodeAvatar';
 import { schemaOption } from '../common/options';
@@ -36,7 +37,16 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
   const structure = resolveStructure(project, project.view.structureId);
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Las ramas plegadas se recuerdan por proyecto y estructura en este navegador: sobreviven a cambiar de
+  // vista (el panel se desmonta) y a recargar.
+  const { preferences, setPreference } = usePreferences();
+  const collapsedKey = `${project.id}:${project.view.structureId ?? 'hierarchy'}`;
+  const collapsed = useMemo(
+    () => new Set(preferences.collapsedRows[collapsedKey] ?? []),
+    [preferences.collapsedRows, collapsedKey],
+  );
+  const setCollapsed = (update: (current: Set<string>) => Set<string>) =>
+    setPreference('collapsedRows', { ...preferences.collapsedRows, [collapsedKey]: [...update(collapsed)] });
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const toast = useToast();
   // Arrastrar y soltar: nodo arrastrado, fila bajo el puntero y zona (antes, dentro, después).
