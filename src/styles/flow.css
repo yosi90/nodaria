@@ -876,3 +876,28 @@
   border: 1px solid var(--border);
   border-radius: 4px;
 }
+/* Chip de nodo aislado en la barra del lienzo. */
+.isolate-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.isolate-chip > svg {
+  color: var(--accent);
+}
+.isolate-chip button {
+  padding: 2px 7px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}

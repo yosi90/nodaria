@@ -85,6 +85,24 @@ export function hideNewTypesInGenealogy(p: Project, typeIds: string[]): Project 
   };
 }
 
+/**
+ * Aislar un nodo pasa a «Fuerzas» conservando los filtros que se estaban viendo (no los guardados de
+ * Fuerzas), para que solo cambie la forma. Guarda los de la disposición de origen para restaurarlos.
+ */
+export function viewForIsolation(p: Project): Partial<ProjectView> {
+  const { view } = p;
+  if (view.layout === 'force') return {};
+  return { layout: 'force', layoutFilters: { ...view.layoutFilters, [view.layout]: activeFilters(view) } };
+}
+
+/** Salir del aislamiento: vuelve a la disposición previa con sus filtros, sin tocar los guardados de Fuerzas. */
+export function viewAfterIsolation(p: Project, previous: LayoutMode): Partial<ProjectView> {
+  const { view } = p;
+  if (view.layout !== 'force' || previous === 'force') return {};
+  const stored = view.layoutFilters[previous] ?? activeFilters(view);
+  return { layout: previous, ...stored };
+}
+
 /** Cambios de la vista al pasar a otra disposición: guarda los filtros actuales y aplica los de la nueva. */
 export function viewForLayout(p: Project, mode: LayoutMode): Partial<ProjectView> {
   const { view } = p;

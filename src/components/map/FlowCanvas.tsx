@@ -28,6 +28,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Tag,
+  LocateFixed,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
@@ -42,10 +43,11 @@ import {
   kinshipTerm,
 } from '../../domain/kinship';
 import { isIncomplete } from '../../domain/health';
-import { viewForLayout } from '../../domain/layoutFilters';
+import { viewForLayout, viewAfterIsolation } from '../../domain/layoutFilters';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useNavigation } from '../../state/navigation';
 import { pointAnchor, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
@@ -167,6 +169,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     [project.schemas],
   );
   const selectedNodeId = selection?.kind === 'node' ? selection.id : null;
+  // Nodo aislado: el foco se fija en él (no sigue a la selección) y solo se ven sus vecinos.
+  const { isolated, clearIsolation } = useNavigation();
+  const isolatedNode = isolated ? getNode(project, isolated.nodeId) : undefined;
+  const focusId = isolatedNode ? isolatedNode.id : view.focusDepth > 0 ? selectedNodeId : null;
+  const focusDepth = isolatedNode ? Math.max(1, view.focusDepth) : view.focusDepth;
   const structure = resolveStructure(project, view.structureId);
 
   // Conexiones visibles: relaciones no ocultas y, si procede, la jerarquía "Dentro de".
@@ -206,12 +213,12 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   );
   const visibleIds = useMemo(() => {
     let ids = new Set(project.nodes.filter(n => !hiddenEntities.has(n.typeId)).map(n => n.id));
-    if (view.focusDepth > 0 && selectedNodeId && ids.has(selectedNodeId)) {
-      const near = neighborhood(selectedNodeId, links, view.focusDepth);
+    if (focusId && focusDepth > 0 && ids.has(focusId)) {
+      const near = neighborhood(focusId, links, focusDepth);
       ids = new Set([...ids].filter(id => near.has(id)));
     }
     return ids;
-  }, [project.nodes, hiddenEntities, view.focusDepth, selectedNodeId, links]);
+  }, [project.nodes, hiddenEntities, focusDepth, focusId, links]);
 
   // La disposición solo cuenta lo visible: un nodo oculto no reserva sitio ni separa a los demás, y al
   // mostrar u ocultar tipos (o cambiar el foco) todo se redistribuye con lo que queda.
@@ -287,7 +294,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   useEffect(() => {
     const timer = window.setTimeout(() => flow.fitView({ padding: 0.2, maxZoom: 1, duration: 350 }), 60);
     return () => window.clearTimeout(timer);
-  }, [view.layout, structure.id, view.focusDepth, view.hiddenEntityTypeIds, flow]);
+  }, [view.layout, structure.id, view.focusDepth, view.hiddenEntityTypeIds, isolated?.nodeId, flow]);
 
   const settings = useMemo(
     () => ({ avoidObstacles: project.nodes.length <= AVOID_OBSTACLES_LIMIT }),
@@ -836,7 +843,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           <div className="segmented labeled" role="group" aria-label="Modo foco">
             <span
               className="segmented-label"
-              title="Con un nodo seleccionado, muestra solo lo que está a 1, 2 o 3 saltos"
+              title="Con un nodo seleccionado (o aislado), muestra solo lo que está a 1, 2 o 3 saltos"
             >
               Foco
             </span>
@@ -866,6 +873,26 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
               </button>
             ))}
           </div>
+          {isolatedNode && (
+            <span className="isolate-chip" role="status">
+              <LocateFixed size={14} aria-hidden />
+              <span>
+                Aislado: <strong>{nodeLabel(project, isolatedNode)}</strong> · {focusDepth}{' '}
+                {focusDepth === 1 ? 'salto' : 'saltos'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const previous = isolated!.previousLayout;
+                  clearIsolation();
+                  const patch = viewAfterIsolation(project, previous);
+                  if (Object.keys(patch).length) setView(patch);
+                }}
+              >
+                Salir
+              </button>
+            </span>
+          )}
           <Button
             size="sm"
             variant="ghost"

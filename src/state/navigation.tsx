@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- provider y hook forman una única API de contexto */
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { Selection } from '../domain/types';
+import type { LayoutMode, Selection } from '../domain/types';
 
 export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health';
 export type HelpTopic = 'start' | 'shortcuts' | 'formulas';
@@ -16,6 +16,8 @@ interface NavigationState {
   paletteOpen: boolean;
   /** Tema de ayuda abierto, o ninguno. */
   help: HelpTopic | null;
+  /** Nodo aislado en el lienzo: solo se ven sus vecinos. Guarda la disposición previa para restaurarla al salir. */
+  isolated: { nodeId: string; previousLayout: LayoutMode } | null;
 }
 
 interface NavigationContextValue extends NavigationState {
@@ -24,6 +26,8 @@ interface NavigationContextValue extends NavigationState {
   select: (selection: Selection, options?: { reveal?: boolean }) => void;
   /** Olvida la selección y su historial sin cambiar de vista (al cambiar de proyecto). */
   clearSelection: () => void;
+  isolate: (nodeId: string, previousLayout: LayoutMode) => void;
+  clearIsolation: () => void;
   back: () => void;
   forward: () => void;
   canBack: boolean;
@@ -47,6 +51,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     revealKey: 0,
     paletteOpen: false,
     help: null,
+    isolated: null,
   });
 
   const setView = useCallback((view: View) => setState(s => (s.view === view ? s : { ...s, view })), []);
@@ -64,10 +69,18 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const clearSelection = useCallback(
     () =>
       setState(s =>
-        s.selection || s.past.length || s.future.length ? { ...s, selection: null, past: [], future: [] } : s,
+        s.selection || s.past.length || s.future.length || s.isolated
+          ? { ...s, selection: null, past: [], future: [], isolated: null }
+          : s,
       ),
     [],
   );
+  const isolate = useCallback(
+    (nodeId: string, previousLayout: LayoutMode) =>
+      setState(s => ({ ...s, isolated: { nodeId, previousLayout: s.isolated?.previousLayout ?? previousLayout } })),
+    [],
+  );
+  const clearIsolation = useCallback(() => setState(s => (s.isolated ? { ...s, isolated: null } : s)), []);
   const back = useCallback(
     () =>
       setState(s => {
@@ -110,6 +123,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setView,
       select,
       clearSelection,
+      isolate,
+      clearIsolation,
       back,
       forward,
       canBack: state.past.length > 0,
@@ -118,7 +133,19 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       openHelp,
       closeHelp,
     }),
-    [state, setView, select, clearSelection, back, forward, setPaletteOpen, openHelp, closeHelp],
+    [
+      state,
+      setView,
+      select,
+      clearSelection,
+      isolate,
+      clearIsolation,
+      back,
+      forward,
+      setPaletteOpen,
+      openHelp,
+      closeHelp,
+    ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

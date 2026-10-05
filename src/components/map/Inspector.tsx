@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Copy, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, LocateFixed, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
+import { viewAfterIsolation, viewForIsolation } from '../../domain/layoutFilters';
 import { uid } from '../../domain/factories';
 import { Menu } from '../common/Menu';
 import { useState } from 'react';
@@ -45,7 +46,7 @@ interface InspectorProps {
 
 export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete }: InspectorProps) {
   const { project, dispatch } = useApp();
-  const { select, back, forward, canBack, canForward } = useNavigation();
+  const { select, back, forward, canBack, canForward, isolated, isolate, clearIsolation } = useNavigation();
   const [duplicateAnchor, setDuplicateAnchor] = useState<Anchor | null>(null);
   const duplicate = (withRelations: boolean) => {
     if (selection?.kind !== 'node') return;
@@ -56,6 +57,21 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
   };
   const [tab, setTab] = useState<Tab>('fields');
   const node = selection?.kind === 'node' ? getNode(project, selection.id) : undefined;
+  const isolatedHere = Boolean(node && isolated?.nodeId === node.id);
+  // Aislar: fijar el foco en este nodo (solo sus vecinos) y pasar a fuerzas; al salir vuelve la disposición previa.
+  const toggleIsolate = () => {
+    if (!node) return;
+    if (isolatedHere) {
+      const previous = isolated!.previousLayout;
+      clearIsolation();
+      const patch = viewAfterIsolation(project, previous);
+      if (Object.keys(patch).length) dispatch({ type: 'update-view', view: patch });
+      return;
+    }
+    isolate(node.id, project.view.layout);
+    const patch = viewForIsolation(project);
+    if (Object.keys(patch).length) dispatch({ type: 'update-view', view: patch });
+  };
   const relation = selection?.kind === 'relation' ? project.relations.find(r => r.id === selection.id) : undefined;
   if (!node && !relation) return null;
   const item = node ?? relation!;
@@ -105,6 +121,15 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
           <h2 title={title}>{title}</h2>
           <small>{subtitle}</small>
         </div>
+        {node && (
+          <IconButton
+            icon={LocateFixed}
+            label={isolatedHere ? 'Dejar de aislar' : 'Aislar: ver solo este nodo y sus vecinos'}
+            tooltipSide="left"
+            active={isolatedHere}
+            onClick={toggleIsolate}
+          />
+        )}
         <IconButton icon={X} label="Cerrar inspector (Esc)" tooltipSide="left" onClick={onClose} />
       </header>
       {node && (
