@@ -1017,6 +1017,10 @@ button.mention:hover {
 .data-table td.cell-title {
   min-width: 200px;
 }
+/* Una fecha con calendario propio necesita sitio para el nombre del mes. */
+.data-table td:has(.date-control) {
+  min-width: 260px;
+}
 .data-table th.cell-check,
 .data-table td.cell-check {
   min-width: 0;

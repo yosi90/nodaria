@@ -581,6 +581,39 @@
   gap: var(--space-2);
   margin-top: var(--space-2);
 }
+
+/* ---------- Calendario del mundo ---------- */
+.calendar-section {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+.calendar-section .card-head {
+  margin-bottom: 0;
+}
+.calendar-section .card-head h3 {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.calendar-list {
+  display: grid;
+  gap: 6px;
+}
+.calendar-row {
+  display: grid;
+  grid-template-columns: 1.5em minmax(0, 1fr) 5em auto auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.calendar-row:has(> input:only-of-type) {
+  grid-template-columns: 1.5em minmax(0, 1fr) auto;
+}
+.calendar-index {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  text-align: right;
+}
 .tour {
   position: fixed;
   inset: 0;

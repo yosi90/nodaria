@@ -1,4 +1,5 @@
 import { COLORS, PROJECT_FORMAT_VERSION } from './constants';
+import { defaultCalendar } from './calendar';
 import { defaultKinship } from './kinship';
 import type { AppState, FieldDefinition, Project, ProjectView, Schema, SchemaKind } from './types';
 export const uid = (prefix = 'id') => `${prefix}_${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
@@ -29,6 +30,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     kinship: defaultKinship(),
     queries: [],
     folders: [],
+    calendar: defaultCalendar(),
   };
 }
 export function createInitialState(): AppState {

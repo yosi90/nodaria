@@ -13,6 +13,7 @@ import { isFieldLink, ownFields } from './library';
 import { defaultChildTerm } from './kinship';
 import { hideNewTypesInGenealogy } from './layoutFilters';
 import { withoutNodesInFolders } from './folders';
+import type { Calendar } from './calendar';
 import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
   FieldDefinition,
@@ -639,6 +640,11 @@ export function setMapScale(p: Project, scale: number, marker = 44): Project {
     };
   });
   return { ...p, mapImage: { ...p.mapImage, scale }, nodes };
+}
+
+/** Sustituye el calendario del mundo. Los valores de fecha no se tocan: se guardan como texto y se leen con el nuevo. */
+export function updateCalendar(p: Project, calendar: Calendar): Project {
+  return { ...p, calendar };
 }
 
 /** Sustituye el vocabulario de parentesco; las relaciones con términos borrados quedan sin término. */

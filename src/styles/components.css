@@ -424,6 +424,29 @@ label.field-inline select {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--space-3);
 }
+/* Fecha con calendario propio: día, mes y año en una línea. */
+.date-control {
+  display: grid;
+  grid-template-columns: 3.4em minmax(5em, 1fr) 4.6em auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 15em;
+  font-weight: 400;
+}
+.date-control .date-month {
+  padding-inline: 8px 24px;
+}
+.date-control .date-day,
+.date-control .date-year {
+  padding-inline: 8px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.date-control input::-webkit-outer-spin-button,
+.date-control input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
 .check-row {
   display: flex;
   flex-wrap: wrap;

@@ -1,3 +1,4 @@
+import { formatDateValue } from '../../domain/calendar';
 import { isFieldVisible } from '../../domain/conditions';
 import { evaluateFormula } from '../../domain/formulas';
 import { isImageData, type NodeImage } from '../../domain/portrait';
@@ -41,6 +42,7 @@ function describe(p: Project, f: FieldDefinition, v: unknown): string {
   if (f.type === 'image') return f.label;
   if (f.type === 'tags') return `${f.label}: ${Array.isArray(v) ? v.join(', ') : String(v)}`;
   if (f.type === 'scale') return `${f.label}: ${'★'.repeat(Number(v))}${'☆'.repeat(Math.max(0, 5 - Number(v)))}`;
+  if (f.type === 'date') return `${f.label}: ${formatDateValue(p.calendar, v)}`;
   return `${f.label}: ${String(v)}`;
 }
 

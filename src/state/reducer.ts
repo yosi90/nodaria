@@ -5,6 +5,7 @@ import * as ops from '../domain/operations';
 import { moveInStructure, type StructureMove } from '../domain/structureMove';
 import { mergeTemplate } from '../domain/templates';
 import { addFolder, deleteFolder, renameFolder, setNodeFolder } from '../domain/folders';
+import type { Calendar } from '../domain/calendar';
 import type { SavedQuery } from '../domain/queries';
 import type {
   AppState,
@@ -70,6 +71,7 @@ export type Action =
   | { type: 'delete-lens'; id: string }
   | { type: 'apply-lens'; id: string }
   | { type: 'update-kinship'; kinship: KinshipTerm[] }
+  | { type: 'update-calendar'; calendar: Calendar }
   | { type: 'set-map-image'; image: MapImage | null }
   | { type: 'set-map-scale'; scale: number }
   | { type: 'save-query'; query: SavedQuery }
@@ -237,6 +239,8 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.setMapScale(p, action.scale);
     case 'update-kinship':
       return ops.updateKinship(p, action.kinship);
+    case 'update-calendar':
+      return ops.updateCalendar(p, action.calendar);
     case 'update-node':
       return ops.updateNode(p, action.id, action.values, action.parentId);
     case 'duplicate-node':

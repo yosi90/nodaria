@@ -1,4 +1,5 @@
 import {
+  CalendarDays,
   ChevronDown,
   CircleHelp,
   Copy,
@@ -34,6 +35,7 @@ import { anchorOf, type Anchor } from '../common/anchor';
 import { useToast } from '../common/toasts';
 import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
+import { CalendarDialog } from './CalendarDialog';
 
 export type { View } from '../../state/navigation';
 
@@ -62,6 +64,7 @@ export function Topbar({
   const toast = useToast();
   const file = useRef<HTMLInputElement>(null);
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuAnchor(null), []);
   const theme = THEME_CYCLE[preferences.theme];
 
@@ -134,6 +137,7 @@ export function Topbar({
     { label: 'Ejemplos y plantillas…', icon: Layers, onSelect: onTemplates },
     { label: 'Renombrar', icon: Pencil, onSelect: rename },
     { label: 'Duplicar', icon: Copy, onSelect: () => dispatch({ type: 'duplicate-project' }) },
+    { label: 'Calendario del mundo…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
     'separator',
     { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
     { label: 'Exportar JSON', icon: Download, onSelect: download },
@@ -162,6 +166,7 @@ export function Topbar({
         <ChevronDown size={15} aria-hidden />
       </button>
       {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Proyecto" />}
+      {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">
         <span className="segmented-label" title="Ver y revisar los datos del mundo">

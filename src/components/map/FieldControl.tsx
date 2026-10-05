@@ -6,6 +6,9 @@ import { TagsInput } from '../common/TagsInput';
 import { ImageControl } from './ImageControl';
 import { imageClasses } from '../../domain/portrait';
 import { ReferenceControl } from './ReferenceControl';
+import { DateControl } from './DateControl';
+import { isStandardCalendar } from '../../domain/calendar';
+import { useApp } from '../../state/AppContext';
 
 /** Control de edición de un atributo según su tipo. Lo usan la ficha y la tabla. */
 export function FieldControl({
@@ -23,6 +26,7 @@ export function FieldControl({
   titleField?: boolean;
   autoFocus?: boolean;
 }) {
+  const { project } = useApp();
   const common = {
     'data-title-field': titleField ? 'true' : undefined,
     autoFocus,
@@ -122,5 +126,8 @@ export function FieldControl({
       </select>
     );
   if (field.type === 'computed') return <input disabled value={String(value ?? '')} />;
+  // Con un calendario propio el control nativo no sirve: sus meses y días son los del mundo.
+  if (field.type === 'date' && !isStandardCalendar(project.calendar))
+    return <DateControl calendar={project.calendar} value={value} onChange={onChange} autoFocus={autoFocus} />;
   return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} {...common} />;
 }

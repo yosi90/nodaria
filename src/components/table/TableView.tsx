@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, Columns3, Copy, ExternalLink, Grid3x3, Plus, Search, Table2, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import { formatDateValue } from '../../domain/calendar';
 import { uid } from '../../domain/factories';
 import { imageClasses } from '../../domain/portrait';
 import { isFieldVisible } from '../../domain/conditions';
@@ -106,6 +107,7 @@ export function TableView() {
       }
       if (f.type === 'image') return isImageValue(v) ? 'imagen' : '';
       if (f.type === 'boolean') return v ? 'sí' : 'no';
+      if (f.type === 'date') return formatDateValue(project.calendar, v);
       return v === undefined || v === null ? '' : String(v);
     },
     [project, degree],
@@ -123,7 +125,13 @@ export function TableView() {
     if (prefs.sort) {
       const { column, direction } = prefs.sort;
       const col = columns.find(c => c.id === column);
-      const key = (n: Node) => (col ? cellText(n, col) : nodeLabel(project, n));
+      // Las fechas se ordenan por su valor guardado (AAAA-MM-DD), no por el texto legible.
+      const key = (n: Node) =>
+        col?.field?.type === 'date'
+          ? String(n.values[col.field.id] ?? '')
+          : col
+            ? cellText(n, col)
+            : nodeLabel(project, n);
       const numeric = col?.field?.type === 'number' || column === RELATIONS_COLUMN;
       list = [...list].sort((x, y) => {
         const a = key(x);

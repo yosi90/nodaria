@@ -1,5 +1,6 @@
 import { PROJECT_FORMAT_VERSION } from '../domain/constants';
 import { createView, uid } from '../domain/factories';
+import { normalizeCalendar } from '../domain/calendar';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
 import type { FieldDefinition, FieldValue, LayoutMode, Node, NodeDisplay, Position, Project } from '../domain/types';
@@ -164,6 +165,7 @@ function normalizeProject(project: RawProject): Project {
       view: { ...createView(), ...(l.view ?? {}) },
       positions: l.positions ?? null,
     })),
+    calendar: normalizeCalendar(project.calendar),
   };
 }
 
