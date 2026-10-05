@@ -1753,14 +1753,30 @@ button.mention:hover {
   margin: 0 6px;
   background: var(--border);
 }
-.type-branch {
-  flex: none;
+/* Guías del árbol de herencia: una línea vertical por nivel que une a los hermanos (├ / └) y un tramo hacia el hijo. */
+.type-item {
+  position: relative;
+}
+.type-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.type-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--border-strong);
+}
+.type-guide.end {
+  bottom: 50%;
+}
+.type-guide.tick {
+  top: 50%;
+  bottom: auto;
   width: 10px;
-  height: 10px;
-  margin-right: -4px;
-  border-left: 1.5px solid var(--border-strong);
-  border-bottom: 1.5px solid var(--border-strong);
-  border-radius: 0 0 0 4px;
+  height: 1.5px;
 }
 .overlap-note {
   display: flex;

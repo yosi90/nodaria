@@ -54,10 +54,28 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
         <nav className="type-items" aria-label="Lista de tipos">
           {groups.map(group => {
             const items = schemaTree(shown, group.kind);
+            // Guías del árbol: para cada entrada, qué niveles de sus ancestros siguen hacia abajo
+            // (línea continua) y si ella es la última hermana (termina en └ en vez de ├).
+            const isLast = items.map((entry, i) => {
+              for (let j = i + 1; j < items.length; j++) {
+                if (items[j].depth < entry.depth) return true;
+                if (items[j].depth === entry.depth) return false;
+              }
+              return true;
+            });
+            // guides[i][d] (d ≥ 1): si el ancestro de profundidad d sigue teniendo hermanos debajo. Las raíces
+            // no se unen entre sí, así que el nivel 0 nunca dibuja guía.
+            const guides: boolean[][] = [];
+            const stack: boolean[] = [];
+            items.forEach((entry, i) => {
+              stack.length = entry.depth;
+              guides.push(stack.slice(0, entry.depth));
+              stack[entry.depth] = !isLast[i];
+            });
             return (
               <div key={group.kind}>
                 <div className="type-group-title">{group.title}</div>
-                {items.map(({ schema: item, depth }) => (
+                {items.map(({ schema: item, depth }, index) => (
                   <button
                     key={item.id}
                     type="button"
@@ -97,7 +115,20 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
                     }}
                     onClick={() => setSelected(item.id)}
                   >
-                    {depth > 0 && <span className="type-branch" aria-hidden />}
+                    {depth > 0 && (
+                      <span className="type-guides" aria-hidden>
+                        {guides[index].map((continues, level) =>
+                          continues && level > 0 && level < depth ? (
+                            <span key={level} className="type-guide" style={{ left: 15 + (level - 1) * 18 }} />
+                          ) : null,
+                        )}
+                        <span
+                          className={`type-guide ${isLast[index] ? 'end' : ''}`}
+                          style={{ left: 15 + (depth - 1) * 18 }}
+                        />
+                        <span className="type-guide tick" style={{ left: 15 + (depth - 1) * 18 }} />
+                      </span>
+                    )}
                     <TypeIcon icon={item.icon} color={item.color} />
                     <span className="names">
                       <strong>{item.name || 'Sin nombre'}</strong>
