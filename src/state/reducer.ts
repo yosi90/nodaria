@@ -4,6 +4,7 @@ import { moveSchema, reorderSchema, type DropZone } from '../domain/inheritance'
 import * as ops from '../domain/operations';
 import { moveInStructure, type StructureMove } from '../domain/structureMove';
 import { mergeTemplate } from '../domain/templates';
+import { addFolder, deleteFolder, renameFolder, setNodeFolder } from '../domain/folders';
 import type { SavedQuery } from '../domain/queries';
 import type {
   AppState,
@@ -29,6 +30,10 @@ export type Action =
   | { type: 'duplicate-project' }
   | { type: 'import-project'; project: Project; replaceBlank?: boolean }
   | { type: 'merge-template'; template: Project }
+  | { type: 'add-folder'; name: string; id?: string }
+  | { type: 'rename-folder'; id: string; name: string }
+  | { type: 'delete-folder'; id: string }
+  | { type: 'set-node-folder'; nodeId: string; folderId: string | null; beforeId?: string | null }
   /** Resultado de una sincronización: sustituye o añade proyectos y quita otros, sin re-sellar `updatedAt`. */
   | { type: 'sync-apply'; upsert: Project[]; remove: string[] }
   /** Vacía el navegador (al cerrar sesión sin conservar los proyectos). */
@@ -155,6 +160,14 @@ function projectReducer(p: Project, action: Action): Project {
       return { ...p, name: action.name };
     case 'merge-template':
       return mergeTemplate(p, action.template);
+    case 'add-folder':
+      return addFolder(p, action.name, action.id);
+    case 'rename-folder':
+      return renameFolder(p, action.id, action.name);
+    case 'delete-folder':
+      return deleteFolder(p, action.id);
+    case 'set-node-folder':
+      return setNodeFolder(p, action.nodeId, action.folderId, action.beforeId ?? null);
     case 'add-schema':
       return ops.addSchema(p, action.name, action.kind, action.id);
     case 'update-schema':

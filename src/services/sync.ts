@@ -83,6 +83,7 @@ export function isBlankProject(p: Project) {
     p.nodes.length === 0 &&
     p.relations.length === 0 &&
     p.lenses.length === 0 &&
+    p.folders.length === 0 &&
     p.mapImage === null
   );
 }

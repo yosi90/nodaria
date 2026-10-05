@@ -14,6 +14,7 @@ export type FieldType =
   | 'color'
   | 'scale'
   | 'tags';
+import type { Folder } from './folders';
 import type { ImageShape } from './portrait';
 import type { SavedQuery } from './queries';
 
@@ -164,6 +165,8 @@ export interface Project {
   kinship: KinshipTerm[];
   /** Consultas guardadas (`src/domain/queries.ts`). */
   queries: SavedQuery[];
+  /** Carpetas del árbol de estructura: solo organizan nodos raíz en el panel (`src/domain/folders.ts`). */
+  folders: Folder[];
 }
 /** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
 export interface Lens {

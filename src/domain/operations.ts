@@ -12,6 +12,7 @@ import {
 import { isFieldLink, ownFields } from './library';
 import { defaultChildTerm } from './kinship';
 import { hideNewTypesInGenealogy } from './layoutFilters';
+import { withoutNodesInFolders } from './folders';
 import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
   FieldDefinition,
@@ -447,7 +448,7 @@ function removeNodes(p: Project, removed: Set<string>): Project {
       const values = withoutReferences(r.values, removed);
       return values === r.values ? r : { ...r, values };
     });
-  return { ...p, nodes, relations };
+  return withoutNodesInFolders({ ...p, nodes, relations }, removed);
 }
 
 function withoutReferences(values: Record<string, FieldValue>, removed: Set<string>) {
