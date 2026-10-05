@@ -11,6 +11,7 @@ import {
 } from './selectors';
 import { isFieldLink, ownFields } from './library';
 import { defaultChildTerm } from './kinship';
+import { hideNewTypesInGenealogy } from './layoutFilters';
 import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
   FieldDefinition,
@@ -67,8 +68,8 @@ export function typedDefault(field: FieldDefinition): FieldValue | undefined {
 }
 
 export function addSchema(p: Project, name: string, kind: SchemaKind, id?: string): Project {
-  const schema = createSchema(name, kind);
-  return { ...p, schemas: [...p.schemas, id ? { ...schema, id } : schema] };
+  const schema = id ? { ...createSchema(name, kind), id } : createSchema(name, kind);
+  return hideNewTypesInGenealogy({ ...p, schemas: [...p.schemas, schema] }, [schema.id]);
 }
 
 /** Aplica cambios a un tipo, ignorando los que romperían el modelo (ciclos de herencia, cambio de clase en uso). */
@@ -284,10 +285,8 @@ export function duplicateSchema(
     targetTypeIds: source.targetTypeIds.map(t => (t === id ? newId : t)),
   };
   const index = p.schemas.findIndex(s => s.id === id);
-  return {
-    project: { ...p, schemas: [...p.schemas.slice(0, index + 1), schema, ...p.schemas.slice(index + 1)] },
-    schemaId: newId,
-  };
+  const project = { ...p, schemas: [...p.schemas.slice(0, index + 1), schema, ...p.schemas.slice(index + 1)] };
+  return { project: hideNewTypesInGenealogy(project, [newId]), schemaId: newId };
 }
 
 /** Actualiza valores y padre de un nodo. Un padre que crearía un ciclo se ignora. */

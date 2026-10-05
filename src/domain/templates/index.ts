@@ -1,3 +1,4 @@
+import { hideNewTypesInGenealogy } from '../layoutFilters';
 import type { Project } from '../types';
 import { carsExample } from './cars';
 import { puertoNorteExample } from './puertoNorte';
@@ -90,10 +91,14 @@ export function mergeTemplate(p: Project, template: Project): Project {
   const fieldLibrary = template.fieldLibrary.filter(f => !libraryIds.has(f.id));
   const kinship = template.kinship.filter(k => !kinshipIds.has(k.id));
   if (!schemas.length && !fieldLibrary.length && !kinship.length) return p;
-  return {
+  const merged = {
     ...p,
     schemas: [...p.schemas, ...schemas],
     fieldLibrary: [...p.fieldLibrary, ...fieldLibrary],
     kinship: [...p.kinship, ...kinship],
   };
+  return hideNewTypesInGenealogy(
+    merged,
+    schemas.map(s => s.id),
+  );
 }

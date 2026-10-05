@@ -49,6 +49,42 @@ export function defaultFilters(p: Project, mode: LayoutMode): LayoutFilters {
   };
 }
 
+/** Tipos de entidad que ningún parentesco admite: en Genealogía se ocultan por defecto. */
+export function genealogyHides(p: Project, typeId: string): boolean {
+  const schema = p.schemas.find(s => s.id === typeId);
+  if (!schema || schema.kind !== 'entity' || schema.isAbstract) return false;
+  const admitted = genealogySchemas(p).flatMap(s => {
+    const ends = relationEnds(p, s);
+    return [...ends.source, ...ends.target];
+  });
+  return !typeMatches(p, typeId, admitted);
+}
+
+/**
+ * Un tipo creado después de visitar Genealogía debe nacer oculto allí si el parentesco no lo admite,
+ * igual que los que existían al calcular sus filtros iniciales. Si Genealogía no se ha visitado aún,
+ * no hay nada que hacer: `defaultFilters` lo tendrá en cuenta.
+ */
+export function hideNewTypesInGenealogy(p: Project, typeIds: string[]): Project {
+  const toHide = typeIds.filter(id => genealogyHides(p, id));
+  if (!toHide.length) return p;
+  const { view } = p;
+  if (view.layout === 'genealogy') {
+    const hidden = [...new Set([...view.hiddenEntityTypeIds, ...toHide])];
+    return hidden.length === view.hiddenEntityTypeIds.length
+      ? p
+      : { ...p, view: { ...view, hiddenEntityTypeIds: hidden } };
+  }
+  const stored = view.layoutFilters.genealogy;
+  if (!stored) return p;
+  const hidden = [...new Set([...stored.hiddenEntityTypeIds, ...toHide])];
+  if (hidden.length === stored.hiddenEntityTypeIds.length) return p;
+  return {
+    ...p,
+    view: { ...view, layoutFilters: { ...view.layoutFilters, genealogy: { ...stored, hiddenEntityTypeIds: hidden } } },
+  };
+}
+
 /** Cambios de la vista al pasar a otra disposición: guarda los filtros actuales y aplica los de la nueva. */
 export function viewForLayout(p: Project, mode: LayoutMode): Partial<ProjectView> {
   const { view } = p;
