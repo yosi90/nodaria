@@ -207,18 +207,39 @@ export function HealthView() {
           count={report.unusedTypes.length}
           hint="Tipos definidos que ningún nodo o relación usa todavía."
         >
-          {report.unusedTypes.map(s => (
-            <button
-              key={s.id}
-              type="button"
-              className="health-item"
-              onClick={() => setView(s.kind === 'entity' ? 'schema' : 'relations')}
-            >
-              <TypeIcon icon={s.icon} color={s.color} size="sm" />
-              <strong>{s.name}</strong>
-              <span className="health-detail">{s.kind === 'entity' ? 'Tipo de entidad' : 'Tipo de relación'}</span>
-            </button>
-          ))}
+          {report.unusedTypes.map(s => {
+            // Un tipo sin nodos del que heredan otros suele ser una base que olvidó marcarse como abstracta.
+            const subtypes = project.schemas.filter(x => x.parentTypeId === s.id).length;
+            return (
+              <div key={s.id} className="health-item-row">
+                <button
+                  type="button"
+                  className="health-item"
+                  onClick={() => setView(s.kind === 'entity' ? 'schema' : 'relations')}
+                >
+                  <TypeIcon icon={s.icon} color={s.color} size="sm" />
+                  <strong>{s.name}</strong>
+                  <span className="health-detail">
+                    {s.kind === 'entity' ? 'Tipo de entidad' : 'Tipo de relación'}
+                    {subtypes > 0 && ` · ${subtypes} ${subtypes === 1 ? 'subtipo hereda' : 'subtipos heredan'} de él`}
+                  </span>
+                </button>
+                {s.kind === 'entity' && subtypes > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title="Si solo sirve de base para sus subtipos, márcalo como abstracto: no se podrán crear nodos suyos y dejará de contar aquí"
+                    onClick={() => {
+                      dispatch({ type: 'update-schema', schema: { ...s, isAbstract: true } });
+                      toast({ message: `«${s.name}» marcado como abstracto`, undoable: true });
+                    }}
+                  >
+                    Marcar como abstracto
+                  </Button>
+                )}
+              </div>
+            );
+          })}
         </Section>
         <Section
           icon={Link2Off}
