@@ -47,6 +47,12 @@ export interface FieldDefinition {
   imageBorder: boolean;
   /** Imágenes: sirve de retrato del nodo (sustituye al icono del tipo). */
   portrait: boolean;
+  /** Solo se muestra cuando otra lista de opciones del mismo tipo vale alguna de estas opciones (ver `conditions.ts`). */
+  visibleWhen: { fieldId: string; options: string[] } | null;
+  /** Referencias: solo nodos que cuelgan del elegido en esta otra referencia del mismo tipo. */
+  referenceWithin: string | null;
+  /** Referencias múltiples y etiquetas: máximo de elementos según la opción elegida en otra lista. */
+  maxItemsBy: { fieldId: string; limits: Record<string, number> } | null;
 }
 export type NodeDisplay = 'none' | 'icon' | 'text';
 /** Vínculo a un atributo de la biblioteca compartida del proyecto. */

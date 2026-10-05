@@ -99,6 +99,7 @@ export function LibraryEditor() {
               <FieldEditor
                 key={field.id}
                 field={field}
+                siblings={project.fieldLibrary}
                 dragging={dragged === field.id}
                 onDragStart={setDragged}
                 onDragEnd={endDrag}

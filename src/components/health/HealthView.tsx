@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { describeIssue } from '../../domain/cardinality';
+import { describeLimitIssue } from '../../domain/conditions';
 import { analysisLinks, betweenness, bridges, degreeCentrality } from '../../domain/centrality';
 import { detectCommunities } from '../../domain/communities';
 import { COLORS } from '../../domain/constants';
@@ -250,6 +251,18 @@ export function HealthView() {
           {report.cardinality.map(issue => (
             <NodeButton key={`${issue.node.id}-${issue.schema.id}-${issue.end}`} node={issue.node}>
               {describeIssue(project, issue).replace(`${nodeLabel(project, issue.node)} `, '')}
+            </NodeButton>
+          ))}
+        </Section>
+        <Section
+          icon={Link2Off}
+          title="Límites de referencias superados"
+          count={report.referenceLimits.length}
+          hint="Referencias múltiples con más elementos de los que permite la opción elegida en otra lista."
+        >
+          {report.referenceLimits.map(issue => (
+            <NodeButton key={`${issue.node.id}-${issue.field.id}`} node={issue.node}>
+              {describeLimitIssue(project, issue).replace(`${nodeLabel(project, issue.node)} `, '')}
             </NodeButton>
           ))}
         </Section>

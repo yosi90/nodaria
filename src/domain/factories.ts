@@ -80,6 +80,9 @@ export function createField(): FieldDefinition {
     imageShape: 'rounded',
     imageBorder: true,
     portrait: false,
+    visibleWhen: null,
+    referenceWithin: null,
+    maxItemsBy: null,
   };
 }
 export function createView(): ProjectView {

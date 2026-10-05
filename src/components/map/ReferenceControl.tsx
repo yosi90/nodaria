@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { uid } from '../../domain/factories';
+import { referenceScope } from '../../domain/conditions';
 import { referenceCandidates } from '../../domain/references';
 import { allFields, getSchema } from '../../domain/selectors';
 import type { FieldDefinition, FieldValue } from '../../domain/types';
@@ -23,7 +24,10 @@ interface ReferenceControlProps {
 export function ReferenceControl({ field, value, ownerId, onChange }: ReferenceControlProps) {
   const { project, dispatch } = useApp();
   const [creating, setCreating] = useState(false);
-  const candidates = referenceCandidates(project, field, ownerId);
+  // Referencia dependiente: solo lo que cuelga del nodo elegido en la otra referencia del propietario.
+  const owner = project.nodes.find(n => n.id === ownerId);
+  const scope = owner ? referenceScope(project, field, owner.values) : null;
+  const candidates = referenceCandidates(project, field, ownerId, scope);
   const options = [...candidates.map(n => nodeOption(project, n)), { value: NEW, label: 'Crear nuevo…', hint: '＋' }];
   const allowedTypes = project.schemas.filter(
     s => s.kind === 'entity' && !s.isAbstract && (!field.referenceTypeIds.length || inherits(s.id)),

@@ -31,6 +31,8 @@ interface FieldEditorProps {
   note?: ReactNode;
   /** Mostrar «Título del nodo»: no aplica a los atributos de relación. */
   allowTitle?: boolean;
+  /** Los demás atributos del mismo tipo (o de la biblioteca), para las condiciones entre atributos. */
+  siblings?: FieldDefinition[];
 }
 
 /** Edición de un atributo, propio de un tipo o de la biblioteca compartida. */
@@ -47,6 +49,7 @@ export function FieldEditor({
   actions,
   note,
   allowTitle = true,
+  siblings = [],
 }: FieldEditorProps) {
   const { project, dispatch } = useApp();
   const { openHelp } = useNavigation();
@@ -62,6 +65,12 @@ export function FieldEditor({
   // «Género» es un atributo de sistema: lo usa el parentesco y no se edita (solo se reordena o se quita).
   const system = field.type === 'gender';
   const hasDefault = !['computed', 'image', 'gender'].includes(field.type);
+  const others = siblings.filter(f => f.id !== field.id);
+  const listFields = others.filter(f => f.type === 'select');
+  const refFields = others.filter(f => f.type === 'nodeRef' || f.type === 'nodeRefs');
+  const whenField = field.visibleWhen ? listFields.find(f => f.id === field.visibleWhen!.fieldId) : undefined;
+  const limitField = field.maxItemsBy ? listFields.find(f => f.id === field.maxItemsBy!.fieldId) : undefined;
+  const canLimit = field.type === 'nodeRefs' || field.type === 'tags';
   const defaultSet = typedDefault(field) !== undefined;
   const missing = hasDefault && defaultSet ? nodesMissingValue(project, field.id).length : 0;
 
@@ -313,6 +322,101 @@ export function FieldEditor({
                 «Mostrar en el nodo»: «Solo icono» añade una miniatura junto al tipo e «Icono y texto» una línea con la
                 miniatura y el nombre del atributo.
               </small>
+            </div>
+          )}
+          {(listFields.length > 0 || field.visibleWhen) && (
+            <div className="field">
+              Visible solo cuando
+              <div className="field-row">
+                <select
+                  aria-label="Atributo que condiciona"
+                  value={field.visibleWhen?.fieldId ?? ''}
+                  onChange={event =>
+                    set('visibleWhen', event.target.value ? { fieldId: event.target.value, options: [] } : null)
+                  }
+                >
+                  <option value="">Siempre visible</option>
+                  {listFields.map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+                {field.visibleWhen && whenField && (
+                  <MultiSelect
+                    options={whenField.options.map(o => ({ value: o, label: o }))}
+                    value={field.visibleWhen.options}
+                    onChange={options => set('visibleWhen', { fieldId: whenField.id, options })}
+                    addLabel="Añadir opción"
+                    emptyText="Ninguna opción: nunca se muestra."
+                  />
+                )}
+              </div>
+              <small>
+                Se oculta en la ficha, la tabla y la tarjeta cuando esa lista vale otra cosa; el valor se conserva.
+                {field.visibleWhen && !whenField && ' El atributo condicionante ya no existe: se muestra siempre.'}
+              </small>
+            </div>
+          )}
+          {(field.type === 'nodeRef' || field.type === 'nodeRefs') && refFields.length > 0 && (
+            <label className="field">
+              Solo dentro de lo elegido en
+              <select
+                value={field.referenceWithin ?? ''}
+                onChange={event => set('referenceWithin', event.target.value || null)}
+              >
+                <option value="">Cualquier nodo de los tipos admitidos</option>
+                {refFields.map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+              <small>
+                Limita las opciones a los nodos que cuelgan («Dentro de») del elegido en esa otra referencia. Si está
+                vacía, no se limita.
+              </small>
+            </label>
+          )}
+          {canLimit && (listFields.length > 0 || field.maxItemsBy) && (
+            <div className="field">
+              Máximo según
+              <select
+                aria-label="Lista que fija el máximo"
+                value={field.maxItemsBy?.fieldId ?? ''}
+                onChange={event =>
+                  set('maxItemsBy', event.target.value ? { fieldId: event.target.value, limits: {} } : null)
+                }
+              >
+                <option value="">Sin límite</option>
+                {listFields.map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+              {field.maxItemsBy && limitField && (
+                <div className="limit-grid">
+                  {limitField.options.map(option => (
+                    <label key={option} className="field-inline">
+                      {option}
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="∞"
+                        value={field.maxItemsBy!.limits[option] ?? ''}
+                        onChange={event => {
+                          const limits = { ...field.maxItemsBy!.limits };
+                          if (event.target.value === '') delete limits[option];
+                          else limits[option] = Math.max(0, Math.floor(Number(event.target.value)));
+                          set('maxItemsBy', { fieldId: limitField.id, limits });
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
+              <small>Máximo de elementos por opción de esa lista; vacío = sin límite. Se avisa sin bloquear.</small>
             </div>
           )}
           {field.type === 'select' && (

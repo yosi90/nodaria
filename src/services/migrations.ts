@@ -84,6 +84,9 @@ function normalizeProject(project: RawProject): Project {
               imageBorder: f.imageBorder ?? true,
               // Antes, cualquier imagen hacía de retrato: se conserva ese comportamiento.
               portrait: f.portrait ?? f.type === 'image',
+              visibleWhen: f.visibleWhen ?? null,
+              referenceWithin: f.referenceWithin ?? null,
+              maxItemsBy: f.maxItemsBy ?? null,
             },
       ),
       allowedChildTypeIds: s.allowedChildTypeIds || [],
@@ -114,6 +117,9 @@ function normalizeProject(project: RawProject): Project {
       imageBorder: f.imageBorder ?? true,
       // Antes, cualquier imagen hacía de retrato: se conserva ese comportamiento.
       portrait: f.portrait ?? f.type === 'image',
+      visibleWhen: f.visibleWhen ?? null,
+      referenceWithin: f.referenceWithin ?? null,
+      maxItemsBy: f.maxItemsBy ?? null,
     })),
     nodes: (project.nodes || []).map(n => ({
       ...n,

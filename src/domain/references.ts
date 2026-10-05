@@ -74,10 +74,16 @@ export function typesWithField(p: Project, fieldId: string): Schema[] {
 }
 
 /** Nodos que puede tomar como valor un atributo de referencia. */
-export function referenceCandidates(p: Project, field: FieldDefinition, excludeId?: string): Node[] {
+export function referenceCandidates(
+  p: Project,
+  field: FieldDefinition,
+  excludeId?: string,
+  scope: Set<string> | null = null,
+): Node[] {
   const allowed = new Set(field.referenceTypeIds);
   return p.nodes
-    .filter(n => n.id !== excludeId && (!allowed.size || typeMatchesAny(p, n.typeId, allowed)))
+    .filter(n => n.id !== excludeId && (!scope || scope.has(n.id)))
+    .filter(n => !allowed.size || typeMatchesAny(p, n.typeId, allowed))
     .sort((a, b) => nodeLabel(p, a).localeCompare(nodeLabel(p, b), 'es'));
 }
 

@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Columns3, Copy, ExternalLink, Grid3x3, Plus, Search
 import { useCallback, useMemo, useState } from 'react';
 import { uid } from '../../domain/factories';
 import { imageClasses } from '../../domain/portrait';
+import { isFieldVisible } from '../../domain/conditions';
 import { allFields, fieldValue, getSchema, nodeLabel, typeMatches } from '../../domain/selectors';
 import type { FieldDefinition, FieldValue, Node } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -376,7 +377,11 @@ export function TableView() {
                       </td>
                       {visibleColumns.map(c => (
                         <td key={c.id} className={c.field && c.field.type !== 'computed' ? '' : 'cell-readonly'}>
-                          {c.field ? (
+                          {c.field && !isFieldVisible(allFields(project, n.typeId), c.field, n.values) ? (
+                            <span className="cell-readonly" title="Oculto por condición en esta ficha">
+                              —
+                            </span>
+                          ) : c.field ? (
                             c.field.type === 'image' ? (
                               isImageValue(n.values[c.field.id]) ? (
                                 <img

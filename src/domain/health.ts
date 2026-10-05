@@ -1,4 +1,5 @@
 import { cardinalityIssues, type CardinalityIssue } from './cardinality';
+import { referenceLimitIssues, visibleFields, type ReferenceLimitIssue } from './conditions';
 import { nodeConnections } from './connections';
 import { extractMentions, mentionIndex, normalizeName } from './notes';
 import { isReferenceField } from './references';
@@ -36,6 +37,7 @@ export interface HealthReport {
   incomplete: IncompleteSheet[];
   unusedTypes: Schema[];
   cardinality: CardinalityIssue[];
+  referenceLimits: ReferenceLimitIssue[];
   brokenReferences: BrokenReference[];
   unresolvedMentions: UnresolvedMention[];
   /** Número total de avisos. */
@@ -46,7 +48,8 @@ const isEmpty = (v: unknown) => v === undefined || v === null || v === '' || (Ar
 
 /** Atributos obligatorios (no calculados) sin valor en un nodo. */
 export function missingRequired(p: Project, node: Pick<Node, 'typeId' | 'values'>): FieldDefinition[] {
-  return allFields(p, node.typeId).filter(f => f.required && f.type !== 'computed' && isEmpty(node.values[f.id]));
+  // Un obligatorio oculto por condición no cuenta: no se puede rellenar sin cambiar la condición.
+  return visibleFields(p, node).filter(f => f.required && f.type !== 'computed' && isEmpty(node.values[f.id]));
 }
 
 export const isIncomplete = (p: Project, node: Pick<Node, 'typeId' | 'values'>) => missingRequired(p, node).length > 0;
@@ -93,6 +96,7 @@ export function worldHealth(p: Project): HealthReport {
     s.kind === 'entity' ? !s.isAbstract && !usedEntityTypes.has(s.id) : !usedRelationTypes.has(s.id),
   );
   const cardinality = cardinalityIssues(p);
+  const referenceLimits = referenceLimitIssues(p);
   const broken = brokenReferences(p);
   const mentions = unresolvedMentions(p);
   return {
@@ -100,9 +104,16 @@ export function worldHealth(p: Project): HealthReport {
     incomplete,
     unusedTypes,
     cardinality,
+    referenceLimits,
     brokenReferences: broken,
     unresolvedMentions: mentions,
     total:
-      isolated.length + incomplete.length + unusedTypes.length + cardinality.length + broken.length + mentions.length,
+      isolated.length +
+      incomplete.length +
+      unusedTypes.length +
+      cardinality.length +
+      referenceLimits.length +
+      broken.length +
+      mentions.length,
   };
 }

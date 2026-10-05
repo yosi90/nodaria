@@ -2,7 +2,7 @@ import { Library, Link2, Plus, Unlink, TriangleAlert } from 'lucide-react';
 import { useCallback, useState, type DragEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { isFieldLink, usersOfLibraryField } from '../../domain/library';
-import { inheritedSchemas } from '../../domain/selectors';
+import { allFields, inheritedSchemas } from '../../domain/selectors';
 import { fieldOverlaps, type FieldOverlap } from '../../domain/inheritance';
 import type { FieldDefinition, FieldLink, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -209,6 +209,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
                 key={entry.id}
                 field={entry}
                 allowTitle={schema.kind === 'entity'}
+                siblings={allFields(project, schema.id)}
                 dragging={dragged === entry.id}
                 onDragStart={setDragged}
                 onDragEnd={endDrag}

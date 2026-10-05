@@ -1,3 +1,4 @@
+import { isFieldVisible } from '../../domain/conditions';
 import { evaluateFormula } from '../../domain/formulas';
 import { isImageData, type NodeImage } from '../../domain/portrait';
 import { allFields } from '../../domain/selectors';
@@ -47,7 +48,9 @@ function describe(p: Project, f: FieldDefinition, v: unknown): string {
 export function cardContent(p: Project, n: Node): { badges: CardBadge[]; lines: CardLine[] } {
   const badges: CardBadge[] = [];
   const lines: CardLine[] = [];
-  allFields(p, n.typeId).forEach(f => {
+  const fields = allFields(p, n.typeId);
+  fields.forEach(f => {
+    if (!isFieldVisible(fields, f, n.values)) return;
     const v = f.type === 'computed' ? evaluateFormula(p, n, f.formula) : n.values[f.id];
     if (isEmpty(v)) return;
     const option = f.type === 'select' ? String(v) : null;

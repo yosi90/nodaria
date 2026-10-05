@@ -16,6 +16,7 @@ import {
   typeMatches,
 } from '../../domain/selectors';
 import { relationEnds } from '../../domain/constraints';
+import { isFieldVisible, referenceLimit } from '../../domain/conditions';
 import type { FieldValue, Node, Project, Relation, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
@@ -210,7 +211,11 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
                 <div className="form-grid">
                   {fields
                     .filter(f => !(relation && schema?.genealogical && f.isTitle))
+                    .filter(f => isFieldVisible(fields, f, item.values))
                     .map(f => {
+                      const limit = referenceLimit(fields, f, item.values);
+                      const raw = item.values[f.id];
+                      const count = Array.isArray(raw) ? raw.length : raw ? 1 : 0;
                       // Un checkbox o un selector ya llevan su propia etiqueta: no se anidan dentro de otro <label>.
                       const Wrapper = ['boolean', 'nodeRef', 'nodeRefs', 'image'].includes(f.type) ? 'div' : 'label';
                       return (
@@ -240,6 +245,13 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
                             autoFocus={Boolean(focusTitle && f === titleField)}
                           />
                           {f.description && <small>{fieldText(f.description, schema?.name)}</small>}
+                          {limit !== null && (
+                            <small className={count > limit ? 'limit-note over' : 'limit-note'}>
+                              {count > limit
+                                ? `Supera el máximo: ${count} de ${limit} permitidos.`
+                                : `Máximo ${limit} ${limit === 1 ? 'elemento' : 'elementos'} (${count} ${count === 1 ? 'elegido' : 'elegidos'}).`}
+                            </small>
+                          )}
                         </Wrapper>
                       );
                     })}
