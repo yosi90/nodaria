@@ -1,8 +1,8 @@
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
-import { hierarchy, tree } from 'd3-hierarchy';
+import { hierarchy, tree, type HierarchyNode } from 'd3-hierarchy';
 import { kinshipGraph, kinshipStructureLink } from '../../domain/kinship';
 import { structureChildren, structureLinks } from '../../domain/structure';
-import type { LayoutMode, Position, Project } from '../../domain/types';
+import type { LayoutMode, Node, Position, Project } from '../../domain/types';
 
 /*
  * Disposiciones automáticas del lienzo. Devuelven la esquina superior izquierda de cada nodo.
@@ -25,15 +25,29 @@ interface TreeDatum {
   children?: TreeDatum[];
 }
 
+/** Coordenadas abstractas de la jerárquica: `deep` avanza con la profundidad, `along` recorre cada nivel. */
+interface Slot {
+  deep: number;
+  along: number;
+}
+
 /**
  * Árbol de la estructura con cada nodo una sola vez: un nodo con varios superiores cuelga del
- * primero que lo alcanza en orden de profundidad, y los ciclos se cortan.
+ * primero que lo alcanza en orden de profundidad, y los ciclos se cortan. `order` ordena a los
+ * hermanos (menor primero); los empates conservan el orden original.
  */
-function structureTree(p: Project, structureId: string | null, exclude = new Set<string>()): TreeDatum {
+function structureTree(
+  p: Project,
+  structureId: string | null,
+  exclude = new Set<string>(),
+  order?: Map<string, number>,
+): TreeDatum {
   const children = structureChildren(p, structureId);
   const placed = new Set<string>(exclude);
+  const sorted = (list: Node[]) =>
+    order ? [...list].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)) : list;
   const build = (id: string | null): TreeDatum[] =>
-    (children.get(id) ?? [])
+    sorted(children.get(id) ?? [])
       .filter(n => !placed.has(n.id) && placed.add(n.id))
       .map(n => ({ id: n.id, children: build(n.id) }));
   const roots = build(null);
@@ -49,9 +63,11 @@ function structureTree(p: Project, structureId: string | null, exclude = new Set
 
 /**
  * «Satélites» de la jerarquía: raíces sin subnodos que están vinculadas (relación o referencia) a
- * algún nodo que sí forma parte del árbol. Las piezas que montan varios modelos, por ejemplo: no
- * cuelgan de nadie, pero tampoco están sueltas. Se colocan junto a sus vecinos en vez de en la
- * columna de raíces. Una raíz hoja sin vínculos sigue siendo una raíz: esa sí está suelta.
+ * algún nodo que sí forma parte del árbol, o a otro satélite. Las piezas que montan varios modelos,
+ * por ejemplo: no cuelgan de nadie, pero tampoco están sueltas. Se colocan junto a sus vecinos en
+ * vez de en la columna de raíces. La condición se propaga en cadena (una raza vinculada solo a una
+ * deidad que a su vez se vincula a personajes del árbol también es satélite). Una raíz hoja sin
+ * vínculos, o vinculada solo a otras raíces hoja sueltas, sigue siendo una raíz: esa sí está suelta.
  */
 export function hierarchySatellites(p: Project, structureId: string | null, links: Link[]): Set<string> {
   const children = structureChildren(p, structureId);
@@ -63,19 +79,37 @@ export function hierarchySatellites(p: Project, structureId: string | null, link
     [...children.keys()].filter((id): id is string => id !== null && children.get(id)!.length > 0),
   );
   const leafRoots = new Set(p.nodes.filter(n => !hasParent.has(n.id) && !hasChildren.has(n.id)).map(n => n.id));
-  const inTree = (id: string) => !leafRoots.has(id) && p.nodes.some(n => n.id === id);
+  // Nodos con sitio ya decidido: los del árbol y, según se descubren, los satélites.
+  const anchored = new Set(p.nodes.filter(n => !leafRoots.has(n.id)).map(n => n.id));
   const result = new Set<string>();
-  links.forEach(({ a, b }) => {
-    if (a === b) return;
-    if (leafRoots.has(a) && inTree(b)) result.add(a);
-    if (leafRoots.has(b) && inTree(a)) result.add(b);
-  });
+  let grew = true;
+  while (grew) {
+    grew = false;
+    links.forEach(({ a, b }) => {
+      if (a === b) return;
+      for (const [x, y] of [
+        [a, b],
+        [b, a],
+      ]) {
+        if (leafRoots.has(x) && !result.has(x) && anchored.has(y)) {
+          result.add(x);
+          anchored.add(x);
+          grew = true;
+        }
+      }
+    });
+  }
   return result;
 }
 
 /**
  * Disposición jerárquica según la estructura indicada: de izquierda a derecha, o de arriba abajo
  * (`vertical`, útil para genealogías: cada generación en una fila).
+ *
+ * Se calcula por barridos: el primero coloca a los hermanos en su orden de creación; después, nivel
+ * a nivel desde las raíces, cada grupo de hermanos se reordena según la altura a la que cayeron sus
+ * vínculos en el barrido anterior (`treeRanks`), para que cada rama quede cerca de aquello con lo
+ * que se relaciona. Reordenar un solo nivel por barrido evita que dos niveles se persigan y oscilen.
  */
 export function treeLayout(
   p: Project,
@@ -88,66 +122,99 @@ export function treeLayout(
   const breadth = vertical ? NODE_W + 40 : h + ROW_GAP;
   const depthGap = vertical ? h + 90 : NODE_W + COL_GAP;
   const satellites = satellitesNearLinks ? hierarchySatellites(p, structureId, links) : new Set<string>();
-  const root = tree<TreeDatum>().nodeSize([breadth, depthGap])(hierarchy(structureTree(p, structureId, satellites)));
-  // Coordenadas abstractas: `deep` avanza con la profundidad, `along` recorre cada nivel.
-  const placed = new Map<string, { deep: number; along: number }>();
-  let min = Infinity;
-  root.each(n => {
-    if (n.data.id) min = Math.min(min, n.x);
-  });
-  root.each(n => {
-    if (!n.data.id) return;
-    placed.set(n.data.id, { deep: (n.depth - 1) * depthGap, along: n.x - (min === Infinity ? 0 : min) });
-  });
-  placeSatellites(satellites, links, placed, depthGap, breadth);
+  // Los vínculos de la propia estructura ya los dibuja el árbol: solo cuentan los transversales.
+  const structural = new Set(structureLinks(p, structureId).map(l => `${l.parentId}\n${l.childId}`));
+  const crossLinks = links.filter(
+    ({ a, b }) => a !== b && !structural.has(`${a}\n${b}`) && !structural.has(`${b}\n${a}`),
+  );
+  const order = new Map<string, number>();
+  const sweep = () => {
+    const root = tree<TreeDatum>().nodeSize([breadth, depthGap])(
+      hierarchy(structureTree(p, structureId, satellites, order)),
+    );
+    const placed = new Map<string, Slot>();
+    let min = Infinity;
+    root.each(n => {
+      if (n.data.id) min = Math.min(min, n.x);
+    });
+    root.each(n => {
+      if (!n.data.id) return;
+      placed.set(n.data.id, { deep: (n.depth - 1) * depthGap, along: n.x - (min === Infinity ? 0 : min) });
+    });
+    placeSatellites(satellites, crossLinks, placed, depthGap, breadth);
+    return { root, placed };
+  };
+  let { root, placed } = sweep();
+  if (crossLinks.length) {
+    for (let depth = 1; depth <= root.height; depth++) {
+      treeRanks(root, crossLinks, placed, depth).forEach((rank, id) => order.set(id, rank));
+      ({ root, placed } = sweep());
+    }
+  }
   const result = new Map<string, Position>();
   placed.forEach(({ deep, along }, id) => result.set(id, vertical ? { x: along, y: deep } : { x: deep, y: along }));
   return result;
 }
 
 /**
- * Coloca cada satélite un nivel más allá del más profundo de sus vecinos, a la altura media de
- * ellos, y lo desplaza al hueco libre más cercano de ese nivel para no pisar a nadie.
+ * Rango de cada nodo de un nivel del árbol para ordenar a los hermanos: la altura media de los
+ * vínculos que su subárbol entero tiene con el exterior (satélites incluidos). Sin vínculos, su
+ * altura actual, así que conserva el sitio respecto a los demás.
+ */
+function treeRanks(
+  root: HierarchyNode<TreeDatum>,
+  links: Link[],
+  placed: Map<string, Slot>,
+  depth: number,
+): Map<string, number> {
+  const near = new Map<string, string[]>();
+  links.forEach(({ a, b }) => {
+    if (!placed.has(a) || !placed.has(b)) return;
+    near.set(a, [...(near.get(a) ?? []), b]);
+    near.set(b, [...(near.get(b) ?? []), a]);
+  });
+  const rank = new Map<string, number>();
+  root.each(n => {
+    if (!n.data.id || n.depth !== depth) return;
+    const inside = new Set(n.descendants().map(d => d.data.id!));
+    const outside = [...inside].flatMap(id => (near.get(id) ?? []).filter(other => !inside.has(other)));
+    const along = outside.length
+      ? outside.reduce((sum, id) => sum + placed.get(id)!.along, 0) / outside.length
+      : placed.get(n.data.id)!.along;
+    rank.set(n.data.id, along);
+  });
+  return rank;
+}
+
+/**
+ * Coloca cada satélite un nivel más allá de la mediana de sus vecinos (en empate, el más profundo),
+ * a la altura media de ellos, y lo desplaza al hueco libre más cercano de ese nivel para no pisar a
+ * nadie. Va por rondas: primero los vinculados a nodos del árbol; después los que solo se vinculan a
+ * satélites ya colocados.
  */
 function placeSatellites(
   satellites: Set<string>,
   links: Link[],
-  placed: Map<string, { deep: number; along: number }>,
+  placed: Map<string, Slot>,
   depthGap: number,
   breadth: number,
 ) {
   if (!satellites.size) return;
   const neighbours = new Map<string, string[]>();
   links.forEach(({ a, b }) => {
-    if (satellites.has(a) && placed.has(b)) neighbours.set(a, [...(neighbours.get(a) ?? []), b]);
-    if (satellites.has(b) && placed.has(a)) neighbours.set(b, [...(neighbours.get(b) ?? []), a]);
+    if (satellites.has(a)) neighbours.set(a, [...(neighbours.get(a) ?? []), b]);
+    if (satellites.has(b)) neighbours.set(b, [...(neighbours.get(b) ?? []), a]);
   });
-  // Deseo de cada satélite: nivel, altura media de sus vecinos y cuántos tiene.
-  const wishes = [...satellites]
-    .map(id => {
-      const near = (neighbours.get(id) ?? []).map(n => placed.get(n)!);
-      if (!near.length) return null;
-      return {
-        id,
-        deep: Math.max(...near.map(n => n.deep)) + depthGap,
-        along: near.reduce((sum, n) => sum + n.along, 0) / near.length,
-        degree: near.length,
-      };
-    })
-    .filter((w): w is { id: string; deep: number; along: number; degree: number } => w !== null)
-    // Primero los más vinculados: una pieza compartida se queda en su sitio ideal y las de un solo
-    // vecino se acomodan alrededor.
-    .sort((a, b) => b.degree - a.degree || a.along - b.along || a.id.localeCompare(b.id));
   const occupied = (deep: number) => [...placed.values()].filter(n => n.deep === deep).map(n => n.along);
-  wishes.forEach(w => {
-    const taken = occupied(w.deep);
+  const settle = (id: string, deep: number, wanted: number) => {
+    const taken = occupied(deep);
     const free = (along: number) => taken.every(t => Math.abs(t - along) >= breadth - 0.5);
-    let along = w.along;
+    let along = wanted;
     if (!free(along)) {
       // Alternar hacia abajo y hacia arriba en pasos de una fila hasta encontrar sitio.
       for (let step = 1; step < 200; step++) {
-        const down = w.along + step * breadth;
-        const up = w.along - step * breadth;
+        const down = wanted + step * breadth;
+        const up = wanted - step * breadth;
         if (free(down)) {
           along = down;
           break;
@@ -158,8 +225,35 @@ function placeSatellites(
         }
       }
     }
-    placed.set(w.id, { deep: w.deep, along });
-  });
+    placed.set(id, { deep, along });
+  };
+  const pending = new Set(satellites);
+  while (pending.size) {
+    // Deseo de cada satélite pendiente con algún vecino ya colocado: nivel, altura media y cuántos tiene.
+    const wishes = [...pending]
+      .map(id => {
+        const near = (neighbours.get(id) ?? []).map(n => placed.get(n)).filter((n): n is Slot => Boolean(n));
+        if (!near.length) return null;
+        const deeps = near.map(n => n.deep + depthGap).sort((a, b) => a - b);
+        return {
+          id,
+          deep: deeps[Math.floor(deeps.length / 2)],
+          along: near.reduce((sum, n) => sum + n.along, 0) / near.length,
+          degree: near.length,
+        };
+      })
+      .filter((w): w is { id: string; deep: number; along: number; degree: number } => w !== null)
+      // Primero los más vinculados: una pieza compartida se queda en su sitio ideal y las de un solo
+      // vecino se acomodan alrededor.
+      .sort((a, b) => b.degree - a.degree || a.along - b.along || a.id.localeCompare(b.id));
+    if (!wishes.length) break;
+    wishes.forEach(w => {
+      settle(w.id, w.deep, w.along);
+      pending.delete(w.id);
+    });
+  }
+  // Sin vecino colocado (no debería ocurrir): a la columna de raíces, para no perderlos.
+  [...pending].sort().forEach(id => settle(id, 0, 0));
 }
 
 /** Profundidad de cada nodo en la estructura (raíces = 0), cortando ciclos. */

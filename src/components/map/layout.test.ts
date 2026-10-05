@@ -220,4 +220,65 @@ describe('satélites de la jerarquía', () => {
     const pos = treeLayout(cars(), null, false, NODE_H, links(), false);
     expect(pos.get('motor')!.x).toBe(0);
   });
+
+  it('la condición se propaga en cadena: una raíz hoja vinculada solo a un satélite también lo es', () => {
+    // El proveedor solo se vincula al motor (satélite): queda un nivel más allá del motor, a su altura.
+    const p = cars();
+    p.schemas.push(schema('proveedor'), schema('fabrica', {}, 'relationship'));
+    p.nodes.push(node('acme', 'proveedor'), node('nadie', 'proveedor'));
+    p.relations.push(relation('r4', 'fabrica', 'acme', 'motor'));
+    const all = [...links(), { a: 'acme', b: 'motor' }];
+    expect([...hierarchySatellites(p, null, all)].sort()).toEqual(['acme', 'motor', 'pantalla']);
+    const pos = treeLayout(p, null, false, NODE_H, all);
+    expect(pos.get('acme')!.x).toBe(pos.get('motor')!.x + NODE_W + 110);
+    expect(pos.get('acme')!.y).toBe(pos.get('motor')!.y);
+    expect(pos.get('nadie')!.x).toBe(0);
+  });
+
+  it('un satélite va un nivel más allá de la mediana de sus vecinos, no del más profundo', () => {
+    // El aceite se vincula a la marca (columna 0), al Corsa y al Cumbre (columna 1): mediana columna 1 → columna 2.
+    const p = cars();
+    p.schemas.push(schema('usa', {}, 'relationship'));
+    p.nodes.push(node('aceite', 'pieza'));
+    const all = [
+      { a: 'aceite', b: 'ibex' },
+      { a: 'aceite', b: 'corsa' },
+      { a: 'aceite', b: 'cumbre' },
+    ];
+    const pos = treeLayout(p, null, false, NODE_H, all);
+    expect(pos.get('aceite')!.x).toBe(pos.get('corsa')!.x + NODE_W + 110);
+  });
+});
+
+describe('orden de los hermanos en la jerárquica', () => {
+  it('acerca cada rama a aquello con lo que se relaciona, y deja en su orden a las que no tienen vínculos', () => {
+    const p = project({
+      schemas: [schema('t'), schema('usa', {}, 'relationship')],
+      nodes: [
+        node('r', 't'),
+        node('a', 't', 'r'),
+        node('b', 't', 'r'),
+        node('c', 't', 'r'),
+        node('k', 't'),
+        node('kc', 't', 'k'),
+      ],
+      relations: [relation('r1', 'usa', 'a', 'kc')],
+    });
+    const links = [{ a: 'a', b: 'kc' }];
+    const pos = treeLayout(p, null, false, NODE_H, links);
+    const dist = (id: string) => Math.abs(pos.get(id)!.y - pos.get('kc')!.y);
+    // «a» era el primer hermano y el más lejano de «kc»; ahora es el más cercano. «b» y «c» siguen en su orden.
+    expect(dist('a')).toBeLessThan(dist('b'));
+    expect(dist('a')).toBeLessThan(dist('c'));
+    expect(pos.get('b')!.y).toBeLessThan(pos.get('c')!.y);
+    // Las raíces y los niveles no cambian.
+    expect(pos.get('r')!.x).toBe(0);
+    expect(pos.get('k')!.x).toBe(0);
+    expect(pos.get('a')!.x).toBe(pos.get('kc')!.x);
+  });
+
+  it('sin vínculos conserva el orden de creación', () => {
+    const pos = treeLayout(world(), null);
+    expect(pos.get('a')!.y).toBeLessThan(pos.get('b')!.y);
+  });
 });
