@@ -1,7 +1,7 @@
 import { GitFork, Plus, Shapes } from 'lucide-react';
 import { useState } from 'react';
 import { uid } from '../../domain/factories';
-import { reorderSchema, schemaTree } from '../../domain/inheritance';
+import { moveSchema, schemaTree, type DropZone } from '../../domain/inheritance';
 import type { SchemaKind } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { usePreferences } from '../../state/preferences';
@@ -21,9 +21,10 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
   const [creating, setCreating] = useState<SchemaKind | null>(null);
   const [name, setName] = useState('');
   const [dragged, setDragged] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ targetId: string; after: boolean } | null>(null);
-  // Durante el arrastre la lista se enseña ya reordenada; al soltar se confirma.
-  const shown = dragged && preview ? reorderSchema(project, dragged, preview.targetId, preview.after) : project;
+  const [preview, setPreview] = useState<{ targetId: string; zone: DropZone } | null>(null);
+  // Durante el arrastre la lista se enseña ya reordenada (o anidada); al soltar se confirma.
+  const shown = dragged && preview ? moveSchema(project, dragged, preview.targetId, preview.zone) : project;
+  const dropInside = dragged && preview?.zone === 'inside' ? preview.targetId : null;
   const schema = ofKind.find(item => item.id === selected) ?? ofKind[0];
 
   const openCreateModal = () => {
@@ -60,7 +61,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
                   <button
                     key={item.id}
                     type="button"
-                    className={`type-item ${item.id === schema?.id ? 'active' : ''} ${dragged === item.id ? 'dragging' : ''}`}
+                    className={`type-item ${item.id === schema?.id ? 'active' : ''} ${dragged === item.id ? 'dragging' : ''} ${dropInside === item.id ? 'drop-inside' : ''}`}
                     style={{ paddingLeft: 8 + depth * 18 }}
                     data-type-id={item.id}
                     aria-current={item.id === schema?.id ? 'page' : undefined}
@@ -77,22 +78,19 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
                       if (!dragged || dragged === item.id) return;
                       event.preventDefault();
                       const bounds = event.currentTarget.getBoundingClientRect();
-                      const after = event.clientY > bounds.top + bounds.height / 2;
+                      // Tercio superior: antes; tercio inferior: después; centro: heredar del destino.
+                      const rel = (event.clientY - bounds.top) / bounds.height;
+                      const zone: DropZone = rel < 0.3 ? 'before' : rel > 0.7 ? 'after' : 'inside';
                       setPreview(current =>
-                        current && current.targetId === item.id && current.after === after
+                        current && current.targetId === item.id && current.zone === zone
                           ? current
-                          : { targetId: item.id, after },
+                          : { targetId: item.id, zone },
                       );
                     }}
                     onDrop={event => {
                       event.preventDefault();
                       if (dragged && preview) {
-                        dispatch({
-                          type: 'reorder-schema',
-                          id: dragged,
-                          targetId: preview.targetId,
-                          after: preview.after,
-                        });
+                        dispatch({ type: 'move-schema', id: dragged, targetId: preview.targetId, zone: preview.zone });
                       }
                       setDragged(null);
                       setPreview(null);

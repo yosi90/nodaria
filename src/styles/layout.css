@@ -1795,3 +1795,9 @@ button.mention:hover {
   flex: 1;
   min-width: 0;
 }
+/* Arrastrar un tipo al centro de otro: heredará de él. */
+.type-item.drop-inside {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-soft);
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, schema } from '../test/fixtures';
-import { fieldOverlaps, reorderSchema, schemaTree } from './inheritance';
+import { fieldOverlaps, moveSchema, reorderSchema, schemaTree } from './inheritance';
 import { deleteSchema } from './operations';
 import { allFields } from './selectors';
 
@@ -82,5 +82,30 @@ describe('reorderSchema and schemaTree', () => {
       ['personaje', 1],
       ['lugar', 0],
     ]);
+  });
+});
+
+describe('moveSchema (arrastrar para heredar)', () => {
+  it('soltar dentro de otro tipo hace heredar de él y lo coloca tras sus hijos', () => {
+    const next = moveSchema(p, 'lugar', 'cosmica', 'inside');
+    expect(next.schemas.find(s => s.id === 'lugar')?.parentTypeId).toBe('cosmica');
+    expect(next.schemas.map(s => s.id)).toEqual(['cosmica', 'personaje', 'lugar', 'ami']);
+    expect(schemaTree(next, 'entity').map(e => [e.schema.id, e.depth])).toEqual([
+      ['cosmica', 0],
+      ['personaje', 1],
+      ['lugar', 1],
+    ]);
+  });
+
+  it('soltar antes o después de otro lo convierte en hermano suyo (junto a una raíz, sale de la herencia)', () => {
+    const next = moveSchema(p, 'personaje', 'lugar', 'after');
+    expect(next.schemas.find(s => s.id === 'personaje')?.parentTypeId).toBeNull();
+    expect(next.schemas.map(s => s.id)).toEqual(['cosmica', 'lugar', 'personaje', 'ami']);
+  });
+
+  it('no permite ciclos ni mezclar clases', () => {
+    expect(moveSchema(p, 'cosmica', 'personaje', 'inside')).toBe(p);
+    expect(moveSchema(p, 'ami', 'lugar', 'inside')).toBe(p);
+    expect(moveSchema(p, 'lugar', 'lugar', 'inside')).toBe(p);
   });
 });

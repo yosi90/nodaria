@@ -1,5 +1,5 @@
 import { declaredFields, isFieldLink } from './library';
-import { inheritedSchemas } from './selectors';
+import { inheritedSchemas, inheritanceCandidates } from './selectors';
 import type { FieldDefinition, Project, Schema } from './types';
 
 /*
@@ -70,6 +70,30 @@ export function reorderSchema(p: Project, id: string, targetId: string, after: b
   const index = rest.findIndex(s => s.id === targetId);
   rest.splice(index + (after ? 1 : 0), 0, moving);
   return { ...p, schemas: rest };
+}
+
+export type DropZone = 'before' | 'after' | 'inside';
+
+/**
+ * Mueve un tipo arrastrado sobre otro de la lista. «inside» lo hace heredar del destino (si no crea un
+ * ciclo); «before»/«after» lo colocan junto al destino como hermano suyo, adoptando su mismo padre
+ * (soltarlo junto a una raíz lo saca de la herencia). Un destino inválido deja el proyecto igual.
+ */
+export function moveSchema(p: Project, id: string, targetId: string, zone: DropZone): Project {
+  if (id === targetId) return p;
+  const moving = p.schemas.find(s => s.id === id);
+  const target = p.schemas.find(s => s.id === targetId);
+  if (!moving || !target || moving.kind !== target.kind) return p;
+  const parentTypeId = zone === 'inside' ? target.id : target.parentTypeId;
+  if (parentTypeId && !inheritanceCandidates(p, id).some(s => s.id === parentTypeId)) return p;
+  const reparented = { ...p, schemas: p.schemas.map(s => (s.id === id ? { ...s, parentTypeId } : s)) };
+  if (zone === 'inside') {
+    // Al final de los hijos actuales del destino (o justo tras el destino si aún no tiene).
+    const children = reparented.schemas.filter(s => s.parentTypeId === target.id && s.id !== id);
+    const anchor = children.length ? children[children.length - 1].id : target.id;
+    return reorderSchema(reparented, id, anchor, true);
+  }
+  return reorderSchema(reparented, id, targetId, zone === 'after');
 }
 
 /** Árbol de herencia de los tipos de una clase, respetando el orden de la lista: cada entrada con su profundidad. */
