@@ -10,7 +10,14 @@ import {
   type ReactNode,
 } from 'react';
 import type { AppState, Project } from '../domain/types';
-import { loadState, saveState, type LoadResult } from '../services/storage';
+import {
+  loadState,
+  saveFailureOf,
+  saveState,
+  type LoadDamage,
+  type LoadResult,
+  type SaveFailure,
+} from '../services/storage';
 import { createHistory, historyReducer } from './history';
 import type { Action } from './reducer';
 
@@ -32,6 +39,15 @@ interface AppContextValue {
   repairs: LoadResult['repairs'];
   reportRepairs: (entry: LoadResult['repairs'][number]) => void;
   dismissRepairs: () => void;
+  /** Por qué falló el último guardado en el navegador; `null` si se guardó bien. */
+  saveFailure: SaveFailure | null;
+  retrySave: () => void;
+  /** Datos que no se pudieron abrir al cargar, pendientes de mostrar. */
+  damage: LoadDamage | null;
+  /** El usuario ya vio el aviso (y, si no se apartó copia, descargó el original o renunció a él). */
+  resolveDamage: () => void;
+  /** Hubo proyectos ilegibles al cargar: la sincronización debe recuperarlos, no darlos por borrados. */
+  lostOnLoad: boolean;
 }
 
 const Context = createContext<AppContextValue | null>(null);
@@ -40,13 +56,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [initial] = useState(loadState);
   const [history, dispatchHistory] = useReducer(historyReducer, initial.state, createHistory);
   const [repairs, setRepairs] = useState(initial.repairs);
+  const [damage, setDamage] = useState(initial.damage);
+  const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
   const state = history.present;
-  usePersistence(state);
+  // Si el original no se pudo apartar, guardar lo sustituiría: se espera a que el usuario decida.
+  const save = usePersistence(state, Boolean(damage && !damage.rescued), setSaveFailure);
+  const lostOnLoad = Boolean(initial.damage);
 
   const dispatch = useCallback((action: Action) => dispatchHistory({ type: 'apply', action, at: Date.now() }), []);
   const undo = useCallback(() => dispatchHistory({ type: 'undo' }), []);
   const redo = useCallback(() => dispatchHistory({ type: 'redo' }), []);
   const dismissRepairs = useCallback(() => setRepairs([]), []);
+  const resolveDamage = useCallback(() => setDamage(null), []);
   const reportRepairs = useCallback(
     (entry: LoadResult['repairs'][number]) => setRepairs(current => [...current, entry]),
     [],
@@ -69,26 +90,62 @@ export function AppProvider({ children }: { children: ReactNode }) {
       repairs,
       reportRepairs,
       dismissRepairs,
+      saveFailure,
+      retrySave: save,
+      damage,
+      resolveDamage,
+      lostOnLoad,
     }),
-    [state, project, dispatch, undo, redo, canUndo, canRedo, undoTarget, repairs, reportRepairs, dismissRepairs],
+    [
+      state,
+      project,
+      dispatch,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
+      undoTarget,
+      repairs,
+      reportRepairs,
+      dismissRepairs,
+      saveFailure,
+      save,
+      damage,
+      resolveDamage,
+      lostOnLoad,
+    ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
-/** Guarda con retardo para no serializar todo el estado en cada pulsación, sin perder el último cambio. */
-function usePersistence(state: AppState) {
+/**
+ * Guarda con retardo para no serializar todo el estado en cada pulsación, sin perder el último cambio.
+ * Un fallo (sin espacio, almacenamiento bloqueado) no se pierde en un temporizador: se informa con
+ * `onResult`, igual que el siguiente guardado correcto. Devuelve el guardado inmediato para reintentar.
+ */
+function usePersistence(state: AppState, paused: boolean, onResult: (failure: SaveFailure | null) => void) {
+  const save = useCallback(() => {
+    if (paused) return;
+    try {
+      saveState(state);
+      onResult(null);
+    } catch (error) {
+      onResult(saveFailureOf(error));
+    }
+  }, [state, paused, onResult]);
+
   useEffect(() => {
-    const timer = window.setTimeout(() => saveState(state), SAVE_DELAY_MS);
-    const flush = () => saveState(state);
-    const flushIfHidden = () => document.visibilityState === 'hidden' && flush();
-    window.addEventListener('beforeunload', flush);
+    const timer = window.setTimeout(save, SAVE_DELAY_MS);
+    const flushIfHidden = () => document.visibilityState === 'hidden' && save();
+    window.addEventListener('beforeunload', save);
     document.addEventListener('visibilitychange', flushIfHidden);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener('beforeunload', flush);
+      window.removeEventListener('beforeunload', save);
       document.removeEventListener('visibilitychange', flushIfHidden);
     };
-  }, [state]);
+  }, [save]);
+  return save;
 }
 
 export function useApp() {

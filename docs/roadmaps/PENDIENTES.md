@@ -5,7 +5,7 @@
 
 ## Orden de trabajo
 
-1. Protección de los datos locales (sección 1): es lo único que puede hacer perder trabajo.
+1. ~~Protección de los datos locales (sección 1)~~: hecha el 2026-10-06.
 2. Resto de la Fase 7 (sección 2), empezando por IndexedDB.
 3. Cabos sueltos del modelo (sección 3).
 4. Línea temporal y mejoras de vistas (sección 4).
@@ -13,13 +13,15 @@
 
 Para cerrar `ROADMAP_RENOVACION.md` hacen falta las secciones 1 y 2 completadas o descartadas por escrito, la línea temporal hecha o descartada y el mundo real del libro modelado en la app (lo comprueba el propietario).
 
-## 1. Protección de los datos locales (urgente)
+## 1. Protección de los datos locales (hecha el 2026-10-06)
 
-- [ ] **Aviso cuando falla el guardado.** `saveState` (`src/services/storage.ts`) llama a `localStorage.setItem` sin capturar el error. El límite ronda los 5 MB para todos los proyectos juntos, y las imágenes van dentro del proyecto (retratos de 384 px de unos 20–40 KB, mapa de hasta 2400 px). Si se llena, la excepción salta dentro de un temporizador, nadie se entera y lo editado desde entonces se pierde al recargar si no hay cuenta. Hay que capturar el error, avisar de forma visible y persistente y ofrecer exportar.
-- [ ] **Una carga fallida no debe borrar nada.** Si `loadState` lanza una excepción (JSON dañado o un fallo al migrar o reparar un solo proyecto), devuelve un estado en blanco. El guardado con retardo lo escribe encima de los datos 400 ms después y, con sesión iniciada, `planSync` ve que faltan en local proyectos que recuerda sincronizados y los borra de la cuenta (borrado lógico, recuperable solo desde la base). Hay que:
+- [x] **Aviso cuando falla el guardado.** `saveState` (`src/services/storage.ts`) llama a `localStorage.setItem` sin capturar el error. El límite ronda los 5 MB para todos los proyectos juntos, y las imágenes van dentro del proyecto (retratos de 384 px de unos 20–40 KB, mapa de hasta 2400 px). Si se llena, la excepción salta dentro de un temporizador, nadie se entera y lo editado desde entonces se pierde al recargar si no hay cuenta. Hay que capturar el error, avisar de forma visible y persistente y ofrecer exportar.
+- [x] **Una carga fallida no debe borrar nada.** Si `loadState` lanza una excepción (JSON dañado o un fallo al migrar o reparar un solo proyecto), devuelve un estado en blanco. El guardado con retardo lo escribe encima de los datos 400 ms después y, con sesión iniciada, `planSync` ve que faltan en local proyectos que recuerda sincronizados y los borra de la cuenta (borrado lógico, recuperable solo desde la base). Hay que:
   - aislar cada proyecto: si uno falla, cargar los demás y avisar;
   - guardar el texto original en una copia de rescate antes de escribir nada;
   - no dejar que la sincronización borre en remoto por una carga fallida.
+
+Resuelto así: `parseState` prepara cada proyecto por separado; si alguno falla, `loadState` aparta el texto original en `nodaria_rescue_v1:<fecha>` y, si no cabe, `AppContext` pausa el guardado hasta que el usuario lo descarga o renuncia a él. Tras una carga con pérdidas, la primera sincronización recupera de la cuenta los proyectos que faltan (`planSync` con `recoverMissing`). Un guardado fallido se avisa con el motivo, una exportación del proyecto y «Reintentar» (`StorageNotice`).
 
 ## 2. Fase 7: persistencia, copias y exportación
 

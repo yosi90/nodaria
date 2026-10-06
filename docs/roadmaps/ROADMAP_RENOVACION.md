@@ -280,6 +280,7 @@ Criterio: el panel señala correctamente los huecos de un proyecto de prueba con
 
 Objetivo: que los datos estén a salvo y se puedan llevar a otras herramientas.
 
+- [x] Protección de los datos locales (2026-10-06): un guardado fallido (almacenamiento lleno o bloqueado) se avisa con exportación y reintento; una carga con proyectos ilegibles conserva los demás, aparta el original y no deja que la sincronización borre en la cuenta lo que falta.
 - [ ] Migrar a IndexedDB conservando la lectura de `nodaria_state_v1`.
 - [ ] Almacenamiento de imágenes (retratos, mapas) con redimensionado al subirlas.
 - [ ] Copias automáticas periódicas y restauración desde una lista de instantáneas.

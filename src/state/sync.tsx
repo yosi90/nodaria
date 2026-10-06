@@ -49,7 +49,7 @@ const PERIODIC_MS = 5 * 60 * 1000;
 const MAX_PASSES = 3;
 
 export function SyncProvider({ children }: { children: ReactNode }) {
-  const { state, dispatch, reportRepairs } = useApp();
+  const { state, dispatch, reportRepairs, lostOnLoad } = useApp();
   const { status: authStatus, user, getToken } = useAuth();
   const [status, setStatus] = useState<SyncStatus>({ state: 'off', lastSyncAt: null, error: null });
   const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
@@ -59,6 +59,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   projects.current = state.projects;
   const running = useRef<Promise<void> | null>(null);
   const rerun = useRef(false);
+  // Hasta la primera sincronización completa tras una carga con pérdidas, lo que falta se recupera.
+  const recoverMissing = useRef(lostOnLoad);
 
   const signedIn = authStatus === 'signed-in' && user !== null;
   const uid = user?.uid ?? null;
@@ -70,7 +72,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const found: SyncConflict[] = [];
     for (let pass = 0; pass < MAX_PASSES; pass++) {
       const remote = await listRemoteProjects(token);
-      const plan = planSync(projects.current, remote, meta.current);
+      const plan = planSync(projects.current, remote, meta.current, { recoverMissing: recoverMissing.current });
       found.push(...plan.conflicts);
       if (isEmptyPlan(plan)) break;
 
@@ -116,6 +118,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       saveSyncMeta(next);
       if (!conflicted) break;
     }
+    recoverMissing.current = false;
     if (found.length) setConflicts(current => [...current, ...found]);
   }, [getToken, dispatch, reportRepairs]);
 

@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import { isTypingTarget } from './components/common/keyboard';
 import { CommandPalette } from './components/layout/CommandPalette';
 import { RepairNotice } from './components/layout/RepairNotice';
+import { StorageNotice } from './components/layout/StorageNotice';
 import { HelpDialog } from './components/layout/HelpDialog';
 import { Topbar } from './components/layout/Topbar';
 import { TemplatesDialog } from './components/onboarding/TemplatesDialog';
@@ -59,7 +60,10 @@ export default function App() {
           <PropertiesView />
         )}
       </Fragment>
-      <RepairNotice />
+      <div className="notice-stack">
+        <StorageNotice />
+        <RepairNotice />
+      </div>
       {help && <HelpDialog topic={help} onTopic={openHelpTopic} onClose={closeHelp} onTemplates={openTemplates} />}
       {templatesOpen && <TemplatesDialog onClose={closeTemplates} />}
       {welcome.open && <WelcomeDialog onClose={welcome.dismiss} onTemplates={openTemplates} />}

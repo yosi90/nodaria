@@ -75,6 +75,20 @@ describe('planSync', () => {
     expect(changed.conflicts).toEqual([{ id: 'a', name: 'a', winner: 'remote' }]);
   });
 
+  it('recovers remembered projects missing locally after a load that lost them', () => {
+    const synced = meta({ a: { version: 2, updatedAt: T1 }, b: { version: 5, updatedAt: T1 } });
+    const plan = planSync([local('blank', T1, true)], [remote('a', 2), remote('b', 6, T2)], synced, {
+      recoverMissing: true,
+    });
+    expect(plan.deleteRemote).toEqual([]);
+    expect(plan.download).toEqual([
+      { id: 'a', version: 2 },
+      { id: 'b', version: 6 },
+    ]);
+    expect(plan.removeLocal).toEqual(['blank']);
+    expect(plan.conflicts).toEqual([]);
+  });
+
   it('applies a remote deletion locally unless the local copy changed afterwards', () => {
     const synced = meta({ a: { version: 2, updatedAt: T1 } });
     expect(planSync([local('a', T1)], [remote('a', 3, T1, T2)], synced).removeLocal).toEqual(['a']);

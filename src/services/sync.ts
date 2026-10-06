@@ -90,7 +90,20 @@ export function isBlankProject(p: Project) {
 
 const time = (iso: string) => new Date(iso).getTime();
 
-export function planSync(local: Project[], remote: RemoteSummary[], meta: SyncMeta): SyncPlan {
+export interface PlanOptions {
+  /**
+   * La carga local perdió proyectos que no se pudieron leer: los recordados que faltan aquí se
+   * recuperan de la cuenta en vez de propagar su «borrado».
+   */
+  recoverMissing?: boolean;
+}
+
+export function planSync(
+  local: Project[],
+  remote: RemoteSummary[],
+  meta: SyncMeta,
+  options: PlanOptions = {},
+): SyncPlan {
   const plan: SyncPlan = {
     upload: [],
     download: [],
@@ -123,7 +136,7 @@ export function planSync(local: Project[], remote: RemoteSummary[], meta: SyncMe
     if (!L && R) {
       if (R.deletedAt) {
         if (M) plan.forgetMeta.push(id);
-      } else if (!M) {
+      } else if (!M || options.recoverMissing) {
         plan.download.push({ id, version: R.version });
       } else if (R.version === M.version) {
         // Se borró aquí sin cambios en la cuenta: se propaga el borrado.

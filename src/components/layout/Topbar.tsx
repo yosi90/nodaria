@@ -25,7 +25,8 @@ import {
   Table2,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
-import { parseProject, serializeProject } from '../../services/storage';
+import { downloadProject } from '../../services/files';
+import { parseProject } from '../../services/storage';
 import { useApp } from '../../state/AppContext';
 import { usePreferences, type Preferences } from '../../state/preferences';
 import { IconButton } from '../common/Button';
@@ -105,14 +106,6 @@ export function Topbar({
     toast({ message: `Proyecto «${project.name}» eliminado`, undoable: true });
     dispatch({ type: 'delete-project' });
   };
-  const download = () => {
-    const blob = new Blob([serializeProject(project)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.nodaria.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = '';
@@ -146,7 +139,7 @@ export function Topbar({
     { label: 'Duplicar', icon: Copy, onSelect: () => dispatch({ type: 'duplicate-project' }) },
     { label: 'Calendario del mundo…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
     'separator',
-    { label: 'Exportar JSON', icon: Download, onSelect: download },
+    { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
     'separator',
     { label: 'Eliminar proyecto', icon: Trash2, danger: true, onSelect: remove },
   ];
