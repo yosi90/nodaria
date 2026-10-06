@@ -66,8 +66,9 @@ export function FormulasGuide() {
 
       <h3>Fechas y edades</h3>
       <p className="muted-note">
-        Las fechas usan el <strong>calendario del mundo</strong> (menú del proyecto → «Calendario del mundo…»): sus
-        meses, sus días de la semana y su fecha actual. Un atributo de fecha se lee «3 de Brumal de 1043».
+        Las fechas usan el <strong>calendario del mundo</strong> (ajustes del proyecto, el engranaje junto a su nombre →
+        «Calendario del mundo…»): sus meses, sus días de la semana y su fecha actual. Un atributo de fecha se lee «3 de
+        Brumal de 1043».
       </p>
       <table className="guide-table">
         <tbody>

@@ -40,6 +40,13 @@
   background: linear-gradient(140deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #2ec4a6));
   color: var(--accent-contrast);
 }
+.project-controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
 .project-switcher {
   display: flex;
   align-items: center;

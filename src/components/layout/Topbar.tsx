@@ -16,6 +16,7 @@ import {
   Plus,
   Redo2,
   Search,
+  Settings,
   Shapes,
   Sun,
   Trash2,
@@ -63,9 +64,11 @@ export function Topbar({
   const { prompt, confirm } = useDialogs();
   const toast = useToast();
   const file = useRef<HTMLInputElement>(null);
-  const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
+  const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const closeMenu = useCallback(() => setMenuAnchor(null), []);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const toggleMenu = (kind: 'projects' | 'settings', target: HTMLElement) =>
+    setMenu(menu?.kind === kind ? null : { kind, anchor: anchorOf(target) });
   const theme = THEME_CYCLE[preferences.theme];
 
   const create = async () => {
@@ -124,7 +127,7 @@ export function Topbar({
     }
   };
 
-  const entries: MenuEntry[] = [
+  const projectEntries: MenuEntry[] = [
     { section: 'Proyectos' },
     ...state.projects.map(p => ({
       label: p.name,
@@ -135,11 +138,14 @@ export function Topbar({
     'separator',
     { label: 'Nuevo proyecto', icon: Plus, onSelect: create },
     { label: 'Ejemplos y plantillas…', icon: Layers, onSelect: onTemplates },
+    { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
+  ];
+  const settingsEntries: MenuEntry[] = [
+    { section: project.name },
     { label: 'Renombrar', icon: Pencil, onSelect: rename },
     { label: 'Duplicar', icon: Copy, onSelect: () => dispatch({ type: 'duplicate-project' }) },
     { label: 'Calendario del mundo…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
     'separator',
-    { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
     { label: 'Exportar JSON', icon: Download, onSelect: download },
     'separator',
     { label: 'Eliminar proyecto', icon: Trash2, danger: true, onSelect: remove },
@@ -153,19 +159,35 @@ export function Topbar({
         </span>
         <span className="brand-name">Nodaria</span>
       </div>
-      <button
-        type="button"
-        className="project-switcher"
-        data-tour="project"
-        aria-haspopup="menu"
-        aria-expanded={Boolean(menuAnchor)}
-        title="Proyecto actual"
-        onClick={event => (menuAnchor ? closeMenu() : setMenuAnchor(anchorOf(event.currentTarget)))}
-      >
-        <span className="label">{project.name}</span>
-        <ChevronDown size={15} aria-hidden />
-      </button>
-      {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Proyecto" />}
+      <div className="project-controls" data-tour="project">
+        <button
+          type="button"
+          className="project-switcher"
+          aria-haspopup="menu"
+          aria-expanded={menu?.kind === 'projects'}
+          title="Cambiar de proyecto"
+          onClick={event => toggleMenu('projects', event.currentTarget)}
+        >
+          <span className="label">{project.name}</span>
+          <ChevronDown size={15} aria-hidden />
+        </button>
+        <IconButton
+          icon={Settings}
+          label="Ajustes del proyecto"
+          active={menu?.kind === 'settings'}
+          aria-haspopup="menu"
+          aria-expanded={menu?.kind === 'settings'}
+          onClick={event => toggleMenu('settings', event.currentTarget)}
+        />
+      </div>
+      {menu && (
+        <Menu
+          anchor={menu.anchor}
+          entries={menu.kind === 'projects' ? projectEntries : settingsEntries}
+          onClose={closeMenu}
+          label={menu.kind === 'projects' ? 'Proyectos' : 'Ajustes del proyecto'}
+        />
+      )}
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">

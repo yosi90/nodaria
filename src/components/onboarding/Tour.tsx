@@ -24,7 +24,7 @@ const STEPS: Step[] = [
   {
     target: 'project',
     title: 'Tu proyecto',
-    body: 'Aquí cambias de proyecto, lo renombras, lo exportas o abres más ejemplos. «Ejemplo: Coches» es ya una copia tuya: cámbialo sin miedo.',
+    body: 'Aquí cambias de proyecto o abres más ejemplos; el engranaje de al lado lo renombra, lo exporta o ajusta su calendario. «Ejemplo: Coches» es ya una copia tuya: cámbialo sin miedo.',
     view: 'map',
   },
   {
