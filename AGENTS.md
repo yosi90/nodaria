@@ -13,7 +13,7 @@
 - Nodaria es una aplicación web generalista para visualizar árboles de nodos y relaciones transversales, como un mapa mental estructurado mediante esquemas configurables.
 - Los usuarios pueden definir tipos de entidad y relación, atributos, herencia y restricciones, y después instanciar esos tipos en sus proyectos.
 - El caso de uso de referencia es la planificación de una novela: representar personajes y sus relaciones para detectar huecos, redundancias y conexiones narrativas. Este caso orienta ejemplos y validación, pero el núcleo del producto debe seguir siendo generalista.
-- Actualmente funciona como aplicación local con React, TypeScript y Vite, y guarda los proyectos en `localStorage` con importación y exportación JSON. En `api/` hay una API Fastify (Firebase Authentication + SQL Server Express) que irá incorporando cuentas y sincronización según `docs/roadmaps/ROADMAP_BACKEND.md`.
+- Actualmente funciona como aplicación local con React, TypeScript y Vite, y guarda los proyectos en IndexedDB del navegador (antes `localStorage`, que se migra solo) con importación y exportación JSON. En `api/` hay una API Fastify (Firebase Authentication + SQL Server Express) que irá incorporando cuentas y sincronización según `docs/roadmaps/ROADMAP_BACKEND.md`.
 
 ## Notificapp
 

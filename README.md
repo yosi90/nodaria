@@ -35,7 +35,7 @@ npm run preview
 - `src/styles`: estilos globales y diseño adaptable.
 - `api/`: API Fastify + TypeScript con Firebase Authentication y SQL Server Express (`cd api && npm ci && npm run migrate && npm run dev`).
 
-Los proyectos se almacenan en `localStorage` bajo la clave histórica `nodaria_state_v1`, por lo que la actualización conserva los datos existentes. Con sesión iniciada (Firebase Authentication: correo y contraseña o Google), además se guardan en la cuenta y se sincronizan entre dispositivos; el recuerdo de lo sincronizado vive en `nodaria_sync_v1`. Los proyectos se migran al formato actual (`src/services/migrations.ts`) y se reparan al cargarlos. La importación acepta tanto exportaciones antiguas como las de la versión actual.
+Los proyectos se almacenan en IndexedDB (base `nodaria`, un registro por proyecto), sin el límite de unos 5 MB de `localStorage`. La primera carga migra lo que hubiera en `localStorage` bajo la clave histórica `nodaria_state_v1` y guarda el original como copia, por lo que la actualización conserva los datos existentes. Con sesión iniciada (Firebase Authentication: correo y contraseña o Google), además se guardan en la cuenta y se sincronizan entre dispositivos; el recuerdo de lo sincronizado vive en `nodaria_sync_v1`. Los proyectos se migran al formato actual (`src/services/migrations.ts`) y se reparan al cargarlos. La importación acepta tanto exportaciones antiguas como las de la versión actual.
 
 ## Despliegue
 

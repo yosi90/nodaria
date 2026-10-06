@@ -52,8 +52,28 @@ interface AppContextValue {
 
 const Context = createContext<AppContextValue | null>(null);
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [initial] = useState(loadState);
+/**
+ * Carga los proyectos del navegador (asíncrono con IndexedDB) antes de montar la aplicación. Si el
+ * almacenamiento no se puede leer, no se arranca en blanco: se muestra `errorView`.
+ */
+export function AppProvider({ children, errorView }: { children: ReactNode; errorView: (error: Error) => ReactNode }) {
+  const [loaded, setLoaded] = useState<LoadResult | Error | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadState().then(
+      result => alive && setLoaded(result),
+      (error: unknown) => alive && setLoaded(error instanceof Error ? error : new Error(String(error))),
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!loaded) return null;
+  if (loaded instanceof Error) return errorView(loaded);
+  return <LoadedAppProvider initial={loaded}>{children}</LoadedAppProvider>;
+}
+
+function LoadedAppProvider({ initial, children }: { initial: LoadResult; children: ReactNode }) {
   const [history, dispatchHistory] = useReducer(historyReducer, initial.state, createHistory);
   const [repairs, setRepairs] = useState(initial.repairs);
   const [damage, setDamage] = useState(initial.damage);
@@ -119,19 +139,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Guarda con retardo para no serializar todo el estado en cada pulsación, sin perder el último cambio.
+ * Guarda con retardo para no escribir en cada pulsación, sin perder el último cambio.
  * Un fallo (sin espacio, almacenamiento bloqueado) no se pierde en un temporizador: se informa con
  * `onResult`, igual que el siguiente guardado correcto. Devuelve el guardado inmediato para reintentar.
  */
 function usePersistence(state: AppState, paused: boolean, onResult: (failure: SaveFailure | null) => void) {
   const save = useCallback(() => {
     if (paused) return;
-    try {
-      saveState(state);
-      onResult(null);
-    } catch (error) {
-      onResult(saveFailureOf(error));
-    }
+    saveState(state).then(
+      () => onResult(null),
+      (error: unknown) => onResult(saveFailureOf(error)),
+    );
   }, [state, paused, onResult]);
 
   useEffect(() => {

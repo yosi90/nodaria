@@ -703,3 +703,26 @@
   gap: var(--space-2);
   margin-top: var(--space-1);
 }
+
+/* ---------- Almacenamiento ilegible ---------- */
+.storage-error {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  min-height: 100%;
+  padding: var(--space-6) 16px;
+  color: var(--text);
+  text-align: center;
+}
+.storage-error > svg {
+  color: var(--danger);
+}
+.storage-error h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+}
+.storage-error p {
+  max-width: 52ch;
+  color: var(--text-muted);
+}

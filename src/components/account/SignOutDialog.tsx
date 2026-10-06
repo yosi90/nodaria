@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { clearBackups } from '../../services/storage';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
 import { useSync } from '../../state/sync';
@@ -19,7 +20,10 @@ export function SignOutDialog({ onClose }: { onClose: () => void }) {
     try {
       await signOut();
       forgetAccount();
-      if (wipe) dispatch({ type: 'reset-state' });
+      if (wipe) {
+        dispatch({ type: 'reset-state' });
+        await clearBackups().catch(() => undefined);
+      }
       toast({
         message: wipe
           ? 'Sesión cerrada y navegador vaciado'

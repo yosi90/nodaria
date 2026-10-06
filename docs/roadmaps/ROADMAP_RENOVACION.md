@@ -281,8 +281,8 @@ Criterio: el panel señala correctamente los huecos de un proyecto de prueba con
 Objetivo: que los datos estén a salvo y se puedan llevar a otras herramientas.
 
 - [x] Protección de los datos locales (2026-10-06): un guardado fallido (almacenamiento lleno o bloqueado) se avisa con exportación y reintento; una carga con proyectos ilegibles conserva los demás, aparta el original y no deja que la sincronización borre en la cuenta lo que falta.
-- [ ] Migrar a IndexedDB conservando la lectura de `nodaria_state_v1`.
-- [ ] Almacenamiento de imágenes (retratos, mapas) con redimensionado al subirlas.
+- [x] Migrar a IndexedDB conservando la lectura de `nodaria_state_v1` (2026-10-06): un registro por proyecto, migración automática con copia del original y fusión de pestañas antiguas.
+- [x] Almacenamiento de imágenes (retratos, mapas) con redimensionado al subirlas: el redimensionado ya existía y con IndexedDB desaparece el límite de 5 MB (2026-10-06).
 - [ ] Copias automáticas periódicas y restauración desde una lista de instantáneas.
 - [ ] Guardar en un archivo o carpeta del disco con la File System Access API (permite usar Dropbox/Drive/Git como sincronización sin servidor).
 - [ ] Exportar a Markdown compatible con Obsidian (una nota por nodo, enlaces `[[ ]]`), a CSV por tipo y a un ZIP con imágenes.

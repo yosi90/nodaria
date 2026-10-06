@@ -20,8 +20,9 @@ function DamageNotice() {
   const { damage, resolveDamage } = useApp();
   const { confirm } = useDialogs();
   if (!damage) return null;
+  const { raw } = damage;
   const download = () => {
-    downloadText(`nodaria-datos-originales-${new Date().toISOString().slice(0, 10)}.json`, damage.raw);
+    if (raw) downloadText(`nodaria-datos-originales-${new Date().toISOString().slice(0, 10)}.json`, raw);
     resolveDamage();
   };
   const giveUp = async () => {
@@ -46,15 +47,19 @@ function DamageNotice() {
         ))}
       </ul>
       <p>
-        {damage.rescued
-          ? 'Antes de seguir se ha apartado una copia del texto original en este navegador: no se ha borrado nada.'
-          : 'No había espacio para apartar una copia del texto original, así que no se guardará nada en este navegador hasta que lo descargues o decidas seguir sin él.'}{' '}
+        {raw === null
+          ? 'Puede que se borraran los datos del sitio desde el navegador.'
+          : damage.rescued
+            ? 'Antes de seguir se ha apartado una copia del original en este navegador: no se ha borrado nada.'
+            : 'No había espacio para apartar una copia del original, así que no se guardará nada en este navegador hasta que lo descargues o decidas seguir sin él.'}{' '}
         Si esos proyectos estaban en tu cuenta, se recuperan de ella al sincronizar.
       </p>
       <div className="notice-actions">
-        <Button size="sm" variant="primary" icon={Download} onClick={download}>
-          Descargar los datos originales
-        </Button>
+        {raw !== null && (
+          <Button size="sm" variant="primary" icon={Download} onClick={download}>
+            Descargar los datos originales
+          </Button>
+        )}
         {damage.rescued ? (
           <Button size="sm" onClick={resolveDamage}>
             Entendido
@@ -92,7 +97,7 @@ function SaveFailureNotice() {
       </header>
       <p>
         {saveFailure === 'quota'
-          ? 'El almacenamiento del navegador está lleno: son unos 5 MB para todos los proyectos, y las imágenes son lo que más ocupa.'
+          ? 'El navegador se ha quedado sin espacio para guardar los proyectos; las imágenes son lo que más ocupa.'
           : 'El navegador no deja guardar datos (pasa en algunas ventanas privadas o con el almacenamiento bloqueado).'}
       </p>
       <p>

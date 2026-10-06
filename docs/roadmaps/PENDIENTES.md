@@ -6,7 +6,7 @@
 ## Orden de trabajo
 
 1. ~~Protección de los datos locales (sección 1)~~: hecha el 2026-10-06.
-2. Resto de la Fase 7 (sección 2), empezando por IndexedDB.
+2. Resto de la Fase 7 (sección 2); IndexedDB ya está hecho (2026-10-06).
 3. Cabos sueltos del modelo (sección 3).
 4. Línea temporal y mejoras de vistas (sección 4).
 5. Asistente IA (sección 5), opcional.
@@ -25,8 +25,8 @@ Resuelto así: `parseState` prepara cada proyecto por separado; si alguno falla,
 
 ## 2. Fase 7: persistencia, copias y exportación
 
-- [ ] **IndexedDB** como almacenamiento principal, conservando la lectura de `nodaria_state_v1` para migrar. Quita el límite de 5 MB y permite guardar cada proyecto por separado (hoy se serializa todo el estado en cada guardado). Implica cargar de forma asíncrona (pantalla de carga antes de montar la app) y que la sincronización espere a la carga. Pedir `navigator.storage.persist()` para que el navegador no lo libere.
-- [ ] Almacenamiento de imágenes: el redimensionado al subir ya existe (retratos y mapa). Con IndexedDB, el resto del punto se puede dar por cerrado o replantearse como imágenes fuera del documento del proyecto, lo que afectaría a la API: hoy sube el documento entero con un máximo de 20 MiB.
+- [x] **IndexedDB** como almacenamiento principal (2026-10-06): un registro por proyecto y cada guardado escribe solo lo que cambió; migración automática desde `localStorage` conservando el original como copia; fusión de lo que escriban pestañas abiertas con la versión anterior; pantalla de error en vez de arrancar en blanco si la base no se puede abrir. Pendiente de decidir: pedir `navigator.storage.persist()` (Firefox lo pregunta con un diálogo) y qué hacer con proyectos de más de 20 MiB, que se guardan en local pero la API no acepta.
+- [x] Almacenamiento de imágenes (2026-10-06, cerrado con IndexedDB): el redimensionado al subir ya existe (retratos y mapa). Con IndexedDB, el resto del punto se puede dar por cerrado o replantearse como imágenes fuera del documento del proyecto, lo que afectaría a la API: hoy sube el documento entero con un máximo de 20 MiB.
 - [ ] Copias automáticas periódicas en el navegador (instantáneas por proyecto) y restauración desde una lista. Las copias diarias de la base del servidor solo cubren a quien tiene cuenta y no se pueden restaurar desde la app.
 - [ ] Guardar en un archivo o carpeta del disco (File System Access API). **Candidato a descartar:** la sincronización con cuenta ya cubre el cambio de equipo, y la API solo existe en Chromium.
 - [ ] Exportar a Markdown compatible con Obsidian (una nota por nodo con enlaces `[[ ]]`), a CSV por tipo y a un ZIP con imágenes.
