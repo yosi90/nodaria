@@ -2,6 +2,7 @@
 
 > Roadmap activo principal. Creado el 2026-10-03 tras un estudio completo del código.
 > Mantener la checklist sincronizada con el estado real durante la ejecución.
+> Todo lo que falta está reunido y priorizado en `PENDIENTES.md` (2026-10-06).
 
 ## Objetivo
 
@@ -191,7 +192,7 @@ Objetivo: que cada elemento del mundo tenga una ficha rica y se pueda saltar de 
 - [x] Pestaña Conexiones: superior y subnodos, relaciones agrupadas por tipo con sentido, referencias que hace y que recibe, y menciones en ambos sentidos. Todo navega al nodo o a la relación.
 - [x] Notas por nodo con menciones `[[Nombre]]`: modo leer con enlaces (y aviso cuando el nombre no existe), modo editar con botón «Mencionar», y conexiones inversas.
 - [x] Imagen o retrato por nodo: hecho como tipo de atributo «Imagen» (reducida a 384 px y guardada con el proyecto); la tarjeta muestra el retrato en lugar del icono del tipo.
-- [ ] Etiquetas libres por nodo: pasan a la Fase 4 junto con el resto del modelo.
+- [x] Etiquetas libres por nodo: resuelto en la Fase 4 con el tipo de atributo «Etiquetas».
 - [ ] Vista «Ficha completa» a pantalla entera: pospuesta; el inspector ensanchado cubre el uso actual.
 - [x] Historial de navegación (atrás / adelante) y migas de pan con la jerarquía.
 - [x] **Paleta de comandos** (Ctrl+K): nodos (por nombre, valores y notas), relaciones, tipos y acciones (crear nodo de un tipo, cambiar de vista, tema).
@@ -218,7 +219,7 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [x] (hecho en fases anteriores: nombre inverso por tipo y por relación, sentido «Bidireccional», parentesco) Relaciones con **nombre por dirección** ("padre de" / "hijo de", "venera a" / "venerado por") y relaciones **simétricas** ("hermano de", "aliado de").
 - [x] (hecho: atributos de relación en el formulario de la ficha) Atributos de relación visibles y editables (intensidad, desde cuándo, si es pública o secreta…).
 - [x] (hecho: referencias dibujadas como aristas discontinuas y usables en «Ver por», ocultables en la leyenda) Opción de **dibujar los campos de referencia como aristas** ("Dios: Aurel" se ve en el grafo sin crear además una relación). Decidir y documentar cuándo usar campo de referencia y cuándo relación.
-- [x] Nuevos tipos de campo (2026-10-04): Enlace (URL, con botón para abrir), Color (selector y valor hex), Escala 1–5 (estrellas) y Etiquetas (chips libres); Imagen ya estaba. _Pendientes: lista ordenada y fecha del mundo._
+- [x] Nuevos tipos de campo (2026-10-04): Enlace (URL, con botón para abrir), Color (selector y valor hex), Escala 1–5 (estrellas) y Etiquetas (chips libres); Imagen ya estaba. _Pendiente: lista ordenada. La fecha del mundo llegó con el calendario del mundo (2026-10-05)._
 - [x] Valores por defecto tipados y heredados (2026-10-04): el valor inicial se edita con el control del tipo (lista, escala, etiquetas, fecha, color, referencia…), lo heredan los subtipos y el editor ofrece «Rellenar N fichas vacías».
 - [x] Campos calculados reales (2026-10-04): motor en `src/domain/formulas.ts` con `{clave}`, `{referencia.clave}`, `{titulo}`, `{tipo}`, `{padre}`, `{padre.clave}`, `{contar(relaciones[:Tipo])}`, `{contar(hijos)}`, `{contar(clave)}`, `{lista(relaciones[:Tipo])}` y `{lista(hijos)}`; calculados anidados con límite de profundidad; ayuda en el editor de atributos.
 - [x] Validación de campos obligatorios con avisos no bloqueantes y contador de "fichas incompletas" (2026-10-04: marca en la tarjeta y lista con detalle en la vista «Salud»).
@@ -343,7 +344,7 @@ Objetivo: que alguien que llega a https://nodaria.yosiftware.es sin contexto ent
 - [x] **Recorrido guiado** (2026-10-04): diez pasos sobre «Ejemplo: Coches» (proyecto, barra, estructura, lienzo, ficha, disposiciones, tipos, relaciones, tabla, salud); Escape lo cierra, flechas navegan; se relanza desde la ayuda.
 - [x] (2026-10-04, en la pestaña «Primeros pasos» de la ayuda) Ayuda contextual en los puntos difíciles: qué es una estructura, cuándo usar atributo de referencia o relación, qué es una preforma, cómo funciona el parentesco con género.
 - [x] Página de ayuda («?») ampliada (2026-10-04): pestaña «Primeros pasos» con el flujo y los conceptos clave, además de atajos y fórmulas.
-- [ ] Textos vacíos de cada vista (Tipos, Relaciones, Propiedades) con el siguiente paso sugerido.
+- [x] Textos vacíos de cada vista (Tipos, Relaciones, Propiedades) con el siguiente paso sugerido (comprobado el 2026-10-06: Tipos y Relaciones con «Crear el primer tipo», Propiedades con texto explicativo).
 
 Criterio: una persona nueva crea un tipo, dos nodos y una relación sin ayuda externa; el proyecto de ejemplo muestra todas las funciones principales.
 
@@ -359,18 +360,18 @@ Criterio: una persona nueva crea un tipo, dos nodos y una relación sin ayuda ex
 
 ## Estado
 
-| Fase                           | Estado                  |
-| ------------------------------ | ----------------------- |
-| 0 — Estabilidad e integridad   | Completada (2026-10-03) |
-| 1 — Sistema de diseño          | Pendiente               |
-| 2 — Lienzo de grafo            | Completada (2026-10-03) |
-| 3 — Fichas y navegación        | Pendiente               |
-| 4 — Modelo enriquecido         | Completada (2026-10-04) |
-| 5 — Vistas y lentes            | Pendiente               |
-| 6 — Análisis                   | Pendiente               |
-| 7 — Persistencia y exportación | Pendiente               |
-| 8 — Asistente IA               | Pendiente               |
-| 9 — Tutorial y primeros pasos  | Pendiente               |
+| Fase                           | Estado                                            |
+| ------------------------------ | ------------------------------------------------- |
+| 0 — Estabilidad e integridad   | Completada (2026-10-03)                           |
+| 1 — Sistema de diseño          | Completada (2026-10-03)                           |
+| 2 — Lienzo de grafo            | Completada (2026-10-03)                           |
+| 3 — Fichas y navegación        | Completada (2026-10-03); ficha completa pospuesta |
+| 4 — Modelo enriquecido         | Completada (2026-10-04) salvo la lista ordenada   |
+| 5 — Vistas y lentes            | Completada salvo la línea temporal                |
+| 6 — Análisis                   | Completada (2026-10-04)                           |
+| 7 — Persistencia y exportación | Pendiente                                         |
+| 8 — Asistente IA               | Pendiente (opcional)                              |
+| 9 — Tutorial y primeros pasos  | Completada (2026-10-06)                           |
 
 ## Criterios de finalización del roadmap
 
