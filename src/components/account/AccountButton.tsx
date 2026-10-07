@@ -1,6 +1,7 @@
 import { CloudOff, CloudAlert, Cloud, LogIn, LogOut, MailWarning, RefreshCw, Trash2, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, fetchMe, OfflineError } from '../../services/api';
+import { excludeDeviceFromStats } from '../../services/stats';
 import { useAuth, type AccountUser, type AuthStatus } from '../../state/auth';
 import { IconButton } from '../common/Button';
 import { anchorOf, type Anchor } from '../common/anchor';
@@ -111,7 +112,8 @@ export function AccountButton() {
 
 /**
  * Al iniciar sesión, una llamada a /api/me da de alta la cuenta en el servidor y comprueba
- * que la API acepta el token. Un fallo no bloquea nada: la app sigue en local.
+ * que la API acepta el token. Un fallo no bloquea nada: la app sigue en local. Si la cuenta es
+ * del propietario, marca el dispositivo para que no cuente en las estadísticas.
  */
 function useRegisterWithApi(
   status: AuthStatus,
@@ -126,7 +128,8 @@ function useRegisterWithApi(
     void (async () => {
       try {
         const token = await getToken();
-        if (token) await fetchMe(token);
+        const me = token ? await fetchMe(token) : null;
+        if (me?.excludeFromStats) excludeDeviceFromStats();
       } catch (error) {
         if (error instanceof OfflineError) toast({ message: 'Sin conexión con el servidor de Nodaria.' });
         else if (error instanceof ApiError) toast({ message: `No se pudo conectar la cuenta: ${error.message}` });

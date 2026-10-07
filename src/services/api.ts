@@ -65,6 +65,8 @@ export interface MeResponse {
   signInProvider: string;
   createdAt: string;
   lastSeenAt: string;
+  /** La cuenta es del propietario: su dispositivo no cuenta en Yosiftadísticas. */
+  excludeFromStats: boolean;
 }
 
 export const fetchMe = (token: string) => apiRequest<MeResponse>('GET', '/api/me', token);

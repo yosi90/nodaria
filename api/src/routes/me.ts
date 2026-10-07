@@ -5,7 +5,10 @@ import { authenticatedUser, HttpError } from '../auth/plugin.ts';
 // Borrar la cuenta exige un inicio de sesión como mucho así de antiguo.
 export const RECENT_LOGIN_MS = 5 * 60 * 1000;
 
-export const meRoutes: FastifyPluginAsync<Pick<AppDependencies, 'auth' | 'users'>> = async (app, { auth, users }) => {
+export const meRoutes: FastifyPluginAsync<Pick<AppDependencies, 'auth' | 'users' | 'config'>> = async (
+  app,
+  { auth, users, config },
+) => {
   app.get('/me', async request => {
     const user = authenticatedUser(request);
     return {
@@ -17,6 +20,8 @@ export const meRoutes: FastifyPluginAsync<Pick<AppDependencies, 'auth' | 'users'
       signInProvider: user.identity.signInProvider,
       createdAt: user.createdAt,
       lastSeenAt: user.lastSeenAt,
+      // Solo el booleano de la sesión actual: la lista de cuentas no sale del servidor.
+      excludeFromStats: config.ownerFirebaseUids.includes(user.firebaseUid),
     };
   });
 

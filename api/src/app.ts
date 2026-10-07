@@ -135,7 +135,7 @@ export async function buildApp({ config, db, auth, users, projects }: AppDepende
         reply.header('retry-after', limit.ttlInSeconds);
         return reply.status(429).send(tooManyRequests(request, limit));
       });
-      await privateApp.register(meRoutes, { auth, users });
+      await privateApp.register(meRoutes, { auth, users, config });
       await privateApp.register(projectRoutes, { projects, config });
     },
     { prefix: '/api' },

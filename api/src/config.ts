@@ -30,6 +30,8 @@ const envSchema = z.object({
   NOTIFICAPP_URL: z.string().url().default('https://notificapp-api.yosiftware.es'),
   NOTIFICAPP_SENDER_TOKEN_FILE: z.string().default('.runtime/notificapp-sender.token'),
   NOTIFICAPP_UPSTREAM_TOKEN_FILE: z.string().default('.runtime/notificapp-upstream.token'),
+  // UID de Firebase de las cuentas del propietario: sus dispositivos no cuentan en Yosiftadísticas.
+  OWNER_FIREBASE_UIDS: csv,
   // Con valor, los logs van a archivos diarios en esa carpeta en lugar de a la salida estándar.
   LOG_DIR: z.string().optional(),
 });
@@ -62,6 +64,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       senderTokenFile: value.NOTIFICAPP_SENDER_TOKEN_FILE,
       upstreamTokenFile: value.NOTIFICAPP_UPSTREAM_TOKEN_FILE,
     },
+    ownerFirebaseUids: value.OWNER_FIREBASE_UIDS,
     logDir: value.LOG_DIR,
   };
 }

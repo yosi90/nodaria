@@ -25,21 +25,22 @@ npm 11 bloquea los scripts de instalación salvo los aprobados en `allowScripts`
 
 ## Configuración (`api/.env`)
 
-| Variable                         | Por defecto                            | Uso                                                                   |
-| -------------------------------- | -------------------------------------- | --------------------------------------------------------------------- |
-| `HOST` / `PORT`                  | `127.0.0.1` / `5003`                   | Solo escucha en local; el túnel publica el puerto.                    |
-| `DB_SERVER`                      | `localhost\SQLEXPRESS`                 | Instancia de SQL Server.                                              |
-| `DB_NAME`                        | `Nodaria`                              | Base de datos (solo letras, números y `_`).                           |
-| `DB_DRIVER`                      | `ODBC Driver 18 for SQL Server`        | Driver ODBC.                                                          |
-| `CORS_ORIGINS`                   | –                                      | Orígenes web permitidos, separados por comas.                         |
-| `FIREBASE_PROJECT_ID`            | `yosiftware-nodaria`                   | Proyecto de Firebase Auth.                                            |
-| `GOOGLE_APPLICATION_CREDENTIALS` | –                                      | Cuenta de servicio de Firebase Admin (no versionar).                  |
-| `PROJECT_MAX_BYTES`              | `20971520`                             | Tamaño máximo del JSON de un proyecto.                                |
-| `NOTIFICAPP_URL`                 | `https://notificapp-api.yosiftware.es` | API de Notificapp (en este servidor también `http://127.0.0.1:5211`). |
-| `NOTIFICAPP_SENDER_TOKEN_FILE`   | `.runtime/notificapp-sender.token`     | Credencial de emisor del plugin `nodaria-api` (solo el token).        |
-| `NOTIFICAPP_UPSTREAM_TOKEN_FILE` | `.runtime/notificapp-upstream.token`   | Credencial externa con la que Notificapp llama al panel.              |
-| `UV_THREADPOOL_SIZE`             | `4` (Node)                             | Hilos de libuv; `msnodesqlv8` ocupa uno por consulta. Usar `16`.      |
-| `LOG_DIR`                        | –                                      | Logs diarios rotados (vacío: salida estándar).                        |
+| Variable                         | Por defecto                            | Uso                                                                          |
+| -------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------- |
+| `HOST` / `PORT`                  | `127.0.0.1` / `5003`                   | Solo escucha en local; el túnel publica el puerto.                           |
+| `DB_SERVER`                      | `localhost\SQLEXPRESS`                 | Instancia de SQL Server.                                                     |
+| `DB_NAME`                        | `Nodaria`                              | Base de datos (solo letras, números y `_`).                                  |
+| `DB_DRIVER`                      | `ODBC Driver 18 for SQL Server`        | Driver ODBC.                                                                 |
+| `CORS_ORIGINS`                   | –                                      | Orígenes web permitidos, separados por comas.                                |
+| `FIREBASE_PROJECT_ID`            | `yosiftware-nodaria`                   | Proyecto de Firebase Auth.                                                   |
+| `GOOGLE_APPLICATION_CREDENTIALS` | –                                      | Cuenta de servicio de Firebase Admin (no versionar).                         |
+| `PROJECT_MAX_BYTES`              | `20971520`                             | Tamaño máximo del JSON de un proyecto.                                       |
+| `NOTIFICAPP_URL`                 | `https://notificapp-api.yosiftware.es` | API de Notificapp (en este servidor también `http://127.0.0.1:5211`).        |
+| `NOTIFICAPP_SENDER_TOKEN_FILE`   | `.runtime/notificapp-sender.token`     | Credencial de emisor del plugin `nodaria-api` (solo el token).               |
+| `NOTIFICAPP_UPSTREAM_TOKEN_FILE` | `.runtime/notificapp-upstream.token`   | Credencial externa con la que Notificapp llama al panel.                     |
+| `OWNER_FIREBASE_UIDS`            | –                                      | UID de Firebase del propietario (comas); `/api/me` marca `excludeFromStats`. |
+| `UV_THREADPOOL_SIZE`             | `4` (Node)                             | Hilos de libuv; `msnodesqlv8` ocupa uno por consulta. Usar `16`.             |
+| `LOG_DIR`                        | –                                      | Logs diarios rotados (vacío: salida estándar).                               |
 
 ## Firebase
 
@@ -65,11 +66,11 @@ Las tres tablas de datos cuelgan de `users` con `ON DELETE CASCADE`: `DELETE /ap
 
 ## Endpoints
 
-| Método | Ruta          | Auth | Descripción                                                                                                     |
-| ------ | ------------- | ---- | --------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/health` | No   | Estado de la API y de la base de datos (503 si la base falla).                                                  |
-| GET    | `/api/me`     | Sí   | Perfil del usuario; lo crea en SQL en su primera petición.                                                      |
-| DELETE | `/api/me`     | Sí   | Borra el usuario en SQL (y sus datos) y su cuenta de Firebase. Exige un inicio de sesión de menos de 5 minutos. |
+| Método | Ruta          | Auth | Descripción                                                                                                                    |
+| ------ | ------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/api/health` | No   | Estado de la API y de la base de datos (503 si la base falla).                                                                 |
+| GET    | `/api/me`     | Sí   | Perfil del usuario; lo crea en SQL en su primera petición. `excludeFromStats`: la cuenta es del propietario (Yosiftadísticas). |
+| DELETE | `/api/me`     | Sí   | Borra el usuario en SQL (y sus datos) y su cuenta de Firebase. Exige un inicio de sesión de menos de 5 minutos.                |
 
 | GET | `/api/projects` | Sí | Resumen de los proyectos de la cuenta (id, nombre, `version`, `updatedAt`, `deletedAt`, tamaño), borrados incluidos. |
 | GET | `/api/projects/{id}` | Sí | Documento completo con su versión. 404 `project_not_found` o `project_deleted`. |

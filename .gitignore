@@ -9,3 +9,6 @@ vite.config.d.ts
 
 # Kit de Notificapp copiado en la raiz (material de referencia, no se versiona)
 /plugin-kit/
+
+# Kit de Yosiftadisticas copiado en la raiz (material de referencia, no se versiona)
+/estadisticas-kit/

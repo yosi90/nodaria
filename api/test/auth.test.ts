@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildApp, USER_RATE_LIMIT } from '../src/app.ts';
 import { RECENT_LOGIN_MS } from '../src/routes/me.ts';
-import { fakeAuth, fakeUsers, identity, testDependencies } from './helpers/fakes.ts';
+import { fakeAuth, fakeUsers, identity, testConfig, testDependencies } from './helpers/fakes.ts';
 
 const google = identity();
 const verifiedPassword = identity({ uid: 'uid-pass', signInProvider: 'password', emailVerified: true });
@@ -98,6 +98,19 @@ describe('GET /api/me', () => {
     });
     expect(second.json().id).toBe(1);
     expect(users.byUid.size).toBe(1);
+  });
+
+  it('flags only the owner accounts to exclude from stats', async () => {
+    const auth = fakeAuth({ google, pass: verifiedPassword });
+    const config = { ...testConfig, ownerFirebaseUids: [google.uid] };
+    const app = await buildApp(testDependencies({ config, auth: auth.provider, users: fakeUsers().store }));
+    const me = (token: string) =>
+      app.inject({ method: 'GET', url: '/api/me', headers: { authorization: `Bearer ${token}` } });
+
+    const owner = (await me('google')).json();
+    expect(owner.excludeFromStats).toBe(true);
+    expect(JSON.stringify(owner)).not.toContain('ownerFirebaseUids');
+    expect((await me('pass')).json().excludeFromStats).toBe(false);
   });
 });
 
