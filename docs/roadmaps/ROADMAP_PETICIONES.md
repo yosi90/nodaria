@@ -91,6 +91,8 @@ Excluido:
 - [x] ZIP con `plugin-kit/pack.py` (`api/.runtime/nodaria-api-1.0.0.notificapp.zip`, 2026-10-07).
 - [x] Instalado por el propietario (2026-10-07, `nodaria-api` 1.0.0, actualizaciones remotas apagadas). Credencial externa registrada en Notificapp, igual a la de `api/.runtime/notificapp-upstream.token`. Credencial de emisor copiada a `api/.runtime/notificapp-sender.token` y comprobada: con un tipo no declarado, Notificapp responde 403 y no 401.
 
+- [x] Actualizaciones remotas activadas por el propietario (2026-10-07). Credencial copiada a `api/.runtime/notificapp-update.token` y comprobada: al publicar otra vez la 1.0.0, Notificapp responde 409 «La versión debe aumentar». La copia local de `plugin-kit/` se renovó desde `notificapp/plugin-kit`: el publicador anterior no enviaba `User-Agent` propio y Cloudflare lo bloqueaba con el error 1010.
+
 ### Fase 4b — Administración en la web (petición del propietario, 2026-10-07)
 
 - [x] `users.is_admin` (migración `0005_admins`), concedido a la cuenta del propietario en producción.
