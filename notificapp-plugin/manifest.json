@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "nodaria-api",
+  "name": "Nodaria",
+  "version": "1.0.0",
+  "eventKinds": ["nodaria_request"],
+  "agents": [],
+  "ui": { "entry": "ui/index.html" },
+  "api": {
+    "baseUrl": "https://nodaria-api.yosiftware.es",
+    "actions": {
+      "list": { "method": "GET", "path": "/notificapp/v1/requests" },
+      "detail": { "method": "GET", "path": "/notificapp/v1/requests/{id}" },
+      "respond": { "method": "POST", "path": "/notificapp/v1/requests/{id}/responses", "onSuccess": "answered" }
+    }
+  }
+}

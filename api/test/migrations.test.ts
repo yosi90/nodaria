@@ -16,7 +16,7 @@ describe('migration files', () => {
 
   it('reads the repository migrations in order with checksums', async () => {
     const migrations = await readMigrations();
-    expect(migrations.map(m => m.id)).toEqual(['0001_users', '0002_projects', '0003_messages']);
+    expect(migrations.map(m => m.id)).toEqual(['0001_users', '0002_projects', '0003_messages', '0004_requests']);
     for (const migration of migrations) {
       expect(migration.checksum).toMatch(/^[0-9a-f]{64}$/);
       expect(migration.batches.length).toBeGreaterThan(0);

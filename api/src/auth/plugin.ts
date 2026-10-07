@@ -68,3 +68,11 @@ export function createAuthenticate(auth: AuthProvider, users: UserStore) {
     request.user = { ...user, identity };
   };
 }
+
+// Hook de las rutas públicas que se enriquecen con sesión: sin cabecera, sigue como anónimo.
+export function createOptionalAuthenticate(auth: AuthProvider, users: UserStore) {
+  const authenticate = createAuthenticate(auth, users);
+  return async function optionalAuthenticate(request: FastifyRequest) {
+    if (request.headers.authorization) await authenticate(request);
+  };
+}

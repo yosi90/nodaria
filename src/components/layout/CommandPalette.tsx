@@ -10,12 +10,14 @@ import {
   type LucideIcon,
   Table2,
   HeartPulse,
+  Lightbulb,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
+import { useRequests } from '../../state/requests';
 import { usePreferences } from '../../state/preferences';
 import { TypeIcon } from '../common/icons';
 import { NodeAvatar } from '../common/NodeAvatar';
@@ -43,6 +45,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const { project, dispatch } = useApp();
   const { select, setView } = useNavigation();
   const { preferences, setPreference } = usePreferences();
+  const { open: openRequests } = useRequests();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -161,6 +164,22 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         run: () => setView('table'),
       },
       {
+        id: 'requests',
+        label: 'Ideas y peticiones',
+        group: 'Acciones',
+        leading: icon(Lightbulb),
+        keywords: 'sugerencia idea peticion votar error fallo bug tablon',
+        run: () => openRequests('board'),
+      },
+      {
+        id: 'new-request',
+        label: 'Proponer una idea o avisar de un error',
+        group: 'Acciones',
+        leading: icon(Lightbulb),
+        keywords: 'sugerencia idea peticion error fallo bug enviar',
+        run: () => openRequests('new'),
+      },
+      {
         id: 'theme',
         label: preferences.theme === 'dark' ? 'Tema claro' : 'Tema oscuro',
         group: 'Acciones',
@@ -170,7 +189,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       },
     ];
     return [...nodes, ...relations, ...types, ...actions];
-  }, [project, select, setView, dispatch, preferences.theme, setPreference]);
+  }, [project, select, setView, dispatch, preferences.theme, setPreference, openRequests]);
 
   const results = useMemo(() => {
     const q = normalize(query.trim());

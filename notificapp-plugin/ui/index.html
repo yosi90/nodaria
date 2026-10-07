@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      :root {
+        font:
+          16px/1.5 system-ui,
+          -apple-system,
+          sans-serif;
+        color-scheme: light;
+        --background: #efebe2;
+        --surface: #ffffff;
+        --surface-soft: #f9f7f2;
+        --text: #1f1d1a;
+        --muted: #5c574e;
+        --border: #ddd6c8;
+        --accent: #5b45d6;
+        --accent-text: #ffffff;
+        --danger: #c3303d;
+        --focus: #5b45d640;
+        --shadow: 0 12px 34px rgba(31, 29, 26, 0.08);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --background: #0d0f13;
+          --surface: #14171d;
+          --surface-soft: #1b1f27;
+          --text: #eceef3;
+          --muted: #a3abba;
+          --border: #282e39;
+          --accent: #a194ff;
+          --accent-text: #14112a;
+          --danger: #ff7c87;
+          --focus: #a194ff4d;
+          --shadow: 0 12px 34px rgba(0, 0, 0, 0.3);
+        }
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --background: #0d0f13;
+        --surface: #14171d;
+        --surface-soft: #1b1f27;
+        --text: #eceef3;
+        --muted: #a3abba;
+        --border: #282e39;
+        --accent: #a194ff;
+        --accent-text: #14112a;
+        --danger: #ff7c87;
+        --focus: #a194ff4d;
+        --shadow: 0 12px 34px rgba(0, 0, 0, 0.3);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 12px 12px 28px;
+        background: var(--background);
+        color: var(--text);
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+        display: grid;
+        gap: 12px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .header {
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .eyebrow {
+        margin: 0 0 4px;
+        font-size: 0.75rem;
+        font-weight: 750;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.4rem;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 1.05rem;
+      }
+      .meta {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+        overflow-wrap: anywhere;
+      }
+      .section {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .section:last-child {
+        border-bottom: 0;
+      }
+      .text {
+        margin: 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .chip {
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: var(--surface-soft);
+        border: 1px solid var(--border);
+        font-size: 0.82rem;
+      }
+      .history {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+      .history li {
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: var(--surface-soft);
+        font-size: 0.9rem;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+      .list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .list button {
+        width: 100%;
+        text-align: left;
+        background: none;
+        color: inherit;
+        border: 0;
+        border-bottom: 1px solid var(--border);
+        border-radius: 0;
+        padding: 12px 20px;
+        font-weight: 400;
+      }
+      .list li:last-child button {
+        border-bottom: 0;
+      }
+      .list strong {
+        display: block;
+        overflow-wrap: anywhere;
+      }
+      .list span {
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      label.input-label {
+        display: block;
+        margin: 12px 0 4px;
+        font-weight: 650;
+        font-size: 0.92rem;
+      }
+      select,
+      textarea,
+      input {
+        width: 100%;
+        font: inherit;
+        color: var(--text);
+        background: var(--surface-soft);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px;
+      }
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+      .hint {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+      button {
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        border-radius: 999px;
+        border: 1px solid var(--accent);
+        padding: 10px 18px;
+        background: var(--accent);
+        color: var(--accent-text);
+      }
+      button.secondary {
+        background: transparent;
+        color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .status {
+        margin: 0;
+        padding: 0 4px;
+        color: var(--muted);
+        min-height: 1.5em;
+      }
+      .status.error {
+        color: var(--danger);
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card" id="list-view" hidden>
+        <div class="header">
+          <p class="eyebrow">Nodaria</p>
+          <h1>Peticiones abiertas</h1>
+          <p class="meta" id="list-meta"></p>
+        </div>
+        <ul class="list" id="list"></ul>
+      </section>
+
+      <article class="card" id="detail-view" hidden>
+        <div class="header">
+          <p class="eyebrow" id="detail-kind">Nodaria</p>
+          <h1 id="detail-title"></h1>
+          <p class="meta" id="detail-meta"></p>
+          <div class="chips" id="detail-chips"></div>
+        </div>
+        <div class="section">
+          <p class="text" id="detail-body"></p>
+        </div>
+        <div class="section" id="history-section" hidden>
+          <h2>Historial</h2>
+          <ul class="history" id="history"></ul>
+        </div>
+        <div class="section" id="respond-section" hidden>
+          <h2>Responder</h2>
+          <label class="input-label" for="status-select">Estado</label>
+          <select id="status-select"></select>
+          <p class="hint" id="status-hint"></p>
+          <div id="duplicate-field" hidden>
+            <label class="input-label" for="duplicate-of">Número de la petición original</label>
+            <input id="duplicate-of" type="number" min="1" inputmode="numeric" />
+          </div>
+          <label class="input-label" for="message">Mensaje público</label>
+          <textarea
+            id="message"
+            maxlength="2000"
+            placeholder="Opcional. Lo verá el autor y, si la idea está publicada, cualquiera en el tablón."
+          ></textarea>
+          <div class="actions">
+            <button type="button" id="submit" disabled>Enviar respuesta</button>
+            <button type="button" class="secondary" id="back" hidden>Volver a la lista</button>
+          </div>
+        </div>
+      </article>
+
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </main>
+    <script>
+      const root = document.documentElement;
+      try {
+        const theme = Notificapp.getTheme?.();
+        if (theme === 'light' || theme === 'dark') root.dataset.theme = theme;
+      } catch (_) {
+        /* Las APK anteriores siguen el tema del sistema mediante CSS. */
+      }
+
+      const STATUSES = {
+        revision: 'En revisión',
+        rechazada: 'Rechazada (no se publica)',
+        abierta: 'Abierta',
+        planificada: 'Planificada',
+        en_curso: 'En curso',
+        hecha: 'Hecha',
+        descartada: 'Descartada',
+        duplicada: 'Duplicada',
+      };
+      const HINTS = {
+        idea: {
+          revision: 'Sigue oculta: solo la ve su autor.',
+          rechazada: 'No se publica nunca (spam o fuera de lugar). El autor ve el estado y el mensaje.',
+          abierta: 'Se publica en el tablón y admite votos.',
+          planificada: 'Pública y con votos.',
+          en_curso: 'Pública y con votos.',
+          hecha: 'Pública; deja de admitir votos.',
+          descartada: 'Pública como descartada; deja de admitir votos. Explica el motivo.',
+          duplicada: 'Pública y enlazada a la original; deja de admitir votos.',
+        },
+        error: {},
+      };
+      const KINDS = { idea: 'Idea', error: 'Error' };
+
+      const launchEvent = (() => {
+        try {
+          return JSON.parse(Notificapp.getLaunchEvent());
+        } catch (_) {
+          return null;
+        }
+      })();
+      const pending = new Map();
+      const $ = id => document.getElementById(id);
+      const statusLine = $('status');
+      let current = null;
+      let respondRequestId = null;
+      let respondSignature = null;
+
+      function setStatus(text, isError = false) {
+        statusLine.textContent = text || '';
+        statusLine.classList.toggle('error', Boolean(isError));
+      }
+
+      function newRequestId() {
+        return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+
+      function call(action, id, payload, extra = {}, requestId = newRequestId()) {
+        pending.set(requestId, action);
+        Notificapp.request(
+          JSON.stringify({ requestId, action, id: id == null ? null : String(id), payload: payload || {}, ...extra }),
+        );
+        return requestId;
+      }
+
+      function formatDate(value) {
+        if (!value) return '';
+        try {
+          return new Date(value).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+        } catch (_) {
+          return value;
+        }
+      }
+
+      function element(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text != null) node.textContent = text;
+        return node;
+      }
+
+      function requestIdFromExternalId(externalId) {
+        const match = /^request-(\d+)$/.exec(String(externalId || ''));
+        return match ? match[1] : null;
+      }
+
+      function author(item) {
+        const parts = [item.author?.displayName, item.author?.email && `<${item.author.email}>`].filter(Boolean);
+        return parts.join(' ') || 'Usuario sin nombre';
+      }
+
+      function showPreview(event) {
+        $('detail-view').hidden = false;
+        $('detail-kind').textContent = 'Nodaria';
+        $('detail-title').textContent = event.title || 'Petición';
+        $('detail-body').textContent = event.body || '';
+      }
+
+      function updateHint() {
+        const status = $('status-select').value;
+        $('duplicate-field').hidden = status !== 'duplicada';
+        $('status-hint').textContent = (current && HINTS[current.kind][status]) || '';
+      }
+
+      function renderDetail(item) {
+        current = item;
+        respondRequestId = null;
+        respondSignature = null;
+        $('list-view').hidden = true;
+        $('detail-view').hidden = false;
+        $('respond-section').hidden = false;
+        $('detail-kind').textContent = `Nodaria · ${KINDS[item.kind] || item.kind} #${item.id}`;
+        $('detail-title').textContent = item.title || '(sin título)';
+        $('detail-meta').textContent = `${author(item)} · ${formatDate(item.createdAt)}`;
+        const chips = $('detail-chips');
+        chips.replaceChildren(element('span', 'chip', STATUSES[item.status] || item.status));
+        if (item.kind === 'idea') chips.append(element('span', 'chip', `${item.votes} voto(s)`));
+        if (item.duplicateOf) chips.append(element('span', 'chip', `Duplicada de #${item.duplicateOf}`));
+        $('detail-body').textContent = item.body || '';
+
+        const history = $('history');
+        history.replaceChildren();
+        for (const update of item.updates || []) {
+          const lines = [`${formatDate(update.createdAt)} · ${STATUSES[update.status] || update.status}`];
+          if (update.message) lines.push(update.message);
+          history.append(element('li', '', lines.join('\n')));
+        }
+        if (item.updatesTotal > (item.updates || []).length) {
+          history.prepend(element('li', '', `… y ${item.updatesTotal - item.updates.length} respuesta(s) anteriores.`));
+        }
+        $('history-section').hidden = !(item.updates || []).length;
+
+        const select = $('status-select');
+        select.replaceChildren();
+        for (const [value, label] of Object.entries(STATUSES)) {
+          if (value === 'revision') continue;
+          select.append(new Option(label, value));
+        }
+        select.value = item.status === 'revision' ? (item.kind === 'idea' ? 'abierta' : 'en_curso') : item.status;
+        $('duplicate-of').value = item.duplicateOf || '';
+        $('message').value = '';
+        $('message').placeholder =
+          item.kind === 'idea'
+            ? 'Opcional. Lo verá el autor y, si la idea está publicada, cualquiera en el tablón.'
+            : 'Opcional. Solo lo verá el autor del aviso.';
+        updateHint();
+        $('submit').disabled = false;
+        setStatus('');
+      }
+
+      function renderList(data) {
+        $('detail-view').hidden = true;
+        $('list-view').hidden = false;
+        const list = $('list');
+        list.replaceChildren();
+        const items = data.items || [];
+        $('list-meta').textContent = items.length
+          ? `${items.length}${data.hasMore ? '+' : ''} petición(es) sin cerrar`
+          : 'No hay peticiones pendientes.';
+        for (const item of items) {
+          const button = element('button');
+          button.type = 'button';
+          const votes = item.kind === 'idea' ? ` · ${item.votes} voto(s)` : '';
+          button.append(
+            element('strong', '', item.title || '(sin título)'),
+            element(
+              'span',
+              '',
+              `${KINDS[item.kind] || item.kind} #${item.id} · ${STATUSES[item.status] || item.status}${votes}`,
+            ),
+          );
+          button.onclick = () => openDetail(item.id, true);
+          const li = element('li');
+          li.append(button);
+          list.append(li);
+        }
+        setStatus('');
+      }
+
+      function openDetail(id, fromList) {
+        $('back').hidden = !fromList;
+        $('submit').disabled = true;
+        setStatus('Consultando la petición…');
+        call('detail', id);
+      }
+
+      $('status-select').onchange = updateHint;
+
+      $('submit').onclick = () => {
+        if (!current) return;
+        const status = $('status-select').value;
+        const message = $('message').value.trim() || null;
+        let duplicateOf = null;
+        if (status === 'duplicada') {
+          duplicateOf = Number($('duplicate-of').value);
+          if (!Number.isInteger(duplicateOf) || duplicateOf < 1 || duplicateOf === current.id) {
+            setStatus('Indica el número de la petición original.', true);
+            return;
+          }
+        }
+        if (status === current.status && !message && duplicateOf === (current.duplicateOf || null)) {
+          setStatus('Cambia el estado o escribe un mensaje.', true);
+          return;
+        }
+        const payload = { status, message, duplicateOf };
+        const signature = JSON.stringify(payload);
+        if (signature !== respondSignature) {
+          respondRequestId = newRequestId();
+          respondSignature = signature;
+        }
+        $('submit').disabled = true;
+        setStatus('Esperando confirmación…');
+        call('respond', current.id, payload, { eventExternalId: current.externalId }, respondRequestId);
+      };
+
+      $('back').onclick = () => {
+        current = null;
+        setStatus('Consultando las peticiones abiertas…');
+        call('list');
+      };
+
+      window.notificappReceive = (requestId, raw) => {
+        const action = pending.get(requestId);
+        pending.delete(requestId);
+        let result;
+        try {
+          result = JSON.parse(raw);
+        } catch (_) {
+          result = { ok: false, error: 'Respuesta ilegible' };
+        }
+        if (!result.ok) {
+          if (action === 'respond') $('submit').disabled = false;
+          setStatus(
+            action === 'respond'
+              ? `No se envió la respuesta: ${result.error}. Si se cortó la conexión, vuelve a pulsar para reintentar con la misma operación.`
+              : `No se pudo consultar Nodaria: ${result.error}`,
+            true,
+          );
+          return;
+        }
+        const status = result.data?.status;
+        const data = result.data?.data || {};
+        if (status < 200 || status >= 300) {
+          if (action === 'respond') $('submit').disabled = false;
+          setStatus(data.message || `Nodaria respondió con el código ${status}.`, true);
+          return;
+        }
+        if (action === 'list') renderList(data);
+        else if (action === 'detail') renderDetail(data);
+        else if (action === 'respond') {
+          renderDetail(data);
+          setStatus(data.replayed ? 'Esta respuesta ya se había registrado.' : 'Respuesta registrada.');
+        }
+      };
+
+      const launchedId = requestIdFromExternalId(launchEvent?.externalId);
+      if (launchedId) {
+        showPreview(launchEvent);
+        openDetail(launchedId, false);
+      } else {
+        setStatus('Consultando las peticiones abiertas…');
+        call('list');
+      }
+    </script>
+  </body>
+</html>

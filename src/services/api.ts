@@ -100,3 +100,74 @@ export const putRemoteProject = (token: string, id: string, document: unknown, b
   apiRequest<WriteResult>('PUT', `/api/projects/${encodeURIComponent(id)}`, token, { document, baseVersion });
 export const deleteRemoteProject = (token: string, id: string, baseVersion: number) =>
   apiRequest<WriteResult>('DELETE', `/api/projects/${encodeURIComponent(id)}?baseVersion=${baseVersion}`, token);
+
+// Peticiones: tablón público de ideas con votos y avisos de error privados.
+export type RequestKind = 'idea' | 'error';
+export type RequestStatus =
+  'revision' | 'rechazada' | 'abierta' | 'planificada' | 'en_curso' | 'hecha' | 'descartada' | 'duplicada';
+
+export interface RequestUpdate {
+  id: number;
+  status: RequestStatus;
+  message: string | null;
+  createdAt: string;
+}
+
+export interface RequestSummary {
+  id: number;
+  kind: RequestKind;
+  title: string;
+  body: string;
+  status: RequestStatus;
+  duplicateOf: number | null;
+  votes: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BoardRequest extends RequestSummary {
+  voted: boolean;
+  mine: boolean;
+}
+
+export interface RequestDetail extends BoardRequest {
+  updates: RequestUpdate[];
+}
+
+export interface OwnRequest extends RequestSummary {
+  updates: RequestUpdate[];
+  unread: boolean;
+}
+
+export interface BoardPage {
+  items: BoardRequest[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface BoardParams {
+  sort: 'votes' | 'recent';
+  status: RequestStatus | null;
+  offset: number;
+}
+
+export const fetchBoard = (token: string | null, { sort, status, offset }: BoardParams) => {
+  const query = new URLSearchParams({ sort, offset: String(offset), limit: '30' });
+  if (status) query.set('status', status);
+  return apiRequest<BoardPage>('GET', `/api/requests?${query}`, token);
+};
+export const fetchRequest = (token: string | null, id: number) =>
+  apiRequest<RequestDetail>('GET', `/api/requests/${id}`, token);
+export const createRequest = (token: string, input: { kind: RequestKind; title: string; body: string }) =>
+  apiRequest<OwnRequest>('POST', '/api/requests', token, input);
+export const voteRequest = (token: string, id: number, voted: boolean) =>
+  apiRequest<{ id: number; votes: number; voted: boolean }>(
+    voted ? 'PUT' : 'DELETE',
+    `/api/requests/${id}/vote`,
+    token,
+  );
+export const fetchMyRequests = (token: string) =>
+  apiRequest<{ requests: OwnRequest[] }>('GET', '/api/me/requests', token);
+export const markRequestRead = (token: string, id: number) =>
+  apiRequest<void>('POST', `/api/me/requests/${id}/read`, token);

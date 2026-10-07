@@ -4,7 +4,9 @@ import { ShortcutsContent } from './ShortcutsHelp';
 import type { HelpTopic } from '../../state/navigation';
 import { useTour } from '../../state/tour';
 import { Button } from '../common/Button';
-import { Compass, Layers } from 'lucide-react';
+import { LegalLinks } from '../common/LegalLinks';
+import { Compass, Layers, Lightbulb } from 'lucide-react';
+import { useRequests } from '../../state/requests';
 
 const TOPICS: { id: HelpTopic; label: string }[] = [
   { id: 'start', label: 'Primeros pasos' },
@@ -25,6 +27,7 @@ export function HelpDialog({
   onTemplates: () => void;
 }) {
   const { start } = useTour();
+  const requests = useRequests();
   return (
     <Modal title="Ayuda" informational wide onClose={onClose}>
       <div className="segmented help-tabs" role="tablist" aria-label="Temas de ayuda">
@@ -85,6 +88,15 @@ export function HelpDialog({
             >
               Ejemplos y plantillas
             </Button>
+            <Button
+              icon={Lightbulb}
+              onClick={() => {
+                onClose();
+                requests.open('new');
+              }}
+            >
+              Proponer una idea o avisar de un error
+            </Button>
           </div>
           <small>
             El recorrido señala las partes de la pantalla sobre el proyecto abierto; está pensado para «Ejemplo:
@@ -96,6 +108,7 @@ export function HelpDialog({
       ) : (
         <FormulasGuide />
       )}
+      <LegalLinks />
     </Modal>
   );
 }

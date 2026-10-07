@@ -60,6 +60,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     firebaseProjectId: value.FIREBASE_PROJECT_ID,
     projectMaxBytes: value.PROJECT_MAX_BYTES,
     notificapp: {
+      // Solo producción encola avisos: desarrollo y pruebas no deben llegar al móvil.
+      enabled: value.NODE_ENV === 'production',
       url: value.NOTIFICAPP_URL,
       senderTokenFile: value.NOTIFICAPP_SENDER_TOKEN_FILE,
       upstreamTokenFile: value.NOTIFICAPP_UPSTREAM_TOKEN_FILE,

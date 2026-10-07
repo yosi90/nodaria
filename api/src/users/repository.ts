@@ -79,10 +79,13 @@ export function createSqlUserStore(db: Database): UserStore {
 
     async delete(userId, beforeCommit) {
       await withTransaction(db, async transaction => {
-        // Las tablas de datos referencian dbo.users con ON DELETE CASCADE.
-        await new sql.Request(transaction)
-          .input('id', sql.BigInt, userId)
-          .query('DELETE FROM dbo.users WHERE id = @id');
+        // Las tablas de datos referencian dbo.users con ON DELETE CASCADE, salvo los votos (que ya
+        // cuelgan en cascada de las peticiones) y las marcas de duplicado, que se limpian antes.
+        await new sql.Request(transaction).input('id', sql.BigInt, userId).query(`
+          DELETE FROM dbo.request_votes WHERE user_id = @id;
+          UPDATE dbo.requests SET duplicate_of = NULL, status = 'abierta'
+          WHERE duplicate_of IN (SELECT id FROM dbo.requests WHERE user_id = @id);
+          DELETE FROM dbo.users WHERE id = @id;`);
         await beforeCommit();
       });
     },

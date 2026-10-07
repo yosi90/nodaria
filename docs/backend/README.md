@@ -55,14 +55,16 @@ El front usa `authDomain: yosiftware-nodaria.firebaseapp.com`, como Lorcana. Pas
 
 ## Modelo de datos
 
-| Tabla               | Clave                       | Contenido                                                                                                        |
-| ------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `users`             | `id` (`firebase_uid` único) | Ancla de los datos de cada cuenta de Firebase.                                                                   |
-| `projects`          | `user_id`, `project_id`     | Documento JSON del proyecto, `version`, `updated_at` (cliente), `server_updated_at`, `deleted_at`, tamaño.       |
-| `messages`          | `id`                        | Mensajes del usuario (tipo, asunto, cuerpo, contexto), estado, respuesta y claves de idempotencia de Notificapp. |
-| `notificapp_outbox` | `external_id`               | Avisos pendientes de enviar a Notificapp, con reintentos.                                                        |
+| Tabla               | Clave                       | Contenido                                                                                                     |
+| ------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `users`             | `id` (`firebase_uid` único) | Ancla de los datos de cada cuenta de Firebase.                                                                |
+| `projects`          | `user_id`, `project_id`     | Documento JSON del proyecto, `version`, `updated_at` (cliente), `server_updated_at`, `deleted_at`, tamaño.    |
+| `requests`          | `id`                        | Peticiones: `kind` (`idea`/`error`), título, cuerpo, `status`, `duplicate_of`, `author_read_at`.              |
+| `request_updates`   | `id`                        | Respuestas del propietario (estado y mensaje público) con la clave de idempotencia y la huella de Notificapp. |
+| `request_votes`     | `request_id`, `user_id`     | Un voto por usuario e idea.                                                                                   |
+| `notificapp_outbox` | `external_id`               | Avisos pendientes de enviar a Notificapp, con reintentos.                                                     |
 
-Las tres tablas de datos cuelgan de `users` con `ON DELETE CASCADE`: `DELETE /api/me` borra también los datos.
+`projects` y `requests` cuelgan de `users` con `ON DELETE CASCADE`, y `request_updates` y `request_votes` de `requests`. Los votos propios y las marcas de duplicado que apuntan a peticiones de la cuenta se limpian antes en `UserStore.delete` (SQL Server no admite dos rutas de cascada). `DELETE /api/me` borra todo. La migración `0004_requests` sustituyó a `messages`, que nunca llegó a usarse.
 
 ## Endpoints
 
@@ -77,7 +79,28 @@ Las tres tablas de datos cuelgan de `users` con `ON DELETE CASCADE`: `DELETE /ap
 | PUT | `/api/projects/{id}` | Sí | `{ document, baseVersion }`: crea (`baseVersion` 0) o actualiza. 409 `version_conflict` con `current`; 413 `project_too_large`; 400 `project_id_mismatch`. |
 | DELETE | `/api/projects/{id}` | Sí | Borrado lógico; `?baseVersion=n` opcional para exigir la versión. Idempotente sobre un borrado. |
 
-El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista: el cliente guarda la versión que sincronizó y la envía como `baseVersion`. Las rutas de mensajes y del panel de Notificapp están aplazadas (Fase 3 del roadmap).
+El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista: el cliente guarda la versión que sincronizó y la envía como `baseVersion`.
+
+### Peticiones
+
+| Método | Ruta                         | Auth     | Descripción                                                                                                                          |
+| ------ | ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/api/requests`              | Opcional | Tablón: ideas públicas. `sort=votes\|recent`, `status`, `limit` (≤100), `offset`. Con sesión, cada idea lleva `voted` y `mine`.      |
+| GET    | `/api/requests/{id}`         | Opcional | Detalle con historial si es pública o del visitante; si no, 404 `request_not_found`.                                                 |
+| POST   | `/api/requests`              | Sí       | `{ kind, title (4–120), body (10–4000) }` → 201. Nace en `revision`; una idea lleva el voto del autor. 429 `request_limit` (5/24 h). |
+| PUT    | `/api/requests/{id}/vote`    | Sí       | Vota una idea pública. 409 `voting_closed` si ya no admite votos (`hecha`, `descartada`, `duplicada`).                               |
+| DELETE | `/api/requests/{id}/vote`    | Sí       | Quita el voto.                                                                                                                       |
+| GET    | `/api/me/requests`           | Sí       | Peticiones propias con historial y `unread` (respuestas posteriores a la última lectura).                                            |
+| POST   | `/api/me/requests/{id}/read` | Sí       | Marca como leídas las respuestas de una petición propia. 204.                                                                        |
+
+Estados: `revision` y `rechazada` nunca son públicos; una idea en `abierta`, `planificada`, `en_curso`, `hecha`, `descartada` o `duplicada` sale en el tablón (sin autor). Los errores son siempre privados. Reglas en `src/requests/model.ts`.
+
+### Notificapp (plugin `nodaria-api`)
+
+- **Avisos**: cada petición nueva escribe en `notificapp_outbox`, en la misma transacción, el aviso `nodaria_request` con `externalId = request-<id>` y el texto completo (solo con `NODE_ENV=production`). El drenador en proceso (`src/notificapp/outbox.ts`) lo publica en `NOTIFICAPP_URL/v1/events` con la credencial de emisor de `NOTIFICAPP_SENDER_TOKEN_FILE`. Si falla, reintenta a 1, 2, 4… minutos (hasta 6 h). Si falta la credencial, los avisos esperan en la cola.
+- **Panel**: `GET /notificapp/v1/requests` (abiertas: `revision`, `abierta`, `planificada`, `en_curso`; hasta 100 y `hasMore`), `GET /notificapp/v1/requests/{id}` (con autor, votos, `externalId` y las 20 últimas respuestas) y `POST /notificapp/v1/requests/{id}/responses` (`{ status, message?, duplicateOf? }`). Solo aceptan `Authorization: Bearer <credencial externa>` (archivo `NOTIFICAPP_UPSTREAM_TOKEN_FILE`; sin él, 503 `notificapp_unavailable`; distinta, 401). El `POST` exige `Idempotency-Key`: la misma clave con la misma respuesta devuelve el resultado con `replayed: true`; con otra respuesta u otra petición, 409 `idempotency_conflict`.
+- **Paquete**: `notificapp-plugin/manifest.json` y `ui/index.html`. Se empaqueta con `python plugin-kit/pack.py --template notificapp-plugin --output api/.runtime/nodaria-api-<versión>.notificapp.zip`.
+- **Credenciales** (en `api/.runtime/`, ignorada por Git): `notificapp-sender.token` (la de emisor, que da `plugin_cli install`) y `notificapp-upstream.token` (valor aleatorio largo que se registra con `plugin_cli set-upstream-token nodaria-api <archivo>`). Para revocar la externa, cambia o borra el archivo.
 
 ## Producción
 

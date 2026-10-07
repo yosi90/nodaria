@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../../state/auth';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
+import { LegalLinks } from '../common/LegalLinks';
 import { useToast } from '../common/toasts';
 
 export type SignInMode = 'login' | 'register' | 'reset' | 'verify';
@@ -189,6 +190,7 @@ export function SignInDialog({ initialMode = 'login', onClose }: { initialMode?:
                 </button>
               )}
             </div>
+            {mode !== 'reset' && <LegalLinks prefix="Al entrar o crear una cuenta aceptas las " />}
           </>
         )}
         {error && (

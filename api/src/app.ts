@@ -4,13 +4,16 @@ import path from 'node:path';
 import Fastify, { type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import { ZodError } from 'zod';
 import type { AuthProvider } from './auth/firebase.ts';
-import { createAuthenticate, HttpError } from './auth/plugin.ts';
+import { createAuthenticate, createOptionalAuthenticate, HttpError } from './auth/plugin.ts';
 import type { AppConfig } from './config.ts';
 import type { Database } from './db/pool.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meRoutes } from './routes/me.ts';
+import { notificappRoutes } from './routes/notificapp.ts';
 import { projectRoutes } from './routes/projects.ts';
+import { publicRequestRoutes, requestRoutes } from './routes/requests.ts';
 import type { ProjectStore } from './projects/repository.ts';
+import type { RequestStore } from './requests/model.ts';
 import type { UserStore } from './users/repository.ts';
 
 export interface AppDependencies {
@@ -19,6 +22,11 @@ export interface AppDependencies {
   auth: AuthProvider;
   users: UserStore;
   projects: ProjectStore;
+  requests: RequestStore;
+  /** Avisa de que hay avisos nuevos en la cola de Notificapp (el drenador los publica). */
+  onRequestQueued?: () => void;
+  /** Credencial externa de Notificapp; por defecto se lee del archivo configurado. */
+  readUpstreamToken?: () => Promise<string | null>;
 }
 
 // Peticiones por minuto de cada usuario con sesión, además del límite por IP.
@@ -59,7 +67,16 @@ function loggerOptions(config: AppConfig): FastifyServerOptions['logger'] {
   };
 }
 
-export async function buildApp({ config, db, auth, users, projects }: AppDependencies) {
+export async function buildApp({
+  config,
+  db,
+  auth,
+  users,
+  projects,
+  requests,
+  onRequestQueued,
+  readUpstreamToken,
+}: AppDependencies) {
   const app = Fastify({
     logger: loggerOptions(config),
     trustProxy: 'loopback',
@@ -118,6 +135,18 @@ export async function buildApp({ config, db, auth, users, projects }: AppDepende
 
   await app.register(healthRoutes, { prefix: '/api', db });
 
+  // Rutas públicas que, con sesión, añaden datos del usuario (el tablón de peticiones).
+  await app.register(
+    async publicApp => {
+      publicApp.addHook('onRequest', createOptionalAuthenticate(auth, users));
+      await publicApp.register(publicRequestRoutes, { requests });
+    },
+    { prefix: '/api' },
+  );
+
+  // Panel de Notificapp: solo con la credencial externa del plugin.
+  await app.register(notificappRoutes, { prefix: '/notificapp/v1', requests, config, readUpstreamToken });
+
   // Rutas privadas: cada petición trae un usuario de Firebase verificado.
   await app.register(
     async privateApp => {
@@ -137,6 +166,7 @@ export async function buildApp({ config, db, auth, users, projects }: AppDepende
       });
       await privateApp.register(meRoutes, { auth, users, config });
       await privateApp.register(projectRoutes, { projects, config });
+      await privateApp.register(requestRoutes, { requests, config, onQueued: onRequestQueued });
     },
     { prefix: '/api' },
   );

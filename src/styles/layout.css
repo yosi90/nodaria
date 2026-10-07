@@ -734,6 +734,10 @@
   .segmented button .label {
     display: none;
   }
+  /* En los diálogos las pestañas son solo texto: sin él quedarían vacías. */
+  .modal .segmented button .label {
+    display: inline;
+  }
   .field-def-content {
     padding-left: var(--space-4);
   }

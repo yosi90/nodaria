@@ -1,4 +1,15 @@
-import { CloudOff, CloudAlert, Cloud, LogIn, LogOut, MailWarning, RefreshCw, Trash2, UserRound } from 'lucide-react';
+import {
+  CloudOff,
+  CloudAlert,
+  Cloud,
+  Lightbulb,
+  LogIn,
+  LogOut,
+  MailWarning,
+  RefreshCw,
+  Trash2,
+  UserRound,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, fetchMe, OfflineError } from '../../services/api';
 import { excludeDeviceFromStats } from '../../services/stats';
@@ -11,11 +22,13 @@ import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { SignInDialog, type SignInMode } from './SignInDialog';
 import { SignOutDialog } from './SignOutDialog';
 import { useSync } from '../../state/sync';
+import { useRequests } from '../../state/requests';
 
 /** Botón de cuenta de la barra superior: entrar, estado de verificación y menú de la sesión. */
 export function AccountButton() {
   const { status, user, getToken } = useAuth();
   const sync = useSync();
+  const requests = useRequests();
   const toast = useToast();
   const [signingOut, setSigningOut] = useState(false);
   const [signIn, setSignIn] = useState<SignInMode | null>(null);
@@ -74,6 +87,13 @@ export function AccountButton() {
       icon: RefreshCw,
       disabled: sync.state === 'syncing',
       onSelect: () => void sync.syncNow(),
+    },
+    'separator',
+    {
+      label: 'Mis peticiones',
+      hint: requests.unread > 0 ? `${requests.unread} respuestas nuevas` : undefined,
+      icon: Lightbulb,
+      onSelect: () => requests.open('mine'),
     },
     'separator',
     { label: 'Cerrar sesión', icon: LogOut, onSelect: () => setSigningOut(true) },

@@ -2,6 +2,7 @@ import type { AppDependencies } from '../../src/app.ts';
 import { type AuthProvider, AuthTokenError, type VerifiedIdentity } from '../../src/auth/firebase.ts';
 import { loadConfig } from '../../src/config.ts';
 import { createMemoryProjectStore } from '../../src/projects/repository.ts';
+import { createMemoryRequestStore } from '../../src/requests/memory.ts';
 import type { User, UserStore } from '../../src/users/repository.ts';
 
 export const testConfig = loadConfig({
@@ -93,6 +94,7 @@ export function testDependencies(overrides: Partial<AppDependencies> = {}): AppD
     auth: fakeAuth({}).provider,
     users: fakeUsers().store,
     projects: createMemoryProjectStore(),
+    requests: createMemoryRequestStore().store,
     ...overrides,
   };
 }

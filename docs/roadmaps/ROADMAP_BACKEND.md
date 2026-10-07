@@ -1,6 +1,6 @@
 # Roadmap: backend, cuentas y sincronización
 
-> **Finalizado el 2026-10-04.** Fases 0, 1, 2, 4, 5, 6 y 8 completadas; 3 y 7 (mensajes y plugin de Notificapp) aplazadas hasta que la web monte peticiones. El roadmap activo vuelve a ser `ROADMAP_RENOVACION.md`.
+> **Finalizado el 2026-10-04.** Fases 0, 1, 2, 4, 5, 6 y 8 completadas; 3 y 7 (mensajes y plugin de Notificapp) aplazadas. El 2026-10-07 las sustituyó `ROADMAP_PETICIONES.md` (tablón de peticiones con votos en lugar de mensajes privados).
 > Mantener la checklist sincronizada con el estado real durante la ejecución.
 
 ## Objetivo
