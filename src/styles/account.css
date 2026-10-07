@@ -12,7 +12,6 @@
   height: 30px;
   margin-left: 4px;
   padding: 0;
-  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
   background: var(--accent-soft);
@@ -28,6 +27,7 @@
 .account-button img {
   width: 100%;
   height: 100%;
+  border-radius: inherit;
   object-fit: cover;
 }
 .icon-btn.account-unverified {
@@ -71,26 +71,30 @@
   color: var(--accent-strong);
 }
 
-/* Estado de sincronización sobre el avatar */
-.account-button::after {
-  content: '';
+/* Estado de sincronización sobre el avatar. Va en su propio elemento: el ::after del botón es
+   su tooltip, y compartirlo pintaba el texto del tooltip dentro del avatar al sincronizar. */
+.account-sync-dot {
   position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 9px;
-  height: 9px;
+  right: -2px;
+  bottom: -2px;
+  display: none;
+  width: 10px;
+  height: 10px;
   border: 2px solid var(--surface-1);
   border-radius: var(--radius-full);
-  background: transparent;
+  pointer-events: none;
 }
-.account-button.sync-syncing::after {
+.account-button.sync-syncing .account-sync-dot {
+  display: block;
   background: var(--accent);
   animation: sync-pulse 1s ease-in-out infinite alternate;
 }
-.account-button.sync-offline::after {
+.account-button.sync-offline .account-sync-dot {
+  display: block;
   background: var(--warning);
 }
-.account-button.sync-error::after {
+.account-button.sync-error .account-sync-dot {
+  display: block;
   background: var(--danger);
 }
 @keyframes sync-pulse {

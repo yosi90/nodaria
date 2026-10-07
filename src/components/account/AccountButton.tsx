@@ -126,6 +126,7 @@ export function AccountButton() {
         ) : (
           <UserRound size={16} aria-hidden />
         )}
+        <span className="account-sync-dot" aria-hidden />
       </button>
       {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Cuenta" />}
       {signingOut && <SignOutDialog onClose={() => setSigningOut(false)} />}
