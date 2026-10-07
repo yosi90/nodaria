@@ -92,6 +92,15 @@ export interface RequestResponse {
 
 export type BoardSort = 'votes' | 'recent';
 
+/** Filtro del panel de administración: `open` limita a las que aún hay que atender. */
+export interface AdminQuery {
+  scope: 'open' | 'all';
+  status: RequestStatus | null;
+  kind: RequestKind | null;
+  limit: number;
+  offset: number;
+}
+
 export interface BoardQuery {
   sort: BoardSort;
   status: RequestStatus | null;
@@ -133,6 +142,8 @@ export interface RequestStore {
   markRead(userId: number, id: number): Promise<boolean>;
   // Propietario (panel de Notificapp).
   listOpen(limit: number): Promise<{ items: AdminRequest[]; hasMore: boolean }>;
+  /** Panel de administración de la web: todas las peticiones, con filtros y paginación. */
+  adminList(query: AdminQuery): Promise<{ items: AdminRequest[]; total: number }>;
   adminDetail(id: number): Promise<AdminRequest | null>;
   respond(
     id: number,

@@ -27,6 +27,7 @@ export async function apiRequest<TResponse>(
   path: string,
   token: string | null,
   body?: unknown,
+  extraHeaders: Record<string, string> = {},
 ): Promise<TResponse> {
   let response: Response;
   try {
@@ -35,6 +36,7 @@ export async function apiRequest<TResponse>(
       headers: {
         ...(token ? { authorization: `Bearer ${token}` } : {}),
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...extraHeaders,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -67,6 +69,8 @@ export interface MeResponse {
   lastSeenAt: string;
   /** La cuenta es del propietario: su dispositivo no cuenta en Yosiftadísticas. */
   excludeFromStats: boolean;
+  /** Puede usar el panel de administración. */
+  isAdmin: boolean;
 }
 
 export const fetchMe = (token: string) => apiRequest<MeResponse>('GET', '/api/me', token);
@@ -171,3 +175,37 @@ export const fetchMyRequests = (token: string) =>
   apiRequest<{ requests: OwnRequest[] }>('GET', '/api/me/requests', token);
 export const markRequestRead = (token: string, id: number) =>
   apiRequest<void>('POST', `/api/me/requests/${id}/read`, token);
+
+// Administración: solo cuentas con `isAdmin`.
+export interface AdminRequest extends RequestSummary {
+  externalId: string;
+  author: { displayName: string | null; email: string | null };
+  updates: RequestUpdate[];
+  updatesTotal: number;
+}
+
+export interface AdminListParams {
+  scope: 'open' | 'all';
+  status: RequestStatus | null;
+  kind: RequestKind | null;
+  offset: number;
+}
+
+export const fetchAdminRequests = (token: string, { scope, status, kind, offset }: AdminListParams) => {
+  const query = new URLSearchParams({ scope, offset: String(offset), limit: '50' });
+  if (status) query.set('status', status);
+  if (kind) query.set('kind', kind);
+  return apiRequest<{ items: AdminRequest[]; total: number }>('GET', `/api/admin/requests?${query}`, token);
+};
+
+export interface AdminResponse {
+  status: RequestStatus;
+  message: string | null;
+  duplicateOf: number | null;
+}
+
+/** La misma `key` con la misma respuesta no se aplica dos veces (reintentos tras un corte). */
+export const respondAdminRequest = (token: string, id: number, response: AdminResponse, key: string) =>
+  apiRequest<AdminRequest & { replayed: boolean }>('POST', `/api/admin/requests/${id}/responses`, token, response, {
+    'Idempotency-Key': key,
+  });

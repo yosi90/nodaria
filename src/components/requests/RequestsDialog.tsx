@@ -1,11 +1,9 @@
 import { Bug, ChevronUp, Lightbulb, LogIn } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ApiError,
   createRequest,
   fetchBoard,
   fetchRequest,
-  OfflineError,
   voteRequest,
   type BoardRequest,
   type RequestKind,
@@ -19,17 +17,9 @@ import { LegalLinks } from '../common/LegalLinks';
 import { Modal } from '../common/Modal';
 import { Select } from '../common/Select';
 import { useToast } from '../common/toasts';
+import { dateText, errorText, STATUS_LABELS } from './labels';
+import { StatusBadge, Updates } from './RequestParts';
 
-const STATUS_LABELS: Record<RequestStatus, string> = {
-  revision: 'En revisión',
-  rechazada: 'No publicada',
-  abierta: 'Abierta',
-  planificada: 'Planificada',
-  en_curso: 'En curso',
-  hecha: 'Hecha',
-  descartada: 'Descartada',
-  duplicada: 'Duplicada',
-};
 const VOTABLE: RequestStatus[] = ['abierta', 'planificada', 'en_curso'];
 const BOARD_FILTERS: RequestStatus[] = ['abierta', 'planificada', 'en_curso', 'hecha', 'descartada'];
 
@@ -38,37 +28,6 @@ const TABS: { id: RequestsTab; label: string }[] = [
   { id: 'mine', label: 'Mis peticiones' },
   { id: 'new', label: 'Nueva' },
 ];
-
-const errorText = (error: unknown) =>
-  error instanceof OfflineError
-    ? 'Sin conexión con el servidor de Nodaria.'
-    : error instanceof ApiError
-      ? error.message
-      : 'Algo ha fallado. Inténtalo de nuevo.';
-
-const dateText = (iso: string) =>
-  new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
-
-function StatusBadge({ status }: { status: RequestStatus }) {
-  return <span className={`badge request-status status-${status}`}>{STATUS_LABELS[status]}</span>;
-}
-
-/** Historial de respuestas del propietario: estado y mensaje. */
-function Updates({ updates }: { updates: RequestUpdate[] }) {
-  if (updates.length === 0) return null;
-  return (
-    <ol className="request-updates">
-      {updates.map(update => (
-        <li key={update.id}>
-          <span className="request-update-head">
-            <StatusBadge status={update.status} /> <time dateTime={update.createdAt}>{dateText(update.createdAt)}</time>
-          </span>
-          {update.message && <p>{update.message}</p>}
-        </li>
-      ))}
-    </ol>
-  );
-}
 
 /** Ideas y peticiones: tablón público con votos, peticiones propias y formulario de envío. */
 export function RequestsDialog({ onSignIn }: { onSignIn: () => void }) {

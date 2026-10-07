@@ -56,7 +56,7 @@ export function fakeAuth(tokens: Record<string, VerifiedIdentity>) {
 }
 
 // UserStore en memoria con el mismo contrato que el de SQL.
-export function fakeUsers() {
+export function fakeUsers({ admins = [] }: { admins?: string[] } = {}) {
   const byUid = new Map<string, User>();
   let nextId = 1;
 
@@ -74,6 +74,7 @@ export function fakeUsers() {
         createdAt: existing?.createdAt ?? now,
         lastSeenAt: now,
         disabledAt: existing?.disabledAt ?? null,
+        isAdmin: existing?.isAdmin ?? admins.includes(id.uid),
       };
       byUid.set(id.uid, user);
       return user;

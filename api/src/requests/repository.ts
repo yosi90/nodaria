@@ -101,18 +101,25 @@ export function createSqlRequestStore(db: Database): RequestStore {
     return grouped;
   }
 
-  async function adminRows(where: string, top: number | null, bind: (request: sql.Request) => sql.Request) {
-    const result = await bind(db.request()).query<RequestRow>(
-      `SELECT ${top === null ? '' : `TOP (${top})`} ${COLUMNS}, u.display_name, u.email
+  async function adminRows(
+    where: string,
+    bind: (request: sql.Request) => sql.Request,
+    page?: { offset: number; limit: number },
+  ) {
+    let request = bind(db.request());
+    if (page) request = request.input('offset', sql.Int, page.offset).input('limit', sql.Int, page.limit);
+    const result = await request.query<RequestRow>(
+      `SELECT ${COLUMNS}, u.display_name, u.email
        FROM dbo.requests r JOIN dbo.users u ON u.id = r.user_id
-       WHERE ${where} ORDER BY r.created_at DESC, r.id DESC`,
+       WHERE ${where} ORDER BY r.created_at DESC, r.id DESC
+       ${page ? 'OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY' : ''}`,
     );
     const updates = await updatesFor(result.recordset.map(row => Number(row.id)));
     return result.recordset.map(row => toAdmin(row, updates.get(Number(row.id)) ?? []));
   }
 
   const adminDetail = async (id: number) =>
-    (await adminRows('r.id = @id', null, request => request.input('id', sql.BigInt, id)))[0] ?? null;
+    (await adminRows('r.id = @id', request => request.input('id', sql.BigInt, id)))[0] ?? null;
 
   return {
     async board({ sort, status, limit, offset, viewerId }) {
@@ -254,8 +261,23 @@ export function createSqlRequestStore(db: Database): RequestStore {
     },
 
     async listOpen(limit) {
-      const rows = await adminRows(`r.status IN (${inList(OPEN_STATUSES)})`, limit + 1, request => request);
+      const rows = await adminRows(`r.status IN (${inList(OPEN_STATUSES)})`, request => request, {
+        offset: 0,
+        limit: limit + 1,
+      });
       return { items: rows.slice(0, limit), hasMore: rows.length > limit };
+    },
+
+    async adminList({ scope, status, kind, limit, offset }) {
+      const where = `${scope === 'open' ? `r.status IN (${inList(OPEN_STATUSES)})` : '1 = 1'}
+        AND (@status IS NULL OR r.status = @status) AND (@kind IS NULL OR r.kind = @kind)`;
+      const bind = (request: sql.Request) =>
+        request.input('status', sql.VarChar(20), status).input('kind', sql.VarChar(10), kind);
+      const [items, count] = await Promise.all([
+        adminRows(where, bind, { offset, limit }),
+        bind(db.request()).query<{ total: number }>(`SELECT COUNT(*) AS total FROM dbo.requests r WHERE ${where}`),
+      ]);
+      return { items, total: count.recordset[0].total };
     },
 
     adminDetail,

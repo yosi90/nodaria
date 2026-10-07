@@ -6,6 +6,7 @@ import { StorageNotice } from './components/layout/StorageNotice';
 import { HelpDialog } from './components/layout/HelpDialog';
 import { SignInDialog } from './components/account/SignInDialog';
 import { RequestsDialog } from './components/requests/RequestsDialog';
+import { AdminDialog } from './components/admin/AdminDialog';
 import { Topbar } from './components/layout/Topbar';
 import { TemplatesDialog } from './components/onboarding/TemplatesDialog';
 import { Tour } from './components/onboarding/Tour';
@@ -72,6 +73,7 @@ export default function App() {
       {help && <HelpDialog topic={help} onTopic={openHelpTopic} onClose={closeHelp} onTemplates={openTemplates} />}
       {templatesOpen && <TemplatesDialog onClose={closeTemplates} />}
       {requests.tab && <RequestsDialog onSignIn={() => setSigningIn(true)} />}
+      {requests.adminOpen && <AdminDialog />}
       {signingIn && <SignInDialog initialMode="login" onClose={() => setSigningIn(false)} />}
       {welcome.open && <WelcomeDialog onClose={welcome.dismiss} onTemplates={openTemplates} />}
       <Tour />

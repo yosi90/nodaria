@@ -22,6 +22,7 @@ export const meRoutes: FastifyPluginAsync<Pick<AppDependencies, 'auth' | 'users'
       lastSeenAt: user.lastSeenAt,
       // Solo el booleano de la sesión actual: la lista de cuentas no sale del servidor.
       excludeFromStats: config.ownerFirebaseUids.includes(user.firebaseUid),
+      isAdmin: user.isAdmin,
     };
   });
 

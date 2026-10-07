@@ -195,3 +195,46 @@ button.request-title:hover {
 .request-form textarea {
   resize: vertical;
 }
+
+/* Panel de administración */
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.admin-filters .select-trigger {
+  width: 180px;
+}
+.admin-row {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-row:hover {
+  border-color: var(--accent-ring);
+}
+.admin-detail {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+}
+.admin-detail > * {
+  width: 100%;
+}
+.admin-detail > .btn {
+  width: auto;
+}
+.admin-title {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.admin-answer {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.admin-answer h4 {
+  margin: 0;
+  font-size: var(--fs-md);
+}

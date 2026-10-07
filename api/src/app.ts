@@ -7,6 +7,7 @@ import type { AuthProvider } from './auth/firebase.ts';
 import { createAuthenticate, createOptionalAuthenticate, HttpError } from './auth/plugin.ts';
 import type { AppConfig } from './config.ts';
 import type { Database } from './db/pool.ts';
+import { adminRoutes } from './routes/admin.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meRoutes } from './routes/me.ts';
 import { notificappRoutes } from './routes/notificapp.ts';
@@ -91,7 +92,7 @@ export async function buildApp({
       callback(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
     maxAge: 86_400,
   });
 
@@ -167,6 +168,7 @@ export async function buildApp({
       await privateApp.register(meRoutes, { auth, users, config });
       await privateApp.register(projectRoutes, { projects, config });
       await privateApp.register(requestRoutes, { requests, config, onQueued: onRequestQueued });
+      await privateApp.register(adminRoutes, { requests });
     },
     { prefix: '/api' },
   );

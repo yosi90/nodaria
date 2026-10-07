@@ -11,6 +11,8 @@ export interface User {
   createdAt: Date;
   lastSeenAt: Date;
   disabledAt: Date | null;
+  /** Puede gestionar las peticiones desde el panel de administración. */
+  isAdmin: boolean;
 }
 
 export interface UserStore {
@@ -31,6 +33,7 @@ interface UserRow {
   created_at: Date;
   last_seen_at: Date;
   disabled_at: Date | null;
+  is_admin: boolean;
 }
 
 function toUser(row: UserRow): User {
@@ -45,6 +48,7 @@ function toUser(row: UserRow): User {
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
     disabledAt: row.disabled_at,
+    isAdmin: Boolean(row.is_admin),
   };
 }
 
@@ -72,7 +76,7 @@ export function createSqlUserStore(db: Database): UserStore {
             VALUES (@uid, @email, @emailVerified, @displayName, @photoUrl)
           OUTPUT inserted.id, inserted.firebase_uid, inserted.email, inserted.email_verified,
                  inserted.display_name, inserted.photo_url, inserted.created_at,
-                 inserted.last_seen_at, inserted.disabled_at;`);
+                 inserted.last_seen_at, inserted.disabled_at, inserted.is_admin;`);
 
       return toUser(result.recordset[0]);
     },

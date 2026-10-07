@@ -91,6 +91,14 @@ Excluido:
 - [x] ZIP con `plugin-kit/pack.py` (`api/.runtime/nodaria-api-1.0.0.notificapp.zip`, 2026-10-07).
 - [x] Instalado por el propietario (2026-10-07, `nodaria-api` 1.0.0, actualizaciones remotas apagadas). Credencial externa registrada en Notificapp, igual a la de `api/.runtime/notificapp-upstream.token`. Credencial de emisor copiada a `api/.runtime/notificapp-sender.token` y comprobada: con un tipo no declarado, Notificapp responde 403 y no 401.
 
+### Fase 4b — Administración en la web (petición del propietario, 2026-10-07)
+
+- [x] `users.is_admin` (migración `0005_admins`), concedido a la cuenta del propietario en producción.
+- [x] Rutas `/api/admin/requests*` con la lógica de respuesta compartida con Notificapp.
+- [x] Diálogo «Administración» en el menú de cuenta.
+- [x] Publicado (copia `Nodaria-20261007-2134.bak`). Comprobado: sin sesión, 401; con otra cuenta, 403 (prueba automática); el preflight CORS admite `Idempotency-Key`.
+- [ ] Revisión del panel por el propietario con su cuenta: en el navegador automatizado no se puede iniciar sesión.
+
 ### Fase 5 — Publicación y cierre
 
 - [x] Copia `Nodaria-20261007-1456.bak` y migración `0004_requests` en la base de producción (2026-10-07).

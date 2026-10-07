@@ -117,6 +117,12 @@ function storeContract(name: string, makeStore: () => Promise<{ store: RequestSt
         }),
       ).toMatchObject({ status: 'applied', request: { status: 'duplicada', duplicateOf: a.request.id } });
 
+      const all = await store.adminList({ scope: 'all', status: 'duplicada', kind: 'idea', limit: 100, offset: 0 });
+      expect(all.items.map(r => r.id)).toContain(b.request.id);
+      const pending = await store.adminList({ scope: 'open', status: null, kind: null, limit: 100, offset: 0 });
+      expect(pending.items.map(r => r.id)).not.toContain(b.request.id);
+      expect(pending.items.map(r => r.id)).toContain(a.request.id);
+
       const open = await store.listOpen(100);
       expect(open.items.map(r => r.id)).not.toContain(b.request.id);
       expect(open.items.find(r => r.id === a.request.id)).toMatchObject({ externalId: `request-${a.request.id}` });
@@ -403,5 +409,68 @@ describe('Notificapp outbox drainer', () => {
     expect(fetched).toBe(false);
     expect(sent).toEqual([]);
     expect(failed[0]).toMatchObject({ id: 'request-3', error: 'missing_sender_token' });
+  });
+});
+
+describe('admin panel routes', () => {
+  async function setup() {
+    const auth = fakeAuth({ admin: identity({ uid: 'admin' }), ana: identity({ uid: 'ana' }) });
+    const users = fakeUsers({ admins: ['admin'] });
+    const app = await buildApp(testDependencies({ auth: auth.provider, users: users.store }));
+    const as = (token: string) => ({ authorization: `Bearer ${token}` });
+    const id = (await app.inject({ method: 'POST', url: '/api/requests', headers: as('ana'), payload: idea })).json()
+      .id as number;
+    return { app, as, id };
+  }
+
+  it('reports the admin flag and keeps the panel closed to other accounts', async () => {
+    const { app, as } = await setup();
+    expect((await app.inject({ method: 'GET', url: '/api/me', headers: as('admin') })).json().isAdmin).toBe(true);
+    expect((await app.inject({ method: 'GET', url: '/api/me', headers: as('ana') })).json().isAdmin).toBe(false);
+    const denied = await app.inject({ method: 'GET', url: '/api/admin/requests', headers: as('ana') });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().error).toBe('admin_required');
+    expect((await app.inject({ method: 'GET', url: '/api/admin/requests' })).statusCode).toBe(401);
+  });
+
+  it('lists, answers idempotently and keeps answering after the first response', async () => {
+    const { app, as, id } = await setup();
+    const list = await app.inject({ method: 'GET', url: '/api/admin/requests?scope=open', headers: as('admin') });
+    expect(list.json()).toMatchObject({ total: 1, items: [{ id, status: 'revision' }] });
+
+    const url = `/api/admin/requests/${id}/responses`;
+    const first = await app.inject({
+      method: 'POST',
+      url,
+      headers: { ...as('admin'), 'idempotency-key': 'web-1' },
+      payload: { status: 'abierta', message: 'Publicada' },
+    });
+    expect(first.json()).toMatchObject({ status: 'abierta', replayed: false });
+    const again = await app.inject({
+      method: 'POST',
+      url,
+      headers: { ...as('admin'), 'idempotency-key': 'web-1' },
+      payload: { status: 'abierta', message: 'Publicada' },
+    });
+    expect(again.json().replayed).toBe(true);
+    const done = await app.inject({
+      method: 'POST',
+      url,
+      headers: { ...as('admin'), 'idempotency-key': 'web-2' },
+      payload: { status: 'hecha', message: 'Ya está disponible' },
+    });
+    expect(done.json()).toMatchObject({ status: 'hecha', updatesTotal: 2 });
+
+    const closed = await app.inject({ method: 'GET', url: '/api/admin/requests?scope=open', headers: as('admin') });
+    expect(closed.json().total).toBe(0);
+    const all = await app.inject({ method: 'GET', url: '/api/admin/requests?scope=all', headers: as('admin') });
+    expect(all.json().items[0]).toMatchObject({ id, status: 'hecha' });
+    const anaTries = await app.inject({
+      method: 'POST',
+      url,
+      headers: { ...as('ana'), 'idempotency-key': 'web-3' },
+      payload: { status: 'abierta' },
+    });
+    expect(anaTries.statusCode).toBe(403);
   });
 });

@@ -95,6 +95,22 @@ El documento es el `Project` del front tal cual (JSON); la API solo comprueba id
 
 Estados: `revision` y `rechazada` nunca son públicos; una idea en `abierta`, `planificada`, `en_curso`, `hecha`, `descartada` o `duplicada` sale en el tablón (sin autor). Los errores son siempre privados. Reglas en `src/requests/model.ts`.
 
+### Administración
+
+Las cuentas con `users.is_admin = 1` (migración `0005_admins`) ven «Administración» en el menú de cuenta y usan estas rutas. Las demás reciben 403 `admin_required`. `GET /api/me` devuelve `isAdmin`. El permiso se concede a mano, con la API en marcha o sin ella:
+
+```sql
+UPDATE dbo.users SET is_admin = 1 WHERE firebase_uid = N'<uid>';  -- 0 para retirarlo
+```
+
+| Método | Ruta                                 | Descripción                                                                                                                |
+| ------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/admin/requests`                | `scope=open\|all` (por defecto `open`: las que hay que atender), `status`, `kind`, `limit`, `offset` → `{ items, total }`. |
+| GET    | `/api/admin/requests/{id}`           | Igual que el detalle del panel de Notificapp.                                                                              |
+| POST   | `/api/admin/requests/{id}/responses` | Igual que la respuesta de Notificapp (`Idempotency-Key` obligatoria; el front la genera y la reutiliza al reintentar).     |
+
+La validación y la idempotencia de las respuestas viven en `src/requests/answer.ts` y las comparten las dos vías.
+
 ### Notificapp (plugin `nodaria-api`)
 
 - **Avisos**: cada petición nueva escribe en `notificapp_outbox`, en la misma transacción, el aviso `nodaria_request` con `externalId = request-<id>` y el texto completo (solo con `NODE_ENV=production`). El drenador en proceso (`src/notificapp/outbox.ts`) lo publica en `NOTIFICAPP_URL/v1/events` con la credencial de emisor de `NOTIFICAPP_SENDER_TOKEN_FILE`. Si falla, reintenta a 1, 2, 4… minutos (hasta 6 h). Si falta la credencial, los avisos esperan en la cola.

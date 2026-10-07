@@ -3,6 +3,7 @@ import {
   CloudAlert,
   Cloud,
   Lightbulb,
+  ShieldCheck,
   LogIn,
   LogOut,
   MailWarning,
@@ -35,7 +36,7 @@ export function AccountButton() {
   const [deleting, setDeleting] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
   const closeMenu = useCallback(() => setMenuAnchor(null), []);
-  useRegisterWithApi(status, user, getToken, toast);
+  useRegisterWithApi(status, user, getToken, toast, requests.setIsAdmin);
 
   if (status === 'loading') return <span className="account-slot" aria-hidden />;
 
@@ -89,6 +90,9 @@ export function AccountButton() {
       onSelect: () => void sync.syncNow(),
     },
     'separator',
+    ...(requests.isAdmin
+      ? [{ label: 'Administración', icon: ShieldCheck, onSelect: () => requests.setAdminOpen(true) } as MenuEntry]
+      : []),
     {
       label: 'Mis peticiones',
       hint: requests.unread > 0 ? `${requests.unread} respuestas nuevas` : undefined,
@@ -140,6 +144,7 @@ function useRegisterWithApi(
   user: AccountUser | null,
   getToken: (forceRefresh?: boolean) => Promise<string | null>,
   toast: (options: { message: string }) => void,
+  setIsAdmin: (isAdmin: boolean) => void,
 ) {
   const announced = useRef<string | null>(null);
   useEffect(() => {
@@ -150,10 +155,11 @@ function useRegisterWithApi(
         const token = await getToken();
         const me = token ? await fetchMe(token) : null;
         if (me?.excludeFromStats) excludeDeviceFromStats();
+        setIsAdmin(Boolean(me?.isAdmin));
       } catch (error) {
         if (error instanceof OfflineError) toast({ message: 'Sin conexión con el servidor de Nodaria.' });
         else if (error instanceof ApiError) toast({ message: `No se pudo conectar la cuenta: ${error.message}` });
       }
     })();
-  }, [status, user, getToken, toast]);
+  }, [status, user, getToken, toast, setIsAdmin]);
 }

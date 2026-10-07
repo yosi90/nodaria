@@ -16,6 +16,11 @@ interface RequestsContextValue {
   refreshMine: () => Promise<void>;
   /** Marca como leídas las respuestas pendientes de las peticiones propias. */
   markAllRead: () => Promise<void>;
+  /** La cuenta puede usar el panel de administración (lo indica `GET /api/me`). */
+  isAdmin: boolean;
+  setIsAdmin: (isAdmin: boolean) => void;
+  adminOpen: boolean;
+  setAdminOpen: (open: boolean) => void;
 }
 
 const Context = createContext<RequestsContextValue | null>(null);
@@ -26,7 +31,11 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   const { status, getToken } = useAuth();
   const [tab, setTab] = useState<RequestsTab | null>(null);
   const [mine, setMine] = useState<OwnRequest[]>([]);
+  const [adminFlag, setIsAdmin] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const signedIn = status === 'signed-in';
+  // Sin sesión no hay administración, aunque la marca se quedara de la cuenta anterior.
+  const isAdmin = signedIn && adminFlag;
 
   const refreshMine = useCallback(async () => {
     const token = signedIn ? await getToken() : null;
@@ -68,8 +77,20 @@ export function RequestsProvider({ children }: { children: ReactNode }) {
   const unread = mine.filter(request => request.unread).length;
 
   const value = useMemo<RequestsContextValue>(
-    () => ({ tab, open, close, mine, unread, refreshMine, markAllRead }),
-    [tab, open, close, mine, unread, refreshMine, markAllRead],
+    () => ({
+      tab,
+      open,
+      close,
+      mine,
+      unread,
+      refreshMine,
+      markAllRead,
+      isAdmin,
+      setIsAdmin,
+      adminOpen: isAdmin && adminOpen,
+      setAdminOpen,
+    }),
+    [tab, open, close, mine, unread, refreshMine, markAllRead, isAdmin, adminOpen],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

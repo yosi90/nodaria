@@ -16,7 +16,13 @@ describe('migration files', () => {
 
   it('reads the repository migrations in order with checksums', async () => {
     const migrations = await readMigrations();
-    expect(migrations.map(m => m.id)).toEqual(['0001_users', '0002_projects', '0003_messages', '0004_requests']);
+    expect(migrations.map(m => m.id)).toEqual([
+      '0001_users',
+      '0002_projects',
+      '0003_messages',
+      '0004_requests',
+      '0005_admins',
+    ]);
     for (const migration of migrations) {
       expect(migration.checksum).toMatch(/^[0-9a-f]{64}$/);
       expect(migration.batches.length).toBeGreaterThan(0);
@@ -51,6 +57,7 @@ describe.runIf(dbTestsEnabled)('SQL Server integration', () => {
     const second = await users.upsert(identity({ uid: 'sql-uid', displayName: 'Segundo' }));
     expect(second.id).toBe(first.id);
     expect(second.displayName).toBe('Segundo');
+    expect(second.isAdmin).toBe(false);
     expect(second.lastSeenAt.getTime()).toBeGreaterThanOrEqual(first.lastSeenAt.getTime());
 
     await new sql.Request(db).input('user', sql.BigInt, first.id)

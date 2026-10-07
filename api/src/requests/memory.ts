@@ -164,6 +164,18 @@ export function createMemoryRequestStore(options: { clock?: () => Date; authorOf
       return { items: open.slice(0, limit).map(admin), hasMore: open.length > limit };
     },
 
+    async adminList({ scope, status, kind, limit, offset }) {
+      const matching = [...rows.values()]
+        .filter(
+          row =>
+            (scope === 'all' || OPEN_STATUSES.includes(row.status)) &&
+            (status === null || row.status === status) &&
+            (kind === null || row.kind === kind),
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return { items: matching.slice(offset, offset + limit).map(admin), total: matching.length };
+    },
+
     async adminDetail(id) {
       const row = rows.get(id);
       return row ? admin(row) : null;
