@@ -89,7 +89,7 @@ Excluido:
 - [x] Rutas `/notificapp/v1/requests`, `/requests/{id}` y `POST /requests/{id}/responses`, con credencial externa e idempotencia.
 - [x] `notificapp-plugin/manifest.json` y `ui/index.html`.
 - [x] ZIP con `plugin-kit/pack.py` (`api/.runtime/nodaria-api-1.0.0.notificapp.zip`, 2026-10-07).
-- [ ] Entregado al propietario e instalado por él, con las credenciales de emisor y externa configuradas.
+- [x] Instalado por el propietario (2026-10-07, `nodaria-api` 1.0.0, actualizaciones remotas apagadas). Credencial externa registrada en Notificapp, igual a la de `api/.runtime/notificapp-upstream.token`. Credencial de emisor copiada a `api/.runtime/notificapp-sender.token` y comprobada: con un tipo no declarado, Notificapp responde 403 y no 401.
 
 ### Fase 5 — Publicación y cierre
 
