@@ -35,6 +35,8 @@ export interface FieldDefinition {
   options: string[];
   referenceTypeIds: string[];
   formula: string;
+  /** En números y calculados, avisar si el valor numérico es negativo. */
+  nonNegative: boolean;
   /** Icono del atributo (catálogo de iconos), o ninguno. */
   icon: string | null;
   /** Icono de cada opción de una lista, por su texto. */

@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, Copy, LocateFixed, Pin, PinOff, Plus, Trash2
 import { viewAfterIsolation, viewForIsolation } from '../../domain/layoutFilters';
 import { uid } from '../../domain/factories';
 import { Menu } from '../common/Menu';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { nodeConnections } from '../../domain/connections';
 import {
   allFields,
@@ -39,12 +39,22 @@ interface InspectorProps {
   selection: Selection;
   /** Enfocar el campo título al abrir (nodo recién creado). */
   focusTitle?: boolean;
+  getNodeScroll: (typeId: string) => number;
+  rememberNodeScroll: (typeId: string, top: number) => void;
   onClose: () => void;
   onAddChild: (parentId: string, anchor: Anchor) => void;
   onDelete: () => void;
 }
 
-export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete }: InspectorProps) {
+export function Inspector({
+  selection,
+  focusTitle,
+  getNodeScroll,
+  rememberNodeScroll,
+  onClose,
+  onAddChild,
+  onDelete,
+}: InspectorProps) {
   const { project, dispatch } = useApp();
   const { select, back, forward, canBack, canForward, isolated, isolate, clearIsolation } = useNavigation();
   const [duplicateAnchor, setDuplicateAnchor] = useState<Anchor | null>(null);
@@ -57,6 +67,14 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
   };
   const [tab, setTab] = useState<Tab>('fields');
   const node = selection?.kind === 'node' ? getNode(project, selection.id) : undefined;
+  const body = useRef<HTMLDivElement>(null);
+  const nodeTypeId = node?.typeId;
+  useLayoutEffect(() => {
+    if (!body.current || !nodeTypeId || tab !== 'fields') return;
+    const top = focusTitle ? 0 : getNodeScroll(nodeTypeId);
+    body.current.scrollTop = top;
+    rememberNodeScroll(nodeTypeId, body.current.scrollTop);
+  }, [nodeTypeId, tab, focusTitle, getNodeScroll, rememberNodeScroll]);
   const isolatedHere = Boolean(node && isolated?.nodeId === node.id);
   // Aislar: fijar el foco en este nodo (solo sus vecinos) y pasar a fuerzas; al salir vuelve la disposición previa.
   const toggleIsolate = () => {
@@ -145,7 +163,13 @@ export function Inspector({ selection, focusTitle, onClose, onAddChild, onDelete
           </button>
         </div>
       )}
-      <div className="panel-body">
+      <div
+        className="panel-body"
+        ref={body}
+        onScroll={event => {
+          if (nodeTypeId && tab === 'fields') rememberNodeScroll(nodeTypeId, event.currentTarget.scrollTop);
+        }}
+      >
         {node && tab === 'connections' && <ConnectionsTab nodeId={node.id} />}
         {node && tab === 'notes' && <NotesTab node={node} />}
         {(!node || tab === 'fields') && (

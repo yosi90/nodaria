@@ -170,11 +170,22 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   );
   const selectedNodeId = selection?.kind === 'node' ? selection.id : null;
   // Nodo aislado: el foco se fija en él (no sigue a la selección) y solo se ven sus vecinos.
-  const { isolated, clearIsolation } = useNavigation();
+  const { isolated, clearIsolation, getMapViewport, rememberMapViewport } = useNavigation();
+  const [savedViewport] = useState(() => getMapViewport(project.id));
   const isolatedNode = isolated ? getNode(project, isolated.nodeId) : undefined;
   const focusId = isolatedNode ? isolatedNode.id : view.focusDepth > 0 ? selectedNodeId : null;
   const focusDepth = isolatedNode ? Math.max(1, view.focusDepth) : view.focusDepth;
   const structure = resolveStructure(project, view.structureId);
+  const frameKey = JSON.stringify([
+    view.layout,
+    structure.id,
+    view.focusDepth,
+    view.hiddenEntityTypeIds,
+    isolated?.nodeId ?? null,
+  ]);
+  const lastFrameKey = useRef(savedViewport?.frameKey);
+  const lastRevealKey = useRef(savedViewport?.revealKey ?? 0);
+  const lastImage = useRef(savedViewport ? { layout: savedViewport.layout, image: savedViewport.mapImage } : null);
 
   // Conexiones visibles: relaciones no ocultas y, si procede, la jerarquía "Dentro de".
   const hiddenRelations = useMemo(() => new Set(view.hiddenRelationTypeIds), [view.hiddenRelationTypeIds]);
@@ -257,6 +268,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   // Al navegar a un elemento (árbol, conexiones, buscador) se centra en el lienzo.
   useEffect(() => {
+    if (lastRevealKey.current === revealKey) return;
     if (!revealKey || !selection) return;
     const ids =
       selection.kind === 'node'
@@ -267,7 +279,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           })();
     if (!ids.length) return;
     const timer = window.setTimeout(
-      () => flow.fitView({ nodes: ids.map(id => ({ id })), padding: 0.6, maxZoom: 1, duration: 350 }),
+      () => {
+        lastRevealKey.current = revealKey;
+        void flow.fitView({ nodes: ids.map(id => ({ id })), padding: 0.6, maxZoom: 1, duration: 350 });
+      },
       // El inspector puede estar abriéndose y cambiando el ancho del lienzo.
       160,
     );
@@ -277,24 +292,31 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   // En «Mapa», al entrar o al cambiar la imagen se encuadran la imagen y la bandeja de nodos sin colocar.
   useEffect(() => {
-    if (view.layout !== 'image' || !project.mapImage) return;
+    if (lastImage.current?.layout === view.layout && lastImage.current.image === project.mapImage) return;
+    if (view.layout !== 'image' || !project.mapImage) {
+      lastImage.current = null;
+      return;
+    }
     const { width, height, scale } = project.mapImage;
-    const timer = window.setTimeout(
-      () =>
-        flow.fitBounds(
-          { x: 0, y: 0, width: width * scale, height: height * scale + 220 },
-          { padding: 0.04, duration: 350 },
-        ),
-      80,
-    );
+    const timer = window.setTimeout(() => {
+      lastImage.current = { layout: view.layout, image: project.mapImage };
+      void flow.fitBounds(
+        { x: 0, y: 0, width: width * scale, height: height * scale + 220 },
+        { padding: 0.04, duration: 350 },
+      );
+    }, 80);
     return () => window.clearTimeout(timer);
   }, [view.layout, project.mapImage, flow]);
 
   // Al cambiar de disposición o de estructura, se vuelve a encuadrar el conjunto.
   useEffect(() => {
-    const timer = window.setTimeout(() => flow.fitView({ padding: 0.2, maxZoom: 1, duration: 350 }), 60);
+    if (lastFrameKey.current === frameKey) return;
+    const timer = window.setTimeout(() => {
+      lastFrameKey.current = frameKey;
+      void flow.fitView({ padding: 0.2, maxZoom: 1, duration: 350 });
+    }, 60);
     return () => window.clearTimeout(timer);
-  }, [view.layout, structure.id, view.focusDepth, view.hiddenEntityTypeIds, isolated?.nodeId, flow]);
+  }, [frameKey, flow]);
 
   const settings = useMemo(
     () => ({ avoidObstacles: project.nodes.length <= AVOID_OBSTACLES_LIMIT }),
@@ -978,11 +1000,24 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           onConnectEnd={onConnectEnd}
           connectionMode={ConnectionMode.Loose}
           connectionRadius={30}
-          fitView
+          defaultViewport={savedViewport?.viewport}
+          fitView={!savedViewport}
           fitViewOptions={fitViewOptions}
           minZoom={0.1}
           maxZoom={2.5}
-          onMove={(_, viewport) => container.current?.style.setProperty('--inv-zoom', String(1 / viewport.zoom))}
+          onInit={instance =>
+            container.current?.style.setProperty('--inv-zoom', String(1 / instance.getViewport().zoom))
+          }
+          onMove={(_, viewport) => {
+            container.current?.style.setProperty('--inv-zoom', String(1 / viewport.zoom));
+            rememberMapViewport(project.id, {
+              viewport,
+              revealKey,
+              frameKey,
+              layout: view.layout,
+              mapImage: project.mapImage,
+            });
+          }}
           onDragOver={event => {
             if (event.dataTransfer.types.includes(TRAY_DRAG_TYPE)) {
               event.preventDefault();

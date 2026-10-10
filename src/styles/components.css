@@ -218,15 +218,76 @@
   color: var(--text-subtle);
   border-style: dashed;
 }
-.option-chip {
-  gap: 4px;
-  padding-left: 3px;
+.options-editor {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  container-type: inline-size;
 }
-.option-chip select.option-display {
-  min-height: 22px;
-  padding: 0 18px 0 6px;
+.option-list {
+  display: grid;
+  gap: var(--space-2);
+}
+.option-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 150px 48px 24px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: var(--fs-2xs);
+  background: var(--surface-2);
+}
+.option-name {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.option-order {
+  display: flex;
+}
+.option-order .icon-btn {
+  width: 24px;
+  height: 24px;
+}
+.option-row select.option-display {
+  width: 100%;
+  min-height: 28px;
+  padding: 0 20px 0 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+.option-remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.option-remove:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+@container (max-width: 440px) {
+  .option-row {
+    grid-template-columns: 22px minmax(0, 1fr) 48px 24px;
+  }
+  .option-row select.option-display {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+  .option-remove {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .option-order {
+    grid-column: 3;
+    grid-row: 1;
+  }
 }
 label.field-inline {
   display: inline-flex;
@@ -485,6 +546,17 @@ label.check {
   margin: 0;
   color: var(--warning);
   font-size: var(--fs-sm);
+}
+.formula-preview {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.formula-preview-result {
+  margin: var(--space-2) 0 0;
+  overflow-wrap: anywhere;
 }
 .muted-note {
   margin: 0;

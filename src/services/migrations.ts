@@ -3,6 +3,7 @@ import { createView, uid } from '../domain/factories';
 import { normalizeCalendar } from '../domain/calendar';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
+import { supportsNonNegative } from '../domain/valueConstraints';
 import type { FieldDefinition, FieldValue, LayoutMode, Node, NodeDisplay, Position, Project } from '../domain/types';
 
 /*
@@ -53,6 +54,12 @@ function nodeDisplayOf(f: Partial<FieldDefinition> & { showOnNode?: boolean }): 
   return f.showOnNode ? 'icon' : 'none';
 }
 
+/** Conserva la opción publicada inicialmente solo para calculados; el nombre nuevo prevalece. */
+function nonNegativeOf(f: Partial<FieldDefinition> & { computedNonNegative?: boolean }): boolean {
+  if (!supportsNonNegative(f.type)) return false;
+  return typeof f.nonNegative === 'boolean' ? f.nonNegative : f.computedNonNegative === true;
+}
+
 /** Rellena los campos opcionales que las versiones antiguas podían omitir. */
 function normalizeProject(project: RawProject): Project {
   const stamp = new Date().toISOString();
@@ -77,6 +84,7 @@ function normalizeProject(project: RawProject): Project {
               options: f.options || [],
               referenceTypeIds: f.referenceTypeIds || [],
               formula: f.formula || '',
+              nonNegative: nonNegativeOf(f),
               icon: f.icon ?? null,
               optionIcons: f.optionIcons ?? {},
               nodeDisplay: nodeDisplayOf(f),
@@ -110,6 +118,7 @@ function normalizeProject(project: RawProject): Project {
       options: f.options || [],
       referenceTypeIds: f.referenceTypeIds || [],
       formula: f.formula || '',
+      nonNegative: nonNegativeOf(f),
       icon: f.icon ?? null,
       optionIcons: f.optionIcons ?? {},
       nodeDisplay: nodeDisplayOf(f),

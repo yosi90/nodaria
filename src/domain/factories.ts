@@ -76,6 +76,7 @@ export function createField(): FieldDefinition {
     options: [],
     referenceTypeIds: [],
     formula: '',
+    nonNegative: false,
     icon: null,
     optionIcons: {},
     nodeDisplay: 'none',

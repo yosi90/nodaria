@@ -208,6 +208,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
               <FieldEditor
                 key={entry.id}
                 field={entry}
+                schemaId={schema.id}
                 allowTitle={schema.kind === 'entity'}
                 siblings={allFields(project, schema.id)}
                 dragging={dragged === entry.id}

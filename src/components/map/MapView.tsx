@@ -1,5 +1,5 @@
 import { PanelLeftOpen } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { uid } from '../../domain/factories';
 import { cardinalityWarning } from '../../domain/cardinality';
 import { compatibleRelationTypes, getNode, nodeLabel } from '../../domain/selectors';
@@ -45,6 +45,14 @@ export function MapView() {
   const [addNodeMenu, setAddNodeMenu] = useState<AddNodeMenu | null>(null);
   const [connectMenu, setConnectMenu] = useState<ConnectMenu | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const nodeScroll = useRef<{ typeId: string; top: number } | null>(null);
+  const getNodeScroll = useCallback(
+    (typeId: string) => (nodeScroll.current?.typeId === typeId ? nodeScroll.current.top : 0),
+    [],
+  );
+  const rememberNodeScroll = useCallback((typeId: string, top: number) => {
+    nodeScroll.current = { typeId, top };
+  }, []);
   const closeAddNodeMenu = useCallback(() => setAddNodeMenu(null), []);
   const closeConnectMenu = useCallback(() => setConnectMenu(null), []);
   const deleteSelection = useDeleteSelection();
@@ -186,6 +194,8 @@ export function MapView() {
             key={`${activeSelection.kind}-${activeSelection.id}`}
             selection={activeSelection}
             focusTitle={createdId === activeSelection.id}
+            getNodeScroll={getNodeScroll}
+            rememberNodeScroll={rememberNodeScroll}
             onClose={() => setSelection(null)}
             onAddChild={(parentId, anchor) => setAddNodeMenu({ parentId, anchor })}
             onDelete={removeSelected}

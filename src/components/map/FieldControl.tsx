@@ -9,25 +9,36 @@ import { ReferenceControl } from './ReferenceControl';
 import { DateControl } from './DateControl';
 import { isStandardCalendar } from '../../domain/calendar';
 import { useApp } from '../../state/AppContext';
+import { nonNegativeWarning } from '../../domain/valueConstraints';
 
-/** Control de edición de un atributo según su tipo. Lo usan la ficha y la tabla. */
-export function FieldControl({
-  field,
-  value,
-  ownerId,
-  onChange,
-  titleField,
-  autoFocus,
-}: {
+interface FieldControlProps {
   field: FieldDefinition;
   value: FieldValue | undefined;
   ownerId: string;
   onChange: (v: FieldValue) => void;
   titleField?: boolean;
   autoFocus?: boolean;
-}) {
+}
+
+/** Control de edición de un atributo según su tipo. Lo usan la ficha, la tabla y los valores iniciales. */
+export function FieldControl(props: FieldControlProps) {
+  const warning = nonNegativeWarning(props.field, props.value);
+  return (
+    <>
+      <FieldInput {...props} />
+      {warning && (
+        <small className="validation-message" role="status">
+          {warning}
+        </small>
+      )}
+    </>
+  );
+}
+
+function FieldInput({ field, value, ownerId, onChange, titleField, autoFocus }: FieldControlProps) {
   const { project } = useApp();
   const common = {
+    'aria-invalid': nonNegativeWarning(field, value) ? true : undefined,
     'data-title-field': titleField ? 'true' : undefined,
     autoFocus,
     value: String(value ?? ''),
@@ -125,7 +136,11 @@ export function FieldControl({
         ))}
       </select>
     );
-  if (field.type === 'computed') return <input disabled value={String(value ?? '')} />;
+  if (field.type === 'computed') {
+    return (
+      <input disabled value={String(value ?? '')} aria-invalid={nonNegativeWarning(field, value) ? true : undefined} />
+    );
+  }
   // Con un calendario propio el control nativo no sirve: sus meses y días son los del mundo.
   if (field.type === 'date' && !isStandardCalendar(project.calendar))
     return <DateControl calendar={project.calendar} value={value} onChange={onChange} autoFocus={autoFocus} />;

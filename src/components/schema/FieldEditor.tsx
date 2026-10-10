@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, GripVertical, Lock, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Lock, Trash2, X } from 'lucide-react';
 import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { slugify } from '../../domain/factories';
@@ -13,6 +13,8 @@ import { useToast } from '../common/toasts';
 import { schemaOption } from '../common/options';
 import { IconPicker } from '../common/IconPicker';
 import { MultiSelect } from '../common/Select';
+import { FormulaPreview } from './FormulaPreview';
+import { supportsNonNegative } from '../../domain/valueConstraints';
 
 interface FieldEditorProps {
   field: FieldDefinition;
@@ -33,6 +35,7 @@ interface FieldEditorProps {
   allowTitle?: boolean;
   /** Los demás atributos del mismo tipo (o de la biblioteca), para las condiciones entre atributos. */
   siblings?: FieldDefinition[];
+  schemaId?: string;
 }
 
 /** Edición de un atributo, propio de un tipo o de la biblioteca compartida. */
@@ -50,6 +53,7 @@ export function FieldEditor({
   note,
   allowTitle = true,
   siblings = [],
+  schemaId,
 }: FieldEditorProps) {
   const { project, dispatch } = useApp();
   const { openHelp } = useNavigation();
@@ -167,18 +171,18 @@ export function FieldEditor({
                 value={field.type}
                 onChange={event => {
                   const type = event.target.value as FieldDefinition['type'];
+                  const changed = { ...field, type, nonNegative: supportsNonNegative(type) && field.nonNegative };
                   if (type === 'gender')
                     onChange({
-                      ...field,
-                      type,
+                      ...changed,
                       label: 'Género',
                       key: 'genero',
                       required: false,
                       isTitle: false,
                       description: field.description || 'Decide el nombre de los parentescos.',
                     });
-                  else if (type === 'image') onChange({ ...field, type, portrait: true });
-                  else set('type', type);
+                  else if (type === 'image') onChange({ ...changed, portrait: true });
+                  else onChange(changed);
                 }}
               >
                 {FIELD_TYPES.map(([value, label]) => (
@@ -426,9 +430,7 @@ export function FieldEditor({
                 options={field.options}
                 icons={field.optionIcons}
                 display={field.optionDisplay}
-                onChange={options => set('options', options)}
-                onIconsChange={icons => set('optionIcons', icons)}
-                onDisplayChange={display => set('optionDisplay', display)}
+                onChange={patch => onChange({ ...field, ...patch })}
               />
             </div>
           )}
@@ -445,9 +447,10 @@ export function FieldEditor({
             </div>
           )}
           {field.type === 'computed' && (
-            <label className="field">
+            <div className="field">
               Fórmula
               <input
+                aria-label={`Fórmula de ${field.label}`}
                 value={field.formula}
                 placeholder="{nombre} — {edad}"
                 onChange={event => set('formula', event.target.value)}
@@ -459,7 +462,24 @@ export function FieldEditor({
                   Ver la guía de fórmulas
                 </button>
               </small>
-            </label>
+              <FormulaPreview field={field} schemaId={schemaId} />
+            </div>
+          )}
+          {supportsNonNegative(field.type) && (
+            <div className="field">
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={field.nonNegative}
+                  onChange={event => set('nonNegative', event.target.checked)}
+                />
+                El valor no puede ser negativo
+              </label>
+              <small>
+                Si el valor es numérico y negativo, se avisa en las fichas y en la Tabla. También se comprueba en la
+                vista previa de las fórmulas. Los valores vacíos o no numéricos no generan este aviso.
+              </small>
+            </div>
           )}
         </div>
       )}
@@ -473,40 +493,36 @@ const NODE_DISPLAYS: [NodeDisplay, string][] = [
   ['text', 'Icono y texto'],
 ];
 
-/** Opciones de una lista: chips que se añaden con Intro o coma y se quitan con su botón; cada una puede llevar icono. */
+/** Opciones de una lista con nombre completo, icono y presentación; se añaden con Intro o coma. */
 function OptionsEditor({
   options,
   icons,
   display,
   onChange,
-  onIconsChange,
-  onDisplayChange,
 }: {
   options: string[];
   icons: Record<string, string>;
   display: Record<string, NodeDisplay>;
-  onChange: (options: string[]) => void;
-  onIconsChange: (icons: Record<string, string>) => void;
-  onDisplayChange: (display: Record<string, NodeDisplay>) => void;
+  onChange: (patch: Partial<Pick<FieldDefinition, 'options' | 'optionIcons' | 'optionDisplay'>>) => void;
 }) {
   const [draft, setDraft] = useState('');
   const commit = () => {
     const value = draft.trim();
-    if (value && !options.includes(value)) onChange([...options, value]);
+    if (value && !options.includes(value)) onChange({ options: [...options, value] });
     setDraft('');
   };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
       commit();
-    } else if (event.key === 'Backspace' && !draft && options.length) onChange(options.slice(0, -1));
+    }
   };
   return (
-    <div className="form-grid" style={{ gap: 'var(--space-2)' }}>
+    <div className="options-editor">
       {options.length > 0 && (
-        <div className="chip-list">
-          {options.map(option => (
-            <span className="chip option-chip" key={option}>
+        <div className="option-list">
+          {options.map((option, index) => (
+            <div className="option-row" key={option}>
               <IconPicker
                 value={icons[option] ?? null}
                 size={22}
@@ -515,10 +531,10 @@ function OptionsEditor({
                   const next = { ...icons };
                   if (icon) next[option] = icon;
                   else delete next[option];
-                  onIconsChange(next);
+                  onChange({ optionIcons: next });
                 }}
               />
-              <span>{option}</span>
+              <span className="option-name">{option}</span>
               <select
                 className="option-display"
                 aria-label={`Mostrar ${option} en el nodo`}
@@ -528,7 +544,7 @@ function OptionsEditor({
                   const next = { ...display };
                   if (e.target.value) next[option] = e.target.value as NodeDisplay;
                   else delete next[option];
-                  onDisplayChange(next);
+                  onChange({ optionDisplay: next });
                 }}
               >
                 <option value="">Como el atributo</option>
@@ -538,21 +554,45 @@ function OptionsEditor({
                   </option>
                 ))}
               </select>
+              <div className="option-order" role="group" aria-label={`Orden de ${option}`}>
+                <IconButton
+                  icon={ArrowUp}
+                  size="sm"
+                  label={`Subir ${option}`}
+                  disabled={index === 0}
+                  onClick={() => {
+                    const next = [...options];
+                    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                    onChange({ options: next });
+                  }}
+                />
+                <IconButton
+                  icon={ArrowDown}
+                  size="sm"
+                  label={`Bajar ${option}`}
+                  disabled={index === options.length - 1}
+                  onClick={() => {
+                    const next = [...options];
+                    [next[index + 1], next[index]] = [next[index], next[index + 1]];
+                    onChange({ options: next });
+                  }}
+                />
+              </div>
               <button
+                className="option-remove"
                 type="button"
                 aria-label={`Quitar ${option}`}
                 onClick={() => {
-                  onChange(options.filter(o => o !== option));
-                  if (icons[option]) {
-                    const next = { ...icons };
-                    delete next[option];
-                    onIconsChange(next);
-                  }
+                  const optionIcons = { ...icons };
+                  const optionDisplay = { ...display };
+                  delete optionIcons[option];
+                  delete optionDisplay[option];
+                  onChange({ options: options.filter(o => o !== option), optionIcons, optionDisplay });
                 }}
               >
                 <X size={12} aria-hidden />
               </button>
-            </span>
+            </div>
           ))}
         </div>
       )}

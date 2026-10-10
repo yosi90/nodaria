@@ -1,6 +1,15 @@
 /* eslint-disable react-refresh/only-export-components -- provider y hook forman una única API de contexto */
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { LayoutMode, Selection } from '../domain/types';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { LayoutMode, Project, Selection } from '../domain/types';
+
+/** Encuadre transitorio por proyecto; no modifica datos ni el historial de deshacer. */
+export interface MapViewportMemory {
+  viewport: { x: number; y: number; zoom: number };
+  revealKey: number;
+  frameKey: string;
+  layout: LayoutMode;
+  mapImage: Project['mapImage'];
+}
 
 export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health';
 export type HelpTopic = 'start' | 'shortcuts' | 'formulas';
@@ -21,6 +30,8 @@ interface NavigationState {
 }
 
 interface NavigationContextValue extends NavigationState {
+  getMapViewport: (projectId: string) => MapViewportMemory | undefined;
+  rememberMapViewport: (projectId: string, memory: MapViewportMemory) => void;
   setView: (view: View) => void;
   /** Selecciona; con `reveal`, el lienzo centra el elemento. Cambia a la vista de mapa si hace falta. */
   select: (selection: Selection, options?: { reveal?: boolean }) => void;
@@ -43,6 +54,11 @@ const HISTORY_LIMIT = 50;
 const sameSelection = (a: Selection, b: Selection) => a?.kind === b?.kind && a?.id === b?.id;
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
+  const mapViewports = useRef(new Map<string, MapViewportMemory>());
+  const getMapViewport = useCallback((projectId: string) => mapViewports.current.get(projectId), []);
+  const rememberMapViewport = useCallback((projectId: string, memory: MapViewportMemory) => {
+    mapViewports.current.set(projectId, memory);
+  }, []);
   const [state, setState] = useState<NavigationState>({
     view: 'map',
     selection: null,
@@ -120,6 +136,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const value = useMemo<NavigationContextValue>(
     () => ({
       ...state,
+      getMapViewport,
+      rememberMapViewport,
       setView,
       select,
       clearSelection,
@@ -135,6 +153,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }),
     [
       state,
+      getMapViewport,
+      rememberMapViewport,
       setView,
       select,
       clearSelection,

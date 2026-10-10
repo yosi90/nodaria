@@ -8,6 +8,12 @@ export function FormulasGuide() {
         resto se copia tal cual. El resultado se ve en la ficha, en la Tabla y, si el atributo tiene «Mostrar en el
         nodo», en la tarjeta del lienzo.
       </p>
+      <p className="muted-note">
+        Al editar la fórmula tienes una vista previa con una ficha que puedes elegir y avisos de atributos que no
+        existen. «Nacimiento» en los ejemplos debe sustituirse por el nombre o la clave de tu atributo: si se llama
+        «Fecha de nacimiento», escribe <code>{'{edad(Fecha de nacimiento)}'}</code>. Un atributo definido pero vacío
+        necesita que rellenes su valor en la ficha.
+      </p>
       <p className="guide-example">
         <code>{'{nombre}, {edad} años. Vive en {padre} y venera a {dios}.'}</code>
         <span>→ Aria, 30 años. Vive en Vael y venera a Solenne.</span>
@@ -100,6 +106,12 @@ export function FormulasGuide() {
           clave, actualiza las fórmulas que la usen.
         </li>
         <li>Los calculados son de solo lectura y no se guardan: se recalculan cada vez con los datos actuales.</li>
+        <li>
+          Puedes activar «El valor no puede ser negativo» en atributos de tipo Número o Calculado. Cuando el valor es
+          numérico y negativo, muestra un aviso en la vista previa, la ficha y la Tabla. El resultado se conserva para
+          que puedas corregir los datos de origen; para comprobar una edad, usa una fórmula sin texto añadido, como
+          <code>{' {edad(Fecha de nacimiento)}'}</code>.
+        </li>
       </ul>
 
       <h3>Ejemplos</h3>
