@@ -587,15 +587,17 @@
 }
 
 .schema-editor {
+  --editor-max-width: 1760px;
   min-width: 0;
   overflow: auto;
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-8) clamp(var(--space-6), 3vw, 96px);
   container: schema-editor / inline-size;
 }
 .schema-heading {
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  max-width: var(--editor-max-width);
   margin: 0 auto var(--space-6);
 }
 .schema-heading .titles {
@@ -611,6 +613,7 @@
   grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
   gap: var(--space-5);
   align-items: start;
+  max-width: var(--editor-max-width);
   margin: 0 auto;
 }
 .editor-columns > * {
@@ -959,10 +962,15 @@ button.mention:hover {
 }
 .library-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 640px), 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 540px), 1fr));
+  gap: var(--space-4);
   align-items: start;
+  max-width: var(--editor-max-width);
   margin: 0 auto;
+}
+.library-list > .field-def {
+  width: 100%;
+  max-width: 760px;
 }
 .library-users {
   max-width: 50%;
@@ -1571,15 +1579,17 @@ button.mention:hover {
 
 /* ---------- Vista Salud ---------- */
 .health-layout {
+  --health-max-width: 2000px;
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: var(--space-6);
+  padding: var(--space-6) clamp(var(--space-6), 4vw, 128px);
 }
 .health-summary {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  max-width: var(--health-max-width);
   margin: 0 auto var(--space-5);
   color: var(--accent);
 }
@@ -1593,6 +1603,7 @@ button.mention:hover {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
   gap: var(--space-4);
+  max-width: var(--health-max-width);
   margin: 0 auto;
 }
 .health-grid > * {
