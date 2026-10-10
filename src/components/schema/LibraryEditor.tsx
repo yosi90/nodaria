@@ -76,7 +76,7 @@ export function LibraryEditor() {
 
   return (
     <section className="schema-editor">
-      <div className="schema-heading" style={{ maxWidth: 1120, margin: '0 auto var(--space-6)' }}>
+      <div className="schema-heading">
         <span className="type-icon lg" aria-hidden>
           <Library size={18} />
         </span>
