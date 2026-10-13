@@ -70,7 +70,7 @@ export function QueryDialog({ initial, onClose }: { initial: SavedQuery | null; 
           <input
             autoFocus
             value={query.name}
-            placeholder="Personajes sin dios patrón"
+            placeholder="Contactos sin empresa"
             onChange={event => set({ name: event.target.value })}
           />
         </label>

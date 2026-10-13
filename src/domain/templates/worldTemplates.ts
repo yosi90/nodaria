@@ -2,9 +2,9 @@ import { buildProject, entity, field, link, relationType } from './builder';
 import type { FieldDefinition, Project, Schema } from '../types';
 
 /*
- * Plantillas sin datos: solo tipos, preformas y relaciones. «Mundo de fantasía» cubre el caso de
- * referencia (planificar una novela con un mundo propio); «Novela» añade capítulos y escenas con
- * apariciones. Sus tipos se pueden añadir también a un proyecto existente.
+ * Plantillas sin datos: solo tipos, preformas y relaciones. «Mundo de fantasía» cubre la construcción
+ * de mundos ficticios. «Novela» es una base independiente para libros de cualquier género, con capítulos,
+ * escenas y apariciones. Sus tipos se pueden añadir también a un proyecto existente.
  */
 
 function fantasyLibrary(): FieldDefinition[] {
@@ -310,7 +310,54 @@ export function novelTemplate(): Project {
   return buildProject({
     name: 'Novela',
     fieldLibrary: fantasyLibrary(),
-    schemas: [...fantasySchemas(), ...novelSchemas()],
+    schemas: [
+      entity({
+        id: 'tpl_personaje',
+        name: 'Personaje',
+        icon: 'user',
+        color: '#8d7dff',
+        fields: [
+          link('tpl_nombre'),
+          link('tpl_retrato'),
+          field({
+            id: 'tpl_personaje_rol',
+            label: 'Rol',
+            type: 'select',
+            options: ['Protagonista', 'Antagonista', 'Secundario'],
+          }),
+          field({ id: 'tpl_personaje_motivacion', label: 'Motivación', type: 'longText' }),
+          link('tpl_descripcion'),
+        ],
+      }),
+      entity({
+        id: 'tpl_lugar',
+        name: 'Lugar',
+        icon: 'map-pin',
+        color: '#77d28f',
+        allowedChildTypeIds: ['tpl_lugar'],
+        fields: [link('tpl_nombre'), link('tpl_descripcion')],
+      }),
+      entity({
+        id: 'tpl_organizacion',
+        name: 'Organización',
+        icon: 'building',
+        color: '#67a9ff',
+        fields: [link('tpl_nombre'), link('tpl_descripcion')],
+      }),
+      entity({
+        id: 'tpl_libro',
+        name: 'Libro',
+        icon: 'book-open',
+        color: '#d7c45d',
+        allowedChildTypeIds: ['tpl_capitulo'],
+        fields: [
+          link('tpl_nombre'),
+          field({ id: 'tpl_libro_tema', label: 'Tema', type: 'longText' }),
+          link('tpl_descripcion'),
+        ],
+      }),
+      ...novelSchemas(),
+    ],
   });
 }
 

@@ -690,6 +690,7 @@
   padding: 6px 8px 6px 4px;
 }
 .drag-handle {
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   align-self: stretch;
@@ -710,6 +711,7 @@
 }
 .field-def-toggle {
   display: flex;
+  flex-wrap: wrap;
   flex: 1;
   align-items: center;
   gap: 8px;
@@ -720,14 +722,14 @@
   text-align: left;
 }
 .field-def-toggle strong {
-  flex: 1;
+  flex: 1 1 160px;
   min-width: 0;
-  overflow: hidden;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .field-chevron {
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   color: var(--text-subtle);
@@ -974,6 +976,15 @@ button.mention:hover {
 }
 .library-users {
   max-width: 50%;
+}
+.library-list .field-def-head {
+  flex-wrap: wrap;
+}
+.library-list .library-users {
+  order: 1;
+  flex-basis: 100%;
+  max-width: none;
+  padding-left: 32px;
 }
 .library-users .chip {
   min-height: 22px;

@@ -99,7 +99,7 @@ export function HealthView() {
     return (
       <main className="health-layout" data-tour="health">
         <EmptyState icon={HeartPulse} title="Nada que revisar todavía">
-          Cuando el mundo tenga tipos y nodos, aquí verás qué falta por conectar, rellenar o corregir.
+          Cuando el proyecto tenga tipos y nodos, aquí verás qué falta por conectar, rellenar o corregir.
         </EmptyState>
       </main>
     );
@@ -112,7 +112,7 @@ export function HealthView() {
         <div>
           <h2>Consultas guardadas</h2>
           <p className="muted-note">
-            Preguntas al mundo que se guardan con el proyecto: «Personajes sin dios patrón», «Magos sin escuela»…
+            Consultas sobre tus datos que se guardan con el proyecto: «Contactos sin empresa», «Actividades pendientes»…
           </p>
         </div>
         <Button size="sm" variant="primary" onClick={() => setEditing('new')}>
@@ -171,7 +171,7 @@ export function HealthView() {
       <header className="health-summary health-summary-secondary">
         <HeartPulse size={22} aria-hidden />
         <div>
-          <h2>Salud del mundo</h2>
+          <h2>Salud del proyecto</h2>
           <p className="muted-note">
             {report.total === 0
               ? 'Sin avisos: todo conectado, completo y coherente.'
@@ -302,7 +302,8 @@ export function HealthView() {
         <div>
           <h2>Estructura del grafo</h2>
           <p className="muted-note">
-            Quién concentra las conexiones y quién mantiene unido el mundo. Cuenta relaciones, jerarquía y referencias.
+            Quién concentra las conexiones y quién mantiene conectado el proyecto. Cuenta relaciones, jerarquía y
+            referencias.
           </p>
         </div>
       </header>
@@ -369,7 +370,7 @@ export function HealthView() {
           icon={Unplug}
           title="Puentes"
           count={bridgeNodes.length + bridgeLinks.length}
-          hint="Nodos y vínculos que, si desaparecieran, dejarían partes del mundo sin conexión entre sí."
+          hint="Nodos y vínculos que, si desaparecieran, dejarían partes del proyecto sin conexión entre sí."
           neutral
         >
           {bridgeNodes.map(n => (

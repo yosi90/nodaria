@@ -18,7 +18,7 @@ import { useDialogs } from '../common/dialogs';
 import { Modal } from '../common/Modal';
 
 /**
- * Calendario del mundo: meses, días de la semana, bisiestos y fecha actual. Se edita en vivo (cada
+ * Calendario del proyecto: meses, días de la semana, bisiestos y fecha actual. Se edita en vivo (cada
  * cambio es una acción deshacible) y afecta a cómo se leen las fechas y a las fórmulas de edad.
  */
 export function CalendarDialog({ onClose }: { onClose: () => void }) {
@@ -62,16 +62,16 @@ export function CalendarDialog({ onClose }: { onClose: () => void }) {
 
   const standard = isStandardCalendar(calendar);
   return (
-    <Modal title="Calendario del mundo" informational wide onClose={onClose}>
+    <Modal title="Calendario del proyecto" informational wide onClose={onClose}>
       <p className="templates-intro">
-        Define cómo se cuentan los días en este mundo. Las fechas se guardan igual que hasta ahora y se leen con estos
-        nombres; las fórmulas <code>{'{edad(nacimiento)}'}</code>, <code>{'{dias(desde, hasta)}'}</code> y{' '}
+        Define cómo se cuentan los días en este proyecto. Las fechas se guardan igual que hasta ahora y se leen con
+        estos nombres; las fórmulas <code>{'{edad(nacimiento)}'}</code>, <code>{'{dias(desde, hasta)}'}</code> y{' '}
         <code>{'{diasemana(fecha)}'}</code> calculan con este calendario y con la fecha actual de aquí.
       </p>
 
       <section className="calendar-section">
         <div className="card-head">
-          <h3>Fecha actual del mundo</h3>
+          <h3>Fecha actual del proyecto</h3>
         </div>
         <div className="check-row">
           <label>

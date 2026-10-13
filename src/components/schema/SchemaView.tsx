@@ -1,5 +1,5 @@
 import { GitFork, Plus, Shapes } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { uid } from '../../domain/factories';
 import { moveSchema, schemaTree, type DropZone } from '../../domain/inheritance';
 import type { SchemaKind } from '../../domain/types';
@@ -20,6 +20,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
   const [selected, setSelected] = useState<string | null>(ofKind[0]?.id || null);
   const [creating, setCreating] = useState<SchemaKind | null>(null);
   const [name, setName] = useState('');
+  const nameInput = useRef<HTMLInputElement>(null);
   const [dragged, setDragged] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ targetId: string; zone: DropZone } | null>(null);
   // Durante el arrastre la lista se enseña ya reordenada (o anidada); al soltar se confirma.
@@ -86,6 +87,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
                     draggable
                     onDragStart={event => {
                       event.dataTransfer.effectAllowed = 'move';
+                      event.dataTransfer.setData('text/plain', item.id);
                       setDragged(item.id);
                     }}
                     onDragEnd={() => {
@@ -93,8 +95,11 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
                       setPreview(null);
                     }}
                     onDragOver={event => {
-                      if (!dragged || dragged === item.id) return;
+                      if (!dragged) return;
                       event.preventDefault();
+                      // La previsualización puede poner la propia fila arrastrada bajo el puntero.
+                      // Sigue aceptando el drop y conserva el último destino válido.
+                      if (dragged === item.id) return;
                       const bounds = event.currentTarget.getBoundingClientRect();
                       // Tercio superior: antes; tercio inferior: después; centro: heredar del destino.
                       const rel = (event.clientY - bounds.top) / bounds.height;
@@ -162,7 +167,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
       ) : (
         <EmptyState
           icon={isEntity ? Shapes : GitFork}
-          title={isEntity ? 'Diseña las piezas de tu mundo' : 'Define cómo se conectan'}
+          title={isEntity ? 'Diseña los elementos de tu proyecto' : 'Define cómo se conectan'}
           action={
             <Button variant="primary" icon={Plus} onClick={() => openCreateModal()}>
               Crear el primer tipo
@@ -170,8 +175,8 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
           }
         >
           {isEntity
-            ? 'Los tipos de entidad (Personaje, Lugar, Deidad…) definen qué nodos puedes crear.'
-            : 'Los tipos de relación (Parentesco, Alianza, Culto…) definen cómo se conectan los nodos: con qué tipos, en qué sentido y con qué nombre visto desde cada lado.'}
+            ? 'Los tipos de entidad (Persona, Producto, Actividad…) definen qué nodos puedes crear.'
+            : 'Los tipos de relación (Trabaja en, Depende de, Participa en…) definen cómo se conectan los nodos: con qué tipos, en qué sentido y con qué nombre visto desde cada lado.'}
         </EmptyState>
       )}
       {creating && (
@@ -179,6 +184,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
           title={isEntity ? 'Crear tipo de entidad' : 'Crear tipo de relación'}
           submitLabel="Crear tipo"
           submitDisabled={!name.trim()}
+          initialFocus={nameInput}
           onClose={() => setCreating(null)}
           onSubmit={createType}
         >
@@ -186,10 +192,10 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
             <label className="field">
               Nombre
               <input
-                autoFocus
+                ref={nameInput}
                 value={name}
                 onChange={event => setName(event.target.value)}
-                placeholder={creating === 'entity' ? 'Por ejemplo: Personaje' : 'Por ejemplo: Venera a'}
+                placeholder={creating === 'entity' ? 'Por ejemplo: Persona' : 'Por ejemplo: Trabaja en'}
               />
             </label>
           </div>

@@ -10,6 +10,9 @@ import { DateControl } from './DateControl';
 import { isStandardCalendar } from '../../domain/calendar';
 import { useApp } from '../../state/AppContext';
 import { nonNegativeWarning } from '../../domain/valueConstraints';
+import { usePreferences } from '../../state/preferences';
+import { normalizeColor } from '../../state/colorPalette';
+import { ColorSwatches } from '../common/ColorSwatches';
 
 interface FieldControlProps {
   field: FieldDefinition;
@@ -37,6 +40,7 @@ export function FieldControl(props: FieldControlProps) {
 
 function FieldInput({ field, value, ownerId, onChange, titleField, autoFocus }: FieldControlProps) {
   const { project } = useApp();
+  const { rememberColor } = usePreferences();
   const common = {
     'aria-invalid': nonNegativeWarning(field, value) ? true : undefined,
     'data-title-field': titleField ? 'true' : undefined,
@@ -98,14 +102,20 @@ function FieldInput({ field, value, ownerId, onChange, titleField, autoFocus }: 
   }
   if (field.type === 'color')
     return (
-      <div className="color-field">
-        <input
-          type="color"
-          aria-label={`${field.label} (selector)`}
-          value={/^#[0-9a-f]{6}$/i.test(String(value ?? '')) ? String(value) : '#888888'}
-          onChange={e => onChange(e.target.value)}
-        />
-        <input {...common} placeholder="#rrggbb" />
+      <div className="color-editor">
+        <div className="color-field">
+          <input
+            type="color"
+            aria-label={`${field.label} (selector)`}
+            value={/^#[0-9a-f]{6}$/i.test(String(value ?? '')) ? String(value) : '#888888'}
+            onChange={e => onChange(e.target.value)}
+            onBlur={e => {
+              if (normalizeColor(value) === e.target.value) rememberColor(e.target.value);
+            }}
+          />
+          <input {...common} placeholder="#rrggbb" onBlur={e => rememberColor(e.target.value)} />
+        </div>
+        <ColorSwatches value={String(value ?? '')} onChange={onChange} />
       </div>
     );
   if (field.type === 'url')

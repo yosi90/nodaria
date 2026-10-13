@@ -12,6 +12,7 @@ import {
 } from '../../domain/kinship';
 import { uid } from '../../domain/factories';
 import { relationEnds } from '../../domain/constraints';
+import { changeRelationDraftType } from '../../domain/relationDraft';
 import { allFields, getNode, getSchema, nodeLabel, relationRole, typeMatches } from '../../domain/selectors';
 import type { FieldValue, Node, Relation, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -499,14 +500,12 @@ function RelationForm({
             value={typeId || null}
             placeholder={relationTypes.length ? 'Elegir tipo…' : 'Ningún tipo de relación admite este nodo'}
             onChange={id => {
-              setTypeId(id ?? '');
-              setOtherId(null);
-              const next = relationTypes.find(s => s.id === id);
-              // Si este nodo solo encaja en un extremo, se coloca ahí sin preguntar.
-              if (next) {
-                const s = sidesFor(next);
-                setIAmSource(s.source ? true : !s.target ? true : false);
-              }
+              if (!id) return;
+              const next = changeRelationDraftType(project, nodeId, { typeId, iAmSource, otherId, values }, id);
+              setTypeId(next.typeId);
+              setIAmSource(next.iAmSource);
+              setOtherId(next.otherId);
+              setValues(next.values);
             }}
           />
         </div>

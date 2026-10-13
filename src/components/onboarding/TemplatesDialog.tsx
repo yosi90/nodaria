@@ -19,7 +19,7 @@ export function TemplatesDialog({ onClose }: { onClose: () => void }) {
   const { setView } = useNavigation();
   const { start } = useTour();
   const toast = useToast();
-  const [tab, setTab] = useState<'example' | 'template'>('example');
+  const [tab, setTab] = useState<'example' | 'template'>('template');
 
   const open = (template: TemplateInfo, withTour = false) => {
     dispatch({ type: 'import-project', project: template.build(), replaceBlank: true });

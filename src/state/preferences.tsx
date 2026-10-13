@@ -1,9 +1,11 @@
 /* eslint-disable react-refresh/only-export-components -- provider y hook forman una única API de contexto */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { LayoutMode } from '../domain/types';
+import { addPaletteColor, normalizePalette } from './colorPalette';
 
 /** Preferencias de interfaz del navegador actual. No forman parte de los proyectos ni se exportan. */
 export interface Preferences {
+  customColors: string[];
   theme: 'system' | 'light' | 'dark';
   treeWidth: number;
   treeCollapsed: boolean;
@@ -45,6 +47,7 @@ const PREFERENCES_KEY = 'nodaria_ui_v1';
 export const PANEL_LIMITS = { min: 220, max: 820 } as const;
 
 const DEFAULTS: Preferences = {
+  customColors: [],
   theme: 'system',
   treeWidth: 300,
   treeCollapsed: false,
@@ -61,13 +64,14 @@ const DEFAULTS: Preferences = {
 function loadPreferences(): Preferences {
   try {
     const stored = JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? '{}');
-    return { ...DEFAULTS, ...stored };
+    return { ...DEFAULTS, ...stored, customColors: normalizePalette(stored.customColors) };
   } catch {
     return DEFAULTS;
   }
 }
 
 interface PreferencesContextValue {
+  rememberColor: (color: string) => void;
   preferences: Preferences;
   setPreference: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void;
 }
@@ -95,7 +99,16 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     <K extends keyof Preferences>(key: K, value: Preferences[K]) => setPreferences(p => ({ ...p, [key]: value })),
     [],
   );
-  const value = useMemo(() => ({ preferences, setPreference }), [preferences, setPreference]);
+  const rememberColor = useCallback((color: string) => {
+    setPreferences(p => {
+      const customColors = addPaletteColor(p.customColors, color);
+      return customColors === p.customColors ? p : { ...p, customColors };
+    });
+  }, []);
+  const value = useMemo(
+    () => ({ preferences, setPreference, rememberColor }),
+    [preferences, setPreference, rememberColor],
+  );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

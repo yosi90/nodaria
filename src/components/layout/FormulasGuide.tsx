@@ -27,7 +27,7 @@ export function FormulasGuide() {
             text="El valor de un atributo. Vale la clave o la etiqueta del atributo, sin distinguir mayúsculas ni acentos."
           />
           <Row expr="{titulo}" text="El título del nodo (su atributo marcado como título)." />
-          <Row expr="{tipo}" text="El nombre de su tipo («Personaje»)." />
+          <Row expr="{tipo}" text="El nombre de su tipo («Persona»)." />
         </tbody>
       </table>
       <p className="muted-note">
@@ -72,17 +72,17 @@ export function FormulasGuide() {
 
       <h3>Fechas y edades</h3>
       <p className="muted-note">
-        Las fechas usan el <strong>calendario del mundo</strong> (ajustes del proyecto, el engranaje junto a su nombre →
-        «Calendario del mundo…»): sus meses, sus días de la semana y su fecha actual. Un atributo de fecha se lee «3 de
-        Brumal de 1043».
+        Las fechas usan el <strong>calendario del proyecto</strong> (ajustes del proyecto, el engranaje junto a su
+        nombre → «Calendario del proyecto…»): sus meses, sus días de la semana y su fecha actual. Un atributo de fecha
+        se lee «3 de Brumal de 1043».
       </p>
       <table className="guide-table">
         <tbody>
-          <Row expr="{edad(nacimiento)}" text="Años cumplidos desde esa fecha hasta la fecha actual del mundo." />
+          <Row expr="{edad(nacimiento)}" text="Años cumplidos desde esa fecha hasta la fecha actual del proyecto." />
           <Row expr="{edad(nacimiento, muerte)}" text="Años entre dos fechas: la edad a la que murió." />
           <Row expr="{dias(inicio, fin)}" text="Días entre dos fechas; con una sola, hasta hoy." />
           <Row expr="{diasemana(fecha)}" text="El nombre del día de la semana de esa fecha." />
-          <Row expr="{hoy}" text="La fecha actual del mundo; {hoy.anio} solo el año." />
+          <Row expr="{hoy}" text="La fecha actual del proyecto; {hoy.anio} solo el año." />
           <Row
             expr="{fecha.dia} {fecha.mes} {fecha.anio}"
             text="Partes de una fecha: el día, el nombre del mes o el año. También {fecha.diasemana}."

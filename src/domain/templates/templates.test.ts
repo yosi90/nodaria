@@ -100,4 +100,29 @@ describe('templates', () => {
   it('builds a fresh project id each time', () => {
     expect(templateById('cars')!.build().id).not.toBe(templateById('cars')!.build().id);
   });
+  it('offers a novel base without fantasy types and combines the general templates without collisions', () => {
+    const novel = templateById('novel')!.build();
+    expect(novel.schemas.map(s => s.name)).toEqual(
+      expect.arrayContaining(['Libro', 'Personaje', 'Capítulo', 'Escena']),
+    );
+    expect(novel.schemas.some(s => ['Deidad', 'Raza', 'Escuela de magia', 'Reino'].includes(s.name))).toBe(false);
+    const software = templateById('software')!.build();
+    const commercial = templateById('commercial')!.build();
+    const events = templateById('events')!.build();
+    const combined = mergeTemplate(mergeTemplate(software, commercial), events);
+    expect(combined.schemas.length).toBe(software.schemas.length + commercial.schemas.length + events.schemas.length);
+    expect(repairProject(combined).issues).toEqual([]);
+    expect(mergeTemplate(combined, commercial)).toBe(combined);
+  });
+  it.each(['software', 'commercial', 'events', 'novel'])('%s has valid schema constraints and field references', id => {
+    const p = templateById(id)!.build();
+    expect(p.nodes).toEqual([]);
+    expect(p.relations).toEqual([]);
+    for (const schema of p.schemas) {
+      for (const typeId of [...schema.allowedChildTypeIds, ...schema.sourceTypeIds, ...schema.targetTypeIds])
+        expect(getSchema(p, typeId)?.kind).toBe('entity');
+      for (const field of allFields(p, schema.id))
+        for (const typeId of field.referenceTypeIds) expect(getSchema(p, typeId)?.kind).toBe('entity');
+    }
+  });
 });

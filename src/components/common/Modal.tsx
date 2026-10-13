@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect, useId, useRef, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { Button } from './Button';
 
 interface ModalProps {
@@ -12,6 +12,8 @@ interface ModalProps {
   /** Sin botón de envío: solo "Cerrar" (paneles informativos). */
   informational?: boolean;
   wide?: boolean;
+  /** Control que recibe el foco después de abrir el diálogo nativo. */
+  initialFocus?: RefObject<HTMLElement | null>;
   onSubmit?: () => void;
   onClose: () => void;
 }
@@ -24,6 +26,7 @@ export function Modal({
   tone = 'default',
   informational,
   wide,
+  initialFocus,
   onSubmit,
   onClose,
 }: ModalProps) {
@@ -35,11 +38,12 @@ export function Modal({
     if (!dialog) return;
     const previous = document.activeElement as HTMLElement | null;
     dialog.showModal();
+    initialFocus?.current?.focus();
     return () => {
       dialog.close();
       if (previous?.isConnected) previous.focus();
     };
-  }, []);
+  }, [initialFocus]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();

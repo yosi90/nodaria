@@ -79,7 +79,7 @@ const STEPS: Step[] = [
   {
     target: 'health',
     title: 'Salud y ayuda',
-    body: 'Salud revisa el mundo por ti: fichas incompletas, nodos sueltos, consultas guardadas y estadísticas. Cuando quieras repetir este recorrido o abrir el caso complejo, pulsa «?» arriba a la derecha.',
+    body: 'Salud revisa el proyecto por ti: fichas incompletas, nodos sueltos, consultas guardadas y estadísticas. Cuando quieras repetir este recorrido o abrir el caso complejo, pulsa «?» arriba a la derecha.',
     view: 'health',
   },
 ];

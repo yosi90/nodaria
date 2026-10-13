@@ -281,7 +281,7 @@ export function FieldEditor({
             />
             <small>
               Puedes escribir {'{tipo}'} en la etiqueta o la descripción: «Nombre del {'{tipo}'}» se lee «Nombre del
-              Personaje» en un personaje y «Nombre del Lugar» en un lugar.
+              Producto» en un producto y «Nombre del Evento» en un evento.
             </small>
           </label>
           {field.type === 'image' && (

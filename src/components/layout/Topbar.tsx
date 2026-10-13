@@ -40,6 +40,7 @@ import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
 import { useRequests } from '../../state/requests';
 import { CalendarDialog } from './CalendarDialog';
+import { NewProjectDialog } from '../onboarding/NewProjectDialog';
 
 export type { View } from '../../state/navigation';
 
@@ -70,20 +71,13 @@ export function Topbar({
   const file = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
   const closeMenu = useCallback(() => setMenu(null), []);
   const toggleMenu = (kind: 'projects' | 'settings', target: HTMLElement) =>
     setMenu(menu?.kind === kind ? null : { kind, anchor: anchorOf(target) });
   const theme = THEME_CYCLE[preferences.theme];
 
-  const create = async () => {
-    const name = await prompt({
-      title: 'Nuevo proyecto',
-      label: 'Nombre',
-      placeholder: 'Por ejemplo: Crónicas de Vael',
-      confirmLabel: 'Crear',
-    });
-    if (name) dispatch({ type: 'add-project', name });
-  };
+  const create = () => setNewProjectOpen(true);
   const rename = async () => {
     const name = await prompt({
       title: 'Renombrar proyecto',
@@ -140,7 +134,7 @@ export function Topbar({
     { section: project.name },
     { label: 'Renombrar', icon: Pencil, onSelect: rename },
     { label: 'Duplicar', icon: Copy, onSelect: () => dispatch({ type: 'duplicate-project' }) },
-    { label: 'Calendario del mundo…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
+    { label: 'Calendario del proyecto…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
     'separator',
     { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
     'separator',
@@ -187,7 +181,7 @@ export function Topbar({
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">
-        <span className="segmented-label" title="Ver y revisar los datos del mundo">
+        <span className="segmented-label" title="Ver y revisar los datos del proyecto">
           Datos
         </span>
         <button type="button" aria-pressed={view === 'map'} onClick={() => onView('map')}>
@@ -250,6 +244,7 @@ export function Topbar({
         <AccountButton />
       </div>
       <input ref={file} hidden type="file" accept="application/json,.json" onChange={upload} />
+      {newProjectOpen && <NewProjectDialog onClose={() => setNewProjectOpen(false)} />}
     </header>
   );
 }

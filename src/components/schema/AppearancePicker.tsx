@@ -1,5 +1,6 @@
-import { useCallback, useState, type CSSProperties } from 'react';
-import { COLORS } from '../../domain/constants';
+import { useCallback, useState } from 'react';
+import { usePreferences } from '../../state/preferences';
+import { ColorSwatches } from '../common/ColorSwatches';
 import { IconGrid } from '../common/IconPicker';
 import { TypeIcon } from '../common/icons';
 import { Popover } from '../common/Popover';
@@ -13,6 +14,7 @@ interface AppearancePickerProps {
 
 /** Icono y color de un tipo: un botón abre la rejilla de iconos y al lado van las muestras de color. */
 export function AppearancePicker({ icon, color, onChange }: AppearancePickerProps) {
+  const { rememberColor } = usePreferences();
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const close = useCallback(() => setAnchor(null), []);
   return (
@@ -29,23 +31,15 @@ export function AppearancePicker({ icon, color, onChange }: AppearancePickerProp
       >
         <TypeIcon icon={icon} color={color} size="lg" />
       </button>
-      <div className="swatches" role="group" aria-label="Color">
-        {COLORS.map(swatch => (
-          <button
-            key={swatch}
-            type="button"
-            aria-label={`Color ${swatch}`}
-            aria-pressed={swatch.toLowerCase() === color.toLowerCase()}
-            style={{ '--swatch': swatch } as CSSProperties}
-            onClick={() => onChange({ color: swatch })}
-          />
-        ))}
+      <div className="swatches">
+        <ColorSwatches value={color} onChange={color => onChange({ color })} />
         <input
           type="color"
           aria-label="Color personalizado"
           title="Color personalizado"
           value={color}
           onChange={event => onChange({ color: event.target.value })}
+          onBlur={event => rememberColor(event.target.value)}
         />
       </div>
       {anchor && (

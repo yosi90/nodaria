@@ -3,7 +3,7 @@ import { useCallback, useState, type DragEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { isFieldLink, usersOfLibraryField } from '../../domain/library';
 import { allFields, inheritedSchemas } from '../../domain/selectors';
-import { fieldOverlaps, type FieldOverlap } from '../../domain/inheritance';
+import { fieldOverlaps, inheritedFields, type FieldOverlap } from '../../domain/inheritance';
 import type { FieldDefinition, FieldLink, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
@@ -100,6 +100,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   };
   const linkedIds = new Set(schema.fields.filter(isFieldLink).map(f => f.ref));
   const linkable = project.fieldLibrary.filter(f => !linkedIds.has(f.id));
+  const inherited = inheritedFields(project, schema);
 
   const reorder = () => {
     // Al soltar se confirma lo que ya se veía en la previsualización.
@@ -147,7 +148,9 @@ export function AttributesCard({ schema }: { schema: Schema }) {
             {
               label: 'Preforma…',
               icon: Link2,
-              hint: linkable.length ? `${linkable.length} disponibles` : 'ninguna',
+              hint: linkable.length
+                ? `${linkable.filter(f => !inherited.some(i => i.field.id === f.id)).length} disponibles`
+                : 'ninguna',
               disabled: !linkable.length,
               onSelect: () => setLinkAnchor(addAnchor),
             },
@@ -160,14 +163,23 @@ export function AttributesCard({ schema }: { schema: Schema }) {
         />
       )}
       {linkAnchor && (
-        <Popover anchor={linkAnchor} onClose={closeLink} label="Vincular preforma">
+        <Popover anchor={linkAnchor} onClose={closeLink} label="Vincular preforma" className="preform-options">
           <OptionList
             title="Preformas"
-            options={linkable.map(f => ({
-              value: f.id,
-              label: f.label,
-              hint: FIELD_TYPES.find(t => t[0] === f.type)?.[1],
-            }))}
+            options={linkable.map(f => {
+              const same = inherited.find(i => i.field.id === f.id);
+              const clash = inherited.find(i => i.field.key === f.key);
+              return {
+                value: f.id,
+                label: f.label,
+                hint: same
+                  ? `Ya heredada de «${same.from.name}»`
+                  : clash
+                    ? `Misma clave que «${clash.field.label}», heredada de «${clash.from.name}»`
+                    : FIELD_TYPES.find(t => t[0] === f.type)?.[1],
+                disabled: Boolean(same),
+              };
+            })}
             selected={[]}
             onPick={id => {
               dispatch({ type: 'link-field', schemaId: schema.id, libraryId: id });

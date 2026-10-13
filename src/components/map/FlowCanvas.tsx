@@ -102,7 +102,7 @@ const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: st
     mode: 'image',
     label: 'Mapa',
     icon: MapIcon,
-    hint: 'Tu imagen de fondo (el mapa del mundo) con los nodos colocados a mano sobre ella',
+    hint: 'Tu imagen de fondo (un plano o mapa) con los nodos colocados a mano sobre ella',
   },
 ];
 
@@ -156,6 +156,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   const { view } = project;
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Position>>({});
+  // Posiciones visibles antes y después de un arrastre en Fuerzas. No convierten el resto en anclajes.
+  const [forceFrames, setForceFrames] = useState<Map<string, Map<string, Position>>>(() => new Map());
   const { preferences, setPreference } = usePreferences();
   // Cada disposición recuerda (por proyecto, en este navegador) sus filtros y si la leyenda está abierta.
   const remembered = preferences.layouts[project.id]?.[view.layout];
@@ -243,11 +245,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   );
   const layoutLinks = useMemo(() => links.filter(l => visibleIds.has(l.a) && visibleIds.has(l.b)), [links, visibleIds]);
   // La disposición automática solo depende de la forma del grafo, no de los valores de los nodos.
-  const layoutKey = JSON.stringify([
+  const layoutShapeKey = JSON.stringify([
+    project.id,
     view.layout,
     structure.id,
     view.layout === 'radial' ? selectedNodeId : null,
-    view.layout === 'force' || view.layout === 'image' ? [...fixed] : null,
     view.layout === 'image' ? (project.mapImage?.height ?? 0) * (project.mapImage?.scale ?? 1) : null,
     view.layout === 'genealogy' ? structureLinks(layoutProject, genealogyStructure(layoutProject, structure.id)) : null,
     maxCardHeight,
@@ -257,14 +259,29 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     // Cambiar el tipo o el parentesco de una relación altera la estructura sin cambiar sus extremos.
     structureLinks(layoutProject, structure.id),
   ]);
+  const layoutKey = JSON.stringify([
+    layoutShapeKey,
+    view.layout === 'force' || view.layout === 'image' ? [...fixed] : null,
+  ]);
   const autoPositions = useMemo(
     () =>
+      (view.layout === 'force' ? forceFrames.get(layoutKey) : undefined) ??
       autoLayout(layoutProject, view.layout, structure.id, layoutLinks, selectedNodeId, fixed, maxCardHeight, {
         looseNearLinks: view.looseNearLinks,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- la clave resume todas las entradas relevantes
-    [layoutKey],
+    [layoutKey, forceFrames],
   );
+  const rememberForceFrame = useCallback((key: string, positions: Map<string, Position>) => {
+    setForceFrames(current => {
+      const next = new Map(current);
+      next.delete(key);
+      next.set(key, positions);
+      // Memoria visual de esta sesión, acotada igual que el historial de ediciones.
+      if (next.size > 100) next.delete(next.keys().next().value!);
+      return next;
+    });
+  }, []);
 
   // Al navegar a un elemento (árbol, conexiones, buscador) se centra en el lienzo.
   useEffect(() => {
@@ -323,6 +340,14 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     [project.nodes.length],
   );
   const container = useRef<HTMLElement>(null);
+  const pointerPosition = useRef<{ x: number; y: number } | null>(null);
+  const syncHover = useCallback(() => {
+    const point = pointerPosition.current;
+    const root = container.current;
+    const target = point ? document.elementFromPoint(point.x, point.y) : null;
+    const node = target && root?.contains(target) ? target.closest<HTMLElement>('.react-flow__node') : null;
+    setHoveredId(node?.dataset.id ?? null);
+  }, []);
   // Chinchetas arrancadas que caen por el lienzo.
   const [fallingPins, setFallingPins] = useState<FallingPin[]>([]);
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
@@ -728,11 +753,31 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     (_, __, dragged) => {
       const positions: Record<string, Position> = {};
       dragged.forEach(n => (positions[n.id] = n.position));
+      if (view.layout === 'force') {
+        const nextFixed = project.nodes.flatMap(n => {
+          const position = positions[n.id] ?? fixed.get(n.id);
+          return position ? [[n.id, position] as const] : [];
+        });
+        rememberForceFrame(
+          JSON.stringify([layoutShapeKey, nextFixed]),
+          new Map(flow.getNodes().map(n => [n.id, { ...n.position }])),
+        );
+      }
       dispatch({ type: 'move-nodes', positions });
       setOverrides({});
     },
-    [dispatch],
+    [dispatch, view.layout, project.nodes, fixed, flow, layoutShapeKey, rememberForceFrame],
   );
+  const onNodeDragStart: OnNodeDrag<CardNode> = useCallback(() => {
+    if (view.layout === 'force')
+      rememberForceFrame(layoutKey, new Map(flow.getNodes().map(n => [n.id, { ...n.position }])));
+  }, [view.layout, layoutKey, flow, rememberForceFrame]);
+
+  // Un nodo puede moverse bajo un puntero inmóvil al liberar una chincheta, sin emitir mouseleave.
+  useEffect(() => {
+    const frame = requestAnimationFrame(syncHover);
+    return () => cancelAnimationFrame(frame);
+  }, [nodes, syncHover]);
 
   const onConnectEnd: OnConnectEnd = useCallback(
     (event, state) => {
@@ -746,7 +791,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   );
 
   const onDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (!(event.target as Element).closest('.react-flow__pane')) return;
+    if (!(event.target as Element).closest('.react-flow__pane, .react-flow-empty')) return;
+    if (!project.nodes.length) {
+      onAddNode(pointAnchor(event.clientX, event.clientY), { x: 0, y: 0 });
+      return;
+    }
     const p = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
     onAddNode(pointAnchor(event.clientX, event.clientY), { x: p.x - NODE_W / 2, y: p.y - NODE_H / 2 });
   };
@@ -799,11 +848,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   if (!project.nodes.length)
     return (
-      <section className="workspace">
-        <EmptyState icon={Network} title="Un lienzo para tu mundo">
-          Aquí verás tus personajes, lugares y todo lo que los une. Primero define en «Tipos» qué clase de cosas existen
-          (Personaje, Ciudad, Deidad…) y en «Relaciones» cómo se conectan; después crea el primer nodo con el botón «+»
-          de la estructura o con doble clic aquí. Para aprender los atajos, pulsa «?».
+      <section className="workspace empty-canvas">
+        <EmptyState icon={Network} title="Un lienzo para tu proyecto">
+          Aquí verás tus nodos y sus conexiones. Primero define en «Tipos» qué elementos quieres representar (Persona,
+          Producto, Actividad…) y en «Relaciones» cómo se conectan; después crea el primer nodo con el botón «+» de la
+          estructura o con doble clic aquí. Para aprender los atajos, pulsa «?».
         </EmptyState>
         <div className="react-flow-empty" onDoubleClick={onDoubleClick} />
       </section>
@@ -817,6 +866,14 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         data-tour="canvas"
         data-labels={view.edgeLabels}
         onDoubleClick={onDoubleClick}
+        onPointerMove={event => {
+          pointerPosition.current = { x: event.clientX, y: event.clientY };
+          syncHover();
+        }}
+        onPointerLeave={() => {
+          pointerPosition.current = null;
+          setHoveredId(null);
+        }}
       >
         <div className="workspace-toolbar flow-toolbar">
           <LensMenu />
@@ -991,6 +1048,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
+          onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
@@ -1009,6 +1067,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             container.current?.style.setProperty('--inv-zoom', String(1 / instance.getViewport().zoom))
           }
           onMove={(_, viewport) => {
+            requestAnimationFrame(syncHover);
             container.current?.style.setProperty('--inv-zoom', String(1 / viewport.zoom));
             rememberMapViewport(project.id, {
               viewport,

@@ -3,6 +3,7 @@ import type { Project } from '../types';
 import { carsExample } from './cars';
 import { puertoNorteExample } from './puertoNorte';
 import { emptyTemplate, fantasyTemplate, novelTemplate } from './worldTemplates';
+import { softwareTemplate, commercialTemplate, eventTemplate } from './generalTemplates';
 
 /*
  * Catálogo de ejemplos y plantillas. Un «ejemplo» trae datos y sirve para aprender; una «plantilla»
@@ -21,6 +22,30 @@ export interface TemplateInfo {
 }
 
 export const TEMPLATES: TemplateInfo[] = [
+  {
+    id: 'software',
+    kind: 'template',
+    name: 'Desarrollo de programas',
+    summary: 'Sistemas, módulos, funciones y requisitos.',
+    highlights: ['Sistema → Módulo → Función', 'Dependencias y criterios de aceptación'],
+    build: softwareTemplate,
+  },
+  {
+    id: 'commercial',
+    kind: 'template',
+    name: 'Gestión comercial',
+    summary: 'Empresas, contactos, productos y oportunidades.',
+    highlights: ['Teléfono y correo compartidos', 'Fases de venta, importes y productos ofrecidos'],
+    build: commercialTemplate,
+  },
+  {
+    id: 'events',
+    kind: 'template',
+    name: 'Planificación de eventos',
+    summary: 'Eventos, actividades, personas, lugares y recursos.',
+    highlights: ['Agenda, presupuesto y aforo', 'Asistencia, responsables y recursos necesarios'],
+    build: eventTemplate,
+  },
   {
     id: 'cars',
     kind: 'example',
@@ -63,7 +88,7 @@ export const TEMPLATES: TemplateInfo[] = [
     id: 'novel',
     kind: 'template',
     name: 'Novela',
-    summary: 'El mundo de fantasía más capítulos y escenas con apariciones.',
+    summary: 'Libros, personajes, lugares, organizaciones, capítulos y escenas, para cualquier género.',
     highlights: ['Capítulo → Escena con punto de vista y estado', '«Aparece en» para saber quién sale dónde'],
     build: novelTemplate,
   },

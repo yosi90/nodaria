@@ -1,5 +1,5 @@
 import { Ban, Plus } from 'lucide-react';
-import { createElement, useCallback, useState } from 'react';
+import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import { TYPE_ICONS, typeIcon } from './icon-catalog';
 import { Popover } from './Popover';
 import { anchorOf, type Anchor } from './anchor';
@@ -14,32 +14,80 @@ export function IconGrid({
   allowNone?: boolean;
   onPick: (icon: string | null) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const [family, setFamily] = useState('all');
+  const search = useRef<HTMLInputElement>(null);
+  const normalize = (text: string) =>
+    text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  const words = normalize(query.trim()).split(/\s+/).filter(Boolean);
+  const icons = Object.entries(TYPE_ICONS).filter(
+    ([name, entry]) =>
+      (family === 'all' || (entry.family ?? 'Lucide') === family) &&
+      words.every(word => normalize(`${name} ${entry.label} ${entry.keywords ?? ''}`).includes(word)),
+  );
+  useEffect(() => {
+    // El popover se hace visible después de medir su posición.
+    const frame = requestAnimationFrame(() => search.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, []);
   return (
-    <div className="icon-grid">
-      {allowNone && (
-        <button
-          type="button"
-          aria-label="Sin icono"
-          title="Sin icono"
-          aria-pressed={!value}
-          onClick={() => onPick(null)}
-        >
-          <Ban size={17} aria-hidden />
-        </button>
+    <>
+      <div className="icon-search">
+        <input
+          ref={search}
+          type="search"
+          aria-label="Buscar iconos"
+          placeholder="Buscar: teléfono, oficina, código…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              if (icons[0]) onPick(icons[0][0]);
+            }
+          }}
+        />
+        <select aria-label="Paquete de iconos" value={family} onChange={e => setFamily(e.target.value)}>
+          <option value="all">Todos los paquetes</option>
+          <option value="Lucide">Lucide</option>
+          <option value="Phosphor">Phosphor · uso general</option>
+        </select>
+      </div>
+      <div className="icon-grid">
+        {allowNone && (
+          <button
+            type="button"
+            aria-label="Sin icono"
+            title="Sin icono"
+            aria-pressed={!value}
+            onClick={() => onPick(null)}
+          >
+            <Ban size={17} aria-hidden />
+          </button>
+        )}
+        {icons.map(([name, { icon: component, label }]) => (
+          <button
+            key={name}
+            type="button"
+            aria-label={label}
+            title={label}
+            aria-pressed={name === value}
+            onClick={() => onPick(name)}
+          >
+            {createElement(component, { size: 17, 'aria-hidden': true })}
+          </button>
+        ))}
+      </div>
+      {!icons.length && (
+        <p className="menu-empty" role="status">
+          No hay iconos que coincidan.
+        </p>
       )}
-      {Object.entries(TYPE_ICONS).map(([name, { icon: component, label }]) => (
-        <button
-          key={name}
-          type="button"
-          aria-label={label}
-          title={label}
-          aria-pressed={name === value}
-          onClick={() => onPick(name)}
-        >
-          {createElement(component, { size: 17, 'aria-hidden': true })}
-        </button>
-      ))}
-    </div>
+    </>
   );
 }
 

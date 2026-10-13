@@ -128,6 +128,18 @@
 .menu-item:disabled {
   opacity: 0.45;
 }
+.preform-options .menu-item {
+  flex-wrap: wrap;
+}
+.preform-options .menu-item > .label {
+  flex-basis: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.preform-options .menu-item > .hint {
+  width: 100%;
+  overflow-wrap: anywhere;
+}
 .menu-item.danger,
 .menu-item.danger > svg {
   color: var(--danger);
@@ -343,6 +355,11 @@
 }
 
 /* ---------- Selector de iconos ---------- */
+.icon-search {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+}
 .icon-grid {
   display: grid;
   grid-template-columns: repeat(8, 34px);
@@ -376,6 +393,10 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+}
+.color-editor {
+  display: grid;
+  gap: 8px;
 }
 .swatches button {
   width: 24px;

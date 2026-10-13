@@ -34,8 +34,8 @@ export function WelcomeDialog({ onClose, onTemplates }: { onClose: () => void; o
         </div>
         <p className="welcome-lead">
           Nodaria es un mapa de nodos y relaciones con esquema propio: primero defines qué tipos de cosas existen y cómo
-          se conectan, y después creas los nodos. Sirve para planificar una novela, documentar una investigación o
-          entender cualquier conjunto de piezas enlazadas.
+          se conectan, y después creas los nodos. Sirve para diseñar un programa, gestionar contactos, planificar un
+          libro o un evento, o entender cualquier conjunto de piezas enlazadas.
         </p>
         <div className="welcome-options">
           <button type="button" className="welcome-option primary" onClick={() => openExample('cars', true)}>
@@ -63,7 +63,7 @@ export function WelcomeDialog({ onClose, onTemplates }: { onClose: () => void; o
             <Layers size={20} aria-hidden />
             <span>
               <strong>Empezar con una plantilla</strong>
-              <small>Mundo de fantasía, novela o un proyecto vacío.</small>
+              <small>Programas, gestión comercial, libros, eventos, fantasía o un proyecto vacío.</small>
             </span>
           </button>
           <button type="button" className="welcome-option" onClick={onClose}>

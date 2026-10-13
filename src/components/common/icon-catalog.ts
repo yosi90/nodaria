@@ -232,14 +232,17 @@ import {
   Wheat,
   Wine,
   Worm,
-  type LucideIcon,
 } from 'lucide-react';
+import { GENERAL_ICONS, type CatalogIcon, type IconEntry } from './general-icons';
 
 /**
  * Catálogo de iconos elegibles para los tipos. El dominio solo guarda el nombre;
  * un nombre desconocido se muestra con el icono genérico.
  */
-export const TYPE_ICONS: Record<string, { icon: LucideIcon; label: string }> = {
+export const TYPE_ICONS: Record<string, IconEntry> = {
+  ...Object.fromEntries(
+    Object.entries(GENERAL_ICONS).map(([id, entry]) => [id, { ...entry, family: 'Phosphor' as const }]),
+  ),
   circle: { icon: Circle, label: 'Genérico' },
   user: { icon: User, label: 'Persona' },
   'user-round': { icon: UserRound, label: 'Personaje' },
@@ -476,6 +479,6 @@ export const TYPE_ICONS: Record<string, { icon: LucideIcon; label: string }> = {
   'circle-dot': { icon: CircleDot, label: 'Punto' },
 };
 
-export function typeIcon(name: string | undefined): LucideIcon {
+export function typeIcon(name: string | undefined): CatalogIcon {
   return (name && TYPE_ICONS[name]?.icon) || Circle;
 }

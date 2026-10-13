@@ -4,6 +4,9 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
 }
+.workspace.empty-canvas {
+  position: relative;
+}
 .react-flow-empty {
   position: absolute;
   inset: 0;

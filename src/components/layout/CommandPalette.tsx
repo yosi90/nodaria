@@ -149,7 +149,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       },
       {
         id: 'view:health',
-        label: 'Ir a la salud del mundo',
+        label: 'Ir a la salud del proyecto',
         group: 'Acciones',
         leading: icon(HeartPulse),
         keywords: 'vista salud análisis avisos nodos sin conexiones fichas incompletas',

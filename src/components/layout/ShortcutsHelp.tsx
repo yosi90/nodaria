@@ -9,7 +9,7 @@ const GROUPS: { title: string; items: [string, string[]][] }[] = [
       ['Rehacer', ['Ctrl', 'Shift', 'Z']],
       ['Ir al mapa', ['Alt', '1']],
       ['Ir a la tabla', ['Alt', '2']],
-      ['Ir a la salud del mundo', ['Alt', '3']],
+      ['Ir a la salud del proyecto', ['Alt', '3']],
       ['Ir a tipos', ['Alt', '4']],
       ['Ir a relaciones', ['Alt', '5']],
       ['Ir a propiedades', ['Alt', '6']],
