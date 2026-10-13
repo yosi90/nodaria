@@ -2,7 +2,7 @@
 
 Registrados el 2026-10-13 a partir de los problemas comunicados por el propietario. Se conserva su numeración para poder referirse a cada punto en futuras sesiones.
 
-Estado actual: los doce puntos están implementados y verificados localmente el 2026-10-13, con el alcance indicado en cada entrada (el punto 4 corresponde a la lista de tipos de relación). Los cambios no se han desplegado.
+Estado actual: los doce puntos están implementados, verificados y desplegados el 2026-10-13, con el alcance indicado en cada entrada (el punto 4 corresponde a la lista de tipos de relación). Disponibles en https://nodaria.yosiftware.es.
 
 ## Seguimiento
 
@@ -45,3 +45,4 @@ El orden es una propuesta de trabajo, no una estimación de esfuerzo. Cada tanda
 - **2026-10-13, segunda tanda:** corregidos los puntos 7 y 11. Pasan lint, build y las 239 pruebas existentes. Flujos de arrastre, anclajes sucesivos, deshacer/rehacer, liberación, hover con puntero inmóvil, camino e aislamiento comprobados en Edge sin interfaz con datos sintéticos y un navegador aislado. Se repiten satisfactoriamente los flujos de los puntos 1 y 5. Sin cambios de formato, migraciones ni dependencias de la aplicación. Pendiente de despliegue.
 - **2026-10-13, tercera tanda:** corregidos los puntos 3, 4, 8, 9 y 10. Pasan lint, build y las 239 pruebas existentes. Verificados en Edge los arrastres nativos de tipos raíz/heredados, descendientes, cambio explícito de herencia, deshacer/rehacer, persistencia, creación por teclado, preformas heredadas y nombres largos a tres anchuras. Revisión visual de Propiedades con captura de la aplicación. Sin errores JavaScript, cambios de formato, migraciones ni dependencias nuevas. Pendiente de despliegue.
 - **2026-10-13, cuarta tanda:** completados los puntos 2, 6 y 12. Pasan lint, build y 252 pruebas de 37 archivos. Verificados en Edge los nuevos flujos de proyectos, plantillas, paleta e iconos, y repetidos los flujos de las tres tandas anteriores, sin errores JavaScript. Añadida la dependencia de iconos con versión fija, sin migraciones ni cambios del formato de proyectos. Estado y alcance documentados en `PROJECT_CONTEXT.md`. Pendiente de despliegue.
+- **2026-10-13, publicación:** código y documentación subidos a `origin/main` en `2f5202d`; frontend publicado con `npm run deploy` en Firebase Hosting, versión `25f84bbd239f97f1`. Dominio propio y `yosiftware-nodaria.web.app` devuelven HTTP 200 y el bundle `main-B9bEYm_0.js` de esta compilación. Comprobado en producción con Edge y un perfil aislado: creación de proyecto comercial y primer nodo, paleta, búsqueda de iconos Phosphor y persistencia al recargar; sin errores JavaScript. El perfil de comprobación se excluye de estadísticas. No hay cambios que desplegar en la API.
