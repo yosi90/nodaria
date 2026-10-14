@@ -5,6 +5,7 @@ import { isImageData, type NodeImage } from '../../domain/portrait';
 import { allFields } from '../../domain/selectors';
 import type { FieldDefinition, Node, Project } from '../../domain/types';
 import { NODE_H } from './layout';
+import { sqlTypeText } from '../../domain/databaseDesign';
 
 /** Lo que un atributo aporta a la tarjeta: una insignia (solo icono) o una línea (icono y texto). */
 export interface CardBadge {
@@ -72,6 +73,25 @@ export function cardContent(p: Project, n: Node): { badges: CardBadge[]; lines: 
     }
     lines.push({ icon, text: f.type === 'image' ? f.label : describe(p, f, v), image });
   });
+  const table = p.databaseDesign?.tables.find(t => t.id === n.id);
+  if (table) {
+    badges.unshift({ icon: 'phosphor-database', title: `Tabla SQL: ${table.schema}.${table.name}` });
+    for (const c of table.columns) {
+      const keys = [
+        table.primaryKey.includes(c.id) ? 'PK' : '',
+        p.databaseDesign?.foreignKeys.some(fk => fk.sourceTableId === n.id && fk.sourceColumnIds.includes(c.id))
+          ? 'FK'
+          : '',
+        table.uniqueKeys.some(k => k.columnIds.includes(c.id)) ? 'UQ' : '',
+      ]
+        .filter(Boolean)
+        .join('/');
+      lines.push({
+        icon: keys.includes('PK') ? 'key' : keys.includes('FK') ? 'link' : null,
+        text: `${keys ? `${keys} ` : ''}${c.name}: ${sqlTypeText(c.type)}${c.nullable ? ' NULL' : ' NOT NULL'}`,
+      });
+    }
+  }
   return { badges: badges.slice(0, 4), lines };
 }
 

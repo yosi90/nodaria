@@ -42,7 +42,7 @@ import {
   Leaf,
   Lightbulb,
   Link,
-  Map,
+  Map as MapIcon,
   MapPin,
   Moon,
   Mountain,
@@ -232,6 +232,20 @@ import {
   Wheat,
   Wine,
   Worm,
+  Route,
+  Hash,
+  Binary,
+  Calculator,
+  Percent,
+  ListOrdered,
+  Sigma,
+  Equal,
+  Variable,
+  Brackets,
+  FileCode,
+  Workflow,
+  GitBranch,
+  Table2,
 } from 'lucide-react';
 import { GENERAL_ICONS, type CatalogIcon, type IconEntry } from './general-icons';
 
@@ -256,7 +270,7 @@ export const TYPE_ICONS: Record<string, IconEntry> = {
   house: { icon: House, label: 'Hogar' },
   'tent-tree': { icon: TentTree, label: 'Campamento' },
   'map-pin': { icon: MapPin, label: 'Lugar' },
-  map: { icon: Map, label: 'Mapa' },
+  map: { icon: MapIcon, label: 'Mapa' },
   globe: { icon: Globe, label: 'Mundo' },
   compass: { icon: Compass, label: 'Región' },
   mountain: { icon: Mountain, label: 'Montaña' },
@@ -369,7 +383,7 @@ export const TYPE_ICONS: Record<string, IconEntry> = {
   'mountain-snow': { icon: MountainSnow, label: 'Cumbre' },
   earth: { icon: Earth, label: 'Tierra' },
   orbit: { icon: Orbit, label: 'Órbita' },
-  stars: { icon: Stars, label: 'Estrellas' },
+  stars: { icon: Stars, label: 'Estrellas', equivalentTo: 'sparkles' },
   'moon-star': { icon: MoonStar, label: 'Noche' },
   sunrise: { icon: Sunrise, label: 'Amanecer' },
   sunset: { icon: Sunset, label: 'Atardecer' },
@@ -477,7 +491,45 @@ export const TYPE_ICONS: Record<string, IconEntry> = {
   pentagon: { icon: Pentagon, label: 'Pentágono' },
   octagon: { icon: Octagon, label: 'Octágono' },
   'circle-dot': { icon: CircleDot, label: 'Punto' },
+  route: { icon: Route, label: 'Camino entre nodos', keywords: 'ruta recorrido conexión path' },
+  hash: { icon: Hash, label: 'Número o cantidad', keywords: 'números cantidades entero identificador contador' },
+  binary: { icon: Binary, label: 'Binario', keywords: 'número código bits informática' },
+  calculator: { icon: Calculator, label: 'Cálculo', keywords: 'números cantidad operación matemáticas' },
+  percent: { icon: Percent, label: 'Porcentaje', keywords: 'número proporción descuento tasa' },
+  'list-ordered': { icon: ListOrdered, label: 'Lista numerada', keywords: 'números orden cantidad pasos' },
+  sigma: { icon: Sigma, label: 'Suma', keywords: 'sumatorio total números cantidad matemáticas' },
+  equal: { icon: Equal, label: 'Igualdad', keywords: 'número comparación resultado matemáticas' },
+  variable: { icon: Variable, label: 'Variable', keywords: 'fórmula cálculo programa parámetro' },
+  brackets: { icon: Brackets, label: 'Colección', keywords: 'array lista conjunto programa' },
+  'file-code': { icon: FileCode, label: 'Archivo de código', keywords: 'programa software desarrollo' },
+  workflow: { icon: Workflow, label: 'Flujo de trabajo', keywords: 'proceso diagrama programa' },
+  'git-branch': { icon: GitBranch, label: 'Bifurcación', keywords: 'rama árbol versiones programa' },
+  'table-2': { icon: Table2, label: 'Tabla', keywords: 'base de datos columnas filas esquema' },
 };
+
+/** Una elección por concepto, conservando la variante guardada y las búsquedas de todos sus alias. */
+export function iconChoices(query = '', family = 'all', value: string | null = null) {
+  const normalize = (text: string) =>
+    text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  const words = normalize(query.trim()).split(/\s+/).filter(Boolean);
+  const groups = new Map<string, [string, IconEntry][]>();
+  for (const [id, entry] of Object.entries(TYPE_ICONS)) {
+    const canonical = entry.equivalentTo ?? id;
+    groups.set(canonical, [...(groups.get(canonical) ?? []), [id, entry]]);
+  }
+  const result: [string, IconEntry][] = [];
+  for (const [canonical, aliases] of groups) {
+    const eligible = aliases.filter(([, entry]) => family === 'all' || (entry.family ?? 'Lucide') === family);
+    if (!eligible.length) continue;
+    const terms = normalize(aliases.map(([id, entry]) => `${id} ${entry.label} ${entry.keywords ?? ''}`).join(' '));
+    if (!words.every(word => terms.includes(word))) continue;
+    result.push(eligible.find(([id]) => id === value) ?? eligible.find(([id]) => id === canonical) ?? eligible[0]);
+  }
+  return result;
+}
 
 export function typeIcon(name: string | undefined): CatalogIcon {
   return (name && TYPE_ICONS[name]?.icon) || Circle;

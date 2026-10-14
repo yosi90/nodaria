@@ -50,6 +50,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
           title={pending.options.title}
           submitLabel={pending.options.confirmLabel ?? 'Aceptar'}
           tone={pending.options.danger ? 'danger' : 'default'}
+          initialFocus="submit"
           onSubmit={() => {
             pending.resolve(true);
             setPending(null);
@@ -85,6 +86,7 @@ function PromptModal({ options, onDone }: { options: PromptOptions; onDone: (val
       title={options.title}
       submitLabel={options.confirmLabel ?? 'Aceptar'}
       submitDisabled={!value.trim()}
+      initialFocus={input}
       onSubmit={() => onDone(value.trim())}
       onClose={() => onDone(null)}
     >
@@ -92,7 +94,6 @@ function PromptModal({ options, onDone }: { options: PromptOptions; onDone: (val
         {options.label}
         <input
           ref={input}
-          autoFocus
           value={value}
           placeholder={options.placeholder}
           onFocus={event => event.currentTarget.select()}

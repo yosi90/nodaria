@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Lock, Trash2, X } from 'lucide-react';
-import { useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { slugify } from '../../domain/factories';
 import { IMAGE_SHAPES, type ImageShape } from '../../domain/portrait';
@@ -155,6 +155,9 @@ export function FieldEditor({
               <input
                 value={field.label}
                 autoFocus={field.label === 'Nuevo campo'}
+                onFocus={event => {
+                  if (field.label === 'Nuevo campo') event.currentTarget.select();
+                }}
                 onChange={e => updateLabel(e.target.value)}
               />
             </label>
@@ -506,6 +509,13 @@ function OptionsEditor({
   onChange: (patch: Partial<Pick<FieldDefinition, 'options' | 'optionIcons' | 'optionDisplay'>>) => void;
 }) {
   const [draft, setDraft] = useState('');
+  const draftInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (draftInput.current === document.activeElement) draftInput.current?.scrollIntoView({ block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [options.length]);
   const commit = () => {
     const value = draft.trim();
     if (value && !options.includes(value)) onChange({ options: [...options, value] });
@@ -597,6 +607,7 @@ function OptionsEditor({
         </div>
       )}
       <input
+        ref={draftInput}
         value={draft}
         placeholder="Escribe una opción y pulsa Intro"
         onChange={event => setDraft(event.target.value)}

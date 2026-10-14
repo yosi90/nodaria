@@ -1,4 +1,4 @@
-import type { ChangeEvent } from 'react';
+import { useRef, type ChangeEvent, type FocusEvent } from 'react';
 import { GENDERS } from '../../domain/constants';
 import type { FieldDefinition, FieldValue } from '../../domain/types';
 import { ExternalLink, Star } from 'lucide-react';
@@ -41,7 +41,19 @@ export function FieldControl(props: FieldControlProps) {
 function FieldInput({ field, value, ownerId, onChange, titleField, autoFocus }: FieldControlProps) {
   const { project } = useApp();
   const { rememberColor } = usePreferences();
+  const selectedInitialTitle = useRef(false);
   const common = {
+    onFocus: (e: FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      if (
+        autoFocus &&
+        titleField &&
+        !selectedInitialTitle.current &&
+        (e.currentTarget instanceof HTMLInputElement || e.currentTarget instanceof HTMLTextAreaElement)
+      ) {
+        selectedInitialTitle.current = true;
+        e.currentTarget.select();
+      }
+    },
     'aria-invalid': nonNegativeWarning(field, value) ? true : undefined,
     'data-title-field': titleField ? 'true' : undefined,
     autoFocus,

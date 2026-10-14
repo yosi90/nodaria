@@ -18,6 +18,8 @@ import { PropertiesView } from './components/schema/PropertiesView';
 import { HealthView } from './components/health/HealthView';
 import { TableView } from './components/table/TableView';
 import { SchemaView } from './components/schema/SchemaView';
+import { DatabaseNodeEditor } from './components/database/DatabaseNodeEditor';
+import { ContextMenu } from './components/layout/ContextMenu';
 import { useApp } from './state/AppContext';
 import { useNavigation, type View } from './state/navigation';
 import { useRequests } from './state/requests';
@@ -25,6 +27,9 @@ import { useRequests } from './state/requests';
 export default function App() {
   const {
     view,
+    databaseNodeId,
+    databaseForeignKey,
+    closeDatabaseEditor,
     setView,
     paletteOpen,
     setPaletteOpen,
@@ -70,6 +75,14 @@ export default function App() {
         <StorageNotice />
         <RepairNotice />
       </div>
+      {databaseNodeId && (
+        <DatabaseNodeEditor
+          key={`${project.id}:${databaseNodeId}:${databaseForeignKey}`}
+          nodeId={databaseNodeId}
+          foreignKey={databaseForeignKey}
+          onClose={closeDatabaseEditor}
+        />
+      )}
       {help && <HelpDialog topic={help} onTopic={openHelpTopic} onClose={closeHelp} onTemplates={openTemplates} />}
       {templatesOpen && <TemplatesDialog onClose={closeTemplates} />}
       {requests.tab && <RequestsDialog onSignIn={() => setSigningIn(true)} />}
@@ -77,6 +90,7 @@ export default function App() {
       {signingIn && <SignInDialog initialMode="login" onClose={() => setSigningIn(false)} />}
       {welcome.open && <WelcomeDialog onClose={welcome.dismiss} onTemplates={openTemplates} />}
       <Tour />
+      <ContextMenu />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );

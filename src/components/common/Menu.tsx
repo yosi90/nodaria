@@ -32,7 +32,8 @@ export function Menu({ anchor, entries, onClose, label }: MenuProps) {
   ];
 
   useEffect(() => {
-    items()[0]?.focus();
+    const frame = requestAnimationFrame(() => items()[0]?.focus());
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const onKeyDown = (event: KeyboardEvent) => {

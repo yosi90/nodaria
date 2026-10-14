@@ -18,6 +18,7 @@ import type { Calendar } from './calendar';
 import type { Folder } from './folders';
 import type { ImageShape } from './portrait';
 import type { SavedQuery } from './queries';
+import type { DatabaseDesign } from './databaseDesign';
 
 export type SchemaKind = 'entity' | 'relationship';
 export type RelationStyle = 'normal' | 'strong' | 'hidden';
@@ -172,6 +173,8 @@ export interface Project {
   folders: Folder[];
   /** Calendario del mundo: meses, días de la semana y fecha actual (`src/domain/calendar.ts`). */
   calendar: Calendar;
+  /** Configuración SQL de nodos marcados como tablas; las columnas son definiciones, no valores de ficha. */
+  databaseDesign?: DatabaseDesign;
 }
 /** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
 export interface Lens {
@@ -197,6 +200,8 @@ export interface LayoutFilters {
 }
 /** Estado de la vista del mapa. Se guarda con el proyecto pero no entra en el historial de deshacer. */
 export interface ProjectView {
+  /** Coloca solo los nodos tabla según su esquema SQL; el resto sigue la disposición activa. */
+  databaseSchema: boolean;
   /** `null` = jerarquía "Dentro de"; si no, id de un tipo de relación estructural. */
   structureId: string | null;
   layout: LayoutMode;

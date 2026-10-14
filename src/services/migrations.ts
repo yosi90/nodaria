@@ -4,6 +4,7 @@ import { normalizeCalendar } from '../domain/calendar';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
 import { supportsNonNegative } from '../domain/valueConstraints';
+import { readDatabaseDesign } from '../domain/databaseDesign';
 import type { FieldDefinition, FieldValue, LayoutMode, Node, NodeDisplay, Position, Project } from '../domain/types';
 
 /*
@@ -11,6 +12,8 @@ import type { FieldDefinition, FieldValue, LayoutMode, Node, NodeDisplay, Positi
  * - v1: aplicación monolítica original (sin `formatVersion`).
  * - v2: migración a React; mismos datos con campos opcionales normalizados (sin `formatVersion`).
  * - v3: los valores de nodos y relaciones se indexan por `FieldDefinition.id` en lugar de por `key`.
+ * - v4: posiciones independientes por disposición.
+ * - v5: diseño relacional opcional e independiente; los proyectos anteriores no se convierten.
  */
 
 type RawNode = Omit<Node, 'positions'> & { positions?: Node['positions']; position?: Position | null };
@@ -22,6 +25,8 @@ const steps: Record<number, (project: Project) => Project> = {
 
 /** Convierte cualquier versión conocida de un proyecto al formato actual. */
 export function migrateProject(raw: RawProject): Project {
+  if (typeof raw.formatVersion === 'number' && raw.formatVersion > PROJECT_FORMAT_VERSION)
+    throw new Error('Este proyecto necesita una versión más reciente de Nodaria.');
   let project = normalizeProject(raw);
   for (let version = raw.formatVersion ?? 2; version < PROJECT_FORMAT_VERSION; version++) {
     project = steps[version]?.(project) ?? project;
@@ -175,6 +180,7 @@ function normalizeProject(project: RawProject): Project {
       positions: l.positions ?? null,
     })),
     calendar: normalizeCalendar(project.calendar),
+    ...(project.databaseDesign === undefined ? {} : { databaseDesign: readDatabaseDesign(project.databaseDesign) }),
   };
 }
 

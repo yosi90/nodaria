@@ -84,6 +84,7 @@ export function isBlankProject(p: Project) {
     p.relations.length === 0 &&
     p.lenses.length === 0 &&
     p.folders.length === 0 &&
+    !p.databaseDesign?.tables.length &&
     p.mapImage === null
   );
 }

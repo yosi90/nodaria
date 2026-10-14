@@ -1,0 +1,118 @@
+.db-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.db-section-head h2,
+.db-section-head h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.db-section-head h2 {
+  font-size: var(--fs-lg);
+}
+.db-section-head h3 {
+  font-size: var(--fs-md);
+}
+.db-table-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.db-identity {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-3);
+}
+.db-column-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.db-column-row legend {
+  font-size: var(--fs-xs);
+  color: var(--text-subtle);
+}
+.db-column-row .field {
+  width: 115px;
+}
+.db-column-row .db-column-name {
+  flex: 1;
+  min-width: 150px;
+}
+.db-column-row input,
+.db-column-row select {
+  min-width: 0;
+}
+.db-column-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 8px 0;
+}
+.db-column-checks label,
+.db-key-columns label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-sm);
+}
+.db-column-actions {
+  display: flex;
+  gap: 2px;
+}
+.db-unique-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin: 0;
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+}
+.db-key-columns {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.db-errors,
+.db-error {
+  color: var(--danger);
+}
+.db-warning {
+  color: var(--warning);
+  background: var(--warning-soft);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+@media (max-width: 800px) {
+  .db-column-row .field {
+    flex: 1;
+    min-width: 100px;
+  }
+}
+@media (max-width: 600px) {
+  .db-identity {
+    grid-template-columns: 1fr;
+  }
+}
+
+.database-layout-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+  padding: var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+}

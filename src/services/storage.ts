@@ -4,6 +4,7 @@ import { repairProject } from '../domain/integrity';
 import type { AppState, Project } from '../domain/types';
 import * as database from './database';
 import { migrateProject } from './migrations';
+import { reconcileDatabaseNodes } from '../domain/databaseDesign';
 
 /*
  * Persistencia local. Desde el 2026-10-06 los proyectos viven en IndexedDB (`database.ts`), un
@@ -54,7 +55,11 @@ export class StorageUnavailableError extends Error {}
 
 /** Migra y repara un proyecto en bruto, devolviendo las correcciones aplicadas. */
 export function prepareProject(raw: unknown) {
-  return repairProject(migrateProject((raw ?? {}) as Partial<Project>));
+  const result = repairProject(migrateProject((raw ?? {}) as Partial<Project>));
+  const project = reconcileDatabaseNodes(result.project);
+  return project === result.project
+    ? result
+    : { project, issues: [...result.issues, 'Se retiraron configuraciones SQL de nodos inexistentes.'] };
 }
 
 /** Prepara cada proyecto por separado: uno que no se puede migrar o reparar no arrastra a los demás. */

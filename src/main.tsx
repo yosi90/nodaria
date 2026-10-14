@@ -23,6 +23,7 @@ import './styles/layout.css';
 import './styles/flow.css';
 import './styles/account.css';
 import './styles/requests.css';
+import './styles/database.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

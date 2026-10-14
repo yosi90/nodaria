@@ -6,6 +6,8 @@ import { moveInStructure, type StructureMove } from '../domain/structureMove';
 import { mergeTemplate } from '../domain/templates';
 import { addFolder, deleteFolder, renameFolder, setNodeFolder } from '../domain/folders';
 import type { Calendar } from '../domain/calendar';
+import { applyDatabaseEdit, reconcileDatabaseNodes, type DatabaseEdit } from '../domain/databaseDesign';
+import { moveCanvasNodes } from '../domain/databaseNodes';
 import type { SavedQuery } from '../domain/queries';
 import type {
   AppState,
@@ -24,6 +26,8 @@ import type {
 } from '../domain/types';
 
 export type Action =
+  | { type: 'move-canvas-nodes'; positions: Record<string, Position | null> }
+  | { type: 'database-edit'; edit: DatabaseEdit }
   | { type: 'set-project'; id: string }
   | { type: 'add-project'; name: string }
   | { type: 'rename-project'; name: string }
@@ -39,7 +43,7 @@ export type Action =
   | { type: 'sync-apply'; upsert: Project[]; remove: string[] }
   /** Vacía el navegador (al cerrar sesión sin conservar los proyectos). */
   | { type: 'reset-state' }
-  | { type: 'add-schema'; name: string; kind: SchemaKind; id?: string }
+  | { type: 'add-schema'; name: string; kind: SchemaKind; id?: string; parentTypeId?: string }
   | { type: 'update-schema'; schema: Schema }
   | { type: 'delete-schema'; id: string; strategy: OrphanStrategy }
   | { type: 'reorder-schema'; id: string; targetId: string; after: boolean }
@@ -97,7 +101,12 @@ export type Action =
   | { type: 'delete-relation'; id: string };
 
 const isUntouched = (p: Project) =>
-  !p.schemas.length && !p.fieldLibrary.length && !p.nodes.length && !p.relations.length && !p.lenses.length;
+  !p.schemas.length &&
+  !p.fieldLibrary.length &&
+  !p.nodes.length &&
+  !p.relations.length &&
+  !p.lenses.length &&
+  !p.databaseDesign?.tables.length;
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -150,7 +159,7 @@ export function appReducer(state: AppState, action: Action): AppState {
   }
   const active = state.projects.find(p => p.id === state.activeProjectId);
   if (!active) return state;
-  const next = projectReducer(active, action);
+  const next = reconcileDatabaseNodes(projectReducer(active, action));
   if (next === active) return state;
   const stamped = { ...next, updatedAt: now() };
   return { ...state, projects: state.projects.map(p => (p.id === active.id ? stamped : p)) };
@@ -158,6 +167,8 @@ export function appReducer(state: AppState, action: Action): AppState {
 
 function projectReducer(p: Project, action: Action): Project {
   switch (action.type) {
+    case 'database-edit':
+      return applyDatabaseEdit(p, action.edit);
     case 'rename-project':
       return { ...p, name: action.name };
     case 'merge-template':
@@ -171,7 +182,7 @@ function projectReducer(p: Project, action: Action): Project {
     case 'set-node-folder':
       return setNodeFolder(p, action.nodeId, action.folderId, action.beforeId ?? null);
     case 'add-schema':
-      return ops.addSchema(p, action.name, action.kind, action.id);
+      return ops.addSchema(p, action.name, action.kind, action.id, action.parentTypeId);
     case 'update-schema':
       return ops.updateSchema(p, action.schema);
     case 'delete-schema':
@@ -209,6 +220,8 @@ function projectReducer(p: Project, action: Action): Project {
       );
     case 'move-nodes':
       return ops.moveNodes(p, action.positions, action.layout);
+    case 'move-canvas-nodes':
+      return moveCanvasNodes(p, action.positions);
     case 'move-in-structure':
       return moveInStructure(p, action);
     case 'update-notes':

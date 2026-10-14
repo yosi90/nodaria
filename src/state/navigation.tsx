@@ -15,6 +15,9 @@ export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'he
 export type HelpTopic = 'start' | 'shortcuts' | 'formulas';
 
 interface NavigationState {
+  databaseNodeId: string | null;
+  databaseForeignKey: boolean;
+  databaseForeignKeyId: string | null;
   view: View;
   selection: Selection;
   /** Historial de selecciones para «atrás» y «adelante». */
@@ -30,6 +33,8 @@ interface NavigationState {
 }
 
 interface NavigationContextValue extends NavigationState {
+  openDatabaseNode: (nodeId: string, foreignKey?: boolean, fkId?: string) => void;
+  closeDatabaseEditor: () => void;
   getMapViewport: (projectId: string) => MapViewportMemory | undefined;
   rememberMapViewport: (projectId: string, memory: MapViewportMemory) => void;
   setView: (view: View) => void;
@@ -60,6 +65,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     mapViewports.current.set(projectId, memory);
   }, []);
   const [state, setState] = useState<NavigationState>({
+    databaseNodeId: null,
+    databaseForeignKey: false,
+    databaseForeignKeyId: null,
     view: 'map',
     selection: null,
     past: [],
@@ -70,7 +78,25 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     isolated: null,
   });
 
-  const setView = useCallback((view: View) => setState(s => (s.view === view ? s : { ...s, view })), []);
+  const setView = useCallback(
+    (view: View) => setState(s => (s.view === view && !s.databaseNodeId ? s : { ...s, view, databaseNodeId: null })),
+    [],
+  );
+  const openDatabaseNode = useCallback(
+    (nodeId: string, foreignKey = false, fkId?: string) =>
+      setState(s => ({
+        ...s,
+        view: 'map',
+        databaseNodeId: nodeId,
+        databaseForeignKey: foreignKey,
+        databaseForeignKeyId: fkId ?? null,
+      })),
+    [],
+  );
+  const closeDatabaseEditor = useCallback(
+    () => setState(s => ({ ...s, databaseNodeId: null, databaseForeignKey: false })),
+    [],
+  );
   const select = useCallback(
     (selection: Selection, options?: { reveal?: boolean }) =>
       setState(s => {
@@ -139,6 +165,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       getMapViewport,
       rememberMapViewport,
       setView,
+      openDatabaseNode,
+      closeDatabaseEditor,
       select,
       clearSelection,
       isolate,
@@ -156,6 +184,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       getMapViewport,
       rememberMapViewport,
       setView,
+      openDatabaseNode,
+      closeDatabaseEditor,
       select,
       clearSelection,
       isolate,

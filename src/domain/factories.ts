@@ -91,6 +91,7 @@ export function createField(): FieldDefinition {
 }
 export function createView(): ProjectView {
   return {
+    databaseSchema: false,
     structureId: null,
     layout: 'tree',
     hiddenRelationTypeIds: [],

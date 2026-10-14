@@ -1,6 +1,6 @@
 import { Ban, Plus } from 'lucide-react';
 import { createElement, useCallback, useEffect, useRef, useState } from 'react';
-import { TYPE_ICONS, typeIcon } from './icon-catalog';
+import { iconChoices, typeIcon } from './icon-catalog';
 import { Popover } from './Popover';
 import { anchorOf, type Anchor } from './anchor';
 
@@ -17,17 +17,7 @@ export function IconGrid({
   const [query, setQuery] = useState('');
   const [family, setFamily] = useState('all');
   const search = useRef<HTMLInputElement>(null);
-  const normalize = (text: string) =>
-    text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  const words = normalize(query.trim()).split(/\s+/).filter(Boolean);
-  const icons = Object.entries(TYPE_ICONS).filter(
-    ([name, entry]) =>
-      (family === 'all' || (entry.family ?? 'Lucide') === family) &&
-      words.every(word => normalize(`${name} ${entry.label} ${entry.keywords ?? ''}`).includes(word)),
-  );
+  const icons = iconChoices(query, family, value);
   useEffect(() => {
     // El popover se hace visible después de medir su posición.
     const frame = requestAnimationFrame(() => search.current?.focus());

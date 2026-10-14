@@ -8,7 +8,7 @@ import type { Position, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { usePreferences } from '../../state/preferences';
-import type { Anchor } from '../common/anchor';
+import { pointAnchor, type Anchor } from '../common/anchor';
 import { IconButton } from '../common/Button';
 import { isTypingTarget } from '../common/keyboard';
 import { Splitter } from '../common/Splitter';
@@ -45,6 +45,14 @@ export function MapView() {
   const [addNodeMenu, setAddNodeMenu] = useState<AddNodeMenu | null>(null);
   const [connectMenu, setConnectMenu] = useState<ConnectMenu | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  useEffect(() => {
+    const create = (event: Event) => {
+      const point = (event as CustomEvent<{ x: number; y: number }>).detail;
+      setAddNodeMenu({ parentId: null, anchor: pointAnchor(point.x, point.y) });
+    };
+    window.addEventListener('nodaria-create-node', create);
+    return () => window.removeEventListener('nodaria-create-node', create);
+  }, []);
   const nodeScroll = useRef<{ typeId: string; top: number } | null>(null);
   const getNodeScroll = useCallback(
     (typeId: string) => (nodeScroll.current?.typeId === typeId ? nodeScroll.current.top : 0),

@@ -13,7 +13,7 @@ interface ModalProps {
   informational?: boolean;
   wide?: boolean;
   /** Control que recibe el foco después de abrir el diálogo nativo. */
-  initialFocus?: RefObject<HTMLElement | null>;
+  initialFocus?: RefObject<HTMLElement | null> | 'submit';
   onSubmit?: () => void;
   onClose: () => void;
 }
@@ -38,7 +38,8 @@ export function Modal({
     if (!dialog) return;
     const previous = document.activeElement as HTMLElement | null;
     dialog.showModal();
-    initialFocus?.current?.focus();
+    if (initialFocus === 'submit') dialog.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus();
+    else initialFocus?.current?.focus();
     return () => {
       dialog.close();
       if (previous?.isConnected) previous.focus();

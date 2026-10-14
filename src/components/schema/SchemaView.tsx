@@ -19,6 +19,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
   const ofKind = project.schemas.filter(s => s.kind === kind);
   const [selected, setSelected] = useState<string | null>(ofKind[0]?.id || null);
   const [creating, setCreating] = useState<SchemaKind | null>(null);
+  const [createParent, setCreateParent] = useState<string | null>(null);
   const [name, setName] = useState('');
   const nameInput = useRef<HTMLInputElement>(null);
   const [dragged, setDragged] = useState<string | null>(null);
@@ -28,8 +29,9 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
   const dropInside = dragged && preview?.zone === 'inside' ? preview.targetId : null;
   const schema = ofKind.find(item => item.id === selected) ?? ofKind[0];
 
-  const openCreateModal = () => {
+  const openCreateModal = (parentId: string | null = null) => {
     setName('');
+    setCreateParent(parentId);
     setCreating(kind);
   };
 
@@ -37,7 +39,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
     const cleanName = name.trim();
     if (!cleanName || !creating) return;
     const id = uid('type');
-    dispatch({ type: 'add-schema', name: cleanName, kind: creating, id });
+    dispatch({ type: 'add-schema', name: cleanName, kind: creating, id, parentTypeId: createParent ?? undefined });
     setCreating(null);
     setSelected(id);
   };
@@ -77,12 +79,12 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
               <div key={group.kind}>
                 <div className="type-group-title">{group.title}</div>
                 {items.map(({ schema: item, depth }, index) => (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
                     className={`type-item ${item.id === schema?.id ? 'active' : ''} ${dragged === item.id ? 'dragging' : ''} ${dropInside === item.id ? 'drop-inside' : ''}`}
                     style={{ paddingLeft: 8 + depth * 18 }}
                     data-type-id={item.id}
+                    onClick={() => setSelected(item.id)}
                     aria-current={item.id === schema?.id ? 'page' : undefined}
                     draggable
                     onDragStart={event => {
@@ -118,7 +120,6 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
                       setDragged(null);
                       setPreview(null);
                     }}
-                    onClick={() => setSelected(item.id)}
                   >
                     {depth > 0 && (
                       <span className="type-guides" aria-hidden>
@@ -134,18 +135,29 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
                         <span className="type-guide tick" style={{ left: 15 + (depth - 1) * 18 }} />
                       </span>
                     )}
-                    <TypeIcon icon={item.icon} color={item.color} />
-                    <span className="names">
-                      <strong>{item.name || 'Sin nombre'}</strong>
-                      <small>
-                        {item.isAbstract ? 'Abstracto · ' : ''}
-                        {item.fields.length} {item.fields.length === 1 ? 'atributo' : 'atributos'}
-                        {item.fields.some(f => 'ref' in f) ? ' · con preformas' : ''}
-                      </small>
-                    </span>
-                  </button>
+                    <button type="button" className="type-select" onClick={() => setSelected(item.id)}>
+                      <TypeIcon icon={item.icon} color={item.color} />
+                      <span className="names">
+                        <strong>{item.name || 'Sin nombre'}</strong>
+                        <small>
+                          {item.isAbstract ? 'Abstracto · ' : ''}
+                          {item.fields.length} {item.fields.length === 1 ? 'atributo' : 'atributos'}
+                          {item.fields.some(f => 'ref' in f) ? ' · con preformas' : ''}
+                        </small>
+                      </span>
+                    </button>
+                    <IconButton
+                      icon={Plus}
+                      size="sm"
+                      label={`Crear subtipo de ${item.name}`}
+                      onClick={event => {
+                        event.stopPropagation();
+                        openCreateModal(item.id);
+                      }}
+                    />
+                  </div>
                 ))}
-                <button type="button" className="type-item muted" onClick={openCreateModal}>
+                <button type="button" className="type-item muted" onClick={() => openCreateModal()}>
                   <Plus size={15} aria-hidden style={{ margin: '0 4px' }} />
                   <span className="names">
                     <small>{group.kind === 'entity' ? 'Nueva entidad' : 'Nueva relación'}</small>
@@ -189,6 +201,7 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
           onSubmit={createType}
         >
           <div className="form-grid">
+            {createParent && <p>Heredará de «{ofKind.find(s => s.id === createParent)?.name}».</p>}
             <label className="field">
               Nombre
               <input

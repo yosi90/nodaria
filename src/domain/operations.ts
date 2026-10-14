@@ -1,4 +1,5 @@
 import { createField, createSchema, now, uid } from './factories';
+import { copyDatabaseNode, reconcileDatabaseNodes } from './databaseNodes';
 import {
   allFields,
   canChangeSchemaKind,
@@ -69,8 +70,10 @@ export function typedDefault(field: FieldDefinition): FieldValue | undefined {
   return raw;
 }
 
-export function addSchema(p: Project, name: string, kind: SchemaKind, id?: string): Project {
+export function addSchema(p: Project, name: string, kind: SchemaKind, id?: string, parentTypeId?: string): Project {
+  if (parentTypeId && (!p.schemas.some(s => s.id === parentTypeId && s.kind === kind) || parentTypeId === id)) return p;
   const schema = id ? { ...createSchema(name, kind), id } : createSchema(name, kind);
+  schema.parentTypeId = parentTypeId ?? null;
   return hideNewTypesInGenealogy({ ...p, schemas: [...p.schemas, schema] }, [schema.id]);
 }
 
@@ -260,7 +263,7 @@ export function duplicateNode(
           })),
       ]
     : p.relations;
-  return { project: { ...p, nodes, relations }, nodeId: newId };
+  return { project: copyDatabaseNode({ ...p, nodes, relations }, id, newId, withRelations), nodeId: newId };
 }
 
 /** Duplica un tipo con sus atributos propios (nuevos ids) y sus vínculos a preformas; sin nodos. */
@@ -449,7 +452,7 @@ function removeNodes(p: Project, removed: Set<string>): Project {
       const values = withoutReferences(r.values, removed);
       return values === r.values ? r : { ...r, values };
     });
-  return withoutNodesInFolders({ ...p, nodes, relations }, removed);
+  return reconcileDatabaseNodes(withoutNodesInFolders({ ...p, nodes, relations }, removed));
 }
 
 function withoutReferences(values: Record<string, FieldValue>, removed: Set<string>) {

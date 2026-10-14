@@ -30,20 +30,37 @@ export interface IconEntry {
   label: string;
   family?: 'Phosphor';
   keywords?: string;
+  /** Equivalente ya ofrecido en otro paquete; se agrupan en el selector, sin alterar ids guardados. */
+  equivalentTo?: string;
 }
 
 /** Importaciones por archivo para cargar solo los iconos ofrecidos. Los ids son estables y no reemplazan Lucide. */
 export const GENERAL_ICONS: Record<string, IconEntry> = {
   'phosphor-phone': { icon: PhoneIcon, label: 'Teléfono', keywords: 'contacto llamada phone' },
   'phosphor-mobile': { icon: DeviceMobileIcon, label: 'Móvil', keywords: 'teléfono celular smartphone contacto' },
-  'phosphor-mail': { icon: EnvelopeIcon, label: 'Correo electrónico', keywords: 'email contacto mensaje' },
+  'phosphor-mail': {
+    icon: EnvelopeIcon,
+    label: 'Correo electrónico',
+    keywords: 'email contacto mensaje',
+    equivalentTo: 'mail',
+  },
   'phosphor-contacts': { icon: AddressBookIcon, label: 'Agenda de contactos', keywords: 'persona dirección' },
   'phosphor-briefcase': { icon: BriefcaseIcon, label: 'Trabajo', keywords: 'oficina comercial negocio empresa' },
-  'phosphor-store': { icon: StorefrontIcon, label: 'Comercio', keywords: 'tienda venta producto servicio' },
+  'phosphor-store': {
+    icon: StorefrontIcon,
+    label: 'Comercio',
+    keywords: 'tienda venta producto servicio',
+    equivalentTo: 'store',
+  },
   'phosphor-receipt': { icon: ReceiptIcon, label: 'Recibo', keywords: 'pago compra gasto' },
   'phosphor-cart': { icon: ShoppingCartIcon, label: 'Carrito de compra', keywords: 'comercial pedido producto' },
   'phosphor-invoice': { icon: InvoiceIcon, label: 'Factura', keywords: 'pago comercial venta' },
-  'phosphor-package': { icon: PackageIcon, label: 'Paquete', keywords: 'envío producto entrega' },
+  'phosphor-package': {
+    icon: PackageIcon,
+    label: 'Paquete',
+    keywords: 'envío producto entrega',
+    equivalentTo: 'package',
+  },
   'phosphor-code': { icon: CodeIcon, label: 'Código', keywords: 'programa desarrollo función software' },
   'phosphor-database': { icon: DatabaseIcon, label: 'Base de datos', keywords: 'programa servidor almacenamiento' },
   'phosphor-desktop': { icon: DesktopIcon, label: 'Ordenador', keywords: 'computadora oficina informática' },
@@ -51,15 +68,35 @@ export const GENERAL_ICONS: Record<string, IconEntry> = {
   'phosphor-document': { icon: FileTextIcon, label: 'Documento', keywords: 'archivo informe texto' },
   'phosphor-task': { icon: ClipboardTextIcon, label: 'Tarea', keywords: 'actividad requisito pendiente' },
   'phosphor-calendar': { icon: CalendarCheckIcon, label: 'Cita', keywords: 'evento calendario agenda fecha' },
-  'phosphor-ticket': { icon: TicketIcon, label: 'Entrada de evento', keywords: 'asistencia reserva' },
+  'phosphor-ticket': {
+    icon: TicketIcon,
+    label: 'Entrada de evento',
+    keywords: 'asistencia reserva',
+    equivalentTo: 'ticket',
+  },
   'phosphor-microphone': {
     icon: MicrophoneStageIcon,
     label: 'Presentación',
     keywords: 'evento charla conferencia micrófono',
   },
-  'phosphor-airplane': { icon: AirplaneIcon, label: 'Avión', keywords: 'viaje transporte' },
+  'phosphor-airplane': { icon: AirplaneIcon, label: 'Avión', keywords: 'viaje transporte', equivalentTo: 'plane' },
   'phosphor-bus': { icon: BusIcon, label: 'Autobús', keywords: 'viaje transporte' },
-  'phosphor-health': { icon: StethoscopeIcon, label: 'Atención médica', keywords: 'salud persona médico' },
-  'phosphor-scissors': { icon: ScissorsIcon, label: 'Tijeras', keywords: 'herramienta taller' },
-  'phosphor-wrench': { icon: WrenchIcon, label: 'Mantenimiento', keywords: 'herramienta reparación servicio' },
+  'phosphor-health': {
+    icon: StethoscopeIcon,
+    label: 'Atención médica',
+    keywords: 'salud persona médico',
+    equivalentTo: 'stethoscope',
+  },
+  'phosphor-scissors': {
+    icon: ScissorsIcon,
+    label: 'Tijeras',
+    keywords: 'herramienta taller',
+    equivalentTo: 'scissors',
+  },
+  'phosphor-wrench': {
+    icon: WrenchIcon,
+    label: 'Mantenimiento',
+    keywords: 'herramienta reparación servicio',
+    equivalentTo: 'wrench',
+  },
 };

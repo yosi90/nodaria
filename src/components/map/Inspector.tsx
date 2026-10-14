@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy, LocateFixed, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Database, LocateFixed, Pin, PinOff, Plus, Trash2, X } from 'lucide-react';
 import { viewAfterIsolation, viewForIsolation } from '../../domain/layoutFilters';
 import { uid } from '../../domain/factories';
 import { Menu } from '../common/Menu';
@@ -32,6 +32,8 @@ import { FieldControl } from './FieldControl';
 import { imageClasses, nodePortrait } from '../../domain/portrait';
 import { RelationsSection } from './RelationsSection';
 import { KinshipFields } from './KinshipFields';
+import { canvasPinnedPosition } from '../../domain/databaseNodes';
+import { useDialogs } from '../common/dialogs';
 
 type Tab = 'fields' | 'connections' | 'notes';
 
@@ -56,7 +58,9 @@ export function Inspector({
   onDelete,
 }: InspectorProps) {
   const { project, dispatch } = useApp();
-  const { select, back, forward, canBack, canForward, isolated, isolate, clearIsolation } = useNavigation();
+  const { confirm } = useDialogs();
+  const { select, back, forward, canBack, canForward, isolated, isolate, clearIsolation, openDatabaseNode } =
+    useNavigation();
   const [duplicateAnchor, setDuplicateAnchor] = useState<Anchor | null>(null);
   const duplicate = (withRelations: boolean) => {
     if (selection?.kind !== 'node') return;
@@ -192,7 +196,7 @@ export function Inspector({
                   <div className="field">
                     Posición en el lienzo
                     <div className="check-row">
-                      {node.positions[project.view.layout] ? (
+                      {canvasPinnedPosition(project, node) ? (
                         <>
                           <span className="badge">
                             <Pin size={10} aria-hidden /> Fijada en esta disposición
@@ -201,7 +205,7 @@ export function Inspector({
                             size="sm"
                             variant="ghost"
                             icon={PinOff}
-                            onClick={() => dispatch({ type: 'move-nodes', positions: { [node.id]: null } })}
+                            onClick={() => dispatch({ type: 'move-canvas-nodes', positions: { [node.id]: null } })}
                           >
                             Volver a automática
                           </Button>
@@ -210,6 +214,43 @@ export function Inspector({
                         <span className="field-hint">Automática. Arrástralo en el lienzo para fijarla.</span>
                       )}
                     </div>
+                  </div>
+                  <div className="field">
+                    Base de datos
+                    <Button icon={Database} onClick={() => openDatabaseNode(node.id)}>
+                      {project.databaseDesign?.tables.some(t => t.id === node.id)
+                        ? 'Editar tabla SQL'
+                        : 'Configurar como tabla SQL'}
+                    </Button>
+                    {project.databaseDesign?.tables.some(t => t.id === node.id) && (
+                      <>
+                        <Button onClick={() => openDatabaseNode(node.id, true)}>Nueva clave foránea SQL</Button>
+                        {project.databaseDesign.foreignKeys
+                          .filter(fk => fk.sourceTableId === node.id)
+                          .map(fk => (
+                            <Button key={fk.id} onClick={() => openDatabaseNode(node.id, true, fk.id)}>
+                              Editar {fk.name}
+                            </Button>
+                          ))}
+                        <Button
+                          variant="ghost"
+                          onClick={async () => {
+                            if (
+                              await confirm({
+                                title: 'Quitar configuración SQL',
+                                message:
+                                  'Se retirarán las columnas y las claves foráneas relacionadas. El nodo conserva sus propiedades y conexiones generales.',
+                                confirmLabel: 'Quitar configuración SQL',
+                                danger: true,
+                              })
+                            )
+                              dispatch({ type: 'database-edit', edit: { kind: 'delete-table', id: node.id } });
+                          }}
+                        >
+                          Dejar de ser tabla SQL
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </section>

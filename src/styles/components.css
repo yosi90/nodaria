@@ -707,3 +707,20 @@ img.shape-rounded.node-portrait {
 img.no-border {
   border: 0 !important;
 }
+
+.type-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.type-select .names {
+  min-width: 0;
+}

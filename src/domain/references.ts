@@ -1,4 +1,5 @@
 import { declaredFields } from './library';
+import { createField } from './factories';
 import { allFields, nodeLabel } from './selectors';
 import type { FieldDefinition, Node, Project, Schema } from './types';
 
@@ -36,6 +37,17 @@ export function referenceFields(p: Project): ReferenceField[] {
         }),
     );
   const labels = new Map<string, number>();
+  // Las FK conectan los mismos nodos que el resto del proyecto; son vínculos derivados, no relaciones duplicadas.
+  for (const fk of p.databaseDesign?.foreignKeys ?? []) {
+    const node = p.nodes.find(n => n.id === fk.sourceTableId);
+    const owner = p.schemas.find(s => s.id === node?.typeId);
+    if (!owner || !p.nodes.some(n => n.id === fk.targetTableId)) continue;
+    result.push({
+      field: { ...createField(), id: `sql-fk:${fk.id}`, label: fk.name, type: 'nodeRef' },
+      owner,
+      name: fk.name,
+    });
+  }
   result.forEach(r => labels.set(r.field.label, (labels.get(r.field.label) ?? 0) + 1));
   return result.map(r =>
     (labels.get(r.field.label) ?? 0) > 1 ? { ...r, name: `${r.field.label} (${r.owner.name})` } : r,
@@ -65,6 +77,10 @@ export function referenceLinks(p: Project): ReferenceLink[] {
       ),
     );
   });
+  const nodeIds = new Set(p.nodes.map(n => n.id));
+  for (const fk of p.databaseDesign?.foreignKeys ?? [])
+    if (nodeIds.has(fk.sourceTableId) && nodeIds.has(fk.targetTableId))
+      result.push({ fieldId: `sql-fk:${fk.id}`, sourceId: fk.sourceTableId, targetId: fk.targetTableId });
   return result;
 }
 

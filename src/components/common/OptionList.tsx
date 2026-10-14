@@ -48,8 +48,12 @@ export function OptionList({
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (showSearch) searchRef.current?.focus();
-    else listRef.current?.focus();
+    // El popover empieza oculto mientras se mide; enfocar antes deja el foco en su disparador.
+    const frame = requestAnimationFrame(() => {
+      if (showSearch) searchRef.current?.focus();
+      else listRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
   }, [showSearch]);
 
   useEffect(() => {

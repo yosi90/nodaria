@@ -127,6 +127,6 @@ describe('importación y exportación', () => {
       ],
     } as never);
     expect(p.nodes[0].positions).toEqual({ force: { x: 3, y: 4 } });
-    expect(p.formatVersion).toBe(4);
+    expect(p.formatVersion).toBe(PROJECT_FORMAT_VERSION);
   });
 });

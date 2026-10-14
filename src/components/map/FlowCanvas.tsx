@@ -29,6 +29,7 @@ import {
   Sparkles,
   Tag,
   LocateFixed,
+  Database,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
@@ -73,6 +74,10 @@ import { COLORS } from '../../domain/constants';
 import { LensMenu } from './LensMenu';
 import { imageClasses, nodePortrait } from '../../domain/portrait';
 import { NodeCard, type CardNode } from './NodeCard';
+import { forceFrameAfterMove, forceFrameKey } from './forceFrame';
+import { activeTableIds, canvasPinnedPosition } from '../../domain/databaseNodes';
+import { databaseMapPositions } from './databaseLayout';
+import { openSchemaDefinition } from '../layout/schemaNavigation';
 
 const nodeTypes = { card: NodeCard };
 const fitViewOptions = { padding: 0.2, maxZoom: 1 };
@@ -172,7 +177,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   );
   const selectedNodeId = selection?.kind === 'node' ? selection.id : null;
   // Nodo aislado: el foco se fija en él (no sigue a la selección) y solo se ven sus vecinos.
-  const { isolated, clearIsolation, getMapViewport, rememberMapViewport } = useNavigation();
+  const { isolated, clearIsolation, getMapViewport, rememberMapViewport, setView: navigate } = useNavigation();
   const [savedViewport] = useState(() => getMapViewport(project.id));
   const isolatedNode = isolated ? getNode(project, isolated.nodeId) : undefined;
   const focusId = isolatedNode ? isolatedNode.id : view.focusDepth > 0 ? selectedNodeId : null;
@@ -180,6 +185,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   const structure = resolveStructure(project, view.structureId);
   const frameKey = JSON.stringify([
     view.layout,
+    view.databaseSchema,
     structure.id,
     view.focusDepth,
     view.hiddenEntityTypeIds,
@@ -259,10 +265,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     // Cambiar el tipo o el parentesco de una relación altera la estructura sin cambiar sus extremos.
     structureLinks(layoutProject, structure.id),
   ]);
-  const layoutKey = JSON.stringify([
-    layoutShapeKey,
-    view.layout === 'force' || view.layout === 'image' ? [...fixed] : null,
-  ]);
+  const layoutKey =
+    view.layout === 'force'
+      ? forceFrameKey(layoutShapeKey, fixed)
+      : JSON.stringify([layoutShapeKey, view.layout === 'image' ? [...fixed] : null]);
   const autoPositions = useMemo(
     () =>
       (view.layout === 'force' ? forceFrames.get(layoutKey) : undefined) ??
@@ -282,6 +288,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       return next;
     });
   }, []);
+  const sqlIds = useMemo(() => activeTableIds(project), [project]);
+  const mapPositions = useMemo(
+    () => databaseMapPositions(project, autoPositions, visibleIds, maxCardHeight),
+    [project, autoPositions, visibleIds, maxCardHeight],
+  );
 
   // Al navegar a un elemento (árbol, conexiones, buscador) se centra en el lienzo.
   useEffect(() => {
@@ -368,7 +379,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           ...pins,
           { id: Date.now() + Math.random(), x: origin.x - rect.left - 15, y: origin.y - rect.top - 19 },
         ]);
-      dispatch({ type: 'move-nodes', positions: { [id]: null } });
+      dispatch({ type: 'move-canvas-nodes', positions: { [id]: null } });
     },
     [dispatch],
   );
@@ -383,7 +394,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     // de ~36 px (en coordenadas del lienzo, 36 / zoom). Al alejar, el radio crece y solo puede agrupar más.
     const radius = 36 / zoomBucket;
     const placed = project.nodes
-      .filter(n => n.positions.image && visibleIds.has(n.id))
+      .filter(n => n.positions.image && visibleIds.has(n.id) && !sqlIds.has(n.id))
       .map(n => ({ n, x: n.positions.image!.x + MARKER / 2, y: n.positions.image!.y + MARKER / 2 }))
       .sort((p, q) => p.x - q.x || p.y - q.y || p.n.id.localeCompare(q.n.id));
     const groups: { x: number; y: number; items: typeof placed }[] = [];
@@ -416,7 +427,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           color: getSchema(project, i.n.typeId)?.color ?? '#888',
         })),
       }));
-  }, [view.layout, zoomBucket, project, visibleIds]);
+  }, [view.layout, zoomBucket, project, visibleIds, sqlIds]);
   const clustered = useMemo(() => new Set(clusters.flatMap(c => c.members.map(m => m.id))), [clusters]);
 
   // Sobre la imagen del mapa los nodos colocados son marcadores; el que está bajo el ratón se expande.
@@ -440,7 +451,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   const nodes = useMemo<CardNode[]>(() => {
     const degree = new Map<string, number>();
     const compactIds = new Set(
-      view.layout === 'image' ? project.nodes.filter(n => n.positions.image).map(n => n.id) : [],
+      view.layout === 'image' ? project.nodes.filter(n => n.positions.image && !sqlIds.has(n.id)).map(n => n.id) : [],
     );
     // Caja de la tarjeta expandida (centrada en el marcador), para apartar a los marcadores que tape.
     const hovered = hoverOnMap && compactIds.has(hoverOnMap) ? project.nodes.find(n => n.id === hoverOnMap) : undefined;
@@ -476,12 +487,16 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       degree.set(r.targetId, (degree.get(r.targetId) ?? 0) + 1);
     });
     return project.nodes
-      .filter(n => visibleIds.has(n.id) && (view.layout !== 'image' || n.positions.image))
+      .filter(n => visibleIds.has(n.id) && (view.layout !== 'image' || n.positions.image || sqlIds.has(n.id)))
       .map(n => {
         const schema = getSchema(project, n.typeId);
         const content = cardContent(project, n);
         const portrait = nodePortrait(project, n);
-        const position = overrides[n.id] ?? n.positions[view.layout] ?? autoPositions.get(n.id) ?? { x: 0, y: 0 };
+        const position = overrides[n.id] ??
+          (sqlIds.has(n.id) ? mapPositions.get(n.id) : (n.positions[view.layout] ?? autoPositions.get(n.id))) ?? {
+            x: 0,
+            y: 0,
+          };
         const compact = compactIds.has(n.id);
         const expanded = compact && n.id === hoverOnMap;
         const fullHeight = cardHeight(content.lines.length);
@@ -505,7 +520,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             degree: degree.get(n.id) ?? 0,
             incomplete: isIncomplete(project, n),
             scale: scaleOf(n.id),
-            pinned: Boolean(n.positions[view.layout]),
+            pinned: Boolean(canvasPinnedPosition(project, n)),
             onUnpin: (origin: { x: number; y: number }) => unpin(n.id, origin),
             image: portrait?.src ?? null,
             imageClass: portrait ? imageClasses(portrait) : undefined,
@@ -520,6 +535,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     visibleIds,
     overrides,
     autoPositions,
+    mapPositions,
+    sqlIds,
     selectedNodeId,
     unpin,
     hoverOnMap,
@@ -731,7 +748,21 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     });
   }, [hoveredId, links, edges, path]);
 
-  const onNodeClick = useCallback((_: unknown, n: { id: string }) => onSelect({ kind: 'node', id: n.id }), [onSelect]);
+  const clickTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (clickTimer.current !== null) window.clearTimeout(clickTimer.current);
+    },
+    [],
+  );
+  const onNodeClick = useCallback(
+    (_: unknown, n: { id: string }) => {
+      if (clickTimer.current !== null) window.clearTimeout(clickTimer.current);
+      // Abrir el inspector en el primer clic puede desplazar la tarjeta antes del segundo.
+      clickTimer.current = window.setTimeout(() => onSelect({ kind: 'node', id: n.id }), 220);
+    },
+    [onSelect],
+  );
   const onEdgeClick = useCallback(
     (_: unknown, e: Edge) => e.data?.kind === 'relation' && onSelect({ kind: 'relation', id: e.id }),
     [onSelect],
@@ -753,25 +784,35 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     (_, __, dragged) => {
       const positions: Record<string, Position> = {};
       dragged.forEach(n => (positions[n.id] = n.position));
-      if (view.layout === 'force') {
-        const nextFixed = project.nodes.flatMap(n => {
-          const position = positions[n.id] ?? fixed.get(n.id);
-          return position ? [[n.id, position] as const] : [];
-        });
-        rememberForceFrame(
-          JSON.stringify([layoutShapeKey, nextFixed]),
-          new Map(flow.getNodes().map(n => [n.id, { ...n.position }])),
+      if (view.layout === 'force' && dragged.some(n => !sqlIds.has(n.id))) {
+        const frame = forceFrameAfterMove(
+          layoutShapeKey,
+          project,
+          Object.fromEntries(Object.entries(positions).filter(([id]) => !sqlIds.has(id))),
+          new Map(
+            flow
+              .getNodes()
+              .map(n => [n.id, sqlIds.has(n.id) ? (autoPositions.get(n.id) ?? n.position) : { ...n.position }]),
+          ),
         );
+        rememberForceFrame(frame.key, frame.positions);
       }
-      dispatch({ type: 'move-nodes', positions });
+      dispatch({ type: 'move-canvas-nodes', positions });
       setOverrides({});
     },
-    [dispatch, view.layout, project.nodes, fixed, flow, layoutShapeKey, rememberForceFrame],
+    [dispatch, view.layout, project, flow, layoutShapeKey, rememberForceFrame, sqlIds, autoPositions],
   );
   const onNodeDragStart: OnNodeDrag<CardNode> = useCallback(() => {
     if (view.layout === 'force')
-      rememberForceFrame(layoutKey, new Map(flow.getNodes().map(n => [n.id, { ...n.position }])));
-  }, [view.layout, layoutKey, flow, rememberForceFrame]);
+      rememberForceFrame(
+        layoutKey,
+        new Map(
+          flow
+            .getNodes()
+            .map(n => [n.id, sqlIds.has(n.id) ? (autoPositions.get(n.id) ?? n.position) : { ...n.position }]),
+        ),
+      );
+  }, [view.layout, layoutKey, flow, rememberForceFrame, sqlIds, autoPositions]);
 
   // Un nodo puede moverse bajo un puntero inmóvil al liberar una chincheta, sin emitir mouseleave.
   useEffect(() => {
@@ -804,7 +845,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     const positions: Record<string, null> = {};
     project.nodes.forEach(n => (positions[n.id] = null));
     toast({ message: 'Posiciones de esta disposición restablecidas a la automática', undoable: true });
-    dispatch({ type: 'move-nodes', positions });
+    dispatch({ type: 'move-canvas-nodes', positions });
     window.setTimeout(() => flow.fitView({ padding: 0.2, duration: 300 }), 50);
   };
 
@@ -843,7 +884,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     setPreference('layouts', { ...preferences.layouts, [project.id]: { ...mine, [view.layout]: { legendOpen } } });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona a la leyenda
   }, [view.layout, legendOpen]);
-  const pinnedCount = project.nodes.filter(n => n.positions[view.layout]).length;
+  const pinnedCount = project.nodes.filter(n => canvasPinnedPosition(project, n)).length;
   const selectedNode = selectedNodeId ? getNode(project, selectedNodeId) : undefined;
 
   if (!project.nodes.length)
@@ -1017,6 +1058,18 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             active={view.sizeByCentrality}
             onClick={() => setView({ sizeByCentrality: !view.sizeByCentrality })}
           />
+          <label
+            className="database-layout-check"
+            title="Colocar solo las tablas SQL; los demás nodos siguen la disposición activa"
+          >
+            <input
+              type="checkbox"
+              aria-label="Esquema BD"
+              checked={view.databaseSchema}
+              onChange={event => setView({ databaseSchema: event.target.checked })}
+            />
+            <Database size={15} aria-hidden /> Esquema BD
+          </label>
           <IconButton
             icon={Route}
             label="Camino entre dos nodos"
@@ -1051,6 +1104,12 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onNodeClick={onNodeClick}
+          onNodeDoubleClick={(_, n) => {
+            if (clickTimer.current !== null) window.clearTimeout(clickTimer.current);
+            const node = getNode(project, n.id);
+            const type = node && getSchema(project, node.typeId);
+            if (type) openSchemaDefinition(type.id, type.kind, navigate);
+          }}
           onEdgeClick={onEdgeClick}
           onPaneClick={onPaneClick}
           onNodeMouseEnter={onNodeMouseEnter}
@@ -1163,7 +1222,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         {view.layout === 'image' && (
           <MapTray
             project={project}
-            nodes={project.nodes.filter(n => visibleIds.has(n.id) && !n.positions.image)}
+            nodes={project.nodes.filter(n => visibleIds.has(n.id) && !n.positions.image && !sqlIds.has(n.id))}
             selectedId={selectedNodeId}
             onSelect={id => onSelect({ kind: 'node', id })}
           />
