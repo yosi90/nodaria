@@ -1,5 +1,4 @@
 import { createField, createSchema, now, uid } from './factories';
-import { copyDatabaseNode, reconcileDatabaseNodes } from './databaseNodes';
 import {
   allFields,
   canChangeSchemaKind,
@@ -263,7 +262,7 @@ export function duplicateNode(
           })),
       ]
     : p.relations;
-  return { project: copyDatabaseNode({ ...p, nodes, relations }, id, newId, withRelations), nodeId: newId };
+  return { project: { ...p, nodes, relations }, nodeId: newId };
 }
 
 /** Duplica un tipo con sus atributos propios (nuevos ids) y sus vínculos a preformas; sin nodos. */
@@ -452,7 +451,7 @@ function removeNodes(p: Project, removed: Set<string>): Project {
       const values = withoutReferences(r.values, removed);
       return values === r.values ? r : { ...r, values };
     });
-  return reconcileDatabaseNodes(withoutNodesInFolders({ ...p, nodes, relations }, removed));
+  return withoutNodesInFolders({ ...p, nodes, relations }, removed);
 }
 
 function withoutReferences(values: Record<string, FieldValue>, removed: Set<string>) {

@@ -61,6 +61,7 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     maxPerSource: null,
     maxPerTarget: null,
     yieldFieldIds: [],
+    table: false,
   };
 }
 export function createField(): FieldDefinition {
@@ -87,11 +88,11 @@ export function createField(): FieldDefinition {
     visibleWhen: null,
     referenceWithin: null,
     maxItemsBy: null,
+    sql: null,
   };
 }
 export function createView(): ProjectView {
   return {
-    databaseSchema: false,
     structureId: null,
     layout: 'tree',
     hiddenRelationTypeIds: [],

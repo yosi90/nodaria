@@ -3,6 +3,8 @@ import { hierarchy, tree, type HierarchyNode } from 'd3-hierarchy';
 import { kinshipGraph, kinshipStructureLink } from '../../domain/kinship';
 import { structureChildren, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Node, Position, Project } from '../../domain/types';
+import { foreignKeyLinks, isTableType, tableColumns } from '../../domain/database';
+import { TABLE_W, tableHeight } from './tableCard';
 
 /*
  * Disposiciones automáticas del lienzo. Devuelven la esquina superior izquierda de cada nodo.
@@ -627,8 +629,127 @@ export function autoLayout(
 ) {
   // En «Mapa» solo se dibujan los nodos colocados a mano; los demás esperan en la bandeja lateral.
   if (mode === 'image') return new Map<string, Position>();
+  if (mode === 'database') return databaseLayout(p, structureId, links, h);
   if (mode === 'force') return forceLayout(p, links, structureId, fixed, h);
   if (mode === 'genealogy') return genealogyLayout(p, structureId, h);
   if (mode === 'radial' && focusId) return radialLayout(p, focusId, links, h);
   return treeLayout(p, structureId, false, h, links, options.looseNearLinks ?? true);
+}
+
+const TABLE_COL_GAP = 140;
+const TABLE_ROW_GAP = 48;
+
+/**
+ * Disposición «Base de datos»: las tablas en columnas según sus claves foráneas, como un diagrama de
+ * SQL Server. Una tabla que no referencia a ninguna va a la izquierda y cada tabla queda una columna
+ * más a la derecha que la más lejana a la que apunta, así que las tablas intermedias acaban entre las
+ * que unen. Dentro de cada columna se ordenan por la altura media de las tablas con las que se unen.
+ * Las tablas sueltas van en columnas aparte y los nodos que no son tablas, debajo, en jerárquica.
+ */
+export function databaseLayout(
+  p: Project,
+  structureId: string | null,
+  links: Link[],
+  h = NODE_H,
+): Map<string, Position> {
+  const result = new Map<string, Position>();
+  const tables = p.nodes.filter(n => isTableType(p, n.typeId));
+  const ids = new Set(tables.map(n => n.id));
+  const heights = new Map<string, number>();
+  const columnCount = new Map<string, number>();
+  tables.forEach(n => {
+    if (!columnCount.has(n.typeId)) columnCount.set(n.typeId, tableColumns(p, n.typeId).length);
+    heights.set(n.id, tableHeight(columnCount.get(n.typeId)!));
+  });
+  const keys = foreignKeyLinks(p).filter(l => ids.has(l.sourceId) && ids.has(l.targetId) && l.sourceId !== l.targetId);
+  const linked = new Set(keys.flatMap(l => [l.sourceId, l.targetId]));
+
+  // Columna: una más que la más lejana de las referenciadas. Con ciclos el bucle se corta igualmente.
+  const rank = new Map(tables.map(n => [n.id, 0]));
+  for (let pass = 0; pass < tables.length; pass++) {
+    let changed = false;
+    keys.forEach(l => {
+      const next = rank.get(l.targetId)! + 1;
+      if (next > rank.get(l.sourceId)! && next < tables.length) {
+        rank.set(l.sourceId, next);
+        changed = true;
+      }
+    });
+    if (!changed) break;
+  }
+  const neighbors = new Map<string, string[]>();
+  keys.forEach(l => {
+    neighbors.set(l.sourceId, [...(neighbors.get(l.sourceId) ?? []), l.targetId]);
+    neighbors.set(l.targetId, [...(neighbors.get(l.targetId) ?? []), l.sourceId]);
+  });
+  const columns: string[][] = [];
+  tables.filter(n => linked.has(n.id)).forEach(n => (columns[rank.get(n.id)!] ??= []).push(n.id));
+  const dense = columns.filter(Boolean);
+  // Barridos de ida y vuelta: cada tabla busca la altura media de sus vecinas ya colocadas.
+  const order = new Map<string, number>();
+  const place = () => dense.forEach(col => col.forEach((id, i) => order.set(id, i / Math.max(1, col.length - 1))));
+  place();
+  for (let sweep = 0; sweep < 4; sweep++) {
+    const sequence = sweep % 2 ? [...dense].reverse() : dense;
+    sequence.forEach(col => {
+      const key = (id: string) => {
+        const near = (neighbors.get(id) ?? []).filter(n => order.has(n));
+        return near.length ? near.reduce((sum, n) => sum + order.get(n)!, 0) / near.length : order.get(id)!;
+      };
+      const keyed = new Map(col.map(id => [id, key(id)]));
+      col.sort((a, b) => keyed.get(a)! - keyed.get(b)!);
+      col.forEach((id, i) => order.set(id, i / Math.max(1, col.length - 1)));
+    });
+  }
+  // Una columna demasiado alta se parte en subcolumnas contiguas, para que el diagrama se acerque a la
+  // proporción de una pantalla (unas 1,6 veces más ancho que alto) en lugar de una tira estrecha.
+  const span = (col: string[]) => col.reduce((sum, id) => sum + heights.get(id)! + TABLE_ROW_GAP, 0);
+  const area = tables.reduce((sum, n) => sum + (TABLE_W + TABLE_COL_GAP) * (heights.get(n.id)! + TABLE_ROW_GAP), 0);
+  const limit = Math.max(...tables.map(n => heights.get(n.id)! + TABLE_ROW_GAP), Math.sqrt(area / 1.6));
+  const split = (col: string[]) => {
+    const parts: string[][] = [[]];
+    col.forEach(id => {
+      const last = parts[parts.length - 1];
+      if (last.length && span(last) + heights.get(id)! + TABLE_ROW_GAP > limit) parts.push([id]);
+      else last.push(id);
+    });
+    return parts;
+  };
+  const loose = tables.filter(n => !linked.has(n.id)).map(n => n.id);
+  const groups = [...dense.map(split), ...(loose.length ? [split(loose)] : [])];
+  const tallest = Math.max(0, ...groups.flat().map(span));
+  let x = 0;
+  groups.forEach(parts => {
+    parts.forEach(col => {
+      let y = (tallest - span(col)) / 2;
+      col.forEach(id => {
+        result.set(id, { x, y });
+        y += heights.get(id)! + TABLE_ROW_GAP;
+      });
+      x += TABLE_W + TABLE_COL_GAP / 2;
+    });
+    x += TABLE_COL_GAP / 2;
+  });
+
+  // Lo que no es tabla conserva su jerarquía debajo del diagrama.
+  const others = p.nodes.filter(n => !ids.has(n.id));
+  if (others.length) {
+    const otherIds = new Set(others.map(n => n.id));
+    const sub = {
+      ...p,
+      nodes: others.map(n => (n.parentId && !otherIds.has(n.parentId) ? { ...n, parentId: null } : n)),
+      relations: p.relations.filter(r => otherIds.has(r.sourceId) && otherIds.has(r.targetId)),
+    };
+    const placed = treeLayout(
+      sub,
+      structureId,
+      false,
+      h,
+      links.filter(l => otherIds.has(l.a) && otherIds.has(l.b)),
+    );
+    const bottom = tables.length ? Math.max(...[...result].map(([id, pos]) => pos.y + heights.get(id)!)) + 160 : 0;
+    const minY = Math.min(...[...placed.values()].map(pos => pos.y));
+    placed.forEach((pos, id) => result.set(id, { x: pos.x, y: pos.y - minY + bottom }));
+  }
+  return result;
 }

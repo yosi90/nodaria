@@ -14,6 +14,8 @@ import { AppearancePicker } from './AppearancePicker';
 import { DeleteSchemaModal } from './DeleteSchemaModal';
 import { KinshipEditor } from './KinshipEditor';
 import { AttributesCard } from './AttributesCard';
+import { SqlColumnsCard } from './SqlColumnsCard';
+import { isTableType, tableOrigin } from '../../domain/database';
 
 export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDuplicated?: (id: string) => void }) {
   const { project, dispatch } = useApp();
@@ -27,6 +29,9 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
       : 'Cualquier tipo.';
   const usage = schemaUsage(project, schema.id);
   const isEntity = schema.kind === 'entity';
+  const isTable = isEntity && isTableType(project, schema.id);
+  const tableFrom = isEntity ? tableOrigin(project, schema.id) : undefined;
+  const inheritsTable = Boolean(tableFrom && tableFrom.id !== schema.id && !schema.table);
 
   return (
     <section className="schema-editor">
@@ -91,6 +96,22 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                     onChange={event => update({ isAbstract: event.target.checked })}
                   />
                   Tipo abstracto <span className="field-hint">(solo sirve de base para otros tipos)</span>
+                </label>
+              )}
+              {isEntity && (
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={isTable}
+                    disabled={inheritsTable}
+                    onChange={event => update({ table: event.target.checked })}
+                  />
+                  Tabla de base de datos{' '}
+                  <span className="field-hint">
+                    {inheritsTable
+                      ? `(heredado de «${tableFrom!.name}»)`
+                      : '(sus atributos son columnas; sus nodos se ven como tablas en la disposición «Base de datos»)'}
+                  </span>
                 </label>
               )}
               <label className="field">
@@ -293,6 +314,11 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
           </div>
         </div>
         <AttributesCard schema={schema} />
+        {isTable && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <SqlColumnsCard schema={schema} />
+          </div>
+        )}
         {schema.kind === 'relationship' && schema.genealogical && (
           <div style={{ gridColumn: '1 / -1' }}>
             <KinshipEditor />

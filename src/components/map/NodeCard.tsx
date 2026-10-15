@@ -1,8 +1,18 @@
 import { Handle, Position, type Node as FlowNode, type NodeProps } from '@xyflow/react';
-import { TriangleAlert } from 'lucide-react';
-import { createElement, memo, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { KeyRound, Link2, TriangleAlert } from 'lucide-react';
+import {
+  createElement,
+  memo,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import { PushpinIcon } from './Pushpin';
 import { typeIcon } from '../common/icon-catalog';
+import type { TableCardColumn } from './tableCard';
 
 export interface NodeCardData extends Record<string, unknown> {
   label: string;
@@ -34,6 +44,8 @@ export interface NodeCardData extends Record<string, unknown> {
   offset?: { x: number; y: number };
   /** Escala visual por centralidad (1 = tamaño normal). */
   scale?: number;
+  /** En la disposición «Base de datos», las columnas de un nodo cuyo tipo es una tabla. */
+  table?: TableCardColumn[];
 }
 
 export type CardNode = FlowNode<NodeCardData, 'card'>;
@@ -64,6 +76,21 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
       if (rect) data.onUnpin?.({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     }, PULL_MS);
   };
+  const pin = data.pinned && !data.compact && (
+    <span
+      ref={pinRef}
+      className={`node-pushpin nodrag nopan ${pulling ? 'pulling' : ''}`}
+      title="Posición fijada en esta disposición. Mantén pulsado para arrancar la chincheta."
+      onPointerDown={startPull}
+      onPointerUp={cancelPull}
+      onPointerLeave={cancelPull}
+      onPointerCancel={cancelPull}
+      onClick={e => e.stopPropagation()}
+    >
+      <PushpinIcon />
+    </span>
+  );
+  if (data.table) return <TableCard data={data} selected={selected} pin={pin} columns={data.table} />;
   const card = (
     <div
       className={`node-card-flow ${selected ? 'selected' : ''} ${data.compact ? 'compact' : ''} ${data.expanded ? 'expanded' : ''}`}
@@ -144,20 +171,7 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
           ))}
         </div>
       )}
-      {data.pinned && !data.compact && (
-        <span
-          ref={pinRef}
-          className={`node-pushpin nodrag nopan ${pulling ? 'pulling' : ''}`}
-          title="Posición fijada en esta disposición. Mantén pulsado para arrancar la chincheta."
-          onPointerDown={startPull}
-          onPointerUp={cancelPull}
-          onPointerLeave={cancelPull}
-          onPointerCancel={cancelPull}
-          onClick={e => e.stopPropagation()}
-        >
-          <PushpinIcon />
-        </span>
-      )}
+      {pin}
       <Handle
         type="source"
         position={Position.Right}
@@ -169,3 +183,64 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Car
   // Sobre el mapa, el marcador mantiene su tamaño en pantalla sea cual sea el zoom (como un pin).
   return data.compact ? <div className="marker-zoom">{card}</div> : card;
 });
+
+/** Un nodo cuyo tipo es una tabla, en la disposición «Base de datos»: nombre y una fila por columna. */
+function TableCard({
+  data,
+  selected,
+  pin,
+  columns,
+}: {
+  data: NodeCardData;
+  selected: boolean;
+  pin: ReactNode;
+  columns: TableCardColumn[];
+}) {
+  return (
+    <div className={`node-table ${selected ? 'selected' : ''}`} style={{ '--type-color': data.color } as CSSProperties}>
+      <Handle type="target" position={Position.Left} className="node-target" isConnectableStart={false} />
+      <div className="node-table-head">
+        <span className="type-icon" aria-hidden>
+          {createElement(typeIcon(data.icon), { size: 14, strokeWidth: 2.2 })}
+        </span>
+        <strong title={data.label}>{data.label}</strong>
+        {data.typeName !== data.label && <small>{data.typeName}</small>}
+        {data.incomplete && (
+          <span className="node-mark warning" title="Faltan atributos obligatorios">
+            <TriangleAlert size={12} />
+          </span>
+        )}
+      </div>
+      <div className="node-table-rows">
+        {columns.length ? (
+          columns.map(c => (
+            <div
+              key={c.id}
+              className={`node-table-row ${c.primaryKey ? 'pk' : ''}`}
+              title={`${c.label}: ${c.type}${c.nullable ? ' NULL' : ' NOT NULL'}${c.unique ? ' UNIQUE' : ''}`}
+            >
+              <span className="col-key" aria-hidden>
+                {c.primaryKey ? <KeyRound size={11} /> : c.foreignKey ? <Link2 size={11} /> : null}
+              </span>
+              <span className="col-name">{c.name}</span>
+              <span className="col-type">
+                {c.type}
+                {c.unique && !c.primaryKey && <em> UQ</em>}
+              </span>
+              <span className="col-null">{c.nullable ? 'NULL' : ''}</span>
+            </div>
+          ))
+        ) : (
+          <div className="node-table-row empty">Sin columnas</div>
+        )}
+      </div>
+      {pin}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="node-source"
+        title="Arrastra para crear una relación"
+      />
+    </div>
+  );
+}

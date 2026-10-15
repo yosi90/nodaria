@@ -6,9 +6,8 @@ import { moveInStructure, type StructureMove } from '../domain/structureMove';
 import { mergeTemplate } from '../domain/templates';
 import { addFolder, deleteFolder, renameFolder, setNodeFolder } from '../domain/folders';
 import type { Calendar } from '../domain/calendar';
-import { applyDatabaseEdit, reconcileDatabaseNodes, type DatabaseEdit } from '../domain/databaseDesign';
-import { moveCanvasNodes } from '../domain/databaseNodes';
 import type { SavedQuery } from '../domain/queries';
+import { applySqlAnnotations, setFieldSql, type SqlColumn } from '../domain/database';
 import type {
   AppState,
   FieldDefinition,
@@ -26,8 +25,6 @@ import type {
 } from '../domain/types';
 
 export type Action =
-  | { type: 'move-canvas-nodes'; positions: Record<string, Position | null> }
-  | { type: 'database-edit'; edit: DatabaseEdit }
   | { type: 'set-project'; id: string }
   | { type: 'add-project'; name: string }
   | { type: 'rename-project'; name: string }
@@ -85,6 +82,10 @@ export type Action =
   | { type: 'delete-nodes'; ids: string[] }
   | { type: 'bulk-update-nodes'; ids: string[]; patch: ops.BulkPatch }
   | { type: 'fill-defaults'; fieldId: string }
+  /** Metadatos SQL de un atributo, allí donde esté definido; `null` vuelve a los deducidos. */
+  | { type: 'set-field-sql'; fieldId: string; sql: SqlColumn | null }
+  /** Usa como tipo SQL las anotaciones escritas como valor inicial en las tablas (de un tipo o de todas). */
+  | { type: 'apply-sql-annotations'; typeId?: string }
   | { type: 'duplicate-node'; id: string; withRelations?: boolean; newId?: string }
   | { type: 'duplicate-schema'; id: string; newId?: string }
   | {
@@ -101,12 +102,7 @@ export type Action =
   | { type: 'delete-relation'; id: string };
 
 const isUntouched = (p: Project) =>
-  !p.schemas.length &&
-  !p.fieldLibrary.length &&
-  !p.nodes.length &&
-  !p.relations.length &&
-  !p.lenses.length &&
-  !p.databaseDesign?.tables.length;
+  !p.schemas.length && !p.fieldLibrary.length && !p.nodes.length && !p.relations.length && !p.lenses.length;
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -159,7 +155,7 @@ export function appReducer(state: AppState, action: Action): AppState {
   }
   const active = state.projects.find(p => p.id === state.activeProjectId);
   if (!active) return state;
-  const next = reconcileDatabaseNodes(projectReducer(active, action));
+  const next = projectReducer(active, action);
   if (next === active) return state;
   const stamped = { ...next, updatedAt: now() };
   return { ...state, projects: state.projects.map(p => (p.id === active.id ? stamped : p)) };
@@ -167,8 +163,6 @@ export function appReducer(state: AppState, action: Action): AppState {
 
 function projectReducer(p: Project, action: Action): Project {
   switch (action.type) {
-    case 'database-edit':
-      return applyDatabaseEdit(p, action.edit);
     case 'rename-project':
       return { ...p, name: action.name };
     case 'merge-template':
@@ -220,8 +214,6 @@ function projectReducer(p: Project, action: Action): Project {
       );
     case 'move-nodes':
       return ops.moveNodes(p, action.positions, action.layout);
-    case 'move-canvas-nodes':
-      return moveCanvasNodes(p, action.positions);
     case 'move-in-structure':
       return moveInStructure(p, action);
     case 'update-notes':
@@ -266,6 +258,10 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.deleteNodes(p, action.ids);
     case 'bulk-update-nodes':
       return ops.bulkUpdateNodes(p, action.ids, action.patch);
+    case 'set-field-sql':
+      return setFieldSql(p, action.fieldId, action.sql);
+    case 'apply-sql-annotations':
+      return applySqlAnnotations(p, action.typeId);
     case 'fill-defaults':
       return ops.fillDefaults(p, action.fieldId);
     case 'add-relation':

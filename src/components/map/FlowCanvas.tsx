@@ -75,8 +75,9 @@ import { LensMenu } from './LensMenu';
 import { imageClasses, nodePortrait } from '../../domain/portrait';
 import { NodeCard, type CardNode } from './NodeCard';
 import { forceFrameAfterMove, forceFrameKey } from './forceFrame';
-import { activeTableIds, canvasPinnedPosition } from '../../domain/databaseNodes';
-import { databaseMapPositions } from './databaseLayout';
+import { foreignKeyLinks, isTableType, tableColumns, tableTypes } from '../../domain/database';
+import { ForeignKeyEdge, type ForeignKeyEdgeType } from './ForeignKeyEdge';
+import { TABLE_W, tableCardColumns, tableHeight } from './tableCard';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
 
 const nodeTypes = { card: NodeCard };
@@ -86,7 +87,7 @@ const proOptions = { hideAttribution: true };
 const AVOID_OBSTACLES_LIMIT = 200;
 /** Lado del marcador compacto sobre la imagen del mapa. */
 const MARKER = 44;
-const edgeTypes = { floating: FloatingEdge };
+const edgeTypes = { floating: FloatingEdge, foreignKey: ForeignKeyEdge };
 
 const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: string }[] = [
   { mode: 'tree', label: 'Jerárquica', icon: LayoutGrid, hint: 'Columnas según la estructura elegida' },
@@ -108,6 +109,12 @@ const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: st
     label: 'Mapa',
     icon: MapIcon,
     hint: 'Tu imagen de fondo (un plano o mapa) con los nodos colocados a mano sobre ella',
+  },
+  {
+    mode: 'database',
+    label: 'Base de datos',
+    icon: Database,
+    hint: 'Los nodos de tipos tabla, con sus columnas y claves foráneas, como un diagrama de SQL Server; los demás, debajo',
   },
 ];
 
@@ -185,7 +192,6 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   const structure = resolveStructure(project, view.structureId);
   const frameKey = JSON.stringify([
     view.layout,
-    view.databaseSchema,
     structure.id,
     view.focusDepth,
     view.hiddenEntityTypeIds,
@@ -288,11 +294,16 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       return next;
     });
   }, []);
-  const sqlIds = useMemo(() => activeTableIds(project), [project]);
-  const mapPositions = useMemo(
-    () => databaseMapPositions(project, autoPositions, visibleIds, maxCardHeight),
-    [project, autoPositions, visibleIds, maxCardHeight],
-  );
+  // Disposición «Base de datos»: los nodos de tipos tabla se dibujan como tablas y sus referencias a
+  // otras tablas como claves foráneas (`src/domain/database.ts`).
+  const hasTables = useMemo(() => tableTypes(project).length > 0, [project]);
+  const databaseMode = view.layout === 'database';
+  const keyLinks = useMemo(() => (databaseMode ? foreignKeyLinks(project) : []), [databaseMode, project]);
+  const keyFields = useMemo(() => {
+    const result = new Map<string, Set<string>>();
+    keyLinks.forEach(l => result.set(l.sourceId, (result.get(l.sourceId) ?? new Set()).add(l.fieldId)));
+    return result;
+  }, [keyLinks]);
 
   // Al navegar a un elemento (árbol, conexiones, buscador) se centra en el lienzo.
   useEffect(() => {
@@ -379,7 +390,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           ...pins,
           { id: Date.now() + Math.random(), x: origin.x - rect.left - 15, y: origin.y - rect.top - 19 },
         ]);
-      dispatch({ type: 'move-canvas-nodes', positions: { [id]: null } });
+      dispatch({ type: 'move-nodes', positions: { [id]: null } });
     },
     [dispatch],
   );
@@ -394,7 +405,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     // de ~36 px (en coordenadas del lienzo, 36 / zoom). Al alejar, el radio crece y solo puede agrupar más.
     const radius = 36 / zoomBucket;
     const placed = project.nodes
-      .filter(n => n.positions.image && visibleIds.has(n.id) && !sqlIds.has(n.id))
+      .filter(n => n.positions.image && visibleIds.has(n.id))
       .map(n => ({ n, x: n.positions.image!.x + MARKER / 2, y: n.positions.image!.y + MARKER / 2 }))
       .sort((p, q) => p.x - q.x || p.y - q.y || p.n.id.localeCompare(q.n.id));
     const groups: { x: number; y: number; items: typeof placed }[] = [];
@@ -427,7 +438,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           color: getSchema(project, i.n.typeId)?.color ?? '#888',
         })),
       }));
-  }, [view.layout, zoomBucket, project, visibleIds, sqlIds]);
+  }, [view.layout, zoomBucket, project, visibleIds]);
   const clustered = useMemo(() => new Set(clusters.flatMap(c => c.members.map(m => m.id))), [clusters]);
 
   // Sobre la imagen del mapa los nodos colocados son marcadores; el que está bajo el ratón se expande.
@@ -451,7 +462,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   const nodes = useMemo<CardNode[]>(() => {
     const degree = new Map<string, number>();
     const compactIds = new Set(
-      view.layout === 'image' ? project.nodes.filter(n => n.positions.image && !sqlIds.has(n.id)).map(n => n.id) : [],
+      view.layout === 'image' ? project.nodes.filter(n => n.positions.image).map(n => n.id) : [],
     );
     // Caja de la tarjeta expandida (centrada en el marcador), para apartar a los marcadores que tape.
     const hovered = hoverOnMap && compactIds.has(hoverOnMap) ? project.nodes.find(n => n.id === hoverOnMap) : undefined;
@@ -487,16 +498,16 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       degree.set(r.targetId, (degree.get(r.targetId) ?? 0) + 1);
     });
     return project.nodes
-      .filter(n => visibleIds.has(n.id) && (view.layout !== 'image' || n.positions.image || sqlIds.has(n.id)))
+      .filter(n => visibleIds.has(n.id) && (view.layout !== 'image' || n.positions.image))
       .map(n => {
         const schema = getSchema(project, n.typeId);
         const content = cardContent(project, n);
         const portrait = nodePortrait(project, n);
-        const position = overrides[n.id] ??
-          (sqlIds.has(n.id) ? mapPositions.get(n.id) : (n.positions[view.layout] ?? autoPositions.get(n.id))) ?? {
-            x: 0,
-            y: 0,
-          };
+        const position = overrides[n.id] ?? n.positions[view.layout] ?? autoPositions.get(n.id) ?? { x: 0, y: 0 };
+        const table =
+          databaseMode && isTableType(project, n.typeId)
+            ? tableCardColumns(project, n, keyFields.get(n.id))
+            : undefined;
         const compact = compactIds.has(n.id);
         const expanded = compact && n.id === hoverOnMap;
         const fullHeight = cardHeight(content.lines.length);
@@ -505,8 +516,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           type: 'card',
           position,
           hidden: clustered.has(n.id) || undefined,
-          width: compact && !expanded ? MARKER : NODE_W,
-          height: compact && !expanded ? MARKER : fullHeight,
+          width: table ? TABLE_W : compact && !expanded ? MARKER : NODE_W,
+          height: table ? tableHeight(table.length) : compact && !expanded ? MARKER : fullHeight,
           selected: selectedNodeId === n.id,
           data: {
             compact,
@@ -520,12 +531,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             degree: degree.get(n.id) ?? 0,
             incomplete: isIncomplete(project, n),
             scale: scaleOf(n.id),
-            pinned: Boolean(canvasPinnedPosition(project, n)),
+            pinned: Boolean(n.positions[view.layout]),
             onUnpin: (origin: { x: number; y: number }) => unpin(n.id, origin),
             image: portrait?.src ?? null,
             imageClass: portrait ? imageClasses(portrait) : undefined,
             badges: content.badges,
             lines: content.lines,
+            table,
           },
         };
       });
@@ -535,8 +547,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     visibleIds,
     overrides,
     autoPositions,
-    mapPositions,
-    sqlIds,
+    databaseMode,
+    keyFields,
     selectedNodeId,
     unpin,
     hoverOnMap,
@@ -545,8 +557,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     communityColor,
   ]);
 
-  const edges = useMemo<FloatingEdgeType[]>(() => {
-    const result: FloatingEdgeType[] = [];
+  const edges = useMemo<(FloatingEdgeType | ForeignKeyEdgeType)[]>(() => {
+    const result: (FloatingEdgeType | ForeignKeyEdgeType)[] = [];
     // Pares con alguna relación visible (o referencia): «Dentro de» sobra entre ellos si así se pide.
     const related = new Set<string>();
     if (view.hierarchyOnlyIfUnrelated) {
@@ -575,8 +587,47 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     const shown = project.relations.filter(
       r => !hiddenRelations.has(r.typeId) && visibleIds.has(r.sourceId) && visibleIds.has(r.targetId) && !asFamily(r),
     );
-    const shownRefs = refLinks.filter(l => visibleIds.has(l.sourceId) && visibleIds.has(l.targetId));
-    const refId = (l: (typeof shownRefs)[number]) => `ref-${l.fieldId}-${l.sourceId}-${l.targetId}`;
+    const refId = (l: { fieldId: string; sourceId: string; targetId: string }) =>
+      `ref-${l.fieldId}-${l.sourceId}-${l.targetId}`;
+    // En «Base de datos», las referencias entre tablas se dibujan de fila a fila, como claves foráneas.
+    const keyIds = new Set(keyLinks.map(refId));
+    const visibleRefs = refLinks.filter(l => visibleIds.has(l.sourceId) && visibleIds.has(l.targetId));
+    const shownRefs = visibleRefs.filter(l => !keyIds.has(refId(l)));
+    const rows = new Map<string, string[]>();
+    const rowOf = (nodeId: string, fieldId: string | null) => {
+      const typeId = getNode(project, nodeId)?.typeId ?? '';
+      if (!rows.has(typeId))
+        rows.set(
+          typeId,
+          tableColumns(project, typeId).map(c => c.field.id),
+        );
+      return fieldId ? rows.get(typeId)!.indexOf(fieldId) : -1;
+    };
+    const lanes = new Map<string, number>();
+    const visibleRefIds = new Set(visibleRefs.map(refId));
+    keyLinks
+      .filter(k => visibleRefIds.has(refId(k)))
+      .forEach(k => {
+        const lane = lanes.get(k.targetId) ?? 0;
+        lanes.set(k.targetId, lane + 1);
+        const color = getSchema(project, getNode(project, k.targetId)?.typeId ?? '')?.color ?? '#888';
+        result.push({
+          id: refId(k),
+          type: 'foreignKey',
+          source: k.sourceId,
+          target: k.targetId,
+          selectable: false,
+          data: {
+            kind: 'foreignKey',
+            label: refFields.get(k.fieldId)?.name ?? 'Clave foránea',
+            color,
+            sourceRow: rowOf(k.sourceId, k.fieldId),
+            targetRow: rowOf(k.targetId, k.targetFieldId),
+            // Alterna a un lado y otro del centro: 0, 1, −1, 2, −2…
+            lane: lane % 2 ? (lane + 1) / 2 : -lane / 2,
+          },
+        });
+      });
     shown.forEach(r => {
       const key = [r.sourceId, r.targetId].sort().join('|');
       pairs.set(key, [...(pairs.get(key) ?? []), r.id]);
@@ -658,6 +709,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     onSelect,
     refLinks,
     refFields,
+    keyLinks,
   ]);
 
   // Conectores de familia (solo en Genealogía): siguen a los nodos mientras se arrastran.
@@ -696,15 +748,18 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   }, [view.layout, project, structure.id, hiddenRelations, nodes]);
 
   // Lado y desplazamiento de cada extremo según las posiciones actuales (también durante el arrastre).
-  const routedEdges = useMemo<FloatingEdgeType[]>(() => {
+  const routedEdges = useMemo(() => {
     const boxes = new Map(
       nodes.map(n => [
         n.id,
         { x: n.position.x, y: n.position.y, width: n.width ?? NODE_W, height: n.height ?? NODE_H },
       ]),
     );
-    const slots = edgeSlots(boxes, edges);
-    return edges.map(e => ({ ...e, data: { ...e.data!, ends: slots.get(e.id) } }));
+    const slots = edgeSlots(
+      boxes,
+      edges.filter(e => e.type === 'floating'),
+    );
+    return edges.map(e => (e.type === 'floating' ? { ...e, data: { ...e.data!, ends: slots.get(e.id) } } : e));
   }, [nodes, edges]);
 
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
@@ -784,35 +839,24 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     (_, __, dragged) => {
       const positions: Record<string, Position> = {};
       dragged.forEach(n => (positions[n.id] = n.position));
-      if (view.layout === 'force' && dragged.some(n => !sqlIds.has(n.id))) {
+      if (view.layout === 'force') {
         const frame = forceFrameAfterMove(
           layoutShapeKey,
           project,
-          Object.fromEntries(Object.entries(positions).filter(([id]) => !sqlIds.has(id))),
-          new Map(
-            flow
-              .getNodes()
-              .map(n => [n.id, sqlIds.has(n.id) ? (autoPositions.get(n.id) ?? n.position) : { ...n.position }]),
-          ),
+          positions,
+          new Map(flow.getNodes().map(n => [n.id, { ...n.position }])),
         );
         rememberForceFrame(frame.key, frame.positions);
       }
-      dispatch({ type: 'move-canvas-nodes', positions });
+      dispatch({ type: 'move-nodes', positions });
       setOverrides({});
     },
-    [dispatch, view.layout, project, flow, layoutShapeKey, rememberForceFrame, sqlIds, autoPositions],
+    [dispatch, view.layout, project, flow, layoutShapeKey, rememberForceFrame],
   );
   const onNodeDragStart: OnNodeDrag<CardNode> = useCallback(() => {
     if (view.layout === 'force')
-      rememberForceFrame(
-        layoutKey,
-        new Map(
-          flow
-            .getNodes()
-            .map(n => [n.id, sqlIds.has(n.id) ? (autoPositions.get(n.id) ?? n.position) : { ...n.position }]),
-        ),
-      );
-  }, [view.layout, layoutKey, flow, rememberForceFrame, sqlIds, autoPositions]);
+      rememberForceFrame(layoutKey, new Map(flow.getNodes().map(n => [n.id, { ...n.position }])));
+  }, [view.layout, layoutKey, flow, rememberForceFrame]);
 
   // Un nodo puede moverse bajo un puntero inmóvil al liberar una chincheta, sin emitir mouseleave.
   useEffect(() => {
@@ -845,7 +889,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     const positions: Record<string, null> = {};
     project.nodes.forEach(n => (positions[n.id] = null));
     toast({ message: 'Posiciones de esta disposición restablecidas a la automática', undoable: true });
-    dispatch({ type: 'move-canvas-nodes', positions });
+    dispatch({ type: 'move-nodes', positions });
     window.setTimeout(() => flow.fitView({ padding: 0.2, duration: 300 }), 50);
   };
 
@@ -884,7 +928,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     setPreference('layouts', { ...preferences.layouts, [project.id]: { ...mine, [view.layout]: { legendOpen } } });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona a la leyenda
   }, [view.layout, legendOpen]);
-  const pinnedCount = project.nodes.filter(n => canvasPinnedPosition(project, n)).length;
+  const pinnedCount = project.nodes.filter(n => n.positions[view.layout]).length;
   const selectedNode = selectedNodeId ? getNode(project, selectedNodeId) : undefined;
 
   if (!project.nodes.length)
@@ -926,12 +970,16 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                 type="button"
                 aria-pressed={view.layout === mode}
                 aria-disabled={
-                  (mode === 'radial' && !selectedNode) || (mode === 'genealogy' && !genealogySchemas.length)
+                  (mode === 'radial' && !selectedNode) ||
+                  (mode === 'genealogy' && !genealogySchemas.length) ||
+                  (mode === 'database' && !hasTables)
                     ? true
                     : undefined
                 }
                 className={
-                  (mode === 'radial' && !selectedNode) || (mode === 'genealogy' && !genealogySchemas.length)
+                  (mode === 'radial' && !selectedNode) ||
+                  (mode === 'genealogy' && !genealogySchemas.length) ||
+                  (mode === 'database' && !hasTables)
                     ? 'looks-disabled'
                     : undefined
                 }
@@ -940,7 +988,9 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                     ? 'Vista radial: coloca un nodo en el centro y el resto en anillos según los saltos de distancia. Selecciona primero un nodo para centrarla en él.'
                     : mode === 'genealogy' && !genealogySchemas.length
                       ? 'Genealogía: generaciones en filas según el parentesco. Define primero un tipo de relación marcado como «Genealógica» en «Relaciones».'
-                      : hint
+                      : mode === 'database' && !hasTables
+                        ? 'Base de datos: dibuja como tablas los nodos de los tipos marcados como «Tabla de base de datos». Marca primero un tipo en «Tipos».'
+                        : hint
                 }
                 data-tooltip-wide
                 onClick={() => {
@@ -950,6 +1000,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                   }
                   if (mode === 'genealogy' && !genealogySchemas.length) {
                     toast({ message: 'Define primero un tipo de relación genealógico en «Relaciones».' });
+                    return;
+                  }
+                  if (mode === 'database' && !hasTables) {
+                    toast({ message: 'Marca primero un tipo como «Tabla de base de datos» en «Tipos».' });
                     return;
                   }
                   switchLayout(mode);
@@ -1058,18 +1112,6 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             active={view.sizeByCentrality}
             onClick={() => setView({ sizeByCentrality: !view.sizeByCentrality })}
           />
-          <label
-            className="database-layout-check"
-            title="Colocar solo las tablas SQL; los demás nodos siguen la disposición activa"
-          >
-            <input
-              type="checkbox"
-              aria-label="Esquema BD"
-              checked={view.databaseSchema}
-              onChange={event => setView({ databaseSchema: event.target.checked })}
-            />
-            <Database size={15} aria-hidden /> Esquema BD
-          </label>
           <IconButton
             icon={Route}
             label="Camino entre dos nodos"
@@ -1222,7 +1264,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         {view.layout === 'image' && (
           <MapTray
             project={project}
-            nodes={project.nodes.filter(n => visibleIds.has(n.id) && !n.positions.image && !sqlIds.has(n.id))}
+            nodes={project.nodes.filter(n => visibleIds.has(n.id) && !n.positions.image)}
             selectedId={selectedNodeId}
             onSelect={id => onSelect({ kind: 'node', id })}
           />

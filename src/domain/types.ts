@@ -18,7 +18,7 @@ import type { Calendar } from './calendar';
 import type { Folder } from './folders';
 import type { ImageShape } from './portrait';
 import type { SavedQuery } from './queries';
-import type { DatabaseDesign } from './databaseDesign';
+import type { SqlColumn } from './database';
 
 export type SchemaKind = 'entity' | 'relationship';
 export type RelationStyle = 'normal' | 'strong' | 'hidden';
@@ -58,6 +58,8 @@ export interface FieldDefinition {
   referenceWithin: string | null;
   /** Referencias múltiples y etiquetas: máximo de elementos según la opción elegida en otra lista. */
   maxItemsBy: { fieldId: string; limits: Record<string, number> } | null;
+  /** Metadatos de columna cuando el tipo es una tabla; `null` = deducidos (ver `src/domain/database.ts`). */
+  sql: SqlColumn | null;
 }
 export type NodeDisplay = 'none' | 'icon' | 'text';
 /** Vínculo a un atributo de la biblioteca compartida del proyecto. */
@@ -98,6 +100,8 @@ export interface Schema {
   maxPerTarget: number | null;
   /** Atributos propios que ceden ante el heredado con la misma clave (ver `src/domain/inheritance.ts`). */
   yieldFieldIds: string[];
+  /** Entidad que es una tabla de base de datos (lo heredan sus subtipos); ver `src/domain/database.ts`. */
+  table: boolean;
 }
 /** Género de un nodo: masculino, femenino, neutro u otro, o sin definir. */
 export type Gender = 'm' | 'f' | 'n' | '';
@@ -173,8 +177,6 @@ export interface Project {
   folders: Folder[];
   /** Calendario del mundo: meses, días de la semana y fecha actual (`src/domain/calendar.ts`). */
   calendar: Calendar;
-  /** Configuración SQL de nodos marcados como tablas; las columnas son definiciones, no valores de ficha. */
-  databaseDesign?: DatabaseDesign;
 }
 /** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
 export interface Lens {
@@ -183,7 +185,7 @@ export interface Lens {
   view: ProjectView;
   positions: Record<string, Position> | null;
 }
-export type LayoutMode = 'tree' | 'genealogy' | 'force' | 'radial' | 'image';
+export type LayoutMode = 'tree' | 'genealogy' | 'force' | 'radial' | 'image' | 'database';
 /** Imagen de fondo de la disposición «Mapa» (data URL reducida) con su tamaño en píxeles del lienzo. */
 export interface MapImage {
   data: string;
@@ -200,8 +202,6 @@ export interface LayoutFilters {
 }
 /** Estado de la vista del mapa. Se guarda con el proyecto pero no entra en el historial de deshacer. */
 export interface ProjectView {
-  /** Coloca solo los nodos tabla según su esquema SQL; el resto sigue la disposición activa. */
-  databaseSchema: boolean;
   /** `null` = jerarquía "Dentro de"; si no, id de un tipo de relación estructural. */
   structureId: string | null;
   layout: LayoutMode;

@@ -4,8 +4,17 @@ import { normalizeCalendar } from '../domain/calendar';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
 import { supportsNonNegative } from '../domain/valueConstraints';
-import { readDatabaseDesign } from '../domain/databaseDesign';
-import type { FieldDefinition, FieldValue, LayoutMode, Node, NodeDisplay, Position, Project } from '../domain/types';
+import { readSqlColumn } from '../domain/database';
+import type {
+  FieldDefinition,
+  FieldValue,
+  LayoutMode,
+  Node,
+  NodeDisplay,
+  Position,
+  Project,
+  ProjectView,
+} from '../domain/types';
 
 /*
  * Historial de formatos:
@@ -13,11 +22,21 @@ import type { FieldDefinition, FieldValue, LayoutMode, Node, NodeDisplay, Positi
  * - v2: migración a React; mismos datos con campos opcionales normalizados (sin `formatVersion`).
  * - v3: los valores de nodos y relaciones se indexan por `FieldDefinition.id` en lugar de por `key`.
  * - v4: posiciones independientes por disposición.
- * - v5: diseño relacional opcional e independiente; los proyectos anteriores no se convierten.
+ * - v5: configuración SQL por nodo (`databaseDesign`), publicada el 2026-10-14.
+ * - v6: las tablas son tipos (`Schema.table`) y sus columnas, los atributos (`FieldDefinition.sql`). El
+ *   bloque `databaseDesign` y la casilla `view.databaseSchema` de v5 se descartan: no se pueden
+ *   traducir a tipos y el único proyecto sincronizado que lo tenía estaba vacío.
  */
 
 type RawNode = Omit<Node, 'positions'> & { positions?: Node['positions']; position?: Position | null };
 type RawProject = Partial<Omit<Project, 'nodes'>> & { formatVersion?: number; nodes?: RawNode[] };
+
+/** Vista sin las claves de formatos anteriores (`databaseSchema`, v5). */
+function viewOf(raw: Partial<ProjectView> | undefined): ProjectView {
+  const view: ProjectView & { databaseSchema?: unknown } = { ...createView(), ...(raw ?? {}) };
+  delete view.databaseSchema;
+  return view;
+}
 
 const steps: Record<number, (project: Project) => Project> = {
   2: valuesByFieldId,
@@ -101,6 +120,7 @@ function normalizeProject(project: RawProject): Project {
               visibleWhen: f.visibleWhen ?? null,
               referenceWithin: f.referenceWithin ?? null,
               maxItemsBy: f.maxItemsBy ?? null,
+              sql: readSqlColumn(f.sql),
             },
       ),
       allowedChildTypeIds: s.allowedChildTypeIds || [],
@@ -116,6 +136,7 @@ function normalizeProject(project: RawProject): Project {
       maxPerSource: typeof s.maxPerSource === 'number' ? s.maxPerSource : null,
       maxPerTarget: typeof s.maxPerTarget === 'number' ? s.maxPerTarget : null,
       yieldFieldIds: s.yieldFieldIds || [],
+      table: s.kind === 'entity' && s.table === true,
     })),
     fieldLibrary: (project.fieldLibrary || []).map(f => ({
       ...f,
@@ -135,6 +156,7 @@ function normalizeProject(project: RawProject): Project {
       visibleWhen: f.visibleWhen ?? null,
       referenceWithin: f.referenceWithin ?? null,
       maxItemsBy: f.maxItemsBy ?? null,
+      sql: readSqlColumn(f.sql),
     })),
     nodes: (project.nodes || []).map(n => ({
       ...n,
@@ -165,7 +187,7 @@ function normalizeProject(project: RawProject): Project {
             scale: Number.isFinite(project.mapImage.scale) && project.mapImage.scale > 0 ? project.mapImage.scale : 1,
           }
         : null,
-    view: { ...createView(), ...(project.view ?? {}) },
+    view: viewOf(project.view),
     queries: Array.isArray(project.queries) ? project.queries : [],
     folders: Array.isArray(project.folders)
       ? project.folders.map(f => ({
@@ -176,11 +198,10 @@ function normalizeProject(project: RawProject): Project {
       : [],
     lenses: (project.lenses || []).map(l => ({
       ...l,
-      view: { ...createView(), ...(l.view ?? {}) },
+      view: viewOf(l.view),
       positions: l.positions ?? null,
     })),
     calendar: normalizeCalendar(project.calendar),
-    ...(project.databaseDesign === undefined ? {} : { databaseDesign: readDatabaseDesign(project.databaseDesign) }),
   };
 }
 
