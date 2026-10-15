@@ -1,6 +1,6 @@
 # Asistencia de IA en Nodaria
 
-Fecha: 2026-10-14. Estado: **solo diseño; bloqueado hasta finalizar la migración de Nodaria al ecosistema Yosiftware**, por instrucción expresa del propietario. No inicia la migración, no crea rutas ni formularios de claves y no llama a proveedores. No sustituye al roadmap principal.
+Fecha: 2026-10-14. Estado: **solo diseño; la migración ya está hecha (2026-10-15), pero la plataforma decidió que la IA irá sobre su «pasarela»**, que llama al proveedor con la clave de la persona sin entregarla nunca, y que no se programe contra `GET /v1/servicio/claves-ia/{idCuenta}`, que se retirará. La pasarela es la última del plan de la plataforma: este roadmap se rehará con su guía cuando la publique. El «Contrato central revisado» de abajo queda obsoleto en lo que toca a obtener la clave. No inicia la migración, no crea rutas ni formularios de claves y no llama a proveedores. No sustituye al roadmap principal.
 
 ## Objetivo
 

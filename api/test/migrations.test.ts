@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readMigrations, runMigrations, splitBatches } from '../src/db/migrations.ts';
 import { sql, type Database } from '../src/db/pool.ts';
 import { createSqlFeedStore } from '../src/platform/feed.ts';
-import { exportBoard } from '../src/tools/board-export.ts';
 import { createSqlUserStore, linkAccount } from '../src/users/repository.ts';
 import { OTHER, OWNER } from './helpers/fakes.ts';
 import { createTestDatabase, dbTestsEnabled } from './helpers/testDatabase.ts';
@@ -25,6 +24,7 @@ describe('migration files', () => {
       '0004_requests',
       '0005_admins',
       '0006_platform_identity',
+      '0007_drop_request_board',
     ]);
     for (const migration of migrations) {
       expect(migration.checksum).toMatch(/^[0-9a-f]{64}$/);
@@ -147,41 +147,5 @@ describe.runIf(dbTestsEnabled)('SQL Server integration', () => {
     await feed.apply([change(5, OWNER, { estado: 'activa', restricciones: [], hasta: null })], 1060);
     expect((await users.findOrCreate(OWNER)).closedAt).toBeNull();
     await db.request().query('DELETE FROM dbo.users');
-  });
-
-  it('exporta el tablón con las cuentas por su identificador global', async () => {
-    const owner = await legacyUser('uid-firebase-propietario');
-    await linkAccount(db, owner, OWNER);
-    const voter = await legacyUser('uid-sin-enlazar');
-    const created = await new sql.Request(db).input('user', sql.BigInt, owner).query(`
-      INSERT INTO dbo.requests (user_id, kind, title, body, status, created_at, updated_at)
-      OUTPUT inserted.id VALUES (@user, 'idea', N'Idea', N'Una idea con texto', 'abierta', '2026-10-07T10:00:00', '2026-10-08T10:00:00')`);
-    const id = Number(created.recordset[0].id);
-    await new sql.Request(db).input('id', sql.BigInt, id).input('voter', sql.BigInt, voter).query(`
-      INSERT INTO dbo.request_updates (request_id, status, message, created_at) VALUES (@id, 'abierta', N'Gracias', '2026-10-08T10:00:00');
-      INSERT INTO dbo.request_votes (request_id, user_id, created_at) VALUES (@id, @voter, '2026-10-09T10:00:00');`);
-    const { file, problems } = await exportBoard(db, new Date('2026-10-20T10:00:00Z'));
-    expect(file).toEqual({
-      formato: 'nodaria-tablon-1',
-      exportadoUtc: '2026-10-20T10:00:00.000Z',
-      peticiones: [
-        {
-          id,
-          tipo: 'idea',
-          autor: OWNER,
-          titulo: 'Idea',
-          texto: 'Una idea con texto',
-          estado: 'abierta',
-          duplicadoDe: null,
-          creadoUtc: '2026-10-07T10:00:00.000Z',
-          actualizadoUtc: '2026-10-08T10:00:00.000Z',
-          leidoAutorUtc: null,
-          respuestas: [{ estado: 'abierta', mensaje: 'Gracias', fechaUtc: '2026-10-08T10:00:00.000Z' }],
-          votos: [{ cuenta: null, fechaUtc: '2026-10-09T10:00:00.000Z' }],
-        },
-      ],
-    });
-    // Un votante sin enlazar se señala: la plataforma necesita su identificador.
-    expect(problems.unlinkedUsers).toEqual([voter]);
   });
 });

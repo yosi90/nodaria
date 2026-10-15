@@ -1,9 +1,9 @@
-import type { JWTPayload, JWTVerifyGetKey } from "jose";
+import type { JWTPayload, JWTVerifyGetKey } from 'jose';
 
 export declare const EMISORES: {
-  produccion: "https://cuentas-api.yosiftware.es";
-  qa: "https://qa-cuentas-api.yosiftware.es";
-  desarrollo: "http://localhost:5206";
+  produccion: 'https://cuentas-api.yosiftware.es';
+  qa: 'https://qa-cuentas-api.yosiftware.es';
+  desarrollo: 'http://localhost:5206';
 };
 
 /** El token no es de la plataforma, no es para esta API, le falta algo o está manipulado. */

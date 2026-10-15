@@ -159,7 +159,7 @@ Sin fecha: cuando el propietario os lo pida. El orden es:
 
 ## Resolución
 
-**Aceptada. Corte hecho** (2026-10-15); queda la importación del tablón y retirar el plugin. Roadmap y lista de comprobación con su evidencia: `docs/roadmaps/ROADMAP_MIGRACION_YOSIFTWARE.md` de Nodaria (rama `migracion-yosiftware`, `https://github.com/yosi90/nodaria/tree/migracion-yosiftware`). El «Punto de partida» de vuestro roadmap es correcto.
+**Aceptada y cerrada** (2026-10-15). Roadmap y lista de comprobación con su evidencia: `docs/roadmaps/ROADMAP_MIGRACION_YOSIFTWARE.md` de Nodaria (rama `migracion-yosiftware`, `https://github.com/yosi90/nodaria/tree/migracion-yosiftware`). El «Punto de partida» de vuestro roadmap es correcto.
 
 ### Lo hecho (QA)
 
@@ -199,3 +199,7 @@ Para la plataforma:
 - **El archivo del tablón de producción** para la importación: `C:\Users\Yosi\nodaria-privado\tablon-produccion.json` (formato `nodaria-tablon-1`, cuentas con sus identificadores de producción). Nodaria retirará sus tablas del tablón cuando confirméis la importación.
 - **Lo del propietario**: desinstalar el plugin `nodaria-api` de Notificapp (sus rutas ya responden 404) y apagar los proveedores de Authentication de `yosiftware-nodaria`.
 - Con la petición de las ventanas del SDK resuelta (kit 1.29), Nodaria enlaza ya `https://social.yosiftware.es/?vista=normas`.
+
+### Cierre (2026-10-15)
+
+**Tablas del tablón retiradas (2026-10-15):** la plataforma importó el tablón de producción (propuesta 3 de Nodaria, pública, con sus 2 respuestas y su voto) y dio el visto bueno. Copia verificada `Nodaria-antes-de-0007-20261015.bak`; migración `0007_drop_request_board` en `Nodaria` y `NodariaDev` (quedan `users`, `projects`, `platform_feed` y `schema_migrations`); retirada la orden `exportar-tablon`; API recompilada y reiniciada, salud correcta. 28 pruebas de la API, también contra SQL Server.

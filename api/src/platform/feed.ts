@@ -67,7 +67,8 @@ export function createSqlFeedStore(db: Database): FeedStore {
           const restrictions = Array.isArray(datos.restricciones)
             ? datos.restricciones.filter((r): r is string => typeof r === 'string').join(',')
             : '';
-          const until = typeof datos.hasta === 'string' && !Number.isNaN(Date.parse(datos.hasta)) ? new Date(datos.hasta) : null;
+          const until =
+            typeof datos.hasta === 'string' && !Number.isNaN(Date.parse(datos.hasta)) ? new Date(datos.hasta) : null;
           await request()
             .input('closed', sql.Bit, datos.estado === 'cerrada')
             .input('restrictions', sql.NVarChar(200), restrictions.slice(0, 200) || null)

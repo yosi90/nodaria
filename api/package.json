@@ -14,8 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev:qa": "tsx watch --env-file=.env.dev src/server.ts",
-    "enlazar-cuenta": "tsx --env-file-if-exists=.env src/tools/cli.ts enlazar-cuenta",
-    "exportar-tablon": "tsx --env-file-if-exists=.env src/tools/cli.ts exportar-tablon"
+    "enlazar-cuenta": "tsx --env-file-if-exists=.env src/tools/cli.ts enlazar-cuenta"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",

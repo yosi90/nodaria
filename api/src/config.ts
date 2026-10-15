@@ -32,7 +32,11 @@ const envSchema = z.object({
   // Credencial de servicio de la web (solo el token, fuera de Git) para leer el feed de cambios.
   PLATFORM_SERVICE_TOKEN_FILE: z.string().default('.runtime/plataforma.token'),
   // Cada cuánto se lee el feed sin aviso de NATS (ecosistema-kit/FEED_DE_CAMBIOS.md: 5 minutos bastan).
-  PLATFORM_FEED_INTERVAL_MS: z.coerce.number().int().min(10_000).default(5 * 60 * 1000),
+  PLATFORM_FEED_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(10_000)
+    .default(5 * 60 * 1000),
   // Con valor, los logs van a archivos diarios en esa carpeta en lugar de a la salida estándar.
   LOG_DIR: z.string().optional(),
 });

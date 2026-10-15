@@ -17,19 +17,19 @@
  * audiencia de tu API y caducidad con 5 segundos de margen.
  */
 
-import { createRemoteJWKSet, errors, jwtVerify } from "jose";
+import { createRemoteJWKSet, errors, jwtVerify } from 'jose';
 
 export const EMISORES = {
-  produccion: "https://cuentas-api.yosiftware.es",
-  qa: "https://qa-cuentas-api.yosiftware.es",
-  desarrollo: "http://localhost:5206",
+  produccion: 'https://cuentas-api.yosiftware.es',
+  qa: 'https://qa-cuentas-api.yosiftware.es',
+  desarrollo: 'http://localhost:5206',
 };
 
 /** El token no es de la plataforma, no es para esta API, le falta algo o está manipulado. */
 export class TokenNoValido extends Error {
   constructor(mensaje, opciones) {
     super(mensaje, opciones);
-    this.name = "TokenNoValido";
+    this.name = 'TokenNoValido';
   }
 }
 
@@ -37,7 +37,7 @@ export class TokenNoValido extends Error {
 export class TokenCaducado extends TokenNoValido {
   constructor(mensaje, opciones) {
     super(mensaje, opciones);
-    this.name = "TokenCaducado";
+    this.name = 'TokenCaducado';
   }
 }
 
@@ -47,10 +47,10 @@ export class TokenCaducado extends TokenNoValido {
  */
 export function crearVerificador({ audiencia, entorno, emisor, claves } = {}) {
   if (!audiencia) {
-    throw new TypeError("Indica la audiencia de tu API, como «lorcana-api».");
+    throw new TypeError('Indica la audiencia de tu API, como «lorcana-api».');
   }
   if ((entorno === undefined) === (emisor === undefined)) {
-    throw new TypeError("Indica el entorno o el emisor, uno de los dos.");
+    throw new TypeError('Indica el entorno o el emisor, uno de los dos.');
   }
   const elEmisor = emisor ?? EMISORES[entorno];
   if (!elEmisor) {
@@ -68,16 +68,16 @@ export function crearVerificador({ audiencia, entorno, emisor, claves } = {}) {
       const { payload } = await jwtVerify(token, jwks, {
         issuer: elEmisor,
         audience: audiencia,
-        algorithms: ["ES256"],
+        algorithms: ['ES256'],
         clockTolerance: 5,
-        requiredClaims: ["sub", "sid", "azp", "iat", "exp"],
+        requiredClaims: ['sub', 'sid', 'azp', 'iat', 'exp'],
       });
       return payload;
     } catch (error) {
       if (error instanceof errors.JWTExpired) {
-        throw new TokenCaducado("El token ha caducado.", { cause: error });
+        throw new TokenCaducado('El token ha caducado.', { cause: error });
       }
-      throw new TokenNoValido(`Token no válido (${error?.code ?? "desconocido"}).`, { cause: error });
+      throw new TokenNoValido(`Token no válido (${error?.code ?? 'desconocido'}).`, { cause: error });
     }
   };
 }

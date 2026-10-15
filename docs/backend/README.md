@@ -70,13 +70,11 @@ Para nuevas rutas privadas, regístralas dentro del bloque de rutas privadas de 
 
 ```powershell
 npm run enlazar-cuenta -- <id local> <identificador de la cuenta de Yosiftware>
-npm run exportar-tablon -- <archivo.json>      # fuera de Git: lleva textos de personas
 ```
 
 Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --env-file=.env.dev src/tools/cli.ts …`). Cada orden escribe una línea JSON con la base, el resultado y la fecha.
 
 - `enlazar-cuenta`: idempotente (`linked`, `unchanged`). Si la persona entró antes de enlazar y la API le creó un usuario vacío, mueve el identificador al antiguo y borra el vacío (`moved`); si ese usuario tiene proyectos, no toca nada (`taken_by_other`). No reasigna un usuario ya enlazado con otra cuenta (`already_linked`).
-- `exportar-tablon`: formato `nodaria-tablon-1` de la petición de migración, con los autores y votantes por su identificador global; sale con código 1 y los lista si alguno no está enlazado.
 
 ## Migraciones
 
@@ -92,7 +90,7 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | `projects`       | `(user_id, project_id)`             | Un documento JSON por proyecto, con `version`, `updated_at` y borrado lógico.                   |
 | `platform_feed`  | `id` = 1                            | Cursor del feed de cambios.                                                                     |
 
-`projects` cuelga de `users` con `ON DELETE CASCADE`. Las tablas del antiguo tablón (`requests`, `request_updates`, `request_votes`) y `notificapp_outbox` se conservan, sin uso, hasta exportar e importar el tablón en el corte; las retira una migración posterior. Las columnas `email`, `display_name` y `photo_url` ya no se escriben.
+`projects` cuelga de `users` con `ON DELETE CASCADE`. El antiguo tablón (`requests`, `request_updates`, `request_votes`) y `notificapp_outbox` se retiraron con `0007_drop_request_board` tras importarlo la plataforma. Las columnas `email`, `display_name` y `photo_url` ya no se escriben.
 
 ## Endpoints
 

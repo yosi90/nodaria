@@ -50,13 +50,21 @@ export function createAuthenticate(auth: AuthProvider, users: UserStore) {
       identity = await auth.verify(match[1]);
     } catch (error) {
       if (!(error instanceof AuthTokenError)) throw error;
-      throw new HttpError(401, error.reason === 'token_expired' ? 'token_caducado' : 'no_autenticado', TOKEN_MESSAGES[error.reason]);
+      throw new HttpError(
+        401,
+        error.reason === 'token_expired' ? 'token_caducado' : 'no_autenticado',
+        TOKEN_MESSAGES[error.reason],
+      );
     }
 
     const user = await users.findOrCreate(identity.globalId);
     if (user.disabledAt) throw new HttpError(403, 'cuenta_desactivada', 'La cuenta está desactivada en Nodaria.');
     if (user.closedAt) {
-      throw new HttpError(403, 'cuenta_cerrada', 'La cuenta está cerrada. Puedes recuperarla desde tu cuenta de Yosiftware.');
+      throw new HttpError(
+        403,
+        'cuenta_cerrada',
+        'La cuenta está cerrada. Puedes recuperarla desde tu cuenta de Yosiftware.',
+      );
     }
     if (identity.rulesPending && !WITHOUT_RULES.has(request.routeOptions.url ?? '')) {
       throw new HttpError(403, 'normas_pendientes', 'Acepta las normas de Nodaria para continuar.');

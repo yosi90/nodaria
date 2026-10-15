@@ -53,18 +53,8 @@ function toUser(row: UserRow): User {
   };
 }
 
-/**
- * Borra el usuario `@id` y lo que cuelga de él: sus proyectos en cascada y, mientras existan las tablas
- * del antiguo tablón, sus votos y las marcas de duplicado que apuntan a sus peticiones.
- */
-export const DELETE_USER = `
-  IF OBJECT_ID('dbo.request_votes', 'U') IS NOT NULL
-  BEGIN
-    DELETE FROM dbo.request_votes WHERE user_id = @id;
-    UPDATE dbo.requests SET duplicate_of = NULL, status = 'abierta'
-    WHERE duplicate_of IN (SELECT id FROM dbo.requests WHERE user_id = @id);
-  END
-  DELETE FROM dbo.users WHERE id = @id;`;
+/** Borra el usuario `@id`; sus proyectos se borran en cascada. */
+export const DELETE_USER = 'DELETE FROM dbo.users WHERE id = @id;';
 
 export function createSqlUserStore(db: Database): UserStore {
   return {

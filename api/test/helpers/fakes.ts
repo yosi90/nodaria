@@ -26,7 +26,11 @@ export function fakeDb(query: () => Promise<unknown> = async () => ({})): AppDep
 export async function platformTokens() {
   const { privateKey, publicKey } = await generateKeyPair('ES256');
   const jwk = { ...(await exportJWK(publicKey)), kid: 'prueba', alg: 'ES256' };
-  const verify = crearVerificador({ emisor: ISSUER, audiencia: 'nodaria-api', claves: createLocalJWKSet({ keys: [jwk] }) });
+  const verify = crearVerificador({
+    emisor: ISSUER,
+    audiencia: 'nodaria-api',
+    claves: createLocalJWKSet({ keys: [jwk] }),
+  });
   const provider: AuthProvider = {
     async verify(token) {
       try {
@@ -40,7 +44,11 @@ export async function platformTokens() {
   };
   async function sign(
     claims: JWTPayload & { sub?: string } = {},
-    { audience = 'nodaria-api', issuer = ISSUER, expiresIn = '10m' }: { audience?: string; issuer?: string; expiresIn?: string | number } = {},
+    {
+      audience = 'nodaria-api',
+      issuer = ISSUER,
+      expiresIn = '10m',
+    }: { audience?: string; issuer?: string; expiresIn?: string | number } = {},
   ) {
     return new SignJWT({ sid: 'sesion-1', azp: 'nodaria', sv: 1, alias: 'yosi', ...claims })
       .setProtectedHeader({ alg: 'ES256', kid: 'prueba' })
