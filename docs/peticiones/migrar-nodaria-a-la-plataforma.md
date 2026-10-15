@@ -159,4 +159,34 @@ Sin fecha: cuando el propietario os lo pida. El orden es:
 
 ## Resolución
 
-<!-- La rellena Nodaria. -->
+**Aceptada. En curso: QA superado, falta el corte** (2026-10-15). Roadmap y lista de comprobación con su evidencia: `docs/roadmaps/ROADMAP_MIGRACION_YOSIFTWARE.md` de Nodaria (rama `migracion-yosiftware`, `https://github.com/yosi90/nodaria/tree/migracion-yosiftware`). El «Punto de partida» de vuestro roadmap es correcto.
+
+### Lo hecho (QA)
+
+- **API** (`api/`): valida los tokens de la plataforma con la implementación de referencia del kit (`jose` 6.2.12; ES256, emisor del entorno, audiencia `nodaria-api`, caducidad; el `sub` se valida como GUID). Busca o crea el usuario por `users.id_global` (`uniqueidentifier`, único filtrado); `users.id` y los proyectos no cambian; `firebase_uid` pasa a opcional y se conserva hasta verificar el corte. Respeta `restricciones` (con `creacion`, no deja subir proyectos nuevos: `403 creacion_limitada` con `hasta`) y `normasPendientes` (solo responde `/api/me`). Retirados Firebase Admin, el tablón, el panel de administración, `OWNER_FIREBASE_UIDS`, `excludeFromStats`, la cola y las rutas `/notificapp/v1/*` del plugin.
+- **Feed**: lee `/v1/servicio/cambios` con la credencial de servicio y `User-Agent: nodaria-api/1.0`, cada 5 minutos (no hay NATS), con el cursor en `dbo.platform_feed` en la misma transacción. `cerrada` esconde la cuenta, `activa` la recupera, `borrada` borra el usuario y sus proyectos; guarda lo limitado. Perfiles y relaciones no se usan.
+- **Enlace**: `npm run enlazar-cuenta -- <id local> <id global>` (idempotente; mueve el identificador de un usuario nuevo y vacío si la persona entró antes; nunca toca uno con proyectos ni reasigna uno ya enlazado). Confirmado con el propietario: hay dos cuentas, las dos suyas. Usuario 4 = administrador (QA `7042db67-5cc3-f111-8c4b-002315ef7116`, producción `6b89e190-60c3-f111-8c4b-002315ef7116`); usuario 5 = trabajo (QA `a808808f-9fc8-f111-8c4d-002315ef7116`, producción `958bafa6-9fc8-f111-8c4d-002315ef7116`). Las dos enlazadas en la base de desarrollo con las de QA.
+- **Frontend**: SDK del entorno (`VITE_YOSIFTWARE_SDK`), entrar y salir con `yosiftware.entrar()`/`salir()`, «Mi perfil», «Privacidad», la cuenta en `social.yosiftware.es` y «Errores y propuestas» con `yosiftware.reportar()`. Entrar sigue siendo opcional. Hoja de estilos de Nodaria para el SDK (`yosiftware.estilos`).
+- **Sincronización al cambiar de cuenta** (punto 3): `GET /api/me` devuelve `legacyAccount`, el UID de Firebase de la cuenta enlazada. El navegador adopta su recuerdo (`nodaria_sync_v1`) bajo el identificador global, así que la primera entrada con la cuenta de Yosiftware ve las mismas versiones y no sube, baja ni borra nada de más. El recuerdo de otra cuenta no se usa: se parte de cero, sin borrar nunca en la cuenta. Pruebas: `src/services/sync.test.ts` («memoria al pasar a la cuenta de Yosiftware»), con el caso de Munfamed: plan vacío; un borrado local posterior se sigue propagando; con el recuerdo de otra cuenta solo se baja.
+- **Al terminar la sesión** (petición del propietario tras su prueba): desde Nodaria, desde otra web, al caducar o al abrir la página sin sesión, los proyectos de la cuenta salen del navegador. Los cambios sin subir se apartan en IndexedDB, sin enseñarse, hasta que vuelve a entrar esa misma cuenta (como permite la lista de comprobación).
+- **CSP** (punto 4): `src/services/csp.ts` por entorno, servida por Firebase Hosting (`firebase.json`, comprobada por prueba) y en la vista previa de QA. Admite SDK, API, tiempo real y acceso de la plataforma, `img-src` de su API, Yosiftadísticas, `data:`/`blob:` y las fuentes propias. Sin `unsafe-inline`. Sin violaciones en la consola en QA.
+- **Prueba contra QA** (punto 7): API de desarrollo separada (`127.0.0.1:5013`, base `NodariaDev`, restaurada de la copia de producción) y web en `https://nodaria.dev.yosiftware.es`. Cuentas de prueba (`api/ops/qa-smoke.mjs`): `activa` entra, lista y crea; `limitada` y `limitada-sin-fin`, `403 creacion_limitada`; `normas` sin `normasPendientes` (Nodaria no tiene normas propias); `cerrada` sin sesión. El propietario entró con su cuenta de QA, vio sus proyectos de antes, su perfil y su privacidad.
+- **Pruebas**: API 29 (con integración en SQL Server: enlace, feed y exportación); web 292.
+
+### El archivo del tablón (punto 5)
+
+Desarrollo: `C:\Users\Yosi\nodaria-privado\tablon-desarrollo.json` (fuera de Git), formato `nodaria-tablon-1`: 1 petición, 2 respuestas y 1 voto, todas las cuentas por su identificador global de QA. Listo para el ensayo de la importación. El de producción se exporta en el corte, después de enlazar con los identificadores de producción (`npm run exportar-tablon -- <archivo>`).
+
+### Lista de comprobación (punto 6)
+
+Marcada con su evidencia en el roadmap. No aplican: claves de IA, novedades, chat, notificaciones, denuncias (sin zonas sociales), app Android y panel de administración (se retira con el tablón). Pendiente: entrar y salir con la sesión compartida entre webs en QA, y el enlace en producción.
+
+### Pendiente
+
+1. La credencial de servicio de producción, en `api/.runtime/plataforma.token` de Nodaria (la pega el propietario).
+2. El corte, en el orden de la petición: copia verificada de `Nodaria`, migración 0006, enlace de las dos cuentas con los identificadores de producción, archivo del tablón de producción, API y web a la vez. Después, desinstalar el plugin `nodaria-api` y apagar Authentication de `yosiftware-nodaria`.
+3. Tras importar el tablón en producción, Nodaria retira sus tablas (`requests`, `request_updates`, `request_votes`, `notificapp_outbox`).
+
+### Lo que hemos visto de la plataforma
+
+Petición aparte: `docs/peticiones/ventanas-del-sdk-cerrar-fuera-y-estilos-de-la-web.md` (las ventanas no se cierran al pulsar fuera, no leen `--yosi-color-*` y falta una dirección pública de las normas y la política de privacidad). No bloquea la migración.
