@@ -77,7 +77,15 @@ export function platformStyles(origin: string): string {
 }
 [part~='raiz'][data-tema='oscuro'] {${variables(DARK)}
 }
-/* Las ventanas de la plataforma no leen las variables --yosi-color-*: se pinta cada pieza por su nombre. */
+/* Las ventanas de la plataforma no leen las variables --yosi-color-*: se pinta cada pieza por su nombre.
+   El perfil ocupa la ventana entera sin tarjeta: sin esto se ve el fondo verdoso de la plataforma. */
+[part~='raiz'],
+[part~='perfil'],
+[part~='reporte'],
+[part~='denuncia'] {
+  background-color: var(--yosi-color-fondo);
+  color: var(--yosi-color-texto);
+}
 [part~='tarjeta'],
 [part~='panel'] {
   font-family: var(--yosi-fuente);
