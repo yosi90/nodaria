@@ -11,8 +11,8 @@ export function LegalLinks({ prefix }: { prefix?: string }) {
         Política de privacidad
       </a>
       {' · '}
-      <a href="https://social.yosiftware.es" target="_blank" rel="noopener">
-        Cuenta, normas y privacidad de Yosiftware
+      <a href="https://social.yosiftware.es/?vista=normas" target="_blank" rel="noopener">
+        Normas y privacidad de Yosiftware
       </a>
     </small>
   );
