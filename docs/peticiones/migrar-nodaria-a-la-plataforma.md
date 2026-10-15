@@ -159,7 +159,7 @@ Sin fecha: cuando el propietario os lo pida. El orden es:
 
 ## Resolución
 
-**Aceptada. En curso: QA superado, falta el corte** (2026-10-15). Roadmap y lista de comprobación con su evidencia: `docs/roadmaps/ROADMAP_MIGRACION_YOSIFTWARE.md` de Nodaria (rama `migracion-yosiftware`, `https://github.com/yosi90/nodaria/tree/migracion-yosiftware`). El «Punto de partida» de vuestro roadmap es correcto.
+**Aceptada. Corte hecho** (2026-10-15); queda la importación del tablón y retirar el plugin. Roadmap y lista de comprobación con su evidencia: `docs/roadmaps/ROADMAP_MIGRACION_YOSIFTWARE.md` de Nodaria (rama `migracion-yosiftware`, `https://github.com/yosi90/nodaria/tree/migracion-yosiftware`). El «Punto de partida» de vuestro roadmap es correcto.
 
 ### Lo hecho (QA)
 
@@ -190,3 +190,12 @@ Marcada con su evidencia en el roadmap. No aplican: claves de IA, novedades, cha
 ### Lo que hemos visto de la plataforma
 
 Petición aparte: `docs/peticiones/ventanas-del-sdk-cerrar-fuera-y-estilos-de-la-web.md` (las ventanas no se cierran al pulsar fuera, no leen `--yosi-color-*` y falta una dirección pública de las normas y la política de privacidad). No bloquea la migración.
+
+### Corte (2026-10-15)
+
+**Corte hecho el 2026-10-15 (20:32–20:40 UTC).** Copia verificada `C:\Users\Yosi\nodaria-backups\db\Nodaria-corte-yosiftware-20261015.bak` (`RESTORE VERIFYONLY` correcto); migración 0006 en `Nodaria`; usuarios 4 y 5 enlazados con sus identificadores de producción (`linked`); tablón de producción exportado en `C:\Users\Yosi\nodaria-privado\tablon-produccion.json` (1 petición, 2 respuestas, 1 voto, sin cuentas sin enlazar); API recompilada desde cero y reiniciada (salud correcta, `401 no_autenticado` sin token, rutas del tablón y de Notificapp en 404, feed leído con cursor 14); `migracion-yosiftware` fusionada en `main` (`946716b`) y web publicada (bundle `main-CObhy75Q.js`, SHA-256 idéntico en los dos dominios, SDK y CSP de producción). Edge en producción sin sesión: SDK en `sin_sesion`, ventana de entrar con el aspecto de Nodaria, sin errores ni violaciones de CSP.
+
+Para la plataforma:
+- **El archivo del tablón de producción** para la importación: `C:\Users\Yosi\nodaria-privado\tablon-produccion.json` (formato `nodaria-tablon-1`, cuentas con sus identificadores de producción). Nodaria retirará sus tablas del tablón cuando confirméis la importación.
+- **Lo del propietario**: desinstalar el plugin `nodaria-api` de Notificapp (sus rutas ya responden 404) y apagar los proveedores de Authentication de `yosiftware-nodaria`.
+- Con la petición de las ventanas del SDK resuelta (kit 1.29), Nodaria enlaza ya `https://social.yosiftware.es/?vista=normas`.

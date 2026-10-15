@@ -1,6 +1,6 @@
 # Migración a la cuenta de Yosiftware
 
-Fecha: 2026-10-15. Estado: **ACTIVO — API y frontend migrados en la rama `migracion-yosiftware` y probados contra QA; falta la prueba del propietario con sesión, la cuenta de su empresa y el corte.**
+Fecha: 2026-10-15. Estado: **CORTE HECHO (2026-10-15): Nodaria funciona en producción solo con la cuenta de Yosiftware.** Quedan la importación del tablón por la plataforma, retirar el plugin y Authentication (propietario) y la limpieza de tablas.
 
 Origen: la petición de la plataforma [`migrar-nodaria-a-la-plataforma.md`](../peticiones/migrar-nodaria-a-la-plataforma.md) (2026-10-15), que sustituye a las de congelación. Guía: `ecosistema-kit/` 1.28 (`MIGRACION.md`, `LISTA_DE_COMPROBACION.md`). Roadmap de la plataforma: `docs/roadmaps/ACTIVO_migracion-nodaria/` de la administración.
 
@@ -32,9 +32,9 @@ Fuera: la colaboración (espera a los espacios) y la IA (espera a la pasarela); 
 - [x] **4. Archivo del tablón de desarrollo**: `C:\Users\Yosi\nodaria-privado\tablon-desarrollo.json` (fuera de Git), 1 petición, 2 respuestas, 1 voto, todas las cuentas enlazadas.
 - [x] **5. Prueba del propietario con sesión en QA** (2026-10-15): entró, vio Munfamed, su perfil y su privacidad. Detectó tres cosas: los proyectos seguían a la vista sin sesión (corregido: se retiran), las ventanas sin el aspecto de Nodaria (corregido con la hoja) y que no se cierran al pulsar fuera (fallo del SDK: petición [`ventanas-del-sdk-cerrar-fuera-y-estilos-de-la-web.md`](../peticiones-enviadas/ventanas-del-sdk-cerrar-fuera-y-estilos-de-la-web.md)). Falta repetirla con estos cambios.
 - [x] **6. Cuentas** (2026-10-15): solo hay dos, las dos del propietario. Usuario 4 = cuenta de administrador (QA `7042db67-5cc3-f111-8c4b-002315ef7116`, producción `6b89e190-60c3-f111-8c4b-002315ef7116`); usuario 5 = cuenta de trabajo (QA `a808808f-9fc8-f111-8c4d-002315ef7116`, producción `958bafa6-9fc8-f111-8c4d-002315ef7116`). Las dos enlazadas en `NodariaDev` con las de QA.
-- [ ] **7. Respuesta a la plataforma** con esta lista y el archivo del tablón; ensayo de la importación en QA.
-- [ ] **8. Corte** (con la credencial de producción del propietario en `api/.runtime/plataforma.token`): copia verificada de `Nodaria`; `npm run migrate`; `enlazar-cuenta` de las dos cuentas con los identificadores de producción; `exportar-tablon` de producción; `npm run build` en `api/` y reinicio; merge a `main` y `npm run deploy`; comprobar y avisar a la plataforma. Después, el propietario desinstala el plugin `nodaria-api` y apaga Authentication de `yosiftware-nodaria`.
-- [ ] **9. Cierre**: migración 0007 que retire `requests`, `request_updates`, `request_votes` y `notificapp_outbox` (tras la importación en producción) y, cuando se verifique, las columnas de Firebase; peticiones de congelación cerradas.
+- [x] **7. Respuesta a la plataforma** (2026-10-15) en la resolución de la petición, en las dos copias. La plataforma resolvió además la petición de las ventanas del SDK (kit 1.29): normas enlazadas a `social.yosiftware.es/?vista=normas`.
+- [x] **8. Corte**. **Corte hecho el 2026-10-15 (20:32–20:40 UTC).** Copia verificada `C:\Users\Yosi\nodaria-backups\db\Nodaria-corte-yosiftware-20261015.bak` (`RESTORE VERIFYONLY` correcto); migración 0006 en `Nodaria`; usuarios 4 y 5 enlazados con sus identificadores de producción (`linked`); tablón de producción exportado en `C:\Users\Yosi\nodaria-privado\tablon-produccion.json` (1 petición, 2 respuestas, 1 voto, sin cuentas sin enlazar); API recompilada desde cero y reiniciada (salud correcta, `401 no_autenticado` sin token, rutas del tablón y de Notificapp en 404, feed leído con cursor 14); `migracion-yosiftware` fusionada en `main` (`946716b`) y web publicada (bundle `main-CObhy75Q.js`, SHA-256 idéntico en los dos dominios, SDK y CSP de producción). Edge en producción sin sesión: SDK en `sin_sesion`, ventana de entrar con el aspecto de Nodaria, sin errores ni violaciones de CSP.
+- [ ] **9. Cierre**: el propietario desinstala el plugin `nodaria-api` de Notificapp y apaga los proveedores de Authentication de `yosiftware-nodaria`; la plataforma importa `tablon-produccion.json`; migración 0007 que retire `requests`, `request_updates`, `request_votes` y `notificapp_outbox` (tras la importación en producción) y, cuando se verifique, las columnas de Firebase; peticiones de congelación cerradas.
 
 ## Lista de comprobación del kit
 
@@ -98,7 +98,7 @@ Evidencia: P = pruebas automatizadas; Q = prueba contra QA (2026-10-15); R = rev
 
 **Migración**
 - [x] `id_global` único cuando no es nulo; la API busca por él; las claves internas no cambian. P.
-- [ ] Cuentas enlazadas en QA y producción: la del propietario en `NodariaDev` (QA); la de la empresa y producción, pendientes de 6 y 8.
+- [x] Cuentas enlazadas en QA (`NodariaDev`) y en producción (`Nodaria`), cada una con su identificador. El propietario vio sus datos de antes en QA.
 - [x] Los usuarios locales siguen en su base. P.
 - [x] La API ya no acepta tokens de Firebase. P.
 

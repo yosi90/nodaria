@@ -2,8 +2,6 @@
 
 API Node/TypeScript (Fastify) en `api/`. Valida los tokens de la **cuenta de Yosiftware** (la plataforma común, `ecosistema-kit/`) y guarda los proyectos en SQL Server Express local. Se publica por Cloudflare Tunnel en `nodaria-api.yosiftware.es`; la web se sirve desde Firebase Hosting (`yosiftware-nodaria`). La migración desde Firebase Authentication está en [ROADMAP_MIGRACION_YOSIFTWARE.md](../roadmaps/ROADMAP_MIGRACION_YOSIFTWARE.md).
 
-> **Hasta el corte**, la API de producción sigue ejecutando el build anterior (Firebase Authentication, tablón y plugin de Notificapp) desde `api/dist` contra la base `Nodaria`. Este documento describe la versión migrada de la rama `migracion-yosiftware`. No ejecutes `npm run build` en `api/` hasta el corte.
-
 ## Requisitos
 
 - Node 24+.
