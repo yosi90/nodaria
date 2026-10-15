@@ -40,4 +40,4 @@ Respuesta esperada: añadid la resolución en este documento, indicando si la ac
 
 ## Resolución
 
-<!-- La rellena el destinatario. Ver docs/peticiones/README.md. -->
+**Aceptada y cerrada** (2026-10-15). Nodaria respetó la congelación hasta su migración, documentada en `docs/codex/PROJECT_CONTEXT.md`. La sustituyó la petición `migrar-nodaria-a-la-plataforma.md`, y el corte se hizo el 2026-10-15: la cuenta, el perfil, el borrado de la cuenta, la marca del propietario y los errores y propuestas son ya de la plataforma (`docs/roadmaps/ROADMAP_MIGRACION_YOSIFTWARE.md`).
