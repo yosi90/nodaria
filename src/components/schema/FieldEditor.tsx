@@ -15,6 +15,7 @@ import { IconPicker } from '../common/IconPicker';
 import { MultiSelect } from '../common/Select';
 import { FormulaPreview } from './FormulaPreview';
 import { supportsNonNegative } from '../../domain/valueConstraints';
+import { vocabulary } from '../../domain/projectKinds';
 
 interface FieldEditorProps {
   field: FieldDefinition;
@@ -57,6 +58,7 @@ export function FieldEditor({
 }: FieldEditorProps) {
   const { project, dispatch } = useApp();
   const { openHelp } = useNavigation();
+  const words = vocabulary(project.kind);
   const toast = useToast();
   const [expanded, setExpanded] = useState(field.key === 'nuevo_campo' || field.key.startsWith('nuevo_campo_'));
   const set = <K extends keyof FieldDefinition>(key: K, value: FieldDefinition[K]) =>
@@ -284,7 +286,8 @@ export function FieldEditor({
             />
             <small>
               Puedes escribir {'{tipo}'} en la etiqueta o la descripción: «Nombre del {'{tipo}'}» se lee «Nombre del
-              Producto» en un producto y «Nombre del Evento» en un evento.
+              {words.typeNames[0]}» en un {words.typeNames[0].toLowerCase()} y «Nombre del {words.typeNames[1]}» en un{' '}
+              {words.typeNames[1].toLowerCase()}.
             </small>
           </label>
           {field.type === 'image' && (
@@ -455,7 +458,7 @@ export function FieldEditor({
               <input
                 aria-label={`Fórmula de ${field.label}`}
                 value={field.formula}
-                placeholder="{nombre} — {edad}"
+                placeholder={words.formulaPlaceholder}
                 onChange={event => set('formula', event.target.value)}
               />
               <small>

@@ -24,9 +24,15 @@ import {
   Undo2,
   Upload,
   Table2,
+  Database,
+  Tags,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
-import { downloadProject } from '../../services/files';
+import { downloadProject, downloadText } from '../../services/files';
+import { sqlScript } from '../../domain/sqlScript';
+import { tableTypes } from '../../domain/database';
+import { kindLabel } from '../../domain/projectKinds';
+import { ProjectKindDialog } from './ProjectKindDialog';
 import { parseProject } from '../../services/storage';
 import { useApp } from '../../state/AppContext';
 import { usePreferences, type Preferences } from '../../state/preferences';
@@ -71,6 +77,7 @@ export function Topbar({
   const file = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [kindOpen, setKindOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const closeMenu = useCallback(() => setMenu(null), []);
   const toggleMenu = (kind: 'projects' | 'settings', target: HTMLElement) =>
@@ -134,9 +141,29 @@ export function Topbar({
     { section: project.name },
     { label: 'Renombrar', icon: Pencil, onSelect: rename },
     { label: 'Duplicar', icon: Copy, onSelect: () => dispatch({ type: 'duplicate-project' }) },
+    {
+      label: 'Tipo de proyecto…',
+      hint: kindLabel(project.kind),
+      icon: Tags,
+      onSelect: () => setKindOpen(true),
+    },
     { label: 'Calendario del proyecto…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
     'separator',
     { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
+    ...(tableTypes(project).length
+      ? [
+          {
+            label: 'Exportar SQL Server (.sql)',
+            icon: Database,
+            onSelect: () =>
+              downloadText(
+                `${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.sql`,
+                sqlScript(project),
+                'application/sql',
+              ),
+          },
+        ]
+      : []),
     'separator',
     { label: 'Eliminar proyecto', icon: Trash2, danger: true, onSelect: remove },
   ];
@@ -179,6 +206,7 @@ export function Topbar({
         />
       )}
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
+      {kindOpen && <ProjectKindDialog onClose={() => setKindOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">
         <span className="segmented-label" title="Ver y revisar los datos del proyecto">

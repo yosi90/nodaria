@@ -1,8 +1,9 @@
-import { Library, Link2, Plus, Unlink, TriangleAlert } from 'lucide-react';
+import { Eye, EyeOff, GitBranch, Library, Link2, Plus, Unlink, TriangleAlert } from 'lucide-react';
 import { useCallback, useState, type DragEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { isFieldLink, usersOfLibraryField } from '../../domain/library';
-import { allFields, inheritedSchemas } from '../../domain/selectors';
+import { allFields, effectiveFields, inheritedSchemas } from '../../domain/selectors';
+import { openSchemaDefinition } from '../layout/schemaNavigation';
 import { fieldOverlaps, inheritedFields, type FieldOverlap } from '../../domain/inheritance';
 import type { FieldDefinition, FieldLink, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
@@ -26,17 +27,27 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   const [dragged, setDragged] = useState<string | null>(null);
   // Mientras se arrastra, la lista se enseña ya reordenada y el elemento movido va como fantasma.
   const [preview, setPreview] = useState<{ targetId: string; after: boolean } | null>(null);
-  const reordered = (list: Schema['fields'], moving: string, targetId: string, after: boolean) => {
-    const item = list.find(f => entryId(f) === moving);
-    if (!item || moving === targetId) return list;
-    const rest = list.filter(f => entryId(f) !== moving);
-    const index = rest.findIndex(f => entryId(f) === targetId);
-    if (index < 0) return list;
-    rest.splice(index + (after ? 1 : 0), 0, item);
+  // Filas de la lista: todos los atributos del tipo, heredados incluidos, en su orden (`fieldOrder`). Los
+  // heredados que este tipo oculta siguen en la lista, atenuados, para poder recuperarlos.
+  const visible = new Set(allFields(project, schema.id).map(f => f.id));
+  const ownIds = schema.fields.map(entryId);
+  const rowIds = [
+    ...new Set([
+      ...effectiveFields(project, schema.id, true)
+        .filter(f => visible.has(f.id) || ownIds.includes(f.id) || schema.hiddenFieldIds.includes(f.id))
+        .map(f => f.id),
+      ...ownIds,
+    ]),
+  ];
+  const reordered = (ids: string[], moving: string, targetId: string, after: boolean) => {
+    if (moving === targetId || !ids.includes(moving)) return ids;
+    const rest = ids.filter(id => id !== moving);
+    const index = rest.indexOf(targetId);
+    if (index < 0) return ids;
+    rest.splice(index + (after ? 1 : 0), 0, moving);
     return rest;
   };
-  const shownFields =
-    dragged && preview ? reordered(schema.fields, dragged, preview.targetId, preview.after) : schema.fields;
+  const shownIds = dragged && preview ? reordered(rowIds, dragged, preview.targetId, preview.after) : rowIds;
   const hover = (targetId: string, after: boolean) => {
     if (!dragged || targetId === dragged) return;
     setPreview(current =>
@@ -103,10 +114,25 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   const inherited = inheritedFields(project, schema);
 
   const reorder = () => {
-    // Al soltar se confirma lo que ya se veía en la previsualización.
-    if (dragged && preview) update(reordered(schema.fields, dragged, preview.targetId, preview.after));
+    // Al soltar se confirma lo que ya se veía en la previsualización: el orden de todos los atributos del
+    // tipo (`fieldOrder`) y, con él, el de sus propios atributos y vínculos.
+    if (dragged && preview) {
+      const fieldOrder = reordered(rowIds, dragged, preview.targetId, preview.after);
+      const fields = [...schema.fields].sort((a, b) => fieldOrder.indexOf(entryId(a)) - fieldOrder.indexOf(entryId(b)));
+      dispatch({ type: 'update-schema', schema: { ...schema, fields, fieldOrder } });
+    }
     endDrag();
   };
+  const setHidden = (fieldId: string, hidden: boolean) =>
+    dispatch({
+      type: 'update-schema',
+      schema: {
+        ...schema,
+        hiddenFieldIds: hidden
+          ? [...new Set([...schema.hiddenFieldIds, fieldId])]
+          : schema.hiddenFieldIds.filter(id => id !== fieldId),
+      },
+    });
 
   const removeOwn = (field: FieldDefinition) => {
     toast({ message: `Atributo «${field.label}» eliminado`, undoable: true });
@@ -191,12 +217,34 @@ export function AttributesCard({ schema }: { schema: Schema }) {
       )}
       {ancestors.length > 0 && (
         <p className="muted-note" style={{ marginBottom: 'var(--space-3)' }}>
-          Hereda también los atributos de {ancestors.map(a => `«${a.name}»`).join(', ')}.
+          Hereda de {ancestors.map(a => `«${a.name}»`).join(', ')}. Los atributos heredados se editan en su tipo; aquí
+          puedes ordenarlos con los propios u ocultarlos solo en este tipo y sus subtipos.
         </p>
       )}
       <div className="field-list">
-        {schema.fields.length ? (
-          shownFields.map(entry => {
+        {shownIds.length ? (
+          shownIds.map(id => {
+            const entry = schema.fields.find(f => entryId(f) === id);
+            if (!entry) {
+              const source = inherited.find(i => i.field.id === id);
+              if (!source) return null;
+              return (
+                <InheritedFieldRow
+                  key={id}
+                  field={source.field}
+                  from={source.from}
+                  shared={project.fieldLibrary.some(f => f.id === id)}
+                  hidden={schema.hiddenFieldIds.includes(id)}
+                  dragging={dragged === id}
+                  onDragStart={() => setDragged(id)}
+                  onDragEnd={endDrag}
+                  onDragHover={hover}
+                  onDrop={reorder}
+                  onOpen={() => openSchemaDefinition(source.from.id, source.from.kind, setView)}
+                  onHidden={hidden => setHidden(id, hidden)}
+                />
+              );
+            }
             if (isFieldLink(entry)) {
               const field = project.fieldLibrary.find(f => f.id === entry.ref);
               if (!field) return null;
@@ -317,6 +365,80 @@ function LinkedFieldRow({
         <IconButton icon={Unlink} size="sm" label="Desvincular de este tipo" tooltipSide="left" onClick={onUnlink} />
       </div>
       {note}
+    </div>
+  );
+}
+
+/** Atributo heredado en la lista del tipo: se ordena con los propios y se puede ocultar aquí; se edita en su tipo. */
+function InheritedFieldRow({
+  field,
+  from,
+  shared,
+  hidden,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  onDragHover,
+  onDrop,
+  onOpen,
+  onHidden,
+}: {
+  field: FieldDefinition;
+  from: Schema;
+  shared: boolean;
+  hidden: boolean;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragHover: (targetId: string, after: boolean) => void;
+  onDrop: () => void;
+  onOpen: () => void;
+  onHidden: (hidden: boolean) => void;
+}) {
+  return (
+    <div
+      className={`field-def linked inherited ${hidden ? 'hidden-field' : ''} ${dragging ? 'dragging' : ''}`}
+      onDragOver={event => {
+        event.preventDefault();
+        const bounds = event.currentTarget.getBoundingClientRect();
+        onDragHover(field.id, event.clientY > bounds.top + bounds.height / 2);
+      }}
+      onDrop={event => {
+        event.preventDefault();
+        onDrop();
+      }}
+    >
+      <div className="field-def-head">
+        <button
+          type="button"
+          className="drag-handle"
+          draggable
+          aria-label={`Reordenar ${field.label}`}
+          onDragStart={event => {
+            event.dataTransfer.effectAllowed = 'move';
+            onDragStart();
+          }}
+          onDragEnd={onDragEnd}
+        >
+          <GitBranch size={14} aria-hidden />
+        </button>
+        <button type="button" className="field-def-toggle" onClick={onOpen} title={`Editar en «${from.name}»`}>
+          <strong>{field.label}</strong>
+          <span className="badge">De «{from.name}»</span>
+          {shared && <span className="badge accent">Preforma</span>}
+          {hidden && <span className="badge warning">Oculto en este tipo</span>}
+          {field.isTitle && <span className="badge accent">Título</span>}
+          <span className="badge">{FIELD_TYPES.find(t => t[0] === field.type)?.[1]}</span>
+        </button>
+        <IconButton
+          icon={hidden ? EyeOff : Eye}
+          size="sm"
+          active={hidden}
+          label={hidden ? 'Volver a usarlo en este tipo' : 'Ocultarlo en este tipo y sus subtipos'}
+          tooltipSide="left"
+          onClick={() => onHidden(!hidden)}
+        />
+      </div>
     </div>
   );
 }

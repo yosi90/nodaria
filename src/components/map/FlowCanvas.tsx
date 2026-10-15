@@ -78,6 +78,9 @@ import { forceFrameAfterMove, forceFrameKey } from './forceFrame';
 import { foreignKeyLinks, isTableType, tableColumns, tableTypes } from '../../domain/database';
 import { ForeignKeyEdge, type ForeignKeyEdgeType } from './ForeignKeyEdge';
 import { TABLE_W, tableCardColumns, tableHeight } from './tableCard';
+import { sqlScript } from '../../domain/sqlScript';
+import { vocabulary } from '../../domain/projectKinds';
+import { downloadText } from '../../services/files';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
 
 const nodeTypes = { card: NodeCard };
@@ -764,12 +767,14 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
 
   // Al pasar el ratón por un nodo se atenúa lo que no sea vecino. Se hace sobre el DOM, sin
   // volver a renderizar los componentes: con cientos de nodos y miles de aristas eso costaría casi un segundo.
+  // El nodo seleccionado se queda resaltado igual, salvo mientras se ve un camino o se pasa por otro nodo.
   useEffect(() => {
     const root = container.current;
     if (!root) return;
-    const pathNodes = !hoveredId && path ? new Set(path) : null;
+    const lit = hoveredId ?? (path ? null : selectedNodeId);
+    const pathNodes = !lit && path ? new Set(path) : null;
     const pairs = pathNodes && path ? pathPairs(path) : null;
-    const near = hoveredId ? neighborhood(hoveredId, links, 1) : pathNodes;
+    const near = lit ? neighborhood(lit, links, 1) : pathNodes;
     const ends = new Map(edges.map(e => [e.id, [e.source, e.target]]));
     root.querySelectorAll<HTMLElement>('.react-flow__node').forEach(el => {
       el.classList.toggle('dimmed', Boolean(near && !near.has(el.dataset.id ?? '')));
@@ -778,30 +783,30 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
       const members = (el.dataset.members ?? '').split(',');
       el.classList.toggle(
         'dimmed',
-        Boolean((hoveredId && !members.includes(hoveredId)) || (pathNodes && !members.some(m => pathNodes.has(m)))),
+        Boolean((lit && !members.includes(lit)) || (pathNodes && !members.some(m => pathNodes.has(m)))),
       );
     });
     root.querySelectorAll<HTMLElement>('.react-flow__edge, .edge-label').forEach(el => {
       const id = el.dataset.id ?? el.dataset.edge ?? '';
       const [a, b] = ends.get(id) ?? [];
       const onPath = Boolean(pairs && pairs.has(`${a}|${b}`));
-      el.classList.toggle('dimmed', Boolean((hoveredId && a !== hoveredId && b !== hoveredId) || (pairs && !onPath)));
-      el.classList.toggle('lit', Boolean((hoveredId && (a === hoveredId || b === hoveredId)) || onPath));
+      el.classList.toggle('dimmed', Boolean((lit && a !== lit && b !== lit) || (pairs && !onPath)));
+      el.classList.toggle('lit', Boolean((lit && (a === lit || b === lit)) || onPath));
       // En una relación bidireccional, al pasar por un nodo se oculta la punta de su lado:
       // la flecha que queda apunta al otro extremo, como el nombre que se muestra.
       if (el.dataset.id) {
         const path = el.querySelector('path.react-flow__edge-path');
         const reciprocal = Boolean(path?.getAttribute('marker-start') && path?.getAttribute('marker-end'));
-        el.classList.toggle('hide-start', reciprocal && hoveredId === a);
-        el.classList.toggle('hide-end', reciprocal && hoveredId === b && a !== b);
+        el.classList.toggle('hide-start', reciprocal && lit === a);
+        el.classList.toggle('hide-end', reciprocal && lit === b && a !== b);
       }
       // El texto de la arista es el papel del otro extremo respecto al nodo bajo el puntero.
       if (el.dataset.edge) {
-        const fromTarget = hoveredId === a && b !== a;
+        const fromTarget = lit === a && b !== a;
         el.textContent = fromTarget ? (el.dataset.roleTarget ?? '') : (el.dataset.roleSource ?? '');
       }
     });
-  }, [hoveredId, links, edges, path]);
+  }, [hoveredId, selectedNodeId, links, edges, nodes, path]);
 
   const clickTimer = useRef<number | null>(null);
   useEffect(
@@ -935,9 +940,9 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     return (
       <section className="workspace empty-canvas">
         <EmptyState icon={Network} title="Un lienzo para tu proyecto">
-          Aquí verás tus nodos y sus conexiones. Primero define en «Tipos» qué elementos quieres representar (Persona,
-          Producto, Actividad…) y en «Relaciones» cómo se conectan; después crea el primer nodo con el botón «+» de la
-          estructura o con doble clic aquí. Para aprender los atajos, pulsa «?».
+          Aquí verás tus nodos y sus conexiones. Primero define en «Tipos» qué elementos quieres representar (
+          {vocabulary(project.kind).entities}) y en «Relaciones» cómo se conectan; después crea el primer nodo con el
+          botón «+» de la estructura o con doble clic aquí. Para aprender los atajos, pulsa «?».
         </EmptyState>
         <div className="react-flow-empty" onDoubleClick={onDoubleClick} />
       </section>
@@ -1233,7 +1238,20 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           <Panel position="top-left" className="canvas-tools">
             <div className="canvas-tools-row">
               {view.layout === 'image' && <MapImageMenu />}
-              <ExportMenu name={project.name} container={() => container.current} />
+              <ExportMenu
+                name={project.name}
+                container={() => container.current}
+                onSql={
+                  hasTables
+                    ? () =>
+                        downloadText(
+                          `${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.sql`,
+                          sqlScript(project),
+                          'application/sql',
+                        )
+                    : undefined
+                }
+              />
             </div>
             {pathQuery && (
               <PathPanel

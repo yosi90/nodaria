@@ -65,7 +65,9 @@ El editor distingue PK, claves candidatas unique, FK y obligatoriedad de formula
 - Interfaz: check en `SchemaEditor`, tarjeta «Columnas SQL» (`SqlColumnsCard`) con tipo automático o elegido, longitud/precisión/escala, PK, nulos, único, IDENTITY y «En la tabla»; disposición `database` en `FlowCanvas`, tarjeta `TableCard` en `NodeCard`, geometría en `tableCard.ts` (medidas fijas compartidas con `database.css`), arista `ForeignKeyEdge` y distribución `databaseLayout` en `layout.ts`: columnas según la profundidad de las FK (las referenciadas a la izquierda), orden por baricentro, columnas largas partidas para una proporción de pantalla, tablas sueltas al final y el resto de nodos debajo.
 - Formato **6**: se descartan el bloque `databaseDesign` y `view.databaseSchema` de v5. No se pueden traducir a tipos y, en la base de la API, el único proyecto que los tenía («Maestro de inventario (tablas)») tenía 0 tablas y 0 FK. Una copia local con tablas de v5 creadas solo en un navegador se perdería. Los metadatos dañados se leen como deducidos. Una pestaña con la versión anterior rechaza los proyectos v6 («necesita una versión más reciente»): basta con recargar.
 
-Pendientes: claves UNIQUE compuestas con nombre, FK compuestas, defaults SQL, CHECK, índices, reglas ON DELETE/UPDATE, cardinalidades en las líneas, enrutado que esquive tablas y exportar DDL.
+Ampliado el 2026-10-15 (formato 7): ajustes SQL por tipo para heredados y preformas (`Schema.sqlOverrides`), atributos heredados ocultables por tipo, exportación del script de SQL Server (`sqlScript.ts`) y linter del esquema en Salud (`databaseLint.ts`). Detalle en `PROJECT_CONTEXT.md`.
+
+Pendientes: claves UNIQUE compuestas con nombre, FK compuestas, defaults SQL, CHECK, índices, reglas ON DELETE/UPDATE, cardinalidades en las líneas y enrutado que esquive tablas.
 
 ## Hitos y criterios de cierre
 
@@ -76,7 +78,7 @@ Pendientes: claves UNIQUE compuestas con nombre, FK compuestas, defaults SQL, CH
 - [ ] **4. Ayuda estructural sin IA:** proponer tablas intermedias cuando el usuario declara una relación muchos-a-muchos; explicar opciones y generar una vista previa editable. No deducir una tabla ausente como hecho ni crearla silenciosamente. Aplicar el conjunto aceptado en una operación deshacible.
 - [ ] **5. Persistencia y casos de prueba:** exportar/importar los metadatos, migrar proyectos antiguos sin alterarlos y probar un caso comercial con clientes/pedidos/líneas/productos, PK/FK compuestas, autorreferencia, ciclo, unique, columnas nullable y valores limitados.
 - [ ] **6. Integración con IA:** solo después de cumplir los requisitos de `ROADMAP_IA.md`; la IA propone operaciones del mismo editor, sin un modelo paralelo.
-- [ ] **7. Exportación opcional:** DDL por dialecto con nombres escapados y reglas comprobadas; vista previa y descarga. Fuera del alcance inicial: conectarse a bases, importar filas reales o ejecutar DDL.
+- [x] **7. Exportación (2026-10-15, SQL Server; sin vista previa ni otros dialectos):** DDL por dialecto con nombres escapados y reglas comprobadas; vista previa y descarga. Fuera del alcance inicial: conectarse a bases, importar filas reales o ejecutar DDL.
 
 ## Verificación y decisiones pendientes
 

@@ -31,6 +31,7 @@ function groupOf(action: Action) {
   if (action.type === 'update-schema') return `schema:${action.schema.id}`;
   if (action.type === 'update-library-field') return `library:${action.field.id}`;
   if (action.type === 'set-field-sql') return `sql:${action.fieldId}`;
+  if (action.type === 'set-column-sql') return `sql:${action.typeId}:${action.fieldId}`;
   if (action.type === 'update-kinship') return 'kinship';
   if (action.type === 'update-calendar') return 'calendar';
   if (action.type === 'rename-project') return 'project-name';

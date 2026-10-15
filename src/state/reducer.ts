@@ -1,15 +1,23 @@
 import { createInitialState, createProject, now, uid } from '../domain/factories';
 import * as lib from '../domain/library';
-import { moveSchema, reorderSchema, type DropZone } from '../domain/inheritance';
+import { reorderSchema, type DropZone } from '../domain/inheritance';
 import * as ops from '../domain/operations';
 import { moveInStructure, type StructureMove } from '../domain/structureMove';
 import { mergeTemplate } from '../domain/templates';
+import {
+  addSchemaFolder,
+  deleteSchemaFolder,
+  moveSchemaInList,
+  renameSchemaFolder,
+  setSchemaFolder,
+} from '../domain/schemaFolders';
 import { addFolder, deleteFolder, renameFolder, setNodeFolder } from '../domain/folders';
 import type { Calendar } from '../domain/calendar';
 import type { SavedQuery } from '../domain/queries';
-import { applySqlAnnotations, setFieldSql, type SqlColumn } from '../domain/database';
+import { applySqlAnnotations, setColumnSql, setFieldSql, type SqlColumn } from '../domain/database';
 import type {
   AppState,
+  ProjectKind,
   FieldDefinition,
   FieldValue,
   KinshipTerm,
@@ -28,6 +36,7 @@ export type Action =
   | { type: 'set-project'; id: string }
   | { type: 'add-project'; name: string }
   | { type: 'rename-project'; name: string }
+  | { type: 'set-project-kind'; kind: ProjectKind }
   | { type: 'delete-project' }
   | { type: 'duplicate-project' }
   | { type: 'import-project'; project: Project; replaceBlank?: boolean }
@@ -45,6 +54,10 @@ export type Action =
   | { type: 'delete-schema'; id: string; strategy: OrphanStrategy }
   | { type: 'reorder-schema'; id: string; targetId: string; after: boolean }
   | { type: 'move-schema'; id: string; targetId: string; zone: DropZone }
+  | { type: 'add-schema-folder'; kind: SchemaKind; name: string; id?: string }
+  | { type: 'rename-schema-folder'; id: string; name: string }
+  | { type: 'delete-schema-folder'; id: string }
+  | { type: 'set-schema-folder'; schemaId: string; folderId: string | null }
   | { type: 'add-field'; schemaId: string; preset?: Partial<FieldDefinition> }
   | { type: 'add-library-field'; id?: string }
   | { type: 'update-library-field'; field: FieldDefinition }
@@ -84,6 +97,8 @@ export type Action =
   | { type: 'fill-defaults'; fieldId: string }
   /** Metadatos SQL de un atributo, allí donde esté definido; `null` vuelve a los deducidos. */
   | { type: 'set-field-sql'; fieldId: string; sql: SqlColumn | null }
+  /** Metadatos SQL de una columna vista desde un tipo: los heredados y las preformas solo cambian en él. */
+  | { type: 'set-column-sql'; typeId: string; fieldId: string; sql: SqlColumn | null }
   /** Usa como tipo SQL las anotaciones escritas como valor inicial en las tablas (de un tipo o de todas). */
   | { type: 'apply-sql-annotations'; typeId?: string }
   | { type: 'duplicate-node'; id: string; withRelations?: boolean; newId?: string }
@@ -165,6 +180,8 @@ function projectReducer(p: Project, action: Action): Project {
   switch (action.type) {
     case 'rename-project':
       return { ...p, name: action.name };
+    case 'set-project-kind':
+      return { ...p, kind: action.kind };
     case 'merge-template':
       return mergeTemplate(p, action.template);
     case 'add-folder':
@@ -182,7 +199,15 @@ function projectReducer(p: Project, action: Action): Project {
     case 'delete-schema':
       return ops.deleteSchema(p, action.id, action.strategy);
     case 'move-schema':
-      return moveSchema(p, action.id, action.targetId, action.zone);
+      return moveSchemaInList(p, action.id, action.targetId, action.zone);
+    case 'add-schema-folder':
+      return addSchemaFolder(p, action.kind, action.name, action.id);
+    case 'rename-schema-folder':
+      return renameSchemaFolder(p, action.id, action.name);
+    case 'delete-schema-folder':
+      return deleteSchemaFolder(p, action.id);
+    case 'set-schema-folder':
+      return setSchemaFolder(p, action.schemaId, action.folderId);
     case 'reorder-schema':
       return reorderSchema(p, action.id, action.targetId, action.after);
     case 'add-field':
@@ -260,6 +285,8 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.bulkUpdateNodes(p, action.ids, action.patch);
     case 'set-field-sql':
       return setFieldSql(p, action.fieldId, action.sql);
+    case 'set-column-sql':
+      return setColumnSql(p, action.typeId, action.fieldId, action.sql);
     case 'apply-sql-annotations':
       return applySqlAnnotations(p, action.typeId);
     case 'fill-defaults':

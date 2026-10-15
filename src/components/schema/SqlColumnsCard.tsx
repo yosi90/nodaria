@@ -1,4 +1,4 @@
-import { CircleAlert, Database, KeyRound, TriangleAlert, Wand2 } from 'lucide-react';
+import { CircleAlert, Database, KeyRound, RotateCcw, TriangleAlert, Wand2 } from 'lucide-react';
 import {
   allowsIdentity,
   allowsMax,
@@ -8,6 +8,7 @@ import {
   referencedTable,
   SQL_TYPES,
   sqlAnnotations,
+  sqlOverrideOwner,
   sqlType,
   sqlTypeText,
   tableFields,
@@ -19,13 +20,14 @@ import {
 } from '../../domain/database';
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
-import { Button } from '../common/Button';
+import { Button, IconButton } from '../common/Button';
 import { useToast } from '../common/toasts';
 
 /**
  * Columnas SQL de un tipo tabla, como el diseñador de tablas de SQL Server: todos sus atributos
  * efectivos (propios, preformas y heredados) con su tipo, clave primaria, nulos, UNIQUE e IDENTITY.
- * Cada cambio se guarda en el atributo allí donde esté definido.
+ * Un atributo propio se cambia en su definición; uno heredado o una preforma, solo en este tipo y sus
+ * subtipos (`Schema.sqlOverrides`), sin tocar al padre ni a los demás tipos que usan la preforma.
  */
 export function SqlColumnsCard({ schema }: { schema: Schema }) {
   const { project, dispatch } = useApp();
@@ -35,7 +37,12 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
   // Las anotaciones se convierten en todas las tablas a la vez: suelen repetirse en preformas y herencia.
   const annotations = sqlAnnotations(project);
   const set = (column: TableColumn, patch: Partial<SqlColumn>) =>
-    dispatch({ type: 'set-field-sql', fieldId: column.field.id, sql: { ...column.sql, ...patch } });
+    dispatch({
+      type: 'set-column-sql',
+      typeId: schema.id,
+      fieldId: column.field.id,
+      sql: { ...column.sql, ...patch },
+    });
 
   return (
     <div className="card sql-columns-card">
@@ -63,8 +70,8 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
       </div>
       <p className="muted-note">
         Los atributos son las columnas; el título del nodo es el nombre de la tabla. Si no eliges tipo, se deduce del
-        atributo, y una referencia a otra tabla toma el de su clave primaria y se dibuja como clave foránea. Los cambios
-        en una preforma o en un atributo heredado valen para todos los tipos que lo usan.
+        atributo, y una referencia a otra tabla toma el de su clave primaria y se dibuja como clave foránea. Cambiar
+        aquí una preforma o un atributo heredado solo afecta a este tipo y a sus subtipos.
       </p>
       {issues.length > 0 && (
         <ul className="sql-issues">
@@ -110,6 +117,26 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                           <span className="badge">De «{column.origin.from.name}»</span>
                         )}
                         {field.isTitle && <span className="badge accent">Título</span>}
+                        {(() => {
+                          const owner =
+                            column.origin.kind === 'own' ? undefined : sqlOverrideOwner(project, schema.id, field.id);
+                          if (!owner) return null;
+                          return owner.id === schema.id ? (
+                            <>
+                              <span className="badge warning">Ajustado en este tipo</span>
+                              <IconButton
+                                icon={RotateCcw}
+                                size="sm"
+                                label="Volver a los ajustes heredados"
+                                onClick={() =>
+                                  dispatch({ type: 'set-column-sql', typeId: schema.id, fieldId: field.id, sql: null })
+                                }
+                              />
+                            </>
+                          ) : (
+                            <span className="badge">Ajustado en «{owner.name}»</span>
+                          );
+                        })()}
                       </div>
                       {field.type === 'nodeRef' && (
                         <small>

@@ -102,6 +102,12 @@ export interface Schema {
   yieldFieldIds: string[];
   /** Entidad que es una tabla de base de datos (lo heredan sus subtipos); ver `src/domain/database.ts`. */
   table: boolean;
+  /** Atributos heredados que este tipo (y sus subtipos) no usa (ver `src/domain/inheritance.ts`). */
+  hiddenFieldIds: string[];
+  /** Orden de todos sus atributos efectivos, heredados incluidos; vacío = el de la herencia. */
+  fieldOrder: string[];
+  /** Metadatos SQL de atributos heredados o preformas solo para este tipo y sus subtipos. */
+  sqlOverrides: Record<string, SqlColumn>;
 }
 /** Género de un nodo: masculino, femenino, neutro u otro, o sin definir. */
 export type Gender = 'm' | 'f' | 'n' | '';
@@ -177,6 +183,10 @@ export interface Project {
   folders: Folder[];
   /** Calendario del mundo: meses, días de la semana y fecha actual (`src/domain/calendar.ts`). */
   calendar: Calendar;
+  /** De qué trata el proyecto: adapta los ejemplos de la interfaz (`src/domain/projectKinds.ts`). */
+  kind: ProjectKind;
+  /** Carpetas de las listas de Tipos y Relaciones: solo organizan tipos raíz (`src/domain/schemaFolders.ts`). */
+  schemaFolders: SchemaFolder[];
 }
 /** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
 export interface Lens {
@@ -184,6 +194,14 @@ export interface Lens {
   name: string;
   view: ProjectView;
   positions: Record<string, Position> | null;
+}
+export type ProjectKind = 'general' | 'database' | 'novel' | 'rpg' | 'marketing' | 'software' | 'events' | 'research';
+/** Carpeta de la lista de tipos de entidad o de relación. */
+export interface SchemaFolder {
+  id: string;
+  name: string;
+  kind: SchemaKind;
+  schemaIds: string[];
 }
 export type LayoutMode = 'tree' | 'genealogy' | 'force' | 'radial' | 'image' | 'database';
 /** Imagen de fondo de la disposición «Mapa» (data URL reducida) con su tamaño en píxeles del lienzo. */

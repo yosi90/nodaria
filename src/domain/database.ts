@@ -192,6 +192,17 @@ export function defaultSqlColumn(field: FieldDefinition): SqlColumn {
 }
 export const sqlColumnOf = (field: FieldDefinition): SqlColumn => field.sql ?? defaultSqlColumn(field);
 
+/** Metadatos SQL propios de un tipo, por atributo; descarta los que no se entienden. */
+export function readSqlOverrides(raw: unknown): Record<string, SqlColumn> {
+  if (!raw || typeof raw !== 'object') return {};
+  const result: Record<string, SqlColumn> = {};
+  Object.entries(raw as Record<string, unknown>).forEach(([id, value]) => {
+    const sql = readSqlColumn(value);
+    if (sql) result[id] = sql;
+  });
+  return result;
+}
+
 /** Lee los metadatos SQL de un JSON cargado o importado; lo que no se entiende vuelve a los deducidos. */
 export function readSqlColumn(raw: unknown): SqlColumn | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -285,9 +296,27 @@ function originOf(p: Project, typeId: string, field: FieldDefinition): ColumnOri
   return from ? { kind: 'inherited', from } : { kind: 'own' };
 }
 
+/**
+ * Metadatos SQL de un atributo en un tipo: los del atributo, sustituidos por los que fije el ancestro
+ * más cercano (o el propio tipo) en `sqlOverrides`. Así un hijo cambia una columna heredada o una
+ * preforma sin tocar al padre ni a los demás tipos que la usan.
+ */
+export function columnSqlIn(p: Project, typeId: string, field: FieldDefinition): SqlColumn {
+  const chain = inheritedSchemas(p, typeId);
+  for (let i = chain.length - 1; i >= 0; i--) {
+    const override = chain[i].sqlOverrides?.[field.id];
+    if (override) return override;
+  }
+  return sqlColumnOf(field);
+}
+/** Tipo que fija los metadatos SQL de un atributo en `typeId` (él mismo o un ancestro), si lo hay. */
+export function sqlOverrideOwner(p: Project, typeId: string, fieldId: string): Schema | undefined {
+  return [...inheritedSchemas(p, typeId)].reverse().find(s => s.sqlOverrides?.[fieldId]);
+}
+
 function columnsOf(p: Project, typeId: string, seen: Set<string>): TableColumn[] {
   return allFields(p, typeId).map(field => {
-    const sql = sqlColumnOf(field);
+    const sql = columnSqlIn(p, typeId, field);
     return {
       field,
       sql,
@@ -449,17 +478,33 @@ const findField = (p: Project, id: string) =>
   p.fieldLibrary.find(f => f.id === id) ??
   p.schemas.flatMap(s => s.fields).find((f): f is FieldDefinition => !isFieldLink(f) && f.id === id);
 
-/** Fija los metadatos SQL de un atributo; `null` vuelve a los deducidos. */
+// Una clave primaria nunca admite nulos; IDENTITY solo tiene sentido en una columna incluida.
+const consistent = (sql: SqlColumn): SqlColumn => ({
+  ...sql,
+  nullable: sql.primaryKey ? false : sql.nullable,
+  identity: sql.identity && !sql.excluded,
+});
+
+/** Fija los metadatos SQL de un atributo en su definición (vale para todos sus tipos); `null` = deducidos. */
 export function setFieldSql(p: Project, fieldId: string, sql: SqlColumn | null): Project {
   const field = findField(p, fieldId);
   if (!field) return p;
-  // Una clave primaria nunca admite nulos; IDENTITY solo tiene sentido en una columna incluida.
-  const next = sql && {
-    ...sql,
-    nullable: sql.primaryKey ? false : sql.nullable,
-    identity: sql.identity && !sql.excluded,
-  };
-  return replaceField(p, { ...field, sql: next });
+  return replaceField(p, { ...field, sql: sql && consistent(sql) });
+}
+
+/**
+ * Cambia una columna desde el editor de un tipo. Si el atributo es propio del tipo, se cambia su
+ * definición; si es heredado o una preforma, el cambio se guarda solo en este tipo (y sus subtipos).
+ * `null` quita el ajuste propio del tipo (o, en un atributo propio, vuelve a los deducidos).
+ */
+export function setColumnSql(p: Project, typeId: string, fieldId: string, sql: SqlColumn | null): Project {
+  const schema = getSchema(p, typeId);
+  if (!schema) return p;
+  if (schema.fields.some(f => !isFieldLink(f) && f.id === fieldId)) return setFieldSql(p, fieldId, sql);
+  const sqlOverrides = { ...schema.sqlOverrides };
+  if (sql) sqlOverrides[fieldId] = consistent(sql);
+  else delete sqlOverrides[fieldId];
+  return { ...p, schemas: p.schemas.map(s => (s.id === typeId ? { ...s, sqlOverrides } : s)) };
 }
 
 /**

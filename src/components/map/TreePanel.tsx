@@ -18,6 +18,7 @@ import { useToast } from '../common/toasts';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
 import { resolveStructure, structureChildren, structureLenses } from '../../domain/structure';
 import type { Node, Selection } from '../../domain/types';
+import { vocabulary } from '../../domain/projectKinds';
 import { useApp } from '../../state/AppContext';
 import { usePreferences } from '../../state/preferences';
 import { IconButton } from '../common/Button';
@@ -243,7 +244,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
     const name = await prompt({
       title: 'Nueva carpeta',
       label: 'Nombre',
-      placeholder: 'Por ejemplo: Secundarios',
+      placeholder: `Por ejemplo: ${vocabulary(project.kind).folder}`,
       confirmLabel: 'Crear',
     });
     if (name) dispatch({ type: 'add-folder', name });

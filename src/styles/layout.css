@@ -1921,3 +1921,57 @@ button.mention:hover {
   margin: 0 0 4px 36px;
   font-size: var(--fs-xs);
 }
+
+/* Lista de tipos: plegar subtipos, «+» de subtipo solo al pasar el ratón y carpetas. */
+.type-twist {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 22px;
+  margin-right: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+}
+button.type-twist:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.type-item .type-add {
+  visibility: hidden;
+}
+.type-item:hover .type-add,
+.type-item:focus-within .type-add {
+  visibility: visible;
+}
+@media (hover: none) and (pointer: coarse) {
+  .type-item .type-add {
+    visibility: visible;
+  }
+}
+.type-folder {
+  margin: 2px 0;
+  padding-left: 6px;
+}
+.type-folder .twist {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.type-group-title.drop-target {
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.field-def.hidden-field > .field-def-head strong {
+  opacity: 0.55;
+  text-decoration: line-through;
+}

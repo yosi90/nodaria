@@ -277,12 +277,19 @@ export function duplicateSchema(
     source.name,
     p.schemas.filter(s => s.kind === source.kind).map(s => s.name),
   );
-  const fields = source.fields.map(f => (isFieldLink(f) ? { ...f } : { ...f, id: uid('field') }));
+  const ids = new Map<string, string>();
+  const fields = source.fields.map(f => {
+    if (isFieldLink(f)) return { ...f };
+    ids.set(f.id, uid('field'));
+    return { ...f, id: ids.get(f.id)! };
+  });
   const schema: Schema = {
     ...source,
     id: newId,
     name,
     fields,
+    // El orden de los atributos sigue a los propios con su id nuevo.
+    fieldOrder: source.fieldOrder.map(f => ids.get(f) ?? f),
     // Un tipo que se admite a sí mismo como subnodo admite también a su copia.
     allowedChildTypeIds: source.allowedChildTypeIds.map(t => (t === id ? newId : t)),
     sourceTypeIds: source.sourceTypeIds.map(t => (t === id ? newId : t)),

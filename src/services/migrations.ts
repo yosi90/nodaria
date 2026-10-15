@@ -4,7 +4,8 @@ import { normalizeCalendar } from '../domain/calendar';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
 import { supportsNonNegative } from '../domain/valueConstraints';
-import { readSqlColumn } from '../domain/database';
+import { readSqlColumn, readSqlOverrides } from '../domain/database';
+import { PROJECT_KINDS } from '../domain/projectKinds';
 import type {
   FieldDefinition,
   FieldValue,
@@ -26,6 +27,8 @@ import type {
  * - v6: las tablas son tipos (`Schema.table`) y sus columnas, los atributos (`FieldDefinition.sql`). El
  *   bloque `databaseDesign` y la casilla `view.databaseSchema` de v5 se descartan: no se pueden
  *   traducir a tipos y el único proyecto sincronizado que lo tenía estaba vacío.
+ * - v7: tipo de proyecto (`kind`), carpetas de tipos (`schemaFolders`) y, por tipo, atributos heredados
+ *   ocultos, orden de atributos y metadatos SQL propios (`hiddenFieldIds`, `fieldOrder`, `sqlOverrides`).
  */
 
 type RawNode = Omit<Node, 'positions'> & { positions?: Node['positions']; position?: Position | null };
@@ -137,6 +140,9 @@ function normalizeProject(project: RawProject): Project {
       maxPerTarget: typeof s.maxPerTarget === 'number' ? s.maxPerTarget : null,
       yieldFieldIds: s.yieldFieldIds || [],
       table: s.kind === 'entity' && s.table === true,
+      hiddenFieldIds: Array.isArray(s.hiddenFieldIds) ? s.hiddenFieldIds : [],
+      fieldOrder: Array.isArray(s.fieldOrder) ? s.fieldOrder : [],
+      sqlOverrides: readSqlOverrides(s.sqlOverrides),
     })),
     fieldLibrary: (project.fieldLibrary || []).map(f => ({
       ...f,
@@ -202,6 +208,17 @@ function normalizeProject(project: RawProject): Project {
       positions: l.positions ?? null,
     })),
     calendar: normalizeCalendar(project.calendar),
+    kind: PROJECT_KINDS.some(k => k.id === project.kind) ? project.kind! : 'general',
+    schemaFolders: Array.isArray(project.schemaFolders)
+      ? project.schemaFolders
+          .filter(f => f && (f.kind === 'entity' || f.kind === 'relationship'))
+          .map(f => ({
+            id: f.id,
+            name: f.name || 'Carpeta',
+            kind: f.kind,
+            schemaIds: Array.isArray(f.schemaIds) ? f.schemaIds : [],
+          }))
+      : [],
   };
 }
 

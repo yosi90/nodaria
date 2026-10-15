@@ -86,3 +86,5 @@ Tandas propuestas: primero foco, teclado y opciones (4–7, 10); después regres
 
 **Bases de datos rehechas (2026-10-15):** el propietario rechaza la entrega SQL: la tabla se definía en la ficha y no en el tipo, convertir obligaba a reescribir las columnas y «Esquema BD» era un check. Ahora un tipo se marca como tabla en «Tipos» (heredable), sus atributos son las columnas con metadatos SQL editables en «Columnas SQL», las referencias entre tablas son FK y «Base de datos» es una disposición del mapa con el diagrama al estilo de SQL Server. Las anotaciones de tipo escritas como valor inicial se convierten con un botón. Detalle en `docs/roadmaps/ROADMAP_DIAGRAMAS_BD.md`.
 
+**Mejoras de bases de datos y esquemas (2026-10-15, segunda tanda):** selección que deja resaltadas las relaciones, «+» de subtipo solo al pasar el ratón, plegar ramas y carpetas en Tipos y Relaciones, tipo de proyecto que adapta los ejemplos de la web, atributos heredados visibles, ordenables y ocultables por tipo, ajustes SQL de heredados y preformas solo para el tipo que los cambia, exportación a SQL Server y linter del esquema en Salud. Detalle en `docs/codex/PROJECT_CONTEXT.md`.
+

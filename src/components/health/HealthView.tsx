@@ -8,6 +8,9 @@ import {
   Network,
   Shapes,
   BarChart3,
+  CircleAlert,
+  Database,
+  TriangleAlert,
   Pencil,
   Search,
   Trash2,
@@ -22,6 +25,9 @@ import { analysisLinks, betweenness, bridges, degreeCentrality } from '../../dom
 import { detectCommunities } from '../../domain/communities';
 import { COLORS } from '../../domain/constants';
 import { worldHealth } from '../../domain/health';
+import { databaseLint } from '../../domain/databaseLint';
+import { tableTypes } from '../../domain/database';
+import { openSchemaDefinition } from '../layout/schemaNavigation';
 import { redundancyPairs } from '../../domain/redundancy';
 import { typeStats } from '../../domain/stats';
 import { describeCondition, runQuery, type SavedQuery } from '../../domain/queries';
@@ -43,6 +49,8 @@ export function HealthView() {
   const toast = useToast();
   const [editing, setEditing] = useState<SavedQuery | null | 'new'>(null);
   const report = useMemo(() => worldHealth(project), [project]);
+  const hasTables = tableTypes(project).length > 0;
+  const database = useMemo(() => (hasTables ? databaseLint(project) : []), [hasTables, project]);
   const graph = useMemo(() => {
     const links = analysisLinks(project);
     const score = betweenness(links);
@@ -296,6 +304,35 @@ export function HealthView() {
             </NodeButton>
           ))}
         </Section>
+        {hasTables && (
+          <Section
+            icon={Database}
+            title="Esquema de base de datos"
+            count={database.length}
+            hint="Tablas sin clave primaria, tipos SQL no válidos, claves foráneas que no encajan, nombres repetidos y referencias cíclicas."
+          >
+            {database.map((issue, i) => {
+              const Icon = issue.severity === 'error' ? CircleAlert : TriangleAlert;
+              return issue.node ? (
+                <NodeButton key={i} node={issue.node}>
+                  <Icon size={12} aria-label={issue.severity === 'error' ? 'Error' : 'Aviso'} /> {issue.message}
+                </NodeButton>
+              ) : (
+                <button
+                  key={i}
+                  type="button"
+                  className="health-item"
+                  onClick={() => issue.schema && openSchemaDefinition(issue.schema.id, 'entity', setView)}
+                >
+                  {issue.schema && <TypeIcon icon={issue.schema.icon} color={issue.schema.color} size="sm" />}
+                  <span className="health-detail">
+                    <Icon size={12} aria-label={issue.severity === 'error' ? 'Error' : 'Aviso'} /> {issue.message}
+                  </span>
+                </button>
+              );
+            })}
+          </Section>
+        )}
       </div>
       <header className="health-summary health-summary-secondary">
         <Network size={22} aria-hidden />

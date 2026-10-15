@@ -1,5 +1,10 @@
-/** Guía de los campos calculados: qué expresiones admite una fórmula y cómo usarlas. */
+import { vocabulary } from '../../domain/projectKinds';
+import { useApp } from '../../state/AppContext';
+
+/** Guía de los campos calculados: qué expresiones admite una fórmula y cómo usarlas. Los ejemplos siguen el tipo de proyecto. */
 export function FormulasGuide() {
+  const { project } = useApp();
+  const words = vocabulary(project.kind);
   return (
     <div className="guide">
       <p>
@@ -15,8 +20,8 @@ export function FormulasGuide() {
         necesita que rellenes su valor en la ficha.
       </p>
       <p className="guide-example">
-        <code>{'{nombre}, {edad} años. Vive en {padre} y venera a {dios}.'}</code>
-        <span>→ Aria, 30 años. Vive en Vael y venera a Solenne.</span>
+        <code>{words.formula.expr}</code>
+        <span>→ {words.formula.result}</span>
       </p>
 
       <h3>Atributos del propio nodo</h3>
@@ -40,7 +45,7 @@ export function FormulasGuide() {
         <tbody>
           <Row
             expr="{referencia.clave}"
-            text="Un atributo del nodo al que apunta una referencia: {dios.dominio} lee «dominio» en el dios patrón."
+            text={`Un atributo del nodo al que apunta una referencia: ${words.reference.expr}. ${words.reference.text}`}
           />
           <Row
             expr="{referencias.clave}"
@@ -117,14 +122,9 @@ export function FormulasGuide() {
       <h3>Ejemplos</h3>
       <table className="guide-table">
         <tbody>
-          <Row expr="{nombre} ({edad(nacimiento)})" text="Nombre y edad en una línea para la tarjeta." />
-          <Row expr="{contar(relaciones:Enemistad)} enemigos" text="Cuántos enemigos declarados tiene un personaje." />
-          <Row
-            expr="Hijos: {lista(relaciones:Progenitor)}"
-            text="Los descendientes directos según una relación «Progenitor»."
-          />
-          <Row expr="{padre.tipo}: {padre}" text="«Reino: Vael» en un lugar que cuelga de un reino." />
-          <Row expr="{dios.dominio} · {escuela.disciplina}" text="Rasgos de dos nodos referidos, uno junto a otro." />
+          {words.formulas.map(f => (
+            <Row key={f.expr} expr={f.expr} text={f.text} />
+          ))}
         </tbody>
       </table>
     </div>

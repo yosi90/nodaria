@@ -1,6 +1,6 @@
 import { getNodesBounds, useReactFlow } from '@xyflow/react';
 import { toPng, toSvg } from 'html-to-image';
-import { Download, FileImage, FileCode2 } from 'lucide-react';
+import { Database, Download, FileImage, FileCode2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { IconButton } from '../common/Button';
@@ -17,12 +17,14 @@ interface ExportMenuProps {
   name: string;
   /** Elemento del lienzo (sección que contiene a React Flow). */
   container: () => HTMLElement | null;
+  /** Si el proyecto tiene tablas: descargar su script de SQL Server. */
+  onSql?: () => void;
 }
 
 const MARGIN = 48;
 const MAX_SIZE = 8192;
 
-export function ExportMenu({ name, container }: ExportMenuProps) {
+export function ExportMenu({ name, container, onSql }: ExportMenuProps) {
   const flow = useReactFlow();
   const toast = useToast();
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -78,13 +80,16 @@ export function ExportMenu({ name, container }: ExportMenuProps) {
     { section: 'Vista actual (zoom y encuadre)' },
     { label: 'PNG de la vista', icon: FileImage, onSelect: () => void exportImage('png', 'view') },
     { label: 'SVG de la vista', icon: FileCode2, onSelect: () => void exportImage('svg', 'view') },
+    ...(onSql
+      ? [{ section: 'Base de datos' }, { label: 'Script SQL Server (.sql)', icon: Database, onSelect: onSql }]
+      : []),
   ];
 
   return (
     <>
       <IconButton
         icon={Download}
-        label="Exportar imagen (PNG o SVG)"
+        label={onSql ? 'Exportar imagen o SQL' : 'Exportar imagen (PNG o SVG)'}
         disabled={busy}
         active={Boolean(anchor)}
         onClick={event => (anchor ? setAnchor(null) : setAnchor(anchorOf(event.currentTarget)))}

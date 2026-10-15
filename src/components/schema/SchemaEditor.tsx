@@ -16,6 +16,7 @@ import { KinshipEditor } from './KinshipEditor';
 import { AttributesCard } from './AttributesCard';
 import { SqlColumnsCard } from './SqlColumnsCard';
 import { isTableType, tableOrigin } from '../../domain/database';
+import { vocabulary } from '../../domain/projectKinds';
 
 export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDuplicated?: (id: string) => void }) {
   const { project, dispatch } = useApp();
@@ -29,6 +30,7 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
       : 'Cualquier tipo.';
   const usage = schemaUsage(project, schema.id);
   const isEntity = schema.kind === 'entity';
+  const words = vocabulary(project.kind);
   const isTable = isEntity && isTableType(project, schema.id);
   const tableFrom = isEntity ? tableOrigin(project, schema.id) : undefined;
   const inheritsTable = Boolean(tableFrom && tableFrom.id !== schema.id && !schema.table);
@@ -106,11 +108,13 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                     disabled={inheritsTable}
                     onChange={event => update({ table: event.target.checked })}
                   />
-                  Tabla de base de datos{' '}
-                  <span className="field-hint">
-                    {inheritsTable
-                      ? `(heredado de «${tableFrom!.name}»)`
-                      : '(sus atributos son columnas; sus nodos se ven como tablas en la disposición «Base de datos»)'}
+                  <span>
+                    Tabla de base de datos{' '}
+                    <span className="field-hint">
+                      {inheritsTable
+                        ? `(heredado de «${tableFrom!.name}»)`
+                        : '(sus atributos son columnas; sus nodos se ven como tablas en la disposición «Base de datos»)'}
+                    </span>
                   </span>
                 </label>
               )}
@@ -216,7 +220,7 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                         ? 'Un mismo nombre para los dos lados: «aliado de», «hermanos».'
                         : schema.reciprocal
                           ? 'Recíproca con un papel por lado y flecha en ambos extremos: «tía» / «sobrina».'
-                          : 'De origen a destino, con flecha: «venera a», «gobierna».'}
+                          : `De origen a destino, con flecha: «${words.inverse[0].toLowerCase()}».`}
                     </small>
                   </div>
                 )}
@@ -242,8 +246,8 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                       )}
                     </div>
                     <small>
-                      Vacío: sin límite. Por ejemplo, «un personaje venera como máximo a un dios» es un máximo como
-                      origen de 1. Superarlo no se impide: se avisa en la ficha y al crear la relación.
+                      Vacío: sin límite. Por ejemplo, {words.limit} es un máximo como origen de 1. Superarlo no se
+                      impide: se avisa en la ficha y al crear la relación.
                     </small>
                   </div>
                 )}
@@ -255,7 +259,10 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                       placeholder={`Igual que «${schema.name || '…'}»`}
                       onChange={event => update({ inverseName: event.target.value })}
                     />
-                    <small>Para «Venera a», el destino lo ve como «Venerado por». Cada relación puede afinarlo.</small>
+                    <small>
+                      Para «{words.inverse[0]}», el destino lo ve como «{words.inverse[1]}». Cada relación puede
+                      afinarlo.
+                    </small>
                   </label>
                 )}
                 {!schema.genealogical && (
@@ -289,8 +296,8 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                     </div>
                     <small>
                       {schema.parentEnd === 'target'
-                        ? `En «A ${schema.name || '…'} B», A cuelga de B. Ejemplo: «vive en», «hijo de».`
-                        : `En «A ${schema.name || '…'} B», B cuelga de A. Ejemplo: «contiene», «gobierna».`}
+                        ? `En «A ${schema.name || '…'} B», A cuelga de B. Ejemplo: ${words.childOf}.`
+                        : `En «A ${schema.name || '…'} B», B cuelga de A. Ejemplo: ${words.parentOf}.`}
                     </small>
                   </div>
                 )}

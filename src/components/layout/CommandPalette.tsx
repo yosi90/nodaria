@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
+import { openSchemaDefinition } from './schemaNavigation';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { useRequests } from '../../state/requests';
@@ -94,10 +95,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       group: 'Tipos',
       leading: <TypeIcon icon={s.icon} color={s.color} size="sm" />,
       keywords: 'tipo esquema',
-      run: () => {
-        setView(s.kind === 'entity' ? 'schema' : 'relations');
-        window.setTimeout(() => document.querySelector<HTMLButtonElement>(`[data-type-id="${s.id}"]`)?.click(), 0);
-      },
+      run: () => openSchemaDefinition(s.id, s.kind, setView),
     }));
     const actions: Command[] = [
       ...project.schemas

@@ -1,5 +1,5 @@
 import { hideNewTypesInGenealogy } from '../layoutFilters';
-import type { Project } from '../types';
+import type { Project, ProjectKind } from '../types';
 import { carsExample } from './cars';
 import { puertoNorteExample } from './puertoNorte';
 import { emptyTemplate, fantasyTemplate, novelTemplate } from './worldTemplates';
@@ -21,7 +21,7 @@ export interface TemplateInfo {
   build: () => Project;
 }
 
-export const TEMPLATES: TemplateInfo[] = [
+const CATALOG: TemplateInfo[] = [
   {
     id: 'software',
     kind: 'template',
@@ -101,6 +101,21 @@ export const TEMPLATES: TemplateInfo[] = [
     build: emptyTemplate,
   },
 ];
+
+/** Tipo de proyecto de cada ejemplo o plantilla: adapta los ejemplos de la interfaz al abrirlo. */
+const KINDS: Record<string, ProjectKind> = {
+  software: 'software',
+  commercial: 'marketing',
+  events: 'events',
+  'puerto-norte': 'research',
+  fantasy: 'rpg',
+  novel: 'novel',
+};
+
+export const TEMPLATES: TemplateInfo[] = CATALOG.map(t => ({
+  ...t,
+  build: () => ({ ...t.build(), kind: KINDS[t.id] ?? 'general' }),
+}));
 
 export const templateById = (id: string) => TEMPLATES.find(t => t.id === id);
 

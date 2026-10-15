@@ -31,6 +31,8 @@ export function createProject(name = 'Mi primer mapa'): Project {
     queries: [],
     folders: [],
     calendar: defaultCalendar(),
+    kind: 'general',
+    schemaFolders: [],
   };
 }
 export function createInitialState(): AppState {
@@ -62,6 +64,9 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     maxPerTarget: null,
     yieldFieldIds: [],
     table: false,
+    hiddenFieldIds: [],
+    fieldOrder: [],
+    sqlOverrides: {},
   };
 }
 export function createField(): FieldDefinition {

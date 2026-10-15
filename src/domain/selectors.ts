@@ -22,10 +22,19 @@ export function inheritedSchemas(p: Project, typeId: string) {
 
 /** Campos efectivos de un tipo. Un campo propio sustituye a uno heredado con la misma clave. */
 export function allFields(p: Project, typeId: string) {
+  return effectiveFields(p, typeId, false);
+}
+
+/**
+ * Campos efectivos con o sin los heredados que el tipo (o un ancestro suyo) oculta (`hiddenFieldIds`),
+ * en el orden del tipo más específico que lo fije (`fieldOrder`); sin orden, el de la herencia.
+ */
+export function effectiveFields(p: Project, typeId: string, includeHidden: boolean) {
   // Un tipo sustituye los atributos heredados que repiten clave; dentro de un mismo tipo se conservan todos.
   // Un propio marcado en `yieldFieldIds` cede ante el heredado con su misma clave (ver `inheritance.ts`).
   let result: FieldDefinition[] = [];
-  inheritedSchemas(p, typeId).forEach(s => {
+  const chain = inheritedSchemas(p, typeId);
+  chain.forEach(s => {
     const declared = declaredFields(p, s)
       .filter((f, i, all) => all.findIndex(x => x.id === f.id) === i)
       // La misma preforma que ya llega por herencia se conserva en su sitio (no se repite).
@@ -33,8 +42,20 @@ export function allFields(p: Project, typeId: string) {
       .filter(f => !(s.yieldFieldIds.includes(f.id) && result.some(r => r.key === f.key)));
     const keys = new Set(declared.map(f => f.key));
     result = [...result.filter(f => !keys.has(f.key)), ...declared];
+    // Un tipo puede renunciar a atributos que hereda; sus subtipos tampoco los reciben.
+    if (!includeHidden && s.hiddenFieldIds?.length) {
+      const own = new Set(declaredFields(p, s).map(f => f.id));
+      result = result.filter(f => own.has(f.id) || !s.hiddenFieldIds.includes(f.id));
+    }
   });
-  return result;
+  const order = [...chain].reverse().find(s => s.fieldOrder?.length)?.fieldOrder;
+  if (!order) return result;
+  const rank = new Map(order.map((id, i) => [id, i]));
+  // Los que el orden no menciona (añadidos después) van al final, en el orden de la herencia.
+  return result
+    .map((f, i) => ({ f, i }))
+    .sort((a, b) => (rank.get(a.f.id) ?? order.length + a.i) - (rank.get(b.f.id) ?? order.length + b.i))
+    .map(x => x.f);
 }
 
 export function typeMatches(p: Project, typeId: string, allowed: string[]) {
