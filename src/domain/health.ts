@@ -4,6 +4,7 @@ import { nodeConnections } from './connections';
 import { extractMentions, mentionIndex, normalizeName } from './notes';
 import { isReferenceField } from './references';
 import { allFields, getNode, typeMatches } from './selectors';
+import { columnDefinitions } from './database';
 import type { FieldDefinition, Node, Project, Schema } from './types';
 
 /*
@@ -49,7 +50,11 @@ const isEmpty = (v: unknown) => v === undefined || v === null || v === '' || (Ar
 /** Atributos obligatorios (no calculados) sin valor en un nodo. */
 export function missingRequired(p: Project, node: Pick<Node, 'typeId' | 'values'>): FieldDefinition[] {
   // Un obligatorio oculto por condición no cuenta: no se puede rellenar sin cambiar la condición.
-  return visibleFields(p, node).filter(f => f.required && f.type !== 'computed' && isEmpty(node.values[f.id]));
+  // En una tabla, las columnas son definición (su tipo SQL), no datos que falten.
+  const columns = columnDefinitions(p, node.typeId);
+  return visibleFields(p, node).filter(
+    f => f.required && f.type !== 'computed' && !columns.has(f.id) && isEmpty(node.values[f.id]),
+  );
 }
 
 export const isIncomplete = (p: Project, node: Pick<Node, 'typeId' | 'values'>) => missingRequired(p, node).length > 0;

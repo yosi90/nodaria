@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, schema } from '../test/fixtures';
 import { migrateProject } from '../services/migrations';
-import { columnSqlIn, setColumnSql, sqlType, tableColumns, type SqlColumn } from './database';
+import { columnDefinitions, columnSqlIn, setColumnSql, sqlType, tableColumns, type SqlColumn } from './database';
+import { missingRequired } from './health';
 import { databaseLint, foreignKeyCycles } from './databaseLint';
 import { moveSchemaInList, schemaFolderMembers, setSchemaFolder, addSchemaFolder } from './schemaFolders';
 import { allFields } from './selectors';
@@ -190,5 +191,35 @@ describe('formato 7', () => {
     const kept = migrateProject(setColumnSql({ ...shop(), kind: 'database' }, 'pedido', 'id', key) as never);
     expect(kept.kind).toBe('database');
     expect(kept.schemas.find(s => s.id === 'pedido')?.sqlOverrides.id).toEqual(key);
+  });
+});
+
+describe('columnas de un nodo tabla', () => {
+  it('muestran su tipo SQL en lugar de un valor y no cuentan como obligatorias sin rellenar', () => {
+    const p = shop();
+    p.schemas = p.schemas.map(s =>
+      s.id === 'cliente'
+        ? { ...s, fields: [field('nombre', { required: true }), field('alta', { type: 'date', required: true })] }
+        : s,
+    );
+    const columns = columnDefinitions(p, 'cliente');
+    expect(columns.get('id')).toBe('int IDENTITY · PK');
+    expect(columns.get('nombre')).toBe('nvarchar(50) · NOT NULL');
+    expect(columns.get('alta')).toBe('date · NOT NULL');
+    expect(columns.has('titulo')).toBe(false);
+    expect(
+      missingRequired(
+        p,
+        p.nodes.find(n => n.id === 'c')!,
+      ),
+    ).toEqual([]);
+    // Las referencias siguen siendo datos: una clave foránea obligatoria sin destino sí falta.
+    p.schemas = p.schemas.map(s =>
+      s.id === 'pedido' ? { ...s, fields: [field('cliente', { type: 'nodeRef', required: true })] } : s,
+    );
+    const pedido = { ...p.nodes.find(n => n.id === 'p')!, values: { titulo: 'Pedido' } };
+    expect(missingRequired(p, pedido).map(f => f.id)).toEqual(['cliente']);
+    // Fuera de las tablas, nada cambia.
+    expect(columnDefinitions({ ...p, schemas: p.schemas.map(s => ({ ...s, table: false })) }, 'cliente').size).toBe(0);
   });
 });

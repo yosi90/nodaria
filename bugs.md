@@ -88,3 +88,5 @@ Tandas propuestas: primero foco, teclado y opciones (4–7, 10); después regres
 
 **Mejoras de bases de datos y esquemas (2026-10-15, segunda tanda):** selección que deja resaltadas las relaciones, «+» de subtipo solo al pasar el ratón, plegar ramas y carpetas en Tipos y Relaciones, tipo de proyecto que adapta los ejemplos de la web, atributos heredados visibles, ordenables y ocultables por tipo, ajustes SQL de heredados y preformas solo para el tipo que los cambia, exportación a SQL Server y linter del esquema en Salud. Detalle en `docs/codex/PROJECT_CONTEXT.md`.
 
+**Tablas sin avisos y diagrama más legible (2026-10-15, tercera tanda):** las columnas de un nodo tabla muestran su tipo SQL en la ficha, la Tabla y la tarjeta y ya no cuentan como atributos obligatorios vacíos (las FK sí). La disposición «Base de datos» agrupa por claves foráneas, separa las tablas sin pisarse y las alinea en columnas en un diagrama apaisado.
+

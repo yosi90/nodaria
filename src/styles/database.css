@@ -225,3 +225,16 @@
 .sql-type .sql-size {
   width: 64px;
 }
+
+/* En la ficha y la Tabla, una columna de un nodo tabla muestra su tipo SQL (no es un dato a rellenar). */
+.column-definition code {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.column-note {
+  margin: 0 0 var(--space-3);
+}

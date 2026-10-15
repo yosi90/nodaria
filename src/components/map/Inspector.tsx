@@ -32,6 +32,8 @@ import { FieldControl } from './FieldControl';
 import { imageClasses, nodePortrait } from '../../domain/portrait';
 import { RelationsSection } from './RelationsSection';
 import { KinshipFields } from './KinshipFields';
+import { columnDefinitions } from '../../domain/database';
+import { openSchemaDefinition } from '../layout/schemaNavigation';
 
 type Tab = 'fields' | 'connections' | 'notes';
 
@@ -56,7 +58,7 @@ export function Inspector({
   onDelete,
 }: InspectorProps) {
   const { project, dispatch } = useApp();
-  const { select, back, forward, canBack, canForward, isolated, isolate, clearIsolation } = useNavigation();
+  const { select, back, forward, canBack, canForward, isolated, isolate, clearIsolation, setView } = useNavigation();
   const [duplicateAnchor, setDuplicateAnchor] = useState<Anchor | null>(null);
   const duplicate = (withRelations: boolean) => {
     if (selection?.kind !== 'node') return;
@@ -95,6 +97,8 @@ export function Inspector({
   const item = node ?? relation!;
   const schema = getSchema(project, item.typeId);
   const fields = allFields(project, item.typeId);
+  // En un nodo tabla, las columnas muestran su tipo SQL en lugar de un dato (ver `columnDefinitions`).
+  const columns = node ? columnDefinitions(project, node.typeId) : new Map<string, string>();
   const parents = node ? parentCandidates(project, node.id) : [];
   const currentParent = node?.parentId ? getNode(project, node.parentId) : undefined;
   if (currentParent && !parents.includes(currentParent)) parents.unshift(currentParent);
@@ -257,6 +261,19 @@ export function Inspector({
             )}
             {fields.length > 0 && (
               <section className="inspector-section">
+                {columns.size > 0 && schema && (
+                  <p className="muted-note column-note">
+                    Es una tabla: sus columnas muestran su tipo SQL y se definen en{' '}
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => openSchemaDefinition(schema.id, schema.kind, setView)}
+                    >
+                      «Columnas SQL» de {schema.name}
+                    </button>
+                    . Las referencias a otras tablas son sus claves foráneas.
+                  </p>
+                )}
                 <div className="form-grid">
                   {fields
                     .filter(f => !(relation && schema?.genealogical && f.isTitle))
@@ -285,14 +302,20 @@ export function Inspector({
                             {fieldText(f.label, schema?.name)}
                             {f.required && <span className="required"> *</span>}
                           </span>
-                          <FieldControl
-                            field={f}
-                            value={fieldValue(f, item.values, fields, node ? { project, node } : undefined)}
-                            ownerId={item.id}
-                            onChange={v => updateValue(f.id, v)}
-                            titleField={f === titleField}
-                            autoFocus={Boolean(focusTitle && f === titleField)}
-                          />
+                          {columns.has(f.id) ? (
+                            <span className="column-definition" title="Columna de la tabla: se define en el tipo">
+                              <code>{columns.get(f.id)}</code>
+                            </span>
+                          ) : (
+                            <FieldControl
+                              field={f}
+                              value={fieldValue(f, item.values, fields, node ? { project, node } : undefined)}
+                              ownerId={item.id}
+                              onChange={v => updateValue(f.id, v)}
+                              titleField={f === titleField}
+                              autoFocus={Boolean(focusTitle && f === titleField)}
+                            />
+                          )}
                           {f.description && <small>{fieldText(f.description, schema?.name)}</small>}
                           {limit !== null && (
                             <small className={count > limit ? 'limit-note over' : 'limit-note'}>

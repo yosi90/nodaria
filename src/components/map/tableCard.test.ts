@@ -59,13 +59,21 @@ describe('disposición «Base de datos»', () => {
     ],
   });
 
-  it('coloca las referenciadas a la izquierda y lo que no es tabla debajo', () => {
+  it('no pisa tablas, sale siempre igual, alinea en columnas y deja lo que no es tabla debajo', () => {
     const positions = databaseLayout(p, null, [], NODE_H);
-    const x = (id: string) => positions.get(id)!.x;
-    expect(x('empresa')).toBeLessThan(x('sede'));
-    expect(x('sede')).toBeLessThan(x('union'));
-    expect(x('suelta')).toBeGreaterThan(x('union'));
-    const bottom = Math.max(...['empresa', 'sede', 'union', 'suelta'].map(id => positions.get(id)!.y + tableHeight(2)));
+    expect(databaseLayout(p, null, [], NODE_H)).toEqual(positions);
+    const tables = ['empresa', 'sede', 'union', 'suelta'];
+    const boxes = tables.map(id => ({ ...positions.get(id)!, w: TABLE_W, h: tableHeight(2) }));
+    boxes.forEach((a, i) =>
+      boxes.slice(i + 1).forEach(b => {
+        const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+        expect(apart).toBe(true);
+      }),
+    );
+    // Columnas: las x de las tablas del grupo unido son múltiplos del paso entre columnas.
+    const xs = new Set(['empresa', 'sede', 'union'].map(id => positions.get(id)!.x));
+    expect(xs.size).toBeGreaterThan(1);
+    const bottom = Math.max(...boxes.map(b => b.y + b.h));
     expect(positions.get('idea')!.y).toBeGreaterThan(bottom);
   });
 });

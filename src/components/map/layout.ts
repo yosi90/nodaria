@@ -636,15 +636,120 @@ export function autoLayout(
   return treeLayout(p, structureId, false, h, links, options.looseNearLinks ?? true);
 }
 
-const TABLE_COL_GAP = 140;
-const TABLE_ROW_GAP = 48;
+const TABLE_GAP = 70;
+const GROUP_GAP = 220;
+const GRID = 20;
+
+type Box = { id: string; x: number; y: number; w: number; h: number };
+
+/** Colisión entre rectángulos (las tablas son altas y estrechas: un círculo dejaría huecos o solapes). */
+function rectCollide(padding: number) {
+  let nodes: (Box & { vx?: number; vy?: number })[] = [];
+  const force = (alpha: number) => {
+    for (let i = 0; i < nodes.length; i++)
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const ox = (a.w + b.w) / 2 + padding - Math.abs(dx);
+        const oy = (a.h + b.h) / 2 + padding - Math.abs(dy);
+        if (ox <= 0 || oy <= 0) continue;
+        // Se separan por el eje en el que menos se solapan, a partes iguales.
+        const k = 0.5 * Math.min(1, alpha * 4 + 0.3);
+        if (ox < oy) {
+          const shift = (ox / 2) * k * (dx < 0 ? -1 : 1);
+          a.x -= shift;
+          b.x += shift;
+        } else {
+          const shift = (oy / 2) * k * (dy < 0 ? -1 : 1);
+          a.y -= shift;
+          b.y += shift;
+        }
+      }
+  };
+  force.initialize = (n: typeof nodes) => (nodes = n);
+  return force;
+}
+
+/** Quita los solapes que queden tras la simulación, empujando por el eje más corto. */
+function separate(boxes: Box[], padding: number) {
+  for (let pass = 0; pass < 200; pass++) {
+    let moved = false;
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i];
+        const b = boxes[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const ox = (a.w + b.w) / 2 + padding - Math.abs(dx);
+        const oy = (a.h + b.h) / 2 + padding - Math.abs(dy);
+        if (ox <= 0 || oy <= 0) continue;
+        moved = true;
+        if (ox < oy) {
+          const shift = ox / 2 + 0.5;
+          a.x -= dx < 0 ? -shift : shift;
+          b.x += dx < 0 ? -shift : shift;
+        } else {
+          const shift = oy / 2 + 0.5;
+          a.y -= dy < 0 ? -shift : shift;
+          b.y += dy < 0 ? -shift : shift;
+        }
+      }
+    if (!moved) return;
+  }
+}
 
 /**
- * Disposición «Base de datos»: las tablas en columnas según sus claves foráneas, como un diagrama de
- * SQL Server. Una tabla que no referencia a ninguna va a la izquierda y cada tabla queda una columna
- * más a la derecha que la más lejana a la que apunta, así que las tablas intermedias acaban entre las
- * que unen. Dentro de cada columna se ordenan por la altura media de las tablas con las que se unen.
- * Las tablas sueltas van en columnas aparte y los nodos que no son tablas, debajo, en jerárquica.
+ * Ordena el resultado de la simulación en columnas, como un diagrama hecho a mano: las tablas cuyo
+ * centro cae a menos de media tabla de la columna en curso comparten columna; dentro de cada una se
+ * apilan de arriba abajo cerca de la altura que tenían, sin pisarse. Devuelve esquinas superiores
+ * izquierdas desde el origen, ajustadas a la rejilla.
+ */
+function alignColumns(boxes: Box[]): Box[] {
+  const byX = [...boxes].sort((a, b) => a.x - b.x || a.y - b.y);
+  const columns: Box[][] = [];
+  let start = -Infinity;
+  byX.forEach(b => {
+    if (b.x - start > TABLE_W * 0.55) {
+      columns.push([]);
+      start = b.x;
+    }
+    columns[columns.length - 1].push(b);
+  });
+  const minY = Math.min(...boxes.map(b => b.y - b.h / 2));
+  const placed: Box[] = [];
+  columns.forEach((column, i) => {
+    let bottom = -Infinity;
+    column
+      .sort((a, b) => a.y - b.y)
+      .forEach(b => {
+        const wanted = Math.round((b.y - b.h / 2 - minY) / GRID) * GRID;
+        const y = Math.max(wanted, bottom === -Infinity ? 0 : bottom + TABLE_GAP);
+        placed.push({ ...b, x: i * (TABLE_W + TABLE_GAP * 2), y });
+        bottom = y + b.h;
+      });
+  });
+  const top = Math.min(...placed.map(b => b.y));
+  return placed.map(b => ({ ...b, y: b.y - top }));
+}
+
+/** Generador pseudoaleatorio con semilla fija: la disposición sale igual cada vez. */
+function seeded(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+}
+
+/**
+ * Disposición «Base de datos», a la manera del diagrama de SQL Server: cada grupo de tablas unidas
+ * por claves foráneas se coloca por separado con una simulación de fuerzas (las claves acercan, todas
+ * se repelen y no se pisan, con colisión rectangular), partiendo de unas columnas según la
+ * profundidad de las claves para que salga ordenado y siempre igual. Luego se ajusta a una rejilla y
+ * los grupos se empaquetan en filas, del mayor al menor, con las tablas sueltas al final. Los nodos
+ * que no son tablas van debajo, en jerárquica.
  */
 export function databaseLayout(
   p: Project,
@@ -661,14 +766,21 @@ export function databaseLayout(
     if (!columnCount.has(n.typeId)) columnCount.set(n.typeId, tableColumns(p, n.typeId).length);
     heights.set(n.id, tableHeight(columnCount.get(n.typeId)!));
   });
-  const keys = foreignKeyLinks(p).filter(l => ids.has(l.sourceId) && ids.has(l.targetId) && l.sourceId !== l.targetId);
-  const linked = new Set(keys.flatMap(l => [l.sourceId, l.targetId]));
+  const pairs = new Map<string, { a: string; b: string }>();
+  foreignKeyLinks(p).forEach(l => {
+    if (!ids.has(l.sourceId) || !ids.has(l.targetId) || l.sourceId === l.targetId) return;
+    pairs.set([l.sourceId, l.targetId].sort().join('|'), { a: l.sourceId, b: l.targetId });
+  });
+  const keys = [...pairs.values()];
 
-  // Columna: una más que la más lejana de las referenciadas. Con ciclos el bucle se corta igualmente.
+  // Semilla: columnas según la profundidad de las claves (las referenciadas a la izquierda).
   const rank = new Map(tables.map(n => [n.id, 0]));
+  const directed = foreignKeyLinks(p).filter(
+    l => ids.has(l.sourceId) && ids.has(l.targetId) && l.sourceId !== l.targetId,
+  );
   for (let pass = 0; pass < tables.length; pass++) {
     let changed = false;
-    keys.forEach(l => {
+    directed.forEach(l => {
       const next = rank.get(l.targetId)! + 1;
       if (next > rank.get(l.sourceId)! && next < tables.length) {
         rank.set(l.sourceId, next);
@@ -677,58 +789,94 @@ export function databaseLayout(
     });
     if (!changed) break;
   }
-  const neighbors = new Map<string, string[]>();
-  keys.forEach(l => {
-    neighbors.set(l.sourceId, [...(neighbors.get(l.sourceId) ?? []), l.targetId]);
-    neighbors.set(l.targetId, [...(neighbors.get(l.targetId) ?? []), l.sourceId]);
-  });
-  const columns: string[][] = [];
-  tables.filter(n => linked.has(n.id)).forEach(n => (columns[rank.get(n.id)!] ??= []).push(n.id));
-  const dense = columns.filter(Boolean);
-  // Barridos de ida y vuelta: cada tabla busca la altura media de sus vecinas ya colocadas.
-  const order = new Map<string, number>();
-  const place = () => dense.forEach(col => col.forEach((id, i) => order.set(id, i / Math.max(1, col.length - 1))));
-  place();
-  for (let sweep = 0; sweep < 4; sweep++) {
-    const sequence = sweep % 2 ? [...dense].reverse() : dense;
-    sequence.forEach(col => {
-      const key = (id: string) => {
-        const near = (neighbors.get(id) ?? []).filter(n => order.has(n));
-        return near.length ? near.reduce((sum, n) => sum + order.get(n)!, 0) / near.length : order.get(id)!;
-      };
-      const keyed = new Map(col.map(id => [id, key(id)]));
-      col.sort((a, b) => keyed.get(a)! - keyed.get(b)!);
-      col.forEach((id, i) => order.set(id, i / Math.max(1, col.length - 1)));
-    });
-  }
-  // Una columna demasiado alta se parte en subcolumnas contiguas, para que el diagrama se acerque a la
-  // proporción de una pantalla (unas 1,6 veces más ancho que alto) en lugar de una tira estrecha.
-  const span = (col: string[]) => col.reduce((sum, id) => sum + heights.get(id)! + TABLE_ROW_GAP, 0);
-  const area = tables.reduce((sum, n) => sum + (TABLE_W + TABLE_COL_GAP) * (heights.get(n.id)! + TABLE_ROW_GAP), 0);
-  const limit = Math.max(...tables.map(n => heights.get(n.id)! + TABLE_ROW_GAP), Math.sqrt(area / 1.6));
-  const split = (col: string[]) => {
-    const parts: string[][] = [[]];
-    col.forEach(id => {
-      const last = parts[parts.length - 1];
-      if (last.length && span(last) + heights.get(id)! + TABLE_ROW_GAP > limit) parts.push([id]);
-      else last.push(id);
-    });
-    return parts;
+  const slot = new Map<number, number>();
+  const seed = new Map(
+    tables.map(n => {
+      const r = rank.get(n.id)!;
+      const i = slot.get(r) ?? 0;
+      slot.set(r, i + 1);
+      return [n.id, { x: r * (TABLE_W + TABLE_GAP * 2), y: i * 180 }];
+    }),
+  );
+
+  // Grupos conexos.
+  const root = new Map(tables.map(n => [n.id, n.id]));
+  const find = (id: string): string => (root.get(id) === id ? id : find(root.get(id)!));
+  keys.forEach(k => root.set(find(k.a), find(k.b)));
+  const groups = new Map<string, string[]>();
+  tables.forEach(n => groups.set(find(n.id), [...(groups.get(find(n.id)) ?? []), n.id]));
+  const linked = [...groups.values()].filter(g => g.length > 1);
+  const loose = [...groups.values()].filter(g => g.length === 1).flat();
+
+  const placeGroup = (members: string[]): Box[] => {
+    const set = new Set(members);
+    const nodes = members.map(id => ({
+      id,
+      x: seed.get(id)!.x + TABLE_W / 2,
+      y: seed.get(id)!.y + heights.get(id)! / 2,
+      w: TABLE_W,
+      h: heights.get(id)!,
+    }));
+    forceSimulation(nodes)
+      .randomSource(seeded(members.length))
+      .force(
+        'link',
+        forceLink(keys.filter(k => set.has(k.a)).map(k => ({ source: k.a, target: k.b })))
+          .id(d => (d as Box).id)
+          .distance(TABLE_W + TABLE_GAP)
+          .strength(0.4),
+      )
+      .force('charge', forceManyBody().strength(-2600).distanceMax(1600))
+      // Mucha más fuerza en vertical que en horizontal: el diagrama sale apaisado, como la pantalla.
+      .force('x', forceX(0).strength(0.006))
+      .force('y', forceY(0).strength(0.07))
+      .force('rect', rectCollide(TABLE_GAP))
+      .stop()
+      .tick(400);
+    const boxes = nodes.map(n => ({ id: n.id, x: n.x, y: n.y, w: n.w, h: n.h }));
+    separate(boxes, TABLE_GAP);
+    return alignColumns(boxes);
   };
-  const loose = tables.filter(n => !linked.has(n.id)).map(n => n.id);
-  const groups = [...dense.map(split), ...(loose.length ? [split(loose)] : [])];
-  const tallest = Math.max(0, ...groups.flat().map(span));
-  let x = 0;
-  groups.forEach(parts => {
-    parts.forEach(col => {
-      let y = (tallest - span(col)) / 2;
-      col.forEach(id => {
-        result.set(id, { x, y });
-        y += heights.get(id)! + TABLE_ROW_GAP;
-      });
-      x += TABLE_W + TABLE_COL_GAP / 2;
+  // Las tablas sueltas, en una rejilla de columnas de hasta cuatro.
+  const placeLoose = (members: string[]): Box[] => {
+    const cols = Math.ceil(members.length / 4);
+    const rows = Math.ceil(members.length / cols);
+    let y = 0;
+    let col = 0;
+    return members.map((id, i) => {
+      if (i && i % rows === 0) {
+        col++;
+        y = 0;
+      }
+      const box = { id, x: col * (TABLE_W + TABLE_GAP), y, w: TABLE_W, h: heights.get(id)! };
+      y += heights.get(id)! + TABLE_GAP;
+      return box;
     });
-    x += TABLE_COL_GAP / 2;
+  };
+
+  const blocks = [
+    ...linked.sort((a, b) => b.length - a.length).map(placeGroup),
+    ...(loose.length ? [placeLoose(loose)] : []),
+  ].map(boxes => ({
+    boxes,
+    width: Math.max(...boxes.map(b => b.x + b.w)),
+    height: Math.max(...boxes.map(b => b.y + b.h)),
+  }));
+  // Empaquetado en filas: el ancho de la fila es el del bloque mayor o el de una pantalla apaisada.
+  const area = blocks.reduce((sum, b) => sum + (b.width + GROUP_GAP) * (b.height + GROUP_GAP), 0);
+  const rowWidth = Math.max(...blocks.map(b => b.width), Math.sqrt(area * 1.6));
+  let x = 0;
+  let y = 0;
+  let rowHeight = 0;
+  blocks.forEach(block => {
+    if (x > 0 && x + block.width > rowWidth) {
+      x = 0;
+      y += rowHeight + GROUP_GAP;
+      rowHeight = 0;
+    }
+    block.boxes.forEach(b => result.set(b.id, { x: x + b.x, y: y + b.y }));
+    x += block.width + GROUP_GAP;
+    rowHeight = Math.max(rowHeight, block.height);
   });
 
   // Lo que no es tabla conserva su jerarquía debajo del diagrama.

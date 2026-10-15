@@ -18,6 +18,7 @@ import { Popover } from '../common/Popover';
 import { Splitter } from '../common/Splitter';
 import { useToast } from '../common/toasts';
 import { FieldControl } from '../map/FieldControl';
+import { columnDefinitions } from '../../domain/database';
 import { isImageValue } from '../map/images';
 import { BulkBar } from './BulkBar';
 import { MatrixView } from './MatrixView';
@@ -400,6 +401,13 @@ export function TableView() {
                               ) : (
                                 ''
                               )
+                            ) : columnDefinitions(project, n.typeId).has(c.field.id) ? (
+                              <span
+                                className="cell-readonly column-definition"
+                                title="Columna de la tabla: se define en el tipo"
+                              >
+                                <code>{columnDefinitions(project, n.typeId).get(c.field.id)}</code>
+                              </span>
                             ) : (
                               <FieldControl
                                 field={c.field}

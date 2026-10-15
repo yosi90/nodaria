@@ -336,6 +336,36 @@ export const tableFields = (p: Project, typeId: string) => columnsOf(p, typeId, 
 /** Columnas de la tabla, en el orden de los atributos. */
 export const tableColumns = (p: Project, typeId: string) => tableFields(p, typeId).filter(c => !c.sql.excluded);
 
+/** Texto de una columna: «int IDENTITY · PK», «nvarchar(50) · NOT NULL», «date». */
+export function columnText(c: TableColumn) {
+  const type = sqlTypeText(c.type) + (c.sql.identity ? ' IDENTITY' : '');
+  return c.sql.primaryKey ? `${type} · PK` : c.sql.nullable ? type : `${type} · NOT NULL`;
+}
+
+const definitionCache = new WeakMap<Project, Map<string, Map<string, string>>>();
+/**
+ * En un nodo tabla, cada columna que no es una referencia es definición, no un dato de la ficha: su
+ * «valor» es su tipo SQL, que se deduce del tipo y no se escribe en el nodo (así no se desfasa al
+ * cambiarlo). Las referencias siguen siendo valores: dicen a qué tabla apunta cada clave foránea.
+ * Devuelve, por id de atributo, el texto que ocupa su sitio; vacío si el tipo no es una tabla.
+ */
+export function columnDefinitions(p: Project, typeId: string): Map<string, string> {
+  let byType = definitionCache.get(p);
+  if (!byType) definitionCache.set(p, (byType = new Map()));
+  let result = byType.get(typeId);
+  if (!result) {
+    result = new Map(
+      isTableType(p, typeId)
+        ? tableColumns(p, typeId)
+            .filter(c => !c.reference)
+            .map(c => [c.field.id, columnText(c)])
+        : [],
+    );
+    byType.set(typeId, result);
+  }
+  return result;
+}
+
 /** Una clave foránea dibujada: una columna de referencia de un nodo tabla que apunta a otro nodo tabla. */
 export interface ForeignKeyLink {
   sourceId: string;

@@ -5,6 +5,7 @@ import { isImageData, type NodeImage } from '../../domain/portrait';
 import { allFields } from '../../domain/selectors';
 import type { FieldDefinition, Node, Project } from '../../domain/types';
 import { NODE_H } from './layout';
+import { columnDefinitions } from '../../domain/database';
 
 /** Lo que un atributo aporta a la tarjeta: una insignia (solo icono) o una línea (icono y texto). */
 export interface CardBadge {
@@ -51,9 +52,10 @@ export function cardContent(p: Project, n: Node): { badges: CardBadge[]; lines: 
   const badges: CardBadge[] = [];
   const lines: CardLine[] = [];
   const fields = allFields(p, n.typeId);
+  const columns = columnDefinitions(p, n.typeId);
   fields.forEach(f => {
     if (!isFieldVisible(fields, f, n.values)) return;
-    const v = f.type === 'computed' ? evaluateFormula(p, n, f.formula) : n.values[f.id];
+    const v = columns.get(f.id) ?? (f.type === 'computed' ? evaluateFormula(p, n, f.formula) : n.values[f.id]);
     if (isEmpty(v)) return;
     const option = f.type === 'select' ? String(v) : null;
     const mode = (option && f.optionDisplay[option]) || f.nodeDisplay;
@@ -67,10 +69,11 @@ export function cardContent(p: Project, n: Node): { badges: CardBadge[]; lines: 
     if (f.type === 'image' && !image) return;
     if (mode === 'icon') {
       if (image) badges.push({ icon: icon ?? 'image', title: f.label, image });
-      else if (icon) badges.push({ icon, title: describe(p, f, v) });
+      else if (icon) badges.push({ icon, title: columns.has(f.id) ? `${f.label}: ${v}` : describe(p, f, v) });
       return;
     }
-    lines.push({ icon, text: f.type === 'image' ? f.label : describe(p, f, v), image });
+    const text = columns.has(f.id) ? `${f.label}: ${v}` : f.type === 'image' ? f.label : describe(p, f, v);
+    lines.push({ icon, text, image });
   });
   return { badges: badges.slice(0, 4), lines };
 }
