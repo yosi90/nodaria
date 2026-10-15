@@ -1,68 +1,103 @@
 import {
-  CloudOff,
-  CloudAlert,
   Cloud,
-  Lightbulb,
-  ShieldCheck,
+  CloudAlert,
+  CloudOff,
+  ExternalLink,
   LogIn,
   LogOut,
-  MailWarning,
   RefreshCw,
+  ShieldCheck,
   Trash2,
   UserRound,
+  UserRoundPen,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, fetchMe, OfflineError } from '../../services/api';
-import { excludeDeviceFromStats } from '../../services/stats';
-import { useAuth, type AccountUser, type AuthStatus } from '../../state/auth';
+import { useCallback, useEffect, useState } from 'react';
+import { ApiError, deleteMe } from '../../services/api';
+import { SOCIAL_URL, sdk } from '../../services/yosiftware';
+import { useAuth } from '../../state/auth';
+import { useSync } from '../../state/sync';
 import { IconButton } from '../common/Button';
 import { anchorOf, type Anchor } from '../common/anchor';
+import { useDialogs } from '../common/dialogs';
 import { Menu, type MenuEntry } from '../common/Menu';
 import { useToast } from '../common/toasts';
-import { DeleteAccountDialog } from './DeleteAccountDialog';
-import { SignInDialog, type SignInMode } from './SignInDialog';
 import { SignOutDialog } from './SignOutDialog';
-import { useSync } from '../../state/sync';
-import { useRequests } from '../../state/requests';
 
-/** Botón de cuenta de la barra superior: entrar, estado de verificación y menú de la sesión. */
+/**
+ * Cuenta de Yosiftware en la barra superior. Entrar, el perfil, la privacidad y salir son del SDK de
+ * la plataforma; aquí solo está el estado de la sincronización y borrar los datos de Nodaria.
+ */
 export function AccountButton() {
-  const { status, user, getToken } = useAuth();
+  const { status, user, restrictions, signIn, getToken } = useAuth();
   const sync = useSync();
-  const requests = useRequests();
   const toast = useToast();
+  const { confirm } = useDialogs();
   const [signingOut, setSigningOut] = useState(false);
-  const [signIn, setSignIn] = useState<SignInMode | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
+  const [photo, setPhoto] = useState<{ account: string; url: string | null } | null>(null);
   const closeMenu = useCallback(() => setMenuAnchor(null), []);
-  useRegisterWithApi(status, user, getToken, toast, requests.setIsAdmin);
+
+  // La foto viene del perfil común de la plataforma; Nodaria no guarda nada de él.
+  const account = status === 'signed-in' ? (user?.id ?? null) : null;
+  useEffect(() => {
+    if (!account) return;
+    let cancelled = false;
+    void sdk()
+      ?.perfil()
+      .then(profile => !cancelled && setPhoto({ account, url: profile?.avatar?.miniatura ?? null }))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [account]);
+  const avatar = photo && photo.account === account ? photo.url : null;
 
   if (status === 'loading') return <span className="account-slot" aria-hidden />;
 
+  if (status === 'unavailable') {
+    return (
+      <IconButton
+        icon={CloudOff}
+        label="La cuenta de Yosiftware no responde ahora. Nodaria sigue funcionando en este navegador."
+        tooltipSide="left"
+        disabled
+      />
+    );
+  }
+
   if (status === 'signed-out') {
     return (
-      <>
-        <IconButton icon={LogIn} label="Iniciar sesión" onClick={() => setSignIn('login')} />
-        {signIn && <SignInDialog initialMode={signIn} onClose={() => setSignIn(null)} />}
-      </>
+      <IconButton
+        icon={LogIn}
+        label="Entrar con tu cuenta de Yosiftware (opcional: sincroniza tus proyectos)"
+        tooltipSide="left"
+        onClick={() => void signIn()}
+      />
     );
   }
 
-  if (status === 'unverified') {
-    return (
-      <>
-        <IconButton
-          icon={MailWarning}
-          label="Confirma tu correo para activar la cuenta"
-          className="account-unverified"
-          onClick={() => setSignIn('verify')}
-        />
-        {signIn && <SignInDialog initialMode={signIn} onClose={() => setSignIn(null)} />}
-      </>
-    );
-  }
+  const deleteData = async () => {
+    const ok = await confirm({
+      title: 'Borrar tus datos de Nodaria',
+      message:
+        'Se borran del servidor los proyectos guardados en tu cuenta. Los de este navegador se quedan aquí y tu cuenta de Yosiftware sigue igual. Para borrar la cuenta entera, ve a tu cuenta en la web social.',
+      confirmLabel: 'Borrar mis datos de Nodaria',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await deleteMe(token);
+      sync.forgetAccount();
+      await sdk()?.salir();
+      toast({ message: 'Datos de Nodaria borrados del servidor. Los proyectos de este navegador siguen aquí.' });
+    } catch (error) {
+      toast({ message: `No se pudieron borrar: ${error instanceof ApiError ? error.message : 'sin conexión'}` });
+    }
+  };
 
+  const limited = restrictions?.scopes.includes('creacion');
   const syncLabel =
     sync.state === 'syncing'
       ? 'Sincronizando…'
@@ -75,7 +110,7 @@ export function AccountButton() {
     ? `Última vez: ${new Date(sync.lastSyncAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`
     : undefined;
   const entries: MenuEntry[] = [
-    { section: user?.email ?? 'Cuenta' },
+    { section: user?.alias ?? 'Cuenta' },
     {
       label: syncLabel,
       hint: syncHint,
@@ -83,6 +118,19 @@ export function AccountButton() {
       disabled: true,
       onSelect: () => undefined,
     },
+    ...(limited
+      ? [
+          {
+            label: 'Los proyectos nuevos se quedan en este navegador',
+            hint: restrictions?.until
+              ? `Tu cuenta tiene limitado crear contenido hasta el ${new Date(restrictions.until).toLocaleDateString('es')}`
+              : 'Tu cuenta tiene limitado crear contenido',
+            icon: CloudAlert,
+            disabled: true,
+            onSelect: () => undefined,
+          } satisfies MenuEntry,
+        ]
+      : []),
     {
       label: 'Sincronizar ahora',
       icon: RefreshCw,
@@ -90,22 +138,21 @@ export function AccountButton() {
       onSelect: () => void sync.syncNow(),
     },
     'separator',
-    ...(requests.isAdmin
-      ? [{ label: 'Administración', icon: ShieldCheck, onSelect: () => requests.setAdminOpen(true) } as MenuEntry]
-      : []),
+    { label: 'Mi perfil', icon: UserRoundPen, onSelect: () => void sdk()?.editarPerfil() },
+    { label: 'Privacidad', icon: ShieldCheck, onSelect: () => void sdk()?.privacidad() },
     {
-      label: 'Mis peticiones',
-      hint: requests.unread > 0 ? `${requests.unread} respuestas nuevas` : undefined,
-      icon: Lightbulb,
-      onSelect: () => requests.open('mine'),
+      label: 'Tu cuenta en Yosiftware',
+      hint: 'social.yosiftware.es',
+      icon: ExternalLink,
+      onSelect: () => window.open(SOCIAL_URL, '_blank', 'noopener'),
     },
     'separator',
     { label: 'Cerrar sesión', icon: LogOut, onSelect: () => setSigningOut(true) },
     'separator',
-    { label: 'Eliminar cuenta', icon: Trash2, danger: true, onSelect: () => setDeleting(true) },
+    { label: 'Borrar mis datos de Nodaria', icon: Trash2, danger: true, onSelect: () => void deleteData() },
   ];
 
-  const initial = (user?.displayName || user?.email || '?').trim().charAt(0).toUpperCase();
+  const initial = (user?.alias || '?').trim().charAt(0).toUpperCase();
 
   return (
     <>
@@ -114,13 +161,13 @@ export function AccountButton() {
         className={`account-button sync-${sync.state}`}
         aria-haspopup="menu"
         aria-expanded={Boolean(menuAnchor)}
-        aria-label={`Cuenta: ${user?.email ?? ''}`}
-        data-tooltip={user?.email ?? 'Cuenta'}
+        aria-label={`Cuenta: ${user?.alias ?? ''}`}
+        data-tooltip={user?.alias ?? 'Cuenta'}
         data-tooltip-side="left"
         onClick={event => (menuAnchor ? closeMenu() : setMenuAnchor(anchorOf(event.currentTarget)))}
       >
-        {user?.photoUrl ? (
-          <img src={user.photoUrl} alt="" referrerPolicy="no-referrer" />
+        {avatar ? (
+          <img src={avatar} alt="" />
         ) : initial !== '?' ? (
           <span>{initial}</span>
         ) : (
@@ -130,37 +177,6 @@ export function AccountButton() {
       </button>
       {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Cuenta" />}
       {signingOut && <SignOutDialog onClose={() => setSigningOut(false)} />}
-      {deleting && <DeleteAccountDialog onClose={() => setDeleting(false)} />}
     </>
   );
-}
-
-/**
- * Al iniciar sesión, una llamada a /api/me da de alta la cuenta en el servidor y comprueba
- * que la API acepta el token. Un fallo no bloquea nada: la app sigue en local. Si la cuenta es
- * del propietario, marca el dispositivo para que no cuente en las estadísticas.
- */
-function useRegisterWithApi(
-  status: AuthStatus,
-  user: AccountUser | null,
-  getToken: (forceRefresh?: boolean) => Promise<string | null>,
-  toast: (options: { message: string }) => void,
-  setIsAdmin: (isAdmin: boolean) => void,
-) {
-  const announced = useRef<string | null>(null);
-  useEffect(() => {
-    if (status !== 'signed-in' || !user || announced.current === user.uid) return;
-    announced.current = user.uid;
-    void (async () => {
-      try {
-        const token = await getToken();
-        const me = token ? await fetchMe(token) : null;
-        if (me?.excludeFromStats) excludeDeviceFromStats();
-        setIsAdmin(Boolean(me?.isAdmin));
-      } catch (error) {
-        if (error instanceof OfflineError) toast({ message: 'Sin conexión con el servidor de Nodaria.' });
-        else if (error instanceof ApiError) toast({ message: `No se pudo conectar la cuenta: ${error.message}` });
-      }
-    })();
-  }, [status, user, getToken, toast, setIsAdmin]);
 }

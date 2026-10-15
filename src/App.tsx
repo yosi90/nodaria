@@ -4,9 +4,6 @@ import { CommandPalette } from './components/layout/CommandPalette';
 import { RepairNotice } from './components/layout/RepairNotice';
 import { StorageNotice } from './components/layout/StorageNotice';
 import { HelpDialog } from './components/layout/HelpDialog';
-import { SignInDialog } from './components/account/SignInDialog';
-import { RequestsDialog } from './components/requests/RequestsDialog';
-import { AdminDialog } from './components/admin/AdminDialog';
 import { Topbar } from './components/layout/Topbar';
 import { TemplatesDialog } from './components/onboarding/TemplatesDialog';
 import { Tour } from './components/onboarding/Tour';
@@ -21,7 +18,6 @@ import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
 import { useApp } from './state/AppContext';
 import { useNavigation, type View } from './state/navigation';
-import { useRequests } from './state/requests';
 
 export default function App() {
   const {
@@ -46,8 +42,6 @@ export default function App() {
   const openTemplates = useCallback(() => setTemplatesOpen(true), []);
   const closeTemplates = useCallback(() => setTemplatesOpen(false), []);
   const welcome = useWelcome();
-  const requests = useRequests();
-  const [signingIn, setSigningIn] = useState(false);
   return (
     <div className="app">
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} onTemplates={openTemplates} />
@@ -73,9 +67,6 @@ export default function App() {
       </div>
       {help && <HelpDialog topic={help} onTopic={openHelpTopic} onClose={closeHelp} onTemplates={openTemplates} />}
       {templatesOpen && <TemplatesDialog onClose={closeTemplates} />}
-      {requests.tab && <RequestsDialog onSignIn={() => setSigningIn(true)} />}
-      {requests.adminOpen && <AdminDialog />}
-      {signingIn && <SignInDialog initialMode="login" onClose={() => setSigningIn(false)} />}
       {welcome.open && <WelcomeDialog onClose={welcome.dismiss} onTemplates={openTemplates} />}
       <Tour />
       <ContextMenu />

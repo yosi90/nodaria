@@ -18,7 +18,7 @@ import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
 import { openSchemaDefinition } from './schemaNavigation';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
-import { useRequests } from '../../state/requests';
+import { sdk } from '../../services/yosiftware';
 import { usePreferences } from '../../state/preferences';
 import { TypeIcon } from '../common/icons';
 import { NodeAvatar } from '../common/NodeAvatar';
@@ -46,7 +46,6 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const { project, dispatch } = useApp();
   const { select, setView } = useNavigation();
   const { preferences, setPreference } = usePreferences();
-  const { open: openRequests } = useRequests();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -162,20 +161,12 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         run: () => setView('table'),
       },
       {
-        id: 'requests',
-        label: 'Ideas y peticiones',
+        id: 'report',
+        label: 'Errores y propuestas',
         group: 'Acciones',
         leading: icon(Lightbulb),
-        keywords: 'sugerencia idea peticion votar error fallo bug tablon',
-        run: () => openRequests('board'),
-      },
-      {
-        id: 'new-request',
-        label: 'Proponer una idea o avisar de un error',
-        group: 'Acciones',
-        leading: icon(Lightbulb),
-        keywords: 'sugerencia idea peticion error fallo bug enviar',
-        run: () => openRequests('new'),
+        keywords: 'sugerencia idea peticion propuesta mejora votar error fallo bug avisar',
+        run: () => void sdk()?.reportar(),
       },
       {
         id: 'theme',
@@ -187,7 +178,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       },
     ];
     return [...nodes, ...relations, ...types, ...actions];
-  }, [project, select, setView, dispatch, preferences.theme, setPreference, openRequests]);
+  }, [project, select, setView, dispatch, preferences.theme, setPreference]);
 
   const results = useMemo(() => {
     const q = normalize(query.trim());

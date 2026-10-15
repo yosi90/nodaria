@@ -6,7 +6,7 @@ import { useTour } from '../../state/tour';
 import { Button } from '../common/Button';
 import { LegalLinks } from '../common/LegalLinks';
 import { Compass, Layers, Lightbulb } from 'lucide-react';
-import { useRequests } from '../../state/requests';
+import { sdk } from '../../services/yosiftware';
 
 const TOPICS: { id: HelpTopic; label: string }[] = [
   { id: 'start', label: 'Primeros pasos' },
@@ -27,7 +27,6 @@ export function HelpDialog({
   onTemplates: () => void;
 }) {
   const { start } = useTour();
-  const requests = useRequests();
   return (
     <Modal title="Ayuda" informational wide onClose={onClose}>
       <div className="segmented help-tabs" role="tablist" aria-label="Temas de ayuda">
@@ -92,10 +91,10 @@ export function HelpDialog({
               icon={Lightbulb}
               onClick={() => {
                 onClose();
-                requests.open('new');
+                void sdk()?.reportar();
               }}
             >
-              Proponer una idea o avisar de un error
+              Errores y propuestas
             </Button>
           </div>
           <small>

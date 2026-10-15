@@ -1,73 +1,90 @@
 /* eslint-disable react-refresh/only-export-components -- provider y hook forman una única API de contexto */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import {
-  currentIdToken,
-  hasPasswordProvider,
-  needsEmailVerification,
-  refreshVerificationStatus,
-  signOutFirebase,
-  subscribeToAuth,
-  type FirebaseUser,
-} from '../services/firebase';
+import { loadSdk, sdk, type PlatformState } from '../services/yosiftware';
 
-/** Lo que la interfaz necesita saber de la sesión; el objeto de Firebase no sale de aquí. */
+/*
+ * Sesión de la cuenta de Yosiftware. La gestiona el SDK de la plataforma: entrar, salir, el perfil y
+ * la sesión compartida entre webs. Entrar es opcional; sin sesión, Nodaria funciona en local.
+ */
+
+/** Lo que la interfaz necesita saber de la cuenta. */
 export interface AccountUser {
-  uid: string;
+  /** Identificador global de la cuenta (el `sub` de los tokens). */
+  id: string;
+  alias: string;
   email: string | null;
-  displayName: string | null;
-  photoUrl: string | null;
-  /** Tiene contraseña (puede reautenticarse sin Google). */
-  hasPassword: boolean;
 }
 
-/** `unverified`: cuenta de correo que aún no confirmó su dirección; la API la rechaza. */
-export type AuthStatus = 'loading' | 'signed-out' | 'unverified' | 'signed-in';
+/** `unavailable`: la plataforma no responde o su SDK no ha cargado; Nodaria sigue en local. */
+export type AuthStatus = 'loading' | 'signed-out' | 'unavailable' | 'signed-in';
+
+export interface AccountRestrictions {
+  /** Alcances limitados por moderación; en Nodaria importa `creacion` (subir proyectos nuevos). */
+  scopes: string[];
+  until: string | null;
+}
 
 interface AuthContextValue {
   status: AuthStatus;
   user: AccountUser | null;
-  /** Token para la API, renovado por Firebase; `null` sin sesión. */
-  getToken: (forceRefresh?: boolean) => Promise<string | null>;
-  /** Vuelve a comprobar si el correo ya está verificado. */
-  recheckVerification: () => Promise<boolean>;
+  restrictions: AccountRestrictions | null;
+  /** Token para la API de Nodaria, renovado por el SDK; `null` sin sesión. No se guarda. */
+  getToken: () => Promise<string | null>;
+  signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const Context = createContext<AuthContextValue | null>(null);
 
-function toAccountUser(user: FirebaseUser): AccountUser {
+function fromState(state: PlatformState | null): Pick<AuthContextValue, 'status' | 'user' | 'restrictions'> {
+  if (!state || state.tipo === 'no_disponible') return { status: 'unavailable', user: null, restrictions: null };
+  if (state.tipo === 'comprobando') return { status: 'loading', user: null, restrictions: null };
+  if (state.tipo !== 'con_sesion') return { status: 'signed-out', user: null, restrictions: null };
   return {
-    uid: user.uid,
-    email: user.email,
-    displayName: user.displayName,
-    photoUrl: user.photoURL,
-    hasPassword: hasPasswordProvider(user),
+    status: 'signed-in',
+    user: { id: state.cuenta.id.toLowerCase(), alias: state.cuenta.alias, email: state.cuenta.correo ?? null },
+    restrictions: state.restricciones
+      ? { scopes: state.restricciones.alcances, until: state.restricciones.hasta }
+      : null,
   };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>('loading');
-  const [user, setUser] = useState<AccountUser | null>(null);
+  const [snapshot, setSnapshot] = useState(() => fromState({ tipo: 'comprobando' }));
 
-  const apply = useCallback((current: FirebaseUser | null) => {
-    setUser(current ? toAccountUser(current) : null);
-    setStatus(!current ? 'signed-out' : needsEmailVerification(current) ? 'unverified' : 'signed-in');
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    void loadSdk().then(found => {
+      if (cancelled) return;
+      if (!found) {
+        setSnapshot(fromState(null));
+        return;
+      }
+      // alCambiar llama al momento con el estado actual y después en cada cambio (también desde otras webs).
+      stop = found.alCambiar(state =>
+        setSnapshot(current => {
+          const next = fromState(state);
+          // El mismo estado no vuelve a pintar ni reinicia la sincronización.
+          return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+        }),
+      );
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
   }, []);
 
-  useEffect(() => subscribeToAuth(apply), [apply]);
-
-  const getToken = useCallback((forceRefresh?: boolean) => currentIdToken(forceRefresh), []);
-  const recheckVerification = useCallback(async () => {
-    const verified = await refreshVerificationStatus();
-    if (verified) setStatus('signed-in');
-    return verified;
+  const getToken = useCallback(async () => (await sdk()?.token()) ?? null, []);
+  const signIn = useCallback(async () => {
+    await sdk()?.entrar();
   }, []);
-  const signOut = useCallback(() => signOutFirebase(), []);
+  const signOut = useCallback(async () => {
+    await sdk()?.salir();
+  }, []);
 
-  const value = useMemo(
-    () => ({ status, user, getToken, recheckVerification, signOut }),
-    [status, user, getToken, recheckVerification, signOut],
-  );
+  const value = useMemo(() => ({ ...snapshot, getToken, signIn, signOut }), [snapshot, getToken, signIn, signOut]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

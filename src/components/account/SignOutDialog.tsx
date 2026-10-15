@@ -18,8 +18,9 @@ export function SignOutDialog({ onClose }: { onClose: () => void }) {
   const submit = async () => {
     setBusy(true);
     try {
-      await signOut();
+      // Primero se marca la salida, para no avisar de una sesión «cerrada desde otra web».
       forgetAccount();
+      await signOut();
       if (wipe) {
         dispatch({ type: 'reset-state' });
         await clearBackups().catch(() => undefined);
@@ -45,7 +46,7 @@ export function SignOutDialog({ onClose }: { onClose: () => void }) {
     >
       <div className="auth-form">
         <p className="muted-note" style={{ color: 'var(--text)' }}>
-          Tus proyectos están guardados en la cuenta
+          Se cierra la sesión de Yosiftware en todas sus webs. Tus proyectos están guardados en la cuenta
           {state === 'idle'
             ? '.'
             : state === 'syncing'

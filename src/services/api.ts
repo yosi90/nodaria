@@ -1,7 +1,7 @@
-// Cliente HTTP de la API de Nodaria (api/). Las rutas privadas llevan el ID token de Firebase.
+// Cliente HTTP de la API de Nodaria (api/). Las rutas privadas llevan el token de la plataforma Yosiftware.
 
-export const API_BASE_URL: string =
-  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://127.0.0.1:5003' : 'https://nodaria-api.yosiftware.es');
+// En desarrollo contra QA la API va por el proxy de Vite (mismo origen): VITE_API_URL vacío.
+export const API_BASE_URL: string = import.meta.env.VITE_API_URL ?? 'https://nodaria-api.yosiftware.es';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -58,19 +58,17 @@ export async function apiRequest<TResponse>(
   return payload as TResponse;
 }
 
+/** El usuario de Nodaria de la cuenta de Yosiftware con la que se llama. */
 export interface MeResponse {
   id: number;
-  email: string | null;
-  emailVerified: boolean;
-  displayName: string | null;
-  photoUrl: string | null;
-  signInProvider: string;
+  /** Identificador global de la cuenta. */
+  globalId: string;
+  /** UID de Firebase con el que esta cuenta sincronizaba antes de migrar (para adoptar su recuerdo). */
+  legacyAccount: string | null;
   createdAt: string;
-  lastSeenAt: string;
-  /** La cuenta es del propietario: su dispositivo no cuenta en Yosiftadísticas. */
-  excludeFromStats: boolean;
-  /** Puede usar el panel de administración. */
-  isAdmin: boolean;
+  restrictions: string[];
+  restrictionsUntil: string | null;
+  rulesPending: boolean;
 }
 
 export const fetchMe = (token: string) => apiRequest<MeResponse>('GET', '/api/me', token);
@@ -104,108 +102,3 @@ export const putRemoteProject = (token: string, id: string, document: unknown, b
   apiRequest<WriteResult>('PUT', `/api/projects/${encodeURIComponent(id)}`, token, { document, baseVersion });
 export const deleteRemoteProject = (token: string, id: string, baseVersion: number) =>
   apiRequest<WriteResult>('DELETE', `/api/projects/${encodeURIComponent(id)}?baseVersion=${baseVersion}`, token);
-
-// Peticiones: tablón público de ideas con votos y avisos de error privados.
-export type RequestKind = 'idea' | 'error';
-export type RequestStatus =
-  'revision' | 'rechazada' | 'abierta' | 'planificada' | 'en_curso' | 'hecha' | 'descartada' | 'duplicada';
-
-export interface RequestUpdate {
-  id: number;
-  status: RequestStatus;
-  message: string | null;
-  createdAt: string;
-}
-
-export interface RequestSummary {
-  id: number;
-  kind: RequestKind;
-  title: string;
-  body: string;
-  status: RequestStatus;
-  duplicateOf: number | null;
-  votes: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface BoardRequest extends RequestSummary {
-  voted: boolean;
-  mine: boolean;
-}
-
-export interface RequestDetail extends BoardRequest {
-  updates: RequestUpdate[];
-}
-
-export interface OwnRequest extends RequestSummary {
-  updates: RequestUpdate[];
-  unread: boolean;
-}
-
-export interface BoardPage {
-  items: BoardRequest[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
-export interface BoardParams {
-  sort: 'votes' | 'recent';
-  status: RequestStatus | null;
-  offset: number;
-}
-
-export const fetchBoard = (token: string | null, { sort, status, offset }: BoardParams) => {
-  const query = new URLSearchParams({ sort, offset: String(offset), limit: '30' });
-  if (status) query.set('status', status);
-  return apiRequest<BoardPage>('GET', `/api/requests?${query}`, token);
-};
-export const fetchRequest = (token: string | null, id: number) =>
-  apiRequest<RequestDetail>('GET', `/api/requests/${id}`, token);
-export const createRequest = (token: string, input: { kind: RequestKind; title: string; body: string }) =>
-  apiRequest<OwnRequest>('POST', '/api/requests', token, input);
-export const voteRequest = (token: string, id: number, voted: boolean) =>
-  apiRequest<{ id: number; votes: number; voted: boolean }>(
-    voted ? 'PUT' : 'DELETE',
-    `/api/requests/${id}/vote`,
-    token,
-  );
-export const fetchMyRequests = (token: string) =>
-  apiRequest<{ requests: OwnRequest[] }>('GET', '/api/me/requests', token);
-export const markRequestRead = (token: string, id: number) =>
-  apiRequest<void>('POST', `/api/me/requests/${id}/read`, token);
-
-// Administración: solo cuentas con `isAdmin`.
-export interface AdminRequest extends RequestSummary {
-  externalId: string;
-  author: { displayName: string | null; email: string | null };
-  updates: RequestUpdate[];
-  updatesTotal: number;
-}
-
-export interface AdminListParams {
-  scope: 'open' | 'all';
-  status: RequestStatus | null;
-  kind: RequestKind | null;
-  offset: number;
-}
-
-export const fetchAdminRequests = (token: string, { scope, status, kind, offset }: AdminListParams) => {
-  const query = new URLSearchParams({ scope, offset: String(offset), limit: '50' });
-  if (status) query.set('status', status);
-  if (kind) query.set('kind', kind);
-  return apiRequest<{ items: AdminRequest[]; total: number }>('GET', `/api/admin/requests?${query}`, token);
-};
-
-export interface AdminResponse {
-  status: RequestStatus;
-  message: string | null;
-  duplicateOf: number | null;
-}
-
-/** La misma `key` con la misma respuesta no se aplica dos veces (reintentos tras un corte). */
-export const respondAdminRequest = (token: string, id: number, response: AdminResponse, key: string) =>
-  apiRequest<AdminRequest & { replayed: boolean }>('POST', `/api/admin/requests/${id}/responses`, token, response, {
-    'Idempotency-Key': key,
-  });

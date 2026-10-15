@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { appReducer } from '../state/reducer';
 import { project, schema } from '../test/fixtures';
-import { emptyMeta, isBlankProject, planSync, type RemoteSummary, type SyncMeta } from './sync';
+import { afterEach, beforeEach } from 'vitest';
+import {
+  emptyMeta,
+  isBlankProject,
+  isEmptyPlan,
+  loadSyncMeta,
+  planSync,
+  SYNC_META_KEY,
+  type RemoteSummary,
+  type SyncMeta,
+} from './sync';
 
 const T1 = '2026-10-04T10:00:00.000Z';
 const T2 = '2026-10-04T11:00:00.000Z';
@@ -124,5 +134,62 @@ describe('sync-apply', () => {
     expect(next.projects).toHaveLength(1);
     expect(next.projects[0].id).not.toBe('a');
     expect(next.activeProjectId).toBe(next.projects[0].id);
+  });
+});
+
+describe('memoria al pasar a la cuenta de Yosiftware', () => {
+  const store = new Map<string, string>();
+  beforeEach(() => {
+    store.clear();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+      removeItem: (key: string) => void store.delete(key),
+    };
+  });
+  afterEach(() => {
+    delete (globalThis as { localStorage?: unknown }).localStorage;
+  });
+
+  const OWNER = '7042db67-5cc3-f111-8c4b-002315ef7116';
+  const local = project({ id: 'mapa', name: 'Munfamed', updatedAt: '2026-10-13T13:43:04.262Z' });
+  const remote: RemoteSummary[] = [
+    {
+      id: 'mapa',
+      name: 'Munfamed',
+      version: 534,
+      updatedAt: '2026-10-13T13:43:04.262Z',
+      serverUpdatedAt: '2026-10-13T13:43:05.000Z',
+      deletedAt: null,
+      sizeBytes: 630_748,
+    },
+  ];
+  const remembered: SyncMeta = {
+    uid: 'uid-firebase',
+    projects: { mapa: { version: 534, updatedAt: local.updatedAt } },
+  };
+
+  it('adopta el recuerdo de la cuenta de antes: la primera sincronización no sube, baja ni borra nada', () => {
+    store.set(SYNC_META_KEY, JSON.stringify(remembered));
+    const meta = loadSyncMeta(OWNER, 'uid-firebase');
+    expect(meta).toEqual({ uid: OWNER, projects: remembered.projects });
+    expect(JSON.parse(store.get(SYNC_META_KEY)!).uid).toBe(OWNER);
+    const plan = planSync([local], remote, meta);
+    expect(isEmptyPlan(plan)).toBe(true);
+    // Un proyecto borrado aquí mientras tanto se sigue propagando como antes.
+    expect(planSync([], remote, meta).deleteRemote).toEqual([{ id: 'mapa', baseVersion: 534 }]);
+  });
+
+  it('no usa el recuerdo de otra cuenta: parte de cero y nunca borra en la cuenta', () => {
+    store.set(SYNC_META_KEY, JSON.stringify({ ...remembered, uid: 'uid-de-otra' }));
+    const meta = loadSyncMeta(OWNER, 'uid-firebase');
+    expect(meta).toEqual(emptyMeta(OWNER));
+    expect(planSync([], remote, meta).deleteRemote).toEqual([]);
+    expect(planSync([], remote, meta).download).toEqual([{ id: 'mapa', version: 534 }]);
+  });
+
+  it('una cuenta nueva sin cuenta de antes no adopta nada', () => {
+    store.set(SYNC_META_KEY, JSON.stringify(remembered));
+    expect(loadSyncMeta(OWNER, null)).toEqual(emptyMeta(OWNER));
   });
 });
