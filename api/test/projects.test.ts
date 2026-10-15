@@ -5,7 +5,7 @@ import { readMigrations, runMigrations } from '../src/db/migrations.ts';
 import type { Database } from '../src/db/pool.ts';
 import { createMemoryProjectStore, createSqlProjectStore, type ProjectStore } from '../src/projects/repository.ts';
 import { createSqlUserStore } from '../src/users/repository.ts';
-import { fakeAuth, identity, testDependencies } from './helpers/fakes.ts';
+import { OTHER, OWNER, platformTokens, testDependencies } from './helpers/fakes.ts';
 import { createTestDatabase, dbTestsEnabled } from './helpers/testDatabase.ts';
 
 const doc = (id: string, patch: Record<string, unknown> = {}) => ({
@@ -79,19 +79,26 @@ describe.runIf(dbTestsEnabled)('SQL Server', () => {
   });
 
   storeContract('sql', async () => {
-    const user = await createSqlUserStore(db).upsert(identity({ uid: `uid-${Math.random()}` }));
+    const user = await createSqlUserStore(db).findOrCreate(crypto.randomUUID());
     return { store: createSqlProjectStore(db), userId: user.id };
   });
 });
 
 describe('project routes', () => {
   async function setup(overrides: Record<string, string> = {}) {
-    const auth = fakeAuth({ google: identity(), other: identity({ uid: 'uid-other' }) });
+    const tokens = await platformTokens();
     const app = await buildApp(
-      testDependencies({ auth: auth.provider, config: loadConfig({ NODE_ENV: 'test', ...overrides }) }),
+      testDependencies({ auth: tokens.provider, config: loadConfig({ NODE_ENV: 'test', ...overrides }) }),
     );
-    const call = (method: 'GET' | 'PUT' | 'DELETE', url: string, body?: unknown, token = 'google') =>
-      app.inject({ method, url, headers: { authorization: `Bearer ${token}` }, payload: body as never });
+    const owner = await tokens.sign({ sub: OWNER });
+    const other = await tokens.sign({ sub: OTHER });
+    const call = (method: 'GET' | 'PUT' | 'DELETE', url: string, body?: unknown, who: 'owner' | 'other' = 'owner') =>
+      app.inject({
+        method,
+        url,
+        headers: { authorization: `Bearer ${who === 'owner' ? owner : other}` },
+        payload: body as never,
+      });
     return { call };
   }
 

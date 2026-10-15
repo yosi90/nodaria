@@ -44,7 +44,7 @@ import { anchorOf, type Anchor } from '../common/anchor';
 import { useToast } from '../common/toasts';
 import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
-import { useRequests } from '../../state/requests';
+import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
 
@@ -72,7 +72,6 @@ export function Topbar({
   const { state, project, dispatch, undo, redo, canUndo, canRedo, reportRepairs } = useApp();
   const { preferences, setPreference } = usePreferences();
   const { prompt, confirm } = useDialogs();
-  const requests = useRequests();
   const toast = useToast();
   const file = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
@@ -256,17 +255,12 @@ export function Topbar({
           label={`${theme.label} (cambiar)`}
           onClick={() => setPreference('theme', theme.next)}
         />
-        <span className="requests-button">
-          <IconButton
-            icon={Lightbulb}
-            label={
-              requests.unread > 0 ? `Ideas y peticiones: ${requests.unread} respuestas nuevas` : 'Ideas y peticiones'
-            }
-            tooltipSide="left"
-            onClick={() => requests.open(requests.unread > 0 ? 'mine' : 'board')}
-          />
-          {requests.unread > 0 && <span className="requests-dot" aria-hidden />}
-        </span>
+        <IconButton
+          icon={Lightbulb}
+          label="Errores y propuestas: avisa de un fallo o propón una mejora"
+          tooltipSide="left"
+          onClick={() => void sdk()?.reportar()}
+        />
         <IconButton icon={CircleHelp} label="Ayuda (?)" tooltipSide="left" onClick={onHelp} data-tour="help" />
         <span className="divider" aria-hidden />
         <AccountButton />

@@ -21,6 +21,7 @@ export interface SyncedVersion {
 }
 
 export interface SyncMeta {
+  /** Cuenta a la que pertenece el recuerdo: el identificador global de Yosiftware (antes, el UID de Firebase). */
   uid: string | null;
   projects: Record<string, SyncedVersion>;
 }
@@ -56,14 +57,47 @@ export interface SyncPlan {
 
 export const emptyMeta = (uid: string | null = null): SyncMeta => ({ uid, projects: {} });
 
-export function loadSyncMeta(uid: string): SyncMeta {
+/**
+ * El recuerdo de sincronización de una cuenta. `legacyUid` es el UID de Firebase con el que esa misma
+ * cuenta sincronizaba antes de pasar a la cuenta de Yosiftware (`GET /api/me`, `legacyAccount`): su
+ * recuerdo se adopta tal cual y pasa a guardarse con el identificador nuevo, así que la primera
+ * entrada con la cuenta de Yosiftware ve las mismas versiones y no sube, baja ni borra nada de más.
+ * El recuerdo de otra cuenta no se usa: se parte de cero, como en un navegador nuevo.
+ */
+export function loadSyncMeta(uid: string, legacyUid: string | null = null): SyncMeta {
   try {
     const stored = JSON.parse(localStorage.getItem(SYNC_META_KEY) ?? 'null') as SyncMeta | null;
-    if (stored && stored.uid === uid && stored.projects && typeof stored.projects === 'object') return stored;
+    if (stored && stored.projects && typeof stored.projects === 'object') {
+      if (stored.uid === uid) return stored;
+      if (legacyUid && stored.uid === legacyUid) {
+        const adopted = { uid, projects: stored.projects };
+        saveSyncMeta(adopted);
+        return adopted;
+      }
+    }
   } catch {
     // Sin recuerdo válido: se parte de cero para esta cuenta.
   }
   return emptyMeta(uid);
+}
+
+/** Cuenta cuyo recuerdo guarda el navegador, o `null`: si la hay, los proyectos de aquí son suyos. */
+export function storedSyncAccount(): string | null {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SYNC_META_KEY) ?? 'null') as SyncMeta | null;
+    return typeof stored?.uid === 'string' ? stored.uid : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Al cerrarse la sesión, los proyectos de la cuenta salen del navegador. Los que ya están en la cuenta
+ * tal cual no hacen falta aquí; los que tienen cambios sin subir (o nunca se subieron) se apartan sin
+ * enseñarse hasta que vuelva a entrar la misma cuenta. Los vacíos se descartan.
+ */
+export function unsyncedProjects(local: Project[], meta: SyncMeta): Project[] {
+  return local.filter(p => !isBlankProject(p) && meta.projects[p.id]?.updatedAt !== p.updatedAt);
 }
 
 export function saveSyncMeta(meta: SyncMeta | null) {

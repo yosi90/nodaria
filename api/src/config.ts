@@ -21,22 +21,31 @@ const envSchema = z.object({
     .default('Nodaria'),
   DB_DRIVER: z.string().default('ODBC Driver 18 for SQL Server'),
   CORS_ORIGINS: csv,
-  FIREBASE_PROJECT_ID: z.string().default('yosiftware-nodaria'),
   PROJECT_MAX_BYTES: z.coerce
     .number()
     .int()
     .min(64 * 1024)
     .default(20 * 1024 * 1024),
-  NOTIFICAPP_URL: z.string().url().default('https://notificapp-api.yosiftware.es'),
-  NOTIFICAPP_SENDER_TOKEN_FILE: z.string().default('.runtime/notificapp-sender.token'),
-  NOTIFICAPP_UPSTREAM_TOKEN_FILE: z.string().default('.runtime/notificapp-upstream.token'),
-  // UID de Firebase de las cuentas del propietario: sus dispositivos no cuentan en Yosiftadísticas.
-  OWNER_FIREBASE_UIDS: csv,
+  // Plataforma Yosiftware (ecosistema-kit): entorno del emisor de los tokens y audiencia de esta API.
+  PLATFORM_ENV: z.enum(['produccion', 'qa', 'desarrollo']).default('produccion'),
+  PLATFORM_AUDIENCE: z.string().default('nodaria-api'),
+  // Credencial de servicio de la web (solo el token, fuera de Git) para leer el feed de cambios.
+  PLATFORM_SERVICE_TOKEN_FILE: z.string().default('.runtime/plataforma.token'),
+  // Cada cuánto se lee el feed sin aviso de NATS (ecosistema-kit/FEED_DE_CAMBIOS.md: 5 minutos bastan).
+  PLATFORM_FEED_INTERVAL_MS: z.coerce.number().int().min(10_000).default(5 * 60 * 1000),
   // Con valor, los logs van a archivos diarios en esa carpeta en lugar de a la salida estándar.
   LOG_DIR: z.string().optional(),
 });
 
 export type AppConfig = ReturnType<typeof loadConfig>;
+export type PlatformEnv = z.infer<typeof envSchema>['PLATFORM_ENV'];
+
+/** API de la plataforma de cada entorno (`ecosistema-kit/ACCESO.md`). */
+export const PLATFORM_API: Record<PlatformEnv, string> = {
+  produccion: 'https://cuentas-api.yosiftware.es',
+  qa: 'https://qa-cuentas-api.yosiftware.es',
+  desarrollo: 'http://localhost:5206',
+};
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const parsed = envSchema.safeParse(env);
@@ -57,16 +66,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       driver: value.DB_DRIVER,
     },
     corsOrigins: value.CORS_ORIGINS,
-    firebaseProjectId: value.FIREBASE_PROJECT_ID,
     projectMaxBytes: value.PROJECT_MAX_BYTES,
-    notificapp: {
-      // Solo producción encola avisos: desarrollo y pruebas no deben llegar al móvil.
-      enabled: value.NODE_ENV === 'production',
-      url: value.NOTIFICAPP_URL,
-      senderTokenFile: value.NOTIFICAPP_SENDER_TOKEN_FILE,
-      upstreamTokenFile: value.NOTIFICAPP_UPSTREAM_TOKEN_FILE,
+    platform: {
+      env: value.PLATFORM_ENV,
+      api: PLATFORM_API[value.PLATFORM_ENV],
+      audience: value.PLATFORM_AUDIENCE,
+      serviceTokenFile: value.PLATFORM_SERVICE_TOKEN_FILE,
+      feedIntervalMs: value.PLATFORM_FEED_INTERVAL_MS,
+      // El feed solo se lee fuera de las pruebas.
+      feedEnabled: value.NODE_ENV !== 'test',
     },
-    ownerFirebaseUids: value.OWNER_FIREBASE_UIDS,
     logDir: value.LOG_DIR,
   };
 }

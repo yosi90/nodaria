@@ -4,23 +4,27 @@ import type { Project } from '../domain/types';
 import {
   ApiError,
   deleteRemoteProject,
+  fetchMe,
   getRemoteProject,
   listRemoteProjects,
   OfflineError,
   putRemoteProject,
 } from '../services/api';
-import { prepareProject } from '../services/storage';
+import { prepareProject, saveVault, takeVault } from '../services/storage';
 import {
   emptyMeta,
   isEmptyPlan,
   loadSyncMeta,
   planSync,
   saveSyncMeta,
+  storedSyncAccount,
+  unsyncedProjects,
   type SyncConflict,
   type SyncMeta,
 } from '../services/sync';
 import { useApp } from './AppContext';
 import { useAuth } from './auth';
+import { useToast } from '../components/common/toasts';
 
 /** `off`: sin sesión. `offline`: no se llega a la API. `error`: la API respondió con error. */
 export type SyncState = 'off' | 'idle' | 'syncing' | 'offline' | 'error';
@@ -35,6 +39,8 @@ interface SyncContextValue extends SyncStatus {
   syncNow: () => Promise<void>;
   /** Olvida el recuerdo de la cuenta en este navegador (al cerrar sesión o borrar la cuenta). */
   forgetAccount: () => void;
+  /** Cierre de sesión pedido desde Nodaria: los proyectos se retiran sin avisar de un cierre inesperado. */
+  markLeaving: () => void;
   /** Avisos de «último cambio gana» pendientes de mostrar. */
   conflicts: SyncConflict[];
   dismissConflicts: () => void;
@@ -50,7 +56,11 @@ const MAX_PASSES = 3;
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { state, dispatch, reportRepairs, lostOnLoad } = useApp();
-  const { status: authStatus, user, getToken } = useAuth();
+  const { status: authStatus, user, restrictions, getToken } = useAuth();
+  // La función de avisos cambia con cada edición del proyecto: se usa desde una referencia.
+  const toast = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   const [status, setStatus] = useState<SyncStatus>({ state: 'off', lastSyncAt: null, error: null });
   const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
 
@@ -63,12 +73,20 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const recoverMissing = useRef(lostOnLoad);
 
   const signedIn = authStatus === 'signed-in' && user !== null;
-  const uid = user?.uid ?? null;
+  const uid = user?.id ?? null;
+  // Con `creacion` limitada por moderación, la API no deja subir proyectos nuevos: se quedan aquí.
+  const canCreate = !restrictions?.scopes.includes('creacion');
+  const canCreateRef = useRef(canCreate);
+  canCreateRef.current = canCreate;
+  /** El recuerdo de la cuenta ya está cargado (tras preguntar a la API por la cuenta de antes). */
+  const ready = useRef(false);
+  /** Cerrar sesión desde Nodaria: no hace falta avisar de que se cerró. */
+  const leaving = useRef(false);
 
   // Una pasada completa: lista remota, plan, bajadas, subidas y borrados; repite si hubo 409.
   const runOnce = useCallback(async () => {
     const token = await getToken();
-    if (!token) return;
+    if (!token || !ready.current) return;
     const found: SyncConflict[] = [];
     for (let pass = 0; pass < MAX_PASSES; pass++) {
       const remote = await listRemoteProjects(token);
@@ -96,11 +114,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
       let conflicted = false;
       for (const item of plan.upload) {
+        if (item.baseVersion === 0 && !canCreateRef.current) continue;
         try {
           const written = await putRemoteProject(token, item.project.id, item.project, item.baseVersion);
           next.projects[item.project.id] = { version: written.version, updatedAt: item.project.updatedAt };
         } catch (error) {
           if (error instanceof ApiError && error.status === 409) conflicted = true;
+          else if (error instanceof ApiError && error.code === 'creacion_limitada') canCreateRef.current = false;
           else throw error;
         }
       }
@@ -151,16 +171,88 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return job;
   }, [signedIn, runOnce]);
 
-  // Cambiar de cuenta carga su recuerdo; sin sesión, el motor se apaga.
+  /**
+   * Los proyectos de una cuenta salen del navegador cuando su sesión termina: los que ya están en la
+   * cuenta no hacen falta aquí y los que tienen cambios sin subir se apartan (sin enseñarse) hasta que
+   * vuelva a entrar esa cuenta. El navegador queda como recién abierto. Devuelve cuántos se apartaron;
+   * si no se pueden apartar, no se quita nada (antes que perder trabajo).
+   */
+  const lockAccount = useCallback(
+    async (account: string, memory: SyncMeta) => {
+      const pending = unsyncedProjects(projects.current, memory);
+      await saveVault(account, pending);
+      saveSyncMeta(null);
+      dispatch({ type: 'reset-state' });
+      return pending.length;
+    },
+    [dispatch],
+  );
+
+  // Cambiar de cuenta carga su recuerdo (preguntando antes a la API por la cuenta de antes de migrar,
+  // para adoptar su recuerdo); sin sesión, el motor se apaga y los proyectos de la cuenta se retiran.
   useEffect(() => {
     if (!signedIn || !uid) {
-      meta.current = emptyMeta();
+      ready.current = false;
       setStatus({ state: 'off', lastSyncAt: null, error: null });
+      // Mientras se comprueba la sesión, o si la plataforma no responde, no se decide nada.
+      if (authStatus !== 'signed-out') return;
+      const account = meta.current.uid ?? storedSyncAccount();
+      const memory = meta.current.uid ? meta.current : account ? loadSyncMeta(account) : emptyMeta();
+      meta.current = emptyMeta();
+      const own = leaving.current;
+      leaving.current = false;
+      if (!account) return;
+      void lockAccount(account, memory)
+        .then(kept => {
+          if (own) return;
+          toastRef.current({
+            message: kept
+              ? 'Tu sesión de Yosiftware se ha cerrado. Tus proyectos se han quitado de este navegador; los cambios sin subir te esperan aquí, ocultos, hasta que vuelvas a entrar.'
+              : 'Tu sesión de Yosiftware se ha cerrado. Tus proyectos siguen en tu cuenta y se han quitado de este navegador.',
+          });
+        })
+        .catch(() =>
+          toastRef.current({
+            message: 'Tu sesión se ha cerrado, pero no se pudieron apartar los cambios sin subir: siguen aquí.',
+          }),
+        );
       return;
     }
-    meta.current = loadSyncMeta(uid);
-    void syncNow();
-  }, [signedIn, uid, syncNow]);
+    let cancelled = false;
+    void (async () => {
+      setStatus(current => ({ ...current, state: 'syncing' }));
+      try {
+        const token = await getToken();
+        const me = token ? await fetchMe(token) : null;
+        if (cancelled) return;
+        const legacy = me?.legacyAccount ?? null;
+        // Lo que quede en el navegador de otra cuenta se aparta antes de mezclarlo con esta.
+        const stored = storedSyncAccount();
+        if (stored && stored !== uid && stored !== legacy) await lockAccount(stored, loadSyncMeta(stored));
+        // Los cambios que esta cuenta dejó sin subir al cerrarse su sesión vuelven antes de sincronizar.
+        const restored = await takeVault(uid);
+        if (cancelled) return;
+        if (restored.length) {
+          dispatch({ type: 'sync-apply', upsert: restored, remove: [] });
+          const ids = new Set(restored.map(p => p.id));
+          projects.current = [...projects.current.filter(p => !ids.has(p.id)), ...restored];
+        }
+        meta.current = loadSyncMeta(uid, legacy);
+        ready.current = true;
+        void syncNow();
+      } catch (error) {
+        if (cancelled) return;
+        setStatus({
+          state: error instanceof OfflineError ? 'offline' : 'error',
+          lastSyncAt: null,
+          error: error instanceof OfflineError ? null : error instanceof Error ? error.message : 'Error inesperado.',
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn, uid, authStatus, getToken, syncNow, lockAccount, dispatch]);
 
   // Tras un cambio local, subida con retardo.
   useEffect(() => {
@@ -185,14 +277,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [signedIn, syncNow]);
 
   const forgetAccount = useCallback(() => {
+    leaving.current = true;
     meta.current = emptyMeta();
     saveSyncMeta(null);
+  }, []);
+  const markLeaving = useCallback(() => {
+    leaving.current = true;
   }, []);
   const dismissConflicts = useCallback(() => setConflicts([]), []);
 
   const value = useMemo<SyncContextValue>(
-    () => ({ ...status, syncNow, forgetAccount, conflicts, dismissConflicts }),
-    [status, syncNow, forgetAccount, conflicts, dismissConflicts],
+    () => ({ ...status, syncNow, forgetAccount, markLeaving, conflicts, dismissConflicts }),
+    [status, syncNow, forgetAccount, markLeaving, conflicts, dismissConflicts],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

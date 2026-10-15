@@ -338,6 +338,39 @@ export async function saveState(state: AppState) {
   if (!marked) marked = markIndexedDb();
 }
 
+const VAULT_PREFIX = 'nodaria_vault_v1:';
+
+/**
+ * Aparta los proyectos con cambios sin subir de una cuenta cuya sesión se ha cerrado: no se enseñan
+ * hasta que vuelve a entrar esa misma cuenta (`takeVault`). Sin proyectos, borra la reserva.
+ */
+export async function saveVault(account: string, projects: Project[]) {
+  if (backend.kind === 'indexeddb') return database.putVault(backend.db, account, projects);
+  if (projects.length) writeLocal(VAULT_PREFIX + account, JSON.stringify(projects));
+  else removeLocal(VAULT_PREFIX + account);
+}
+
+/** Recupera (y retira) la reserva de una cuenta, migrada y reparada como cualquier carga. */
+export async function takeVault(account: string): Promise<Project[]> {
+  let raw: unknown[] = [];
+  if (backend.kind === 'indexeddb') raw = await database.takeVault(backend.db, account);
+  else {
+    try {
+      raw = JSON.parse(readLocal(VAULT_PREFIX + account) ?? '[]') as unknown[];
+    } catch {
+      raw = [];
+    }
+    removeLocal(VAULT_PREFIX + account);
+  }
+  return raw.flatMap(item => {
+    try {
+      return [prepareProject(item).project];
+    } catch {
+      return [];
+    }
+  });
+}
+
 /** Borra las copias apartadas (al vaciar el navegador). */
 export async function clearBackups() {
   for (const key of localRescueKeys()) removeLocal(key);

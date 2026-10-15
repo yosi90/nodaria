@@ -1,146 +1,114 @@
 import { describe, expect, it } from 'vitest';
 import { buildApp, USER_RATE_LIMIT } from '../src/app.ts';
-import { RECENT_LOGIN_MS } from '../src/routes/me.ts';
-import { fakeAuth, fakeUsers, identity, testConfig, testDependencies } from './helpers/fakes.ts';
-
-const google = identity();
-const verifiedPassword = identity({ uid: 'uid-pass', signInProvider: 'password', emailVerified: true });
-const unverifiedPassword = identity({ uid: 'uid-new', signInProvider: 'password', emailVerified: false });
-const oldLogin = identity({ uid: 'uid-old', authTime: new Date(Date.now() - RECENT_LOGIN_MS - 1000) });
+import { fakeUsers, ISSUER, OTHER, OWNER, platformTokens, testDependencies } from './helpers/fakes.ts';
 
 async function setup() {
-  const auth = fakeAuth({ google, pass: verifiedPassword, unverified: unverifiedPassword, old: oldLogin });
+  const tokens = await platformTokens();
   const users = fakeUsers();
-  const app = await buildApp(testDependencies({ auth: auth.provider, users: users.store }));
-  const call = (method: 'GET' | 'DELETE', token?: string) =>
-    app.inject({ method, url: '/api/me', headers: token ? { authorization: `Bearer ${token}` } : {} });
-  return { app, auth, users, call };
+  const app = await buildApp(testDependencies({ auth: tokens.provider, users: users.store }));
+  const call = (method: 'GET' | 'DELETE' | 'PUT', token?: string, url = '/api/me', payload?: unknown) =>
+    app.inject({
+      method,
+      url,
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+      payload: payload as never,
+    });
+  return { app, tokens, users, call };
 }
 
-describe('authentication', () => {
-  it('requires a bearer token', async () => {
-    const { call } = await setup();
-    const response = await call('GET');
-
-    expect(response.statusCode).toBe(401);
-    expect(response.json()).toMatchObject({ error: 'missing_token', message: 'Inicia sesión para continuar.' });
-  });
-
-  it('rejects invalid and expired tokens with distinct codes', async () => {
-    const { call } = await setup();
-
-    expect((await call('GET', 'nope')).json()).toMatchObject({ error: 'invalid_token' });
-    const expired = await call('GET', 'expired');
-    expect(expired.statusCode).toBe(401);
-    expect(expired.json()).toMatchObject({ error: 'token_expired' });
-  });
-
-  it('treats unexpected verifier failures as server errors', async () => {
-    const { call } = await setup();
-    const response = await call('GET', 'boom');
-
-    expect(response.statusCode).toBe(500);
-    expect(response.json()).toEqual({ error: 'internal_error', message: 'Error interno del servidor.' });
-  });
-
-  it('blocks unverified email/password accounts without creating them', async () => {
-    const { call, users } = await setup();
-    const response = await call('GET', 'unverified');
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ error: 'email_not_verified' });
-    expect(users.byUid.has('uid-new')).toBe(false);
-  });
-
-  it('accepts verified email/password accounts', async () => {
-    const { call } = await setup();
-    const response = await call('GET', 'pass');
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ signInProvider: 'password', emailVerified: true });
-  });
-
-  it('rejects users disabled in the database', async () => {
-    const { call, users } = await setup();
-    await call('GET', 'google');
-    users.byUid.get('uid-google')!.disabledAt = new Date();
-
-    const response = await call('GET', 'google');
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ error: 'account_disabled' });
-  });
-
-  it('limits requests per signed-in user', async () => {
-    const { call } = await setup();
-    for (let i = 0; i < USER_RATE_LIMIT; i++) expect((await call('GET', 'google')).statusCode).toBe(200);
-
-    const limited = await call('GET', 'google');
-    expect(limited.statusCode).toBe(429);
-    expect(limited.json()).toMatchObject({ error: 'too_many_requests' });
-    // Otro usuario conserva su propio presupuesto.
-    expect((await call('GET', 'pass')).statusCode).toBe(200);
-  });
+const project = (id: string) => ({
+  document: { id, name: 'Mapa', updatedAt: '2026-10-15T10:00:00.000Z', schemas: [], nodes: [], relations: [] },
+  baseVersion: 0,
 });
 
-describe('GET /api/me', () => {
-  it('creates the user on first request and reuses it afterwards', async () => {
-    const { call, users } = await setup();
-    const first = await call('GET', 'google');
-    const second = await call('GET', 'google');
-
-    expect(first.statusCode).toBe(200);
-    expect(first.json()).toMatchObject({
-      id: 1,
-      email: 'yosi@example.com',
-      emailVerified: true,
-      displayName: 'Yosi',
-      signInProvider: 'google.com',
-    });
-    expect(second.json().id).toBe(1);
-    expect(users.byUid.size).toBe(1);
+describe('tokens de la plataforma', () => {
+  it('exige un token', async () => {
+    const { call } = await setup();
+    const response = await call('GET');
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({ error: 'no_autenticado' });
   });
 
-  it('flags only the owner accounts to exclude from stats', async () => {
-    const auth = fakeAuth({ google, pass: verifiedPassword });
-    const config = { ...testConfig, ownerFirebaseUids: [google.uid] };
-    const app = await buildApp(testDependencies({ config, auth: auth.provider, users: fakeUsers().store }));
-    const me = (token: string) =>
-      app.inject({ method: 'GET', url: '/api/me', headers: { authorization: `Bearer ${token}` } });
+  it('distingue el token caducado del que no vale', async () => {
+    const { call, tokens } = await setup();
+    const expired = await tokens.sign({}, { expiresIn: Math.floor(Date.now() / 1000) - 60 });
+    expect((await call('GET', expired)).json()).toMatchObject({ error: 'token_caducado' });
+    expect((await call('GET', 'basura')).json()).toMatchObject({ error: 'no_autenticado' });
+  });
 
-    const owner = (await me('google')).json();
-    expect(owner.excludeFromStats).toBe(true);
-    expect(JSON.stringify(owner)).not.toContain('ownerFirebaseUids');
-    expect((await me('pass')).json().excludeFromStats).toBe(false);
+  it('rechaza tokens de otra API, de otro emisor o con un sub que no es un GUID', async () => {
+    const { call, tokens } = await setup();
+    for (const token of [
+      await tokens.sign({}, { audience: 'cuentas' }),
+      await tokens.sign({}, { audience: 'lorcana-api' }),
+      await tokens.sign({}, { issuer: 'https://cuentas-api.yosiftware.es' }),
+      await tokens.sign({ sub: 'uid-de-firebase' }),
+    ]) {
+      const response = await call('GET', token);
+      expect(response.statusCode).toBe(401);
+      expect(response.json()).toMatchObject({ error: 'no_autenticado' });
+    }
+    expect(ISSUER).toContain('qa-');
+  });
+
+  it('crea el usuario por su sub la primera vez y lo reutiliza después', async () => {
+    const { call, tokens, users } = await setup();
+    const first = (await call('GET', await tokens.sign())).json();
+    const second = (await call('GET', await tokens.sign({ sub: OWNER.toUpperCase() }))).json();
+    expect(first).toMatchObject({ globalId: OWNER, legacyAccount: null, restrictions: [], rulesPending: false });
+    expect(second.id).toBe(first.id);
+    expect(users.byGlobalId.size).toBe(1);
+    const other = (await call('GET', await tokens.sign({ sub: OTHER }))).json();
+    expect(other.id).not.toBe(first.id);
+  });
+
+  it('no deja seguir a una cuenta cerrada o desactivada', async () => {
+    const { call, tokens, users } = await setup();
+    await call('GET', await tokens.sign());
+    users.byGlobalId.get(OWNER)!.closedAt = new Date();
+    expect((await call('GET', await tokens.sign())).json()).toMatchObject({ error: 'cuenta_cerrada' });
+  });
+
+  it('con normas pendientes solo deja consultar la cuenta', async () => {
+    const { call, tokens } = await setup();
+    const token = await tokens.sign({ normasPendientes: true });
+    expect((await call('GET', token)).json()).toMatchObject({ rulesPending: true });
+    const list = await call('GET', token, '/api/projects');
+    expect(list.statusCode).toBe(403);
+    expect(list.json()).toMatchObject({ error: 'normas_pendientes' });
+  });
+
+  it('con «creacion» limitada no deja subir proyectos nuevos, pero sí cambiar los que ya están', async () => {
+    const { call, tokens } = await setup();
+    const free = await tokens.sign();
+    expect((await call('PUT', free, '/api/projects/p1', project('p1'))).statusCode).toBe(200);
+    const hasta = Math.floor(Date.now() / 1000) + 3600;
+    const limited = await tokens.sign({ restricciones: ['creacion'], restriccionesHasta: hasta });
+    const created = await call('PUT', limited, '/api/projects/p2', project('p2'));
+    expect(created.statusCode).toBe(403);
+    expect(created.json()).toMatchObject({ error: 'creacion_limitada', hasta: new Date(hasta * 1000).toISOString() });
+    const updated = await call('PUT', limited, '/api/projects/p1', { ...project('p1'), baseVersion: 1 });
+    expect(updated.statusCode).toBe(200);
+    expect((await call('GET', limited)).json()).toMatchObject({ restrictions: ['creacion'] });
+  });
+
+  it('limita las peticiones por usuario', async () => {
+    const { call, tokens } = await setup();
+    const token = await tokens.sign();
+    let last = 200;
+    for (let i = 0; i <= USER_RATE_LIMIT; i++) last = (await call('GET', token)).statusCode;
+    expect(last).toBe(429);
   });
 });
 
 describe('DELETE /api/me', () => {
-  it('deletes the local user and the Firebase account', async () => {
-    const { call, users, auth } = await setup();
-    await call('GET', 'google');
-
-    const response = await call('DELETE', 'google');
-    expect(response.statusCode).toBe(204);
-    expect(users.byUid.size).toBe(0);
-    expect(auth.deleted).toEqual(['uid-google']);
-  });
-
-  it('requires a recent sign-in', async () => {
-    const { call, users, auth } = await setup();
-    const response = await call('DELETE', 'old');
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ error: 'recent_login_required' });
-    expect(users.byUid.has('uid-old')).toBe(true);
-    expect(auth.deleted).toEqual([]);
-  });
-
-  it('keeps the data when Firebase cannot delete the account', async () => {
-    const { call, users, auth } = await setup();
-    auth.failNextDeletes();
-
-    const response = await call('DELETE', 'google');
-    expect(response.statusCode).toBe(500);
-    expect(users.byUid.has('uid-google')).toBe(true);
+  it('borra los datos de Nodaria de la cuenta; la cuenta sigue y vuelve a empezar vacía', async () => {
+    const { call, tokens, users } = await setup();
+    const token = await tokens.sign();
+    const before = (await call('GET', token)).json();
+    expect((await call('DELETE', token)).statusCode).toBe(204);
+    expect(users.byGlobalId.size).toBe(0);
+    const after = (await call('GET', token)).json();
+    expect(after.id).not.toBe(before.id);
   });
 });

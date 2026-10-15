@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readMigrations, runMigrations, splitBatches } from '../src/db/migrations.ts';
 import { sql, type Database } from '../src/db/pool.ts';
-import { createSqlUserStore } from '../src/users/repository.ts';
-import { identity } from './helpers/fakes.ts';
+import { createSqlFeedStore } from '../src/platform/feed.ts';
+import { exportBoard } from '../src/tools/board-export.ts';
+import { createSqlUserStore, linkAccount } from '../src/users/repository.ts';
+import { OTHER, OWNER } from './helpers/fakes.ts';
 import { createTestDatabase, dbTestsEnabled } from './helpers/testDatabase.ts';
 
 describe('migration files', () => {
@@ -22,6 +24,7 @@ describe('migration files', () => {
       '0003_messages',
       '0004_requests',
       '0005_admins',
+      '0006_platform_identity',
     ]);
     for (const migration of migrations) {
       expect(migration.checksum).toMatch(/^[0-9a-f]{64}$/);
@@ -51,32 +54,134 @@ describe.runIf(dbTestsEnabled)('SQL Server integration', () => {
     await expect(runMigrations(db, edited)).rejects.toThrow(/0001_users/);
   });
 
-  it('creates and refreshes users, and cascades the delete', async () => {
-    const users = createSqlUserStore(db);
-    const first = await users.upsert(identity({ uid: 'sql-uid', displayName: 'Primero' }));
-    const second = await users.upsert(identity({ uid: 'sql-uid', displayName: 'Segundo' }));
-    expect(second.id).toBe(first.id);
-    expect(second.displayName).toBe('Segundo');
-    expect(second.isAdmin).toBe(false);
-    expect(second.lastSeenAt.getTime()).toBeGreaterThanOrEqual(first.lastSeenAt.getTime());
-
-    await new sql.Request(db).input('user', sql.BigInt, first.id)
+  const count = async (table: string) =>
+    Number((await db.request().query(`SELECT COUNT(*) AS n FROM dbo.${table}`)).recordset[0].n);
+  const addProject = (userId: number, id: string) =>
+    new sql.Request(db).input('user', sql.BigInt, userId).input('id', sql.VarChar(100), id)
       .query(`INSERT INTO dbo.projects (user_id, project_id, name, document, updated_at)
-              VALUES (@user, 'p1', N'Mapa', N'{"id":"p1"}', SYSUTCDATETIME())`);
+              VALUES (@user, @id, N'Mapa', N'{}', SYSUTCDATETIME())`);
+  /** Un usuario de antes de la migración, solo con su UID de Firebase. */
+  const legacyUser = async (uid: string) =>
+    Number(
+      (
+        await new sql.Request(db)
+          .input('uid', sql.NVarChar(128), uid)
+          .query('INSERT INTO dbo.users (firebase_uid) OUTPUT inserted.id VALUES (@uid)')
+      ).recordset[0].id,
+    );
 
-    let rolledBack = false;
-    await users
-      .delete(first.id, async () => {
-        throw new Error('firebase down');
-      })
-      .catch(() => {
-        rolledBack = true;
-      });
-    expect(rolledBack).toBe(true);
-    expect((await db.request().query('SELECT COUNT(*) AS n FROM dbo.users')).recordset[0].n).toBe(1);
+  it('crea y reutiliza usuarios por su identificador global y borra en cascada', async () => {
+    const users = createSqlUserStore(db);
+    const first = await users.findOrCreate(OWNER);
+    const again = await users.findOrCreate(OWNER.toUpperCase());
+    expect(again.id).toBe(first.id);
+    expect(again.globalId).toBe(OWNER);
+    expect(again.legacyAccount).toBeNull();
+    // Varios usuarios nuevos sin UID de Firebase conviven (el índice único está filtrado).
+    await users.findOrCreate(OTHER);
+    await addProject(first.id, 'p1');
+    await users.delete(first.id);
+    expect(await count('projects')).toBe(0);
+    await db.request().query('DELETE FROM dbo.users');
+  });
 
-    await users.delete(first.id, async () => undefined);
-    expect((await db.request().query('SELECT COUNT(*) AS n FROM dbo.users')).recordset[0].n).toBe(0);
-    expect((await db.request().query('SELECT COUNT(*) AS n FROM dbo.projects')).recordset[0].n).toBe(0);
+  it('enlaza la cuenta de antes con su identificador global, sin duplicar ni robar cuentas', async () => {
+    const users = createSqlUserStore(db);
+    const old = await legacyUser('uid-firebase-propietario');
+    await addProject(old, 'mapa-antiguo');
+    expect(await linkAccount(db, 999_999, OWNER)).toMatchObject({ outcome: 'user_not_found' });
+    expect(await linkAccount(db, old, OWNER)).toMatchObject({ outcome: 'linked' });
+    expect(await linkAccount(db, old, OWNER)).toMatchObject({ outcome: 'unchanged' });
+    expect(await linkAccount(db, old, OTHER)).toMatchObject({ outcome: 'already_linked' });
+    // Al entrar, la cuenta enlazada encuentra a su usuario de siempre, con su UID antiguo.
+    const found = await users.findOrCreate(OWNER);
+    expect(found).toMatchObject({ id: old, legacyAccount: 'uid-firebase-propietario' });
+
+    // Si entró antes de enlazar, el usuario nuevo y vacío cede su identificador al antiguo.
+    const company = await legacyUser('uid-firebase-empresa');
+    const early = await users.findOrCreate(OTHER);
+    expect(await linkAccount(db, company, OTHER)).toMatchObject({ outcome: 'moved', movedFrom: early.id });
+    expect((await users.findOrCreate(OTHER)).id).toBe(company);
+
+    // Con proyectos en el usuario nuevo no se mueve nada: se decide a mano.
+    const third = await legacyUser('uid-firebase-tercera');
+    const busy = await users.findOrCreate('11111111-2222-3333-4444-555555555555');
+    await addProject(busy.id, 'nuevo');
+    expect(await linkAccount(db, third, busy.globalId)).toMatchObject({ outcome: 'taken_by_other', takenBy: busy.id });
+    await db.request().query('DELETE FROM dbo.projects; DELETE FROM dbo.users');
+  });
+
+  it('aplica el estado de las cuentas del feed y guarda el cursor en la misma transacción', async () => {
+    const users = createSqlUserStore(db);
+    const feed = createSqlFeedStore(db);
+    const owner = await users.findOrCreate(OWNER);
+    const other = await users.findOrCreate(OTHER);
+    await addProject(other.id, 'de-la-otra');
+    expect(await feed.cursor()).toBe(0);
+    const change = (id: number, cuenta: string, datos: unknown, tipo = 'cuenta.estado') => ({
+      id,
+      tipo,
+      cuenta,
+      cuenta2: null,
+      datos,
+      fecha: new Date().toISOString(),
+    });
+    await feed.apply(
+      [
+        change(1, OWNER, { alias: 'yosi' }, 'perfil.cambiado'),
+        change(2, OWNER, { estado: 'cerrada', restricciones: ['creacion'], hasta: '2026-11-01T00:00:00.000Z' }),
+        change(3, OTHER, { estado: 'borrada' }),
+        change(4, '99999999-2222-3333-4444-555555555555', { estado: 'borrada' }),
+      ],
+      1058,
+    );
+    expect(await feed.cursor()).toBe(1058);
+    const row = (
+      await new sql.Request(db).input('id', sql.BigInt, owner.id).query('SELECT * FROM dbo.users WHERE id = @id')
+    ).recordset[0];
+    expect(row.closed_at).not.toBeNull();
+    expect(row.restrictions).toBe('creacion');
+    expect(await count('users')).toBe(1);
+    expect(await count('projects')).toBe(0);
+    // Repetir la lectura no cambia nada; «activa» recupera la cuenta.
+    await feed.apply([change(5, OWNER, { estado: 'activa', restricciones: [], hasta: null })], 1060);
+    expect((await users.findOrCreate(OWNER)).closedAt).toBeNull();
+    await db.request().query('DELETE FROM dbo.users');
+  });
+
+  it('exporta el tablón con las cuentas por su identificador global', async () => {
+    const owner = await legacyUser('uid-firebase-propietario');
+    await linkAccount(db, owner, OWNER);
+    const voter = await legacyUser('uid-sin-enlazar');
+    const created = await new sql.Request(db).input('user', sql.BigInt, owner).query(`
+      INSERT INTO dbo.requests (user_id, kind, title, body, status, created_at, updated_at)
+      OUTPUT inserted.id VALUES (@user, 'idea', N'Idea', N'Una idea con texto', 'abierta', '2026-10-07T10:00:00', '2026-10-08T10:00:00')`);
+    const id = Number(created.recordset[0].id);
+    await new sql.Request(db).input('id', sql.BigInt, id).input('voter', sql.BigInt, voter).query(`
+      INSERT INTO dbo.request_updates (request_id, status, message, created_at) VALUES (@id, 'abierta', N'Gracias', '2026-10-08T10:00:00');
+      INSERT INTO dbo.request_votes (request_id, user_id, created_at) VALUES (@id, @voter, '2026-10-09T10:00:00');`);
+    const { file, problems } = await exportBoard(db, new Date('2026-10-20T10:00:00Z'));
+    expect(file).toEqual({
+      formato: 'nodaria-tablon-1',
+      exportadoUtc: '2026-10-20T10:00:00.000Z',
+      peticiones: [
+        {
+          id,
+          tipo: 'idea',
+          autor: OWNER,
+          titulo: 'Idea',
+          texto: 'Una idea con texto',
+          estado: 'abierta',
+          duplicadoDe: null,
+          creadoUtc: '2026-10-07T10:00:00.000Z',
+          actualizadoUtc: '2026-10-08T10:00:00.000Z',
+          leidoAutorUtc: null,
+          respuestas: [{ estado: 'abierta', mensaje: 'Gracias', fechaUtc: '2026-10-08T10:00:00.000Z' }],
+          votos: [{ cuenta: null, fechaUtc: '2026-10-09T10:00:00.000Z' }],
+        },
+      ],
+    });
+    // Un votante sin enlazar se señala: la plataforma necesita su identificador.
+    expect(problems.unlinkedUsers).toEqual([voter]);
   });
 });

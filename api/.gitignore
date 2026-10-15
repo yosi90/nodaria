@@ -8,3 +8,5 @@ logs
 secrets/
 .runtime/
 *-firebase-adminsdk-*.json
+.env.dev
+logs-dev/
