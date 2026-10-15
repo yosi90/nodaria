@@ -81,6 +81,25 @@ export function loadSyncMeta(uid: string, legacyUid: string | null = null): Sync
   return emptyMeta(uid);
 }
 
+/** Cuenta cuyo recuerdo guarda el navegador, o `null`: si la hay, los proyectos de aquí son suyos. */
+export function storedSyncAccount(): string | null {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SYNC_META_KEY) ?? 'null') as SyncMeta | null;
+    return typeof stored?.uid === 'string' ? stored.uid : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Al cerrarse la sesión, los proyectos de la cuenta salen del navegador. Los que ya están en la cuenta
+ * tal cual no hacen falta aquí; los que tienen cambios sin subir (o nunca se subieron) se apartan sin
+ * enseñarse hasta que vuelva a entrar la misma cuenta. Los vacíos se descartan.
+ */
+export function unsyncedProjects(local: Project[], meta: SyncMeta): Project[] {
+  return local.filter(p => !isBlankProject(p) && meta.projects[p.id]?.updatedAt !== p.updatedAt);
+}
+
 export function saveSyncMeta(meta: SyncMeta | null) {
   try {
     if (meta) localStorage.setItem(SYNC_META_KEY, JSON.stringify(meta));

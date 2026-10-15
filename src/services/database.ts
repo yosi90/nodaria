@@ -100,6 +100,35 @@ export function backUpAndRemove(db: IDBDatabase, backups: Backup[], remove: stri
   return committed(tx);
 }
 
+/** Reserva de una cuenta: proyectos con cambios sin subir, apartados al cerrarse su sesión. */
+export interface Vault {
+  kind: 'vault';
+  savedAt: string;
+  projects: Project[];
+}
+
+const vaultKey = (account: string) => `vault:${account}`;
+
+/** Aparta (sustituye) la reserva de una cuenta; sin proyectos, la borra. */
+export function putVault(db: IDBDatabase, account: string, projects: Project[]) {
+  const tx = db.transaction('backups', 'readwrite');
+  const store = tx.objectStore('backups');
+  if (projects.length)
+    store.put({ kind: 'vault', savedAt: new Date().toISOString(), projects } satisfies Vault, vaultKey(account));
+  else store.delete(vaultKey(account));
+  return committed(tx);
+}
+
+/** Saca la reserva de una cuenta (la lee y la borra en la misma transacción). */
+export async function takeVault(db: IDBDatabase, account: string): Promise<Project[]> {
+  const tx = db.transaction('backups', 'readwrite');
+  const store = tx.objectStore('backups');
+  const found = (await settled(store.get(vaultKey(account)) as IDBRequest<Vault | undefined>)) ?? null;
+  store.delete(vaultKey(account));
+  await committed(tx);
+  return found?.projects ?? [];
+}
+
 export function clearBackups(db: IDBDatabase) {
   const tx = db.transaction('backups', 'readwrite');
   tx.objectStore('backups').clear();

@@ -8,7 +8,9 @@ import {
   isEmptyPlan,
   loadSyncMeta,
   planSync,
+  storedSyncAccount,
   SYNC_META_KEY,
+  unsyncedProjects,
   type RemoteSummary,
   type SyncMeta,
 } from './sync';
@@ -186,6 +188,18 @@ describe('memoria al pasar a la cuenta de Yosiftware', () => {
     expect(meta).toEqual(emptyMeta(OWNER));
     expect(planSync([], remote, meta).deleteRemote).toEqual([]);
     expect(planSync([], remote, meta).download).toEqual([{ id: 'mapa', version: 534 }]);
+  });
+
+  it('al cerrarse la sesión solo se apartan los cambios sin subir; lo subido y lo vacío no', () => {
+    store.set(SYNC_META_KEY, JSON.stringify({ ...remembered, uid: OWNER }));
+    expect(storedSyncAccount()).toBe(OWNER);
+    const changed = { ...local, schemas: [schema('tipo')], updatedAt: '2026-10-15T20:00:00.000Z' };
+    const fresh = project({ id: 'nuevo', name: 'Sin subir', schemas: [schema('tipo')] });
+    const blank = project({ id: 'vacio', name: 'Mi primer mapa' });
+    expect(unsyncedProjects([local, blank], remembered)).toEqual([]);
+    expect(unsyncedProjects([changed, fresh, blank], remembered).map(p => p.id)).toEqual(['mapa', 'nuevo']);
+    store.delete(SYNC_META_KEY);
+    expect(storedSyncAccount()).toBeNull();
   });
 
   it('una cuenta nueva sin cuenta de antes no adopta nada', () => {

@@ -41,6 +41,8 @@ export interface YosiftwareSdk {
   perfil(): Promise<PlatformProfile | null>;
   reportar(options?: { tipo?: 'error' | 'propuesta' }): Promise<boolean>;
   privacidad(options?: { recorrido?: boolean }): Promise<void>;
+  /** Hoja de la web que el SDK aplica en sus elementos y manda a sus ventanas (SDK 1.14). */
+  estilos?(sheet: string | { css: string } | null): Promise<void>;
 }
 
 declare global {

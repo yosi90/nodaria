@@ -1,35 +1,27 @@
 import { useState } from 'react';
-import { clearBackups } from '../../services/storage';
-import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
 import { useSync } from '../../state/sync';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
 
-/** Cierra la sesión; opcionalmente vacía los proyectos de este navegador (útil en equipos compartidos). */
+/**
+ * Cierra la sesión de Yosiftware (en todas sus webs). Antes sube lo pendiente; al cerrarse, el motor
+ * de sincronización retira del navegador los proyectos de la cuenta y aparta los cambios que no se
+ * hayan podido subir hasta que vuelva a entrar (`state/sync.tsx`).
+ */
 export function SignOutDialog({ onClose }: { onClose: () => void }) {
   const { signOut } = useAuth();
-  const { forgetAccount, state } = useSync();
-  const { dispatch } = useApp();
+  const { markLeaving, syncNow, state } = useSync();
   const toast = useToast();
-  const [wipe, setWipe] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     setBusy(true);
     try {
-      // Primero se marca la salida, para no avisar de una sesión «cerrada desde otra web».
-      forgetAccount();
+      await syncNow().catch(() => undefined);
+      markLeaving();
       await signOut();
-      if (wipe) {
-        dispatch({ type: 'reset-state' });
-        await clearBackups().catch(() => undefined);
-      }
-      toast({
-        message: wipe
-          ? 'Sesión cerrada y navegador vaciado'
-          : 'Sesión cerrada. Los proyectos siguen en este navegador.',
-      });
+      toast({ message: 'Sesión cerrada. Tus proyectos siguen en tu cuenta y se han quitado de este navegador.' });
       onClose();
     } finally {
       setBusy(false);
@@ -46,20 +38,17 @@ export function SignOutDialog({ onClose }: { onClose: () => void }) {
     >
       <div className="auth-form">
         <p className="muted-note" style={{ color: 'var(--text)' }}>
-          Se cierra la sesión de Yosiftware en todas sus webs. Tus proyectos están guardados en la cuenta
+          Se cierra la sesión de Yosiftware en todas sus webs y los proyectos de tu cuenta se quitan de este navegador.
+          Siguen guardados en tu cuenta
           {state === 'idle'
             ? '.'
             : state === 'syncing'
               ? ' (sincronizando ahora mismo).'
               : ' hasta la última sincronización correcta.'}
         </p>
-        <label className="check">
-          <input type="checkbox" checked={wipe} onChange={event => setWipe(event.target.checked)} />
-          Quitar los proyectos de este navegador
-        </label>
         <p className="muted-note">
-          Márcalo en un equipo compartido. Si lo dejas sin marcar, los proyectos siguen aquí y podrás seguir trabajando
-          sin cuenta.
+          Si algo no se ha podido subir, se guarda aparte en este navegador, sin enseñarse, hasta que vuelvas a entrar
+          con esta cuenta.
         </p>
       </div>
     </Modal>

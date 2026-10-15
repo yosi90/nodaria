@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- provider y hook forman una única API de contexto */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { loadSdk, sdk, type PlatformState } from '../services/yosiftware';
+import { platformStyles } from '../services/yosiftwareStyles';
 
 /*
  * Sesión de la cuenta de Yosiftware. La gestiona el SDK de la plataforma: entrar, salir, el perfil y
@@ -61,6 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSnapshot(fromState(null));
         return;
       }
+      // El aspecto de Nodaria en las ventanas y paneles del SDK (ecosistema-kit/ESTILOS.md).
+      void found.estilos?.({ css: platformStyles(window.location.origin) }).catch(() => undefined);
       // alCambiar llama al momento con el estado actual y después en cada cambio (también desde otras webs).
       stop = found.alCambiar(state =>
         setSnapshot(current => {

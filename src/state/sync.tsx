@@ -10,13 +10,15 @@ import {
   OfflineError,
   putRemoteProject,
 } from '../services/api';
-import { prepareProject } from '../services/storage';
+import { prepareProject, saveVault, takeVault } from '../services/storage';
 import {
   emptyMeta,
   isEmptyPlan,
   loadSyncMeta,
   planSync,
   saveSyncMeta,
+  storedSyncAccount,
+  unsyncedProjects,
   type SyncConflict,
   type SyncMeta,
 } from '../services/sync';
@@ -37,6 +39,8 @@ interface SyncContextValue extends SyncStatus {
   syncNow: () => Promise<void>;
   /** Olvida el recuerdo de la cuenta en este navegador (al cerrar sesión o borrar la cuenta). */
   forgetAccount: () => void;
+  /** Cierre de sesión pedido desde Nodaria: los proyectos se retiran sin avisar de un cierre inesperado. */
+  markLeaving: () => void;
   /** Avisos de «último cambio gana» pendientes de mostrar. */
   conflicts: SyncConflict[];
   dismissConflicts: () => void;
@@ -167,22 +171,53 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return job;
   }, [signedIn, runOnce]);
 
+  /**
+   * Los proyectos de una cuenta salen del navegador cuando su sesión termina: los que ya están en la
+   * cuenta no hacen falta aquí y los que tienen cambios sin subir se apartan (sin enseñarse) hasta que
+   * vuelva a entrar esa cuenta. El navegador queda como recién abierto. Devuelve cuántos se apartaron;
+   * si no se pueden apartar, no se quita nada (antes que perder trabajo).
+   */
+  const lockAccount = useCallback(
+    async (account: string, memory: SyncMeta) => {
+      const pending = unsyncedProjects(projects.current, memory);
+      await saveVault(account, pending);
+      saveSyncMeta(null);
+      dispatch({ type: 'reset-state' });
+      return pending.length;
+    },
+    [dispatch],
+  );
+
   // Cambiar de cuenta carga su recuerdo (preguntando antes a la API por la cuenta de antes de migrar,
-  // para adoptar su recuerdo); sin sesión, el motor se apaga.
-  const wasSignedIn = useRef(false);
+  // para adoptar su recuerdo); sin sesión, el motor se apaga y los proyectos de la cuenta se retiran.
   useEffect(() => {
     if (!signedIn || !uid) {
       ready.current = false;
-      meta.current = emptyMeta();
       setStatus({ state: 'off', lastSyncAt: null, error: null });
-      // Una sesión que se cierra desde otra web (o al caducar) deja los proyectos en este navegador.
-      if (wasSignedIn.current && !leaving.current && authStatus === 'signed-out')
-        toastRef.current({ message: 'Se cerró tu sesión de Yosiftware. Tus proyectos siguen en este navegador.' });
-      wasSignedIn.current = false;
+      // Mientras se comprueba la sesión, o si la plataforma no responde, no se decide nada.
+      if (authStatus !== 'signed-out') return;
+      const account = meta.current.uid ?? storedSyncAccount();
+      const memory = meta.current.uid ? meta.current : account ? loadSyncMeta(account) : emptyMeta();
+      meta.current = emptyMeta();
+      const own = leaving.current;
       leaving.current = false;
+      if (!account) return;
+      void lockAccount(account, memory)
+        .then(kept => {
+          if (own) return;
+          toastRef.current({
+            message: kept
+              ? 'Tu sesión de Yosiftware se ha cerrado. Tus proyectos se han quitado de este navegador; los cambios sin subir te esperan aquí, ocultos, hasta que vuelvas a entrar.'
+              : 'Tu sesión de Yosiftware se ha cerrado. Tus proyectos siguen en tu cuenta y se han quitado de este navegador.',
+          });
+        })
+        .catch(() =>
+          toastRef.current({
+            message: 'Tu sesión se ha cerrado, pero no se pudieron apartar los cambios sin subir: siguen aquí.',
+          }),
+        );
       return;
     }
-    wasSignedIn.current = true;
     let cancelled = false;
     void (async () => {
       setStatus(current => ({ ...current, state: 'syncing' }));
@@ -190,7 +225,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const token = await getToken();
         const me = token ? await fetchMe(token) : null;
         if (cancelled) return;
-        meta.current = loadSyncMeta(uid, me?.legacyAccount ?? null);
+        const legacy = me?.legacyAccount ?? null;
+        // Lo que quede en el navegador de otra cuenta se aparta antes de mezclarlo con esta.
+        const stored = storedSyncAccount();
+        if (stored && stored !== uid && stored !== legacy) await lockAccount(stored, loadSyncMeta(stored));
+        // Los cambios que esta cuenta dejó sin subir al cerrarse su sesión vuelven antes de sincronizar.
+        const restored = await takeVault(uid);
+        if (cancelled) return;
+        if (restored.length) {
+          dispatch({ type: 'sync-apply', upsert: restored, remove: [] });
+          const ids = new Set(restored.map(p => p.id));
+          projects.current = [...projects.current.filter(p => !ids.has(p.id)), ...restored];
+        }
+        meta.current = loadSyncMeta(uid, legacy);
         ready.current = true;
         void syncNow();
       } catch (error) {
@@ -205,7 +252,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [signedIn, uid, authStatus, getToken, syncNow]);
+  }, [signedIn, uid, authStatus, getToken, syncNow, lockAccount, dispatch]);
 
   // Tras un cambio local, subida con retardo.
   useEffect(() => {
@@ -234,11 +281,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     meta.current = emptyMeta();
     saveSyncMeta(null);
   }, []);
+  const markLeaving = useCallback(() => {
+    leaving.current = true;
+  }, []);
   const dismissConflicts = useCallback(() => setConflicts([]), []);
 
   const value = useMemo<SyncContextValue>(
-    () => ({ ...status, syncNow, forgetAccount, conflicts, dismissConflicts }),
-    [status, syncNow, forgetAccount, conflicts, dismissConflicts],
+    () => ({ ...status, syncNow, forgetAccount, markLeaving, conflicts, dismissConflicts }),
+    [status, syncNow, forgetAccount, markLeaving, conflicts, dismissConflicts],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
