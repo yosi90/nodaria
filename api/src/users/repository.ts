@@ -1,97 +1,123 @@
-import type { VerifiedIdentity } from '../auth/firebase.ts';
 import { type Database, sql, withTransaction } from '../db/pool.ts';
+
+/*
+ * Usuarios locales. La identidad es de la plataforma Yosiftware: cada usuario se reconoce por el
+ * `sub` de su token (`id_global`). `id` sigue siendo la clave interna de la que cuelgan los proyectos.
+ * `firebase_uid` solo queda en las cuentas de antes de la migración (el navegador lo usaba como
+ * clave de su recuerdo de sincronización; ver `legacyAccount`).
+ */
 
 export interface User {
   id: number;
-  firebaseUid: string;
-  email: string | null;
-  emailVerified: boolean;
-  displayName: string | null;
-  photoUrl: string | null;
+  globalId: string;
+  /** UID de Firebase de la cuenta de antes de migrar, si la hay. */
+  legacyAccount: string | null;
   createdAt: Date;
   lastSeenAt: Date;
   disabledAt: Date | null;
-  /** Puede gestionar las peticiones desde el panel de administración. */
-  isAdmin: boolean;
+  /** Borrado pedido o suspensión (`cuenta.estado` = cerrada en el feed). */
+  closedAt: Date | null;
 }
 
+export type LinkResult =
+  | { outcome: 'linked' | 'unchanged' | 'moved'; userId: number; movedFrom?: number }
+  | { outcome: 'user_not_found' | 'taken_by_other' | 'already_linked'; userId: number; takenBy?: number };
+
 export interface UserStore {
-  // Crea el usuario la primera vez y después refresca perfil y last_seen_at.
-  upsert(identity: VerifiedIdentity): Promise<User>;
-  // Borra el usuario y todo lo que cuelga de él. `beforeCommit` corre dentro de la
-  // transacción: si lanza, no se borra nada.
-  delete(userId: number, beforeCommit: () => Promise<void>): Promise<void>;
+  /** Crea el usuario la primera vez que llega su `sub` y después refresca last_seen_at. */
+  findOrCreate(globalId: string): Promise<User>;
+  /** Borra el usuario y todo lo que cuelga de él (sus proyectos). */
+  delete(userId: number): Promise<void>;
 }
 
 interface UserRow {
   id: number | string;
-  firebase_uid: string;
-  email: string | null;
-  email_verified: boolean;
-  display_name: string | null;
-  photo_url: string | null;
+  id_global: string;
+  firebase_uid: string | null;
   created_at: Date;
   last_seen_at: Date;
   disabled_at: Date | null;
-  is_admin: boolean;
+  closed_at: Date | null;
 }
 
 function toUser(row: UserRow): User {
   return {
     // bigint puede llegar como cadena según el driver.
     id: Number(row.id),
-    firebaseUid: row.firebase_uid,
-    email: row.email,
-    emailVerified: Boolean(row.email_verified),
-    displayName: row.display_name,
-    photoUrl: row.photo_url,
+    globalId: String(row.id_global).toLowerCase(),
+    legacyAccount: row.firebase_uid,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
     disabledAt: row.disabled_at,
-    isAdmin: Boolean(row.is_admin),
+    closedAt: row.closed_at,
   };
 }
 
+/**
+ * Borra el usuario `@id` y lo que cuelga de él: sus proyectos en cascada y, mientras existan las tablas
+ * del antiguo tablón, sus votos y las marcas de duplicado que apuntan a sus peticiones.
+ */
+export const DELETE_USER = `
+  IF OBJECT_ID('dbo.request_votes', 'U') IS NOT NULL
+  BEGIN
+    DELETE FROM dbo.request_votes WHERE user_id = @id;
+    UPDATE dbo.requests SET duplicate_of = NULL, status = 'abierta'
+    WHERE duplicate_of IN (SELECT id FROM dbo.requests WHERE user_id = @id);
+  END
+  DELETE FROM dbo.users WHERE id = @id;`;
+
 export function createSqlUserStore(db: Database): UserStore {
   return {
-    async upsert(identity) {
-      const result = await db
-        .request()
-        .input('uid', sql.NVarChar(128), identity.uid)
-        .input('email', sql.NVarChar(320), identity.email)
-        .input('emailVerified', sql.Bit, identity.emailVerified)
-        .input('displayName', sql.NVarChar(200), identity.displayName?.slice(0, 200) ?? null)
-        .input('photoUrl', sql.NVarChar(2048), identity.photoUrl?.slice(0, 2048) ?? null).query<UserRow>(`
+    async findOrCreate(globalId) {
+      const result = await db.request().input('globalId', sql.UniqueIdentifier, globalId).query<UserRow>(`
           MERGE dbo.users WITH (HOLDLOCK) AS target
-          USING (SELECT @uid AS firebase_uid) AS source
-            ON target.firebase_uid = source.firebase_uid
-          WHEN MATCHED THEN UPDATE SET
-            email = @email,
-            email_verified = @emailVerified,
-            display_name = @displayName,
-            photo_url = @photoUrl,
-            last_seen_at = SYSUTCDATETIME()
-          WHEN NOT MATCHED THEN
-            INSERT (firebase_uid, email, email_verified, display_name, photo_url)
-            VALUES (@uid, @email, @emailVerified, @displayName, @photoUrl)
-          OUTPUT inserted.id, inserted.firebase_uid, inserted.email, inserted.email_verified,
-                 inserted.display_name, inserted.photo_url, inserted.created_at,
-                 inserted.last_seen_at, inserted.disabled_at, inserted.is_admin;`);
-
+          USING (SELECT @globalId AS id_global) AS source
+            ON target.id_global = source.id_global
+          WHEN MATCHED THEN UPDATE SET last_seen_at = SYSUTCDATETIME()
+          WHEN NOT MATCHED THEN INSERT (id_global) VALUES (@globalId)
+          OUTPUT inserted.id, inserted.id_global, inserted.firebase_uid, inserted.created_at,
+                 inserted.last_seen_at, inserted.disabled_at, inserted.closed_at;`);
       return toUser(result.recordset[0]);
     },
 
-    async delete(userId, beforeCommit) {
+    async delete(userId) {
       await withTransaction(db, async transaction => {
-        // Las tablas de datos referencian dbo.users con ON DELETE CASCADE, salvo los votos (que ya
-        // cuelgan en cascada de las peticiones) y las marcas de duplicado, que se limpian antes.
-        await new sql.Request(transaction).input('id', sql.BigInt, userId).query(`
-          DELETE FROM dbo.request_votes WHERE user_id = @id;
-          UPDATE dbo.requests SET duplicate_of = NULL, status = 'abierta'
-          WHERE duplicate_of IN (SELECT id FROM dbo.requests WHERE user_id = @id);
-          DELETE FROM dbo.users WHERE id = @id;`);
-        await beforeCommit();
+        await new sql.Request(transaction).input('id', sql.BigInt, userId).query(DELETE_USER);
       });
     },
   };
+}
+
+/**
+ * Enlaza el usuario local de una cuenta de antes de la migración con su cuenta de Yosiftware
+ * (`ecosistema-kit/MIGRACION.md`, paso 5). Idempotente. Si la persona ya entró con la cuenta nueva y
+ * la API le creó un usuario vacío (sin proyectos), el `id_global` se mueve de ese al antiguo y el
+ * vacío se borra; si el otro usuario tiene proyectos, no se toca nada.
+ */
+export async function linkAccount(db: Database, userId: number, globalId: string): Promise<LinkResult> {
+  return withTransaction(db, async transaction => {
+    const request = () =>
+      new sql.Request(transaction).input('id', sql.BigInt, userId).input('globalId', sql.UniqueIdentifier, globalId);
+    const target = await request().query<{ id_global: string | null }>(
+      'SELECT id_global FROM dbo.users WITH (UPDLOCK, HOLDLOCK) WHERE id = @id',
+    );
+    if (!target.recordset.length) return { outcome: 'user_not_found', userId };
+    const current = target.recordset[0].id_global;
+    if (current && String(current).toLowerCase() === globalId.toLowerCase()) return { outcome: 'unchanged', userId };
+    // Un usuario ya enlazado con otra cuenta no se reasigna: habría que decidirlo a mano.
+    if (current) return { outcome: 'already_linked', userId };
+
+    const other = await request().query<{ id: number | string; projects: number }>(`
+      SELECT u.id, (SELECT COUNT(*) FROM dbo.projects p WHERE p.user_id = u.id) AS projects
+      FROM dbo.users u WITH (UPDLOCK, HOLDLOCK) WHERE u.id_global = @globalId AND u.id <> @id`);
+    let movedFrom: number | undefined;
+    if (other.recordset.length) {
+      const holder = other.recordset[0];
+      if (holder.projects > 0) return { outcome: 'taken_by_other', userId, takenBy: Number(holder.id) };
+      movedFrom = Number(holder.id);
+      await new sql.Request(transaction).input('id', sql.BigInt, movedFrom).query(DELETE_USER);
+    }
+    await request().query('UPDATE dbo.users SET id_global = @globalId WHERE id = @id');
+    return movedFrom === undefined ? { outcome: 'linked', userId } : { outcome: 'moved', userId, movedFrom };
+  });
 }

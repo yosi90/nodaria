@@ -7,17 +7,18 @@ describe('config', () => {
   it('applies defaults and splits CORS origins', () => {
     expect(config.port).toBe(5003);
     expect(config.db.database).toBe('Nodaria');
-    expect(config.firebaseProjectId).toBe('yosiftware-nodaria');
+    expect(config.platform).toMatchObject({ env: 'produccion', audience: 'nodaria-api', feedEnabled: false });
+    expect(config.platform.api).toBe('https://cuentas-api.yosiftware.es');
     expect(config.projectMaxBytes).toBe(20 * 1024 * 1024);
-    expect(config.corsOrigins).toEqual(['https://nodaria.yosiftware.es', 'http://localhost:5173']);
+    expect(config.corsOrigins).toEqual(['https://nodaria.yosiftware.es', 'https://nodaria.dev.yosiftware.es']);
   });
 
   it('rejects unsafe database names', () => {
     expect(() => loadConfig({ DB_NAME: 'x]; DROP DATABASE master;--' })).toThrow(/DB_NAME/);
   });
 
-  it('rejects a Notificapp URL that is not a URL', () => {
-    expect(() => loadConfig({ NOTIFICAPP_URL: 'notificapp' })).toThrow(/NOTIFICAPP_URL/);
+  it('rejects an unknown platform environment', () => {
+    expect(() => loadConfig({ PLATFORM_ENV: 'staging' })).toThrow(/PLATFORM_ENV/);
   });
 });
 
@@ -59,7 +60,7 @@ describe('http plumbing', () => {
     const allowed = await app.inject({
       method: 'GET',
       url: '/api/health',
-      headers: { origin: 'http://localhost:5173' },
+      headers: { origin: 'https://nodaria.dev.yosiftware.es' },
     });
     const blocked = await app.inject({
       method: 'GET',
@@ -67,7 +68,7 @@ describe('http plumbing', () => {
       headers: { origin: 'https://evil.example' },
     });
 
-    expect(allowed.headers['access-control-allow-origin']).toBe('http://localhost:5173');
+    expect(allowed.headers['access-control-allow-origin']).toBe('https://nodaria.dev.yosiftware.es');
     expect(blocked.headers['access-control-allow-origin']).toBeUndefined();
   });
 });

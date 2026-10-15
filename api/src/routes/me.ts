@@ -1,45 +1,32 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { AppDependencies } from '../app.ts';
-import { authenticatedUser, HttpError } from '../auth/plugin.ts';
+import { authenticatedUser } from '../auth/plugin.ts';
 
-// Borrar la cuenta exige un inicio de sesión como mucho así de antiguo.
-export const RECENT_LOGIN_MS = 5 * 60 * 1000;
-
-export const meRoutes: FastifyPluginAsync<Pick<AppDependencies, 'auth' | 'users' | 'config'>> = async (
-  app,
-  { auth, users, config },
-) => {
+/*
+ * La cuenta es de la plataforma Yosiftware: aquí solo se ve el usuario local de Nodaria y se pueden
+ * borrar sus datos (los proyectos guardados en la cuenta). Borrar la cuenta entera se hace en la web
+ * social; cuando la plataforma la borra, el feed lo avisa y Nodaria borra lo suyo (`platform/feed.ts`).
+ */
+export const meRoutes: FastifyPluginAsync<Pick<AppDependencies, 'users'>> = async (app, { users }) => {
   app.get('/me', async request => {
     const user = authenticatedUser(request);
     return {
       id: user.id,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      displayName: user.displayName,
-      photoUrl: user.photoUrl,
-      signInProvider: user.identity.signInProvider,
+      globalId: user.globalId,
+      // Clave de la cuenta de antes de migrar: el navegador conserva con ella su recuerdo de sincronización.
+      legacyAccount: user.legacyAccount,
       createdAt: user.createdAt,
-      lastSeenAt: user.lastSeenAt,
-      // Solo el booleano de la sesión actual: la lista de cuentas no sale del servidor.
-      excludeFromStats: config.ownerFirebaseUids.includes(user.firebaseUid),
-      isAdmin: user.isAdmin,
+      restrictions: user.identity.restrictions,
+      restrictionsUntil: user.identity.restrictionsUntil,
+      rulesPending: user.identity.rulesPending,
     };
   });
 
+  // Borra los datos de Nodaria de esta cuenta (el usuario local y sus proyectos); la cuenta sigue.
   app.delete('/me', async (request, reply) => {
     const user = authenticatedUser(request);
-
-    if (Date.now() - user.identity.authTime.getTime() > RECENT_LOGIN_MS) {
-      throw new HttpError(
-        403,
-        'recent_login_required',
-        'Por seguridad, vuelve a iniciar sesión antes de borrar la cuenta.',
-      );
-    }
-
-    // La cuenta de Firebase se borra dentro de la transacción SQL: si Firebase falla, no se pierde nada.
-    await users.delete(user.id, () => auth.deleteUser(user.firebaseUid));
-    request.log.info({ userId: user.id }, 'Cuenta borrada');
+    await users.delete(user.id);
+    request.log.info({ userId: user.id }, 'Datos de Nodaria borrados a petición de la cuenta');
     return reply.status(204).send();
   });
 };

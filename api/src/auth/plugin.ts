@@ -1,9 +1,9 @@
 import type { FastifyRequest } from 'fastify';
 import type { User, UserStore } from '../users/repository.ts';
-import { type AuthProvider, AuthTokenError, type VerifiedIdentity } from './firebase.ts';
+import { type AuthProvider, AuthTokenError, type PlatformIdentity } from './platform.ts';
 
 export interface AuthenticatedUser extends User {
-  identity: VerifiedIdentity;
+  identity: PlatformIdentity;
 }
 
 declare module 'fastify' {
@@ -26,11 +26,9 @@ export class HttpError extends Error {
   }
 }
 
-const TOKEN_MESSAGES: Record<string, [number, string]> = {
-  token_expired: [401, 'La sesión ha caducado. Vuelve a iniciar sesión.'],
-  token_revoked: [401, 'La sesión ya no es válida. Vuelve a iniciar sesión.'],
-  account_disabled: [403, 'La cuenta está desactivada.'],
-  invalid_token: [401, 'La sesión no es válida. Vuelve a iniciar sesión.'],
+const TOKEN_MESSAGES: Record<AuthTokenError['reason'], string> = {
+  token_expired: 'Tu acceso ha caducado. Vuelve a intentarlo.',
+  invalid_token: 'Tienes que iniciar sesión con tu cuenta de Yosiftware.',
 };
 
 export function authenticatedUser(request: FastifyRequest) {
@@ -38,41 +36,40 @@ export function authenticatedUser(request: FastifyRequest) {
   return request.user;
 }
 
-// Hook onRequest de las rutas privadas: Authorization: Bearer <Firebase ID token>.
+/** Rutas que no exigen haber aceptado las normas de la web (para poder consultar el estado). */
+const WITHOUT_RULES = new Set(['/api/me']);
+
+// Hook onRequest de las rutas privadas: Authorization: Bearer <token de la plataforma>.
 export function createAuthenticate(auth: AuthProvider, users: UserStore) {
   return async function authenticate(request: FastifyRequest) {
     const match = /^Bearer\s+(\S+)$/i.exec(request.headers.authorization ?? '');
-    if (!match) throw new HttpError(401, 'missing_token', 'Inicia sesión para continuar.');
+    if (!match) throw new HttpError(401, 'no_autenticado', TOKEN_MESSAGES.invalid_token);
 
-    let identity: VerifiedIdentity;
+    let identity: PlatformIdentity;
     try {
-      identity = await auth.verifyIdToken(match[1]);
+      identity = await auth.verify(match[1]);
     } catch (error) {
       if (!(error instanceof AuthTokenError)) throw error;
-      const [statusCode, message] = TOKEN_MESSAGES[error.reason] ?? TOKEN_MESSAGES.invalid_token;
-      throw new HttpError(statusCode, error.reason, message);
+      throw new HttpError(401, error.reason === 'token_expired' ? 'token_caducado' : 'no_autenticado', TOKEN_MESSAGES[error.reason]);
     }
 
-    // Las cuentas de Google llegan verificadas; las de correo y contraseña deben confirmar su dirección.
-    if (identity.signInProvider === 'password' && !identity.emailVerified) {
-      throw new HttpError(
-        403,
-        'email_not_verified',
-        'Verifica tu correo electrónico antes de continuar. Revisa tu bandeja de entrada.',
-      );
+    const user = await users.findOrCreate(identity.globalId);
+    if (user.disabledAt) throw new HttpError(403, 'cuenta_desactivada', 'La cuenta está desactivada en Nodaria.');
+    if (user.closedAt) {
+      throw new HttpError(403, 'cuenta_cerrada', 'La cuenta está cerrada. Puedes recuperarla desde tu cuenta de Yosiftware.');
     }
-
-    const user = await users.upsert(identity);
-    if (user.disabledAt) throw new HttpError(403, 'account_disabled', TOKEN_MESSAGES.account_disabled[1]);
+    if (identity.rulesPending && !WITHOUT_RULES.has(request.routeOptions.url ?? '')) {
+      throw new HttpError(403, 'normas_pendientes', 'Acepta las normas de Nodaria para continuar.');
+    }
 
     request.user = { ...user, identity };
   };
 }
 
-// Hook de las rutas públicas que se enriquecen con sesión: sin cabecera, sigue como anónimo.
-export function createOptionalAuthenticate(auth: AuthProvider, users: UserStore) {
-  const authenticate = createAuthenticate(auth, users);
-  return async function optionalAuthenticate(request: FastifyRequest) {
-    if (request.headers.authorization) await authenticate(request);
-  };
+/** Con `creacion` limitada por moderación no se crea contenido nuevo (`ecosistema-kit/MODERACION.md`). */
+export function assertCanCreate(user: AuthenticatedUser) {
+  if (!user.identity.restrictions.includes('creacion')) return;
+  throw new HttpError(403, 'creacion_limitada', 'Tu cuenta tiene limitado crear contenido nuevo.', {
+    hasta: user.identity.restrictionsUntil?.toISOString() ?? null,
+  });
 }

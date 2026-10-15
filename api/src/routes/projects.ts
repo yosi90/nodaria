@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import type { AppDependencies } from '../app.ts';
-import { authenticatedUser, HttpError } from '../auth/plugin.ts';
+import { assertCanCreate, authenticatedUser, HttpError } from '../auth/plugin.ts';
 
 export const PROJECT_ID = /^[A-Za-z0-9_-]{1,100}$/;
 
@@ -60,6 +60,8 @@ export const projectRoutes: FastifyPluginAsync<Pick<AppDependencies, 'projects' 
       });
     }
 
+    // Subir un proyecto que la cuenta aún no tiene es crear contenido: no se deja con `creacion` limitada.
+    if (baseVersion === 0) assertCanCreate(authenticatedUser(request));
     const result = await projects.put(
       authenticatedUser(request).id,
       id,

@@ -1,101 +1,95 @@
+import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTPayload } from 'jose';
 import type { AppDependencies } from '../../src/app.ts';
-import { type AuthProvider, AuthTokenError, type VerifiedIdentity } from '../../src/auth/firebase.ts';
+import { AuthTokenError, identityFromClaims, type AuthProvider } from '../../src/auth/platform.ts';
+import { TokenCaducado, TokenNoValido, crearVerificador } from '../../src/auth/yosiftware-tokens.mjs';
 import { loadConfig } from '../../src/config.ts';
 import { createMemoryProjectStore } from '../../src/projects/repository.ts';
-import { createMemoryRequestStore } from '../../src/requests/memory.ts';
 import type { User, UserStore } from '../../src/users/repository.ts';
 
 export const testConfig = loadConfig({
   NODE_ENV: 'test',
-  CORS_ORIGINS: 'https://nodaria.yosiftware.es, http://localhost:5173',
+  CORS_ORIGINS: 'https://nodaria.yosiftware.es, https://nodaria.dev.yosiftware.es',
 });
+
+export const ISSUER = 'https://qa-cuentas-api.yosiftware.es';
+export const OWNER = '7042db67-5cc3-f111-8c4b-002315ef7116';
+export const OTHER = '6b89e190-60c3-f111-8c4b-002315ef7116';
 
 export function fakeDb(query: () => Promise<unknown> = async () => ({})): AppDependencies['db'] {
   return { request: () => ({ query }) } as unknown as AppDependencies['db'];
 }
 
-export function identity(overrides: Partial<VerifiedIdentity> = {}): VerifiedIdentity {
-  return {
-    uid: 'uid-google',
-    email: 'yosi@example.com',
-    emailVerified: true,
-    displayName: 'Yosi',
-    photoUrl: null,
-    signInProvider: 'google.com',
-    authTime: new Date(),
-    ...overrides,
-  };
-}
-
-// Los tokens se buscan por valor; 'expired' y 'boom' simulan fallos de Firebase.
-export function fakeAuth(tokens: Record<string, VerifiedIdentity>) {
-  const deleted: string[] = [];
-  let failDelete = false;
-
+/**
+ * Tokens como los de la plataforma, firmados con una clave ES256 de prueba, y un AuthProvider con
+ * el validador de referencia del kit apuntando a esa clave: se prueba la validación real.
+ */
+export async function platformTokens() {
+  const { privateKey, publicKey } = await generateKeyPair('ES256');
+  const jwk = { ...(await exportJWK(publicKey)), kid: 'prueba', alg: 'ES256' };
+  const verify = crearVerificador({ emisor: ISSUER, audiencia: 'nodaria-api', claves: createLocalJWKSet({ keys: [jwk] }) });
   const provider: AuthProvider = {
-    async verifyIdToken(token) {
-      if (token === 'expired') throw new AuthTokenError('token_expired');
-      if (token === 'boom') throw new Error('network down');
-      const found = tokens[token];
-      if (!found) throw new AuthTokenError('invalid_token');
-      return found;
-    },
-    async deleteUser(uid) {
-      if (failDelete) throw new Error('firebase down');
-      deleted.push(uid);
+    async verify(token) {
+      try {
+        return identityFromClaims(await verify(token));
+      } catch (error) {
+        if (error instanceof TokenCaducado) throw new AuthTokenError('token_expired');
+        if (error instanceof TokenNoValido) throw new AuthTokenError('invalid_token');
+        throw error;
+      }
     },
   };
-
-  return {
-    provider,
-    deleted,
-    failNextDeletes() {
-      failDelete = true;
-    },
-  };
+  async function sign(
+    claims: JWTPayload & { sub?: string } = {},
+    { audience = 'nodaria-api', issuer = ISSUER, expiresIn = '10m' }: { audience?: string; issuer?: string; expiresIn?: string | number } = {},
+  ) {
+    return new SignJWT({ sid: 'sesion-1', azp: 'nodaria', sv: 1, alias: 'yosi', ...claims })
+      .setProtectedHeader({ alg: 'ES256', kid: 'prueba' })
+      .setSubject(claims.sub ?? OWNER)
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .setIssuedAt()
+      .setExpirationTime(expiresIn)
+      .sign(privateKey);
+  }
+  return { provider, sign };
 }
 
 // UserStore en memoria con el mismo contrato que el de SQL.
-export function fakeUsers({ admins = [] }: { admins?: string[] } = {}) {
-  const byUid = new Map<string, User>();
+export function fakeUsers() {
+  const byGlobalId = new Map<string, User>();
   let nextId = 1;
 
   const store: UserStore = {
-    async upsert(id) {
+    async findOrCreate(globalId) {
       const now = new Date();
-      const existing = byUid.get(id.uid);
+      const existing = byGlobalId.get(globalId);
       const user: User = {
         id: existing?.id ?? nextId++,
-        firebaseUid: id.uid,
-        email: id.email,
-        emailVerified: id.emailVerified,
-        displayName: id.displayName,
-        photoUrl: id.photoUrl,
+        globalId,
+        legacyAccount: existing?.legacyAccount ?? null,
         createdAt: existing?.createdAt ?? now,
         lastSeenAt: now,
         disabledAt: existing?.disabledAt ?? null,
-        isAdmin: existing?.isAdmin ?? admins.includes(id.uid),
+        closedAt: existing?.closedAt ?? null,
       };
-      byUid.set(id.uid, user);
+      byGlobalId.set(globalId, user);
       return user;
     },
-    async delete(userId, beforeCommit) {
-      await beforeCommit();
-      for (const [uid, user] of byUid) if (user.id === userId) byUid.delete(uid);
+    async delete(userId) {
+      for (const [key, user] of byGlobalId) if (user.id === userId) byGlobalId.delete(key);
     },
   };
 
-  return { store, byUid };
+  return { store, byGlobalId };
 }
 
 export function testDependencies(overrides: Partial<AppDependencies> = {}): AppDependencies {
   return {
     config: testConfig,
     db: fakeDb(),
-    auth: fakeAuth({}).provider,
+    auth: { verify: async () => Promise.reject(new AuthTokenError('invalid_token')) },
     users: fakeUsers().store,
     projects: createMemoryProjectStore(),
-    requests: createMemoryRequestStore().store,
     ...overrides,
   };
 }
