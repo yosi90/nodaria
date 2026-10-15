@@ -1,13 +1,15 @@
 # Backend de Nodaria
 
-API Node/TypeScript (Fastify) en `api/`. Valida usuarios de Firebase Authentication y guarda los datos en SQL Server Express local. Se publicará por Cloudflare Tunnel en `nodaria-api.yosiftware.es`; la web se sirve desde Firebase Hosting (`yosiftware-nodaria`). El plan completo está en [ROADMAP_BACKEND.md](../roadmaps/ROADMAP_BACKEND.md).
+API Node/TypeScript (Fastify) en `api/`. Valida los tokens de la **cuenta de Yosiftware** (la plataforma común, `ecosistema-kit/`) y guarda los proyectos en SQL Server Express local. Se publica por Cloudflare Tunnel en `nodaria-api.yosiftware.es`; la web se sirve desde Firebase Hosting (`yosiftware-nodaria`). La migración desde Firebase Authentication está en [ROADMAP_MIGRACION_YOSIFTWARE.md](../roadmaps/ROADMAP_MIGRACION_YOSIFTWARE.md).
+
+> **Hasta el corte**, la API de producción sigue ejecutando el build anterior (Firebase Authentication, tablón y plugin de Notificapp) desde `api/dist` contra la base `Nodaria`. Este documento describe la versión migrada de la rama `migracion-yosiftware`. No ejecutes `npm run build` en `api/` hasta el corte.
 
 ## Requisitos
 
 - Node 24+.
 - SQL Server Express (`localhost\SQLEXPRESS`) con autenticación de Windows.
 - ODBC Driver 18 for SQL Server (lo usa el driver nativo `msnodesqlv8`).
-- Cuenta de servicio de Firebase Admin del proyecto `yosiftware-nodaria` (fuera del repositorio).
+- La credencial de servicio de Nodaria en la plataforma de su entorno (solo el token, en `api/.runtime/`, fuera de Git). La de QA la da la plataforma; la de producción la crea y la pega el propietario. Nunca se abre, imprime ni copia en una conversación.
 
 La API se conecta con la identidad del proceso que la ejecuta (`Trusted_Connection`), igual que Lorcana, Libros y Fichas. No hay usuario ni contraseña SQL en la configuración.
 
@@ -16,146 +18,115 @@ La API se conecta con la identidad del proceso que la ejecuta (`Trusted_Connecti
 ```powershell
 cd api
 npm ci
-copy .env.example .env      # ajustar GOOGLE_APPLICATION_CREDENTIALS
-npm run migrate             # crea la base Nodaria si no existe y aplica migrations/*.sql
+copy .env.example .env      # producción: PLATFORM_ENV=produccion
+npm run migrate             # crea la base si no existe y aplica migrations/*.sql
 npm run dev                 # http://127.0.0.1:5003/api/health
 ```
 
 npm 11 bloquea los scripts de instalación salvo los aprobados en `allowScripts` de `api/package.json`. Si al actualizar una dependencia cambia su versión, apruébala con `npm approve-scripts <paquete>` y ejecuta `npm rebuild <paquete>`.
 
+### Desarrollo contra la plataforma de QA
+
+Separado de producción (`ecosistema-kit/MIGRACION.md`, paso 7):
+
+- **API**: `api/.env.dev` (ignorado): puerto `5013`, base `NodariaDev`, `PLATFORM_ENV=qa`, credencial `.runtime/plataforma-qa.token`, logs en `logs-dev` (que también separa el archivo de reinicio de `ops/restart-api.ps1`). `npx tsx --env-file=.env.dev src/server.ts` o `npm run dev:qa`; migrar con `npx tsx --env-file=.env.dev src/db/migrate.ts`.
+- **Web**: `npm run dev:qa` (Vite) o `npm run preview:qa` (build de QA con su CSP), en `https://nodaria.dev.yosiftware.es` (`127.0.0.13:443`, certificado comodín de la plataforma; rutas en `.env.qa.local`). La API va por el proxy `/api`. Desde `localhost` no se puede entrar.
+- **Prueba de humo**: `node ops/qa-smoke.mjs` pide tokens reales con las sesiones de las cuentas de prueba de QA (`.runtime/cuentas-prueba-qa.json`, privado; guarda el `refresh` nuevo antes de usar los tokens) y comprueba cada caso. No imprime tokens.
+
 ## Configuración (`api/.env`)
 
-| Variable                         | Por defecto                            | Uso                                                                          |
-| -------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------- |
-| `HOST` / `PORT`                  | `127.0.0.1` / `5003`                   | Solo escucha en local; el túnel publica el puerto.                           |
-| `DB_SERVER`                      | `localhost\SQLEXPRESS`                 | Instancia de SQL Server.                                                     |
-| `DB_NAME`                        | `Nodaria`                              | Base de datos (solo letras, números y `_`).                                  |
-| `DB_DRIVER`                      | `ODBC Driver 18 for SQL Server`        | Driver ODBC.                                                                 |
-| `CORS_ORIGINS`                   | –                                      | Orígenes web permitidos, separados por comas.                                |
-| `FIREBASE_PROJECT_ID`            | `yosiftware-nodaria`                   | Proyecto de Firebase Auth.                                                   |
-| `GOOGLE_APPLICATION_CREDENTIALS` | –                                      | Cuenta de servicio de Firebase Admin (no versionar).                         |
-| `PROJECT_MAX_BYTES`              | `20971520`                             | Tamaño máximo del JSON de un proyecto.                                       |
-| `NOTIFICAPP_URL`                 | `https://notificapp-api.yosiftware.es` | API de Notificapp (en este servidor también `http://127.0.0.1:5211`).        |
-| `NOTIFICAPP_SENDER_TOKEN_FILE`   | `.runtime/notificapp-sender.token`     | Credencial de emisor del plugin `nodaria-api` (solo el token).               |
-| `NOTIFICAPP_UPSTREAM_TOKEN_FILE` | `.runtime/notificapp-upstream.token`   | Credencial externa con la que Notificapp llama al panel.                     |
-| `OWNER_FIREBASE_UIDS`            | –                                      | UID de Firebase del propietario (comas); `/api/me` marca `excludeFromStats`. |
-| `UV_THREADPOOL_SIZE`             | `4` (Node)                             | Hilos de libuv; `msnodesqlv8` ocupa uno por consulta. Usar `16`.             |
-| `LOG_DIR`                        | –                                      | Logs diarios rotados (vacío: salida estándar).                               |
+| Variable                       | Por defecto                     | Uso                                                                      |
+| ------------------------------ | ------------------------------- | ------------------------------------------------------------------------ |
+| `HOST` / `PORT`                | `127.0.0.1` / `5003`            | Solo escucha en local; el túnel publica el puerto.                       |
+| `DB_SERVER`                    | `localhost\SQLEXPRESS`          | Instancia de SQL Server.                                                 |
+| `DB_NAME`                      | `Nodaria`                       | Base de datos (solo letras, números y `_`).                              |
+| `DB_DRIVER`                    | `ODBC Driver 18 for SQL Server` | Driver ODBC.                                                             |
+| `CORS_ORIGINS`                 | –                               | Orígenes web permitidos, separados por comas.                            |
+| `PLATFORM_ENV`                 | `produccion`                    | Entorno de la plataforma: emisor de los tokens y API del feed.           |
+| `PLATFORM_AUDIENCE`            | `nodaria-api`                   | Audiencia de esta API en el registro de la plataforma.                   |
+| `PLATFORM_SERVICE_TOKEN_FILE`  | `.runtime/plataforma.token`     | Credencial de servicio (solo el token) para el feed de cambios.          |
+| `PLATFORM_FEED_INTERVAL_MS`    | `300000`                        | Cada cuánto se lee el feed (no hay NATS).                                |
+| `UV_THREADPOOL_SIZE`           | `4` (Node)                      | Hilos de libuv; `msnodesqlv8` ocupa uno por consulta. Usar `16`.         |
+| `LOG_DIR`                      | –                               | Logs diarios rotados (vacío: salida estándar).                           |
 
-## Firebase
+## Autenticación
 
-La clave web (`apiKey`) no está en el repositorio: el front la lee de `VITE_FIREBASE_API_KEY` en `.env.local` (ignorado por Git; plantilla en `.env.example`). Es una clave pública por diseño (viaja en el bundle), pero fuera del repositorio no dispara los avisos de secretos de GitHub. El resto de la configuración (projectId, appId, authDomain…) va en `src/services/firebase.ts`.
+Las rutas privadas reciben `Authorization: Bearer <token de la plataforma>` (el frontend lo pide al SDK con `yosiftware.token()`). La API lo valida en local con la implementación de referencia del kit (`src/auth/yosiftware-tokens.mjs`, con `jose`): solo ES256, claves del JWKS del emisor, emisor exacto del entorno, audiencia `nodaria-api` y caducidad. El `sub` se valida como GUID (no como UUID del RFC). Después busca o crea el usuario por `id_global` y lo deja en `request.user`.
 
-El front usa `authDomain: yosiftware-nodaria.firebaseapp.com`, como Lorcana. Pasar al dominio propio (`nodaria.yosiftware.es`, donde Hosting también sirve `/__/auth/handler`) exigiría autorizar `https://nodaria.yosiftware.es/__/auth/handler` como URI de redirección en el cliente OAuth de Google Cloud; el 2026-10-04 Google no mostraba el selector sin ese paso.
+| Código              | HTTP | Cuándo                                                                                       |
+| ------------------- | ---- | -------------------------------------------------------------------------------------------- |
+| `no_autenticado`    | 401  | Sin token, o token de otra API, de otro emisor, manipulado o con un `sub` que no es un GUID. |
+| `token_caducado`    | 401  | Token caducado: el SDK pide otro y repite.                                                   |
+| `cuenta_cerrada`    | 403  | La plataforma avisó por el feed de que la cuenta está cerrada (borrado pedido o suspensión). |
+| `cuenta_desactivada`| 403  | `disabled_at` en SQL.                                                                        |
+| `normas_pendientes` | 403  | El token trae `normasPendientes` (solo responde `/api/me`).                                  |
+| `creacion_limitada` | 403  | `PUT /api/projects/{id}` de un proyecto nuevo con `creacion` limitada; lleva `hasta`.         |
+
+Para nuevas rutas privadas, regístralas dentro del bloque de rutas privadas de `src/app.ts` y obtén el usuario con `authenticatedUser(request)`. Para crear contenido nuevo, llama antes a `assertCanCreate(user)`.
+
+## Feed de cambios
+
+`src/platform/feed.ts` lee `GET /v1/servicio/cambios` con la credencial de servicio y `User-Agent: nodaria-api/1.0`, hasta ponerse al día, cada `PLATFORM_FEED_INTERVAL_MS`. Solo usa `cuenta.estado`: `cerrada` marca `closed_at`, `activa` lo quita, `borrada` borra el usuario y sus proyectos; guarda lo limitado (`restrictions`, `restrictions_until`). Ignora perfiles y relaciones (Nodaria no los enseña). El cursor está en `dbo.platform_feed` (`feed_cursor`) y se guarda en la misma transacción que los cambios.
+
+## Órdenes de la migración
+
+```powershell
+npm run enlazar-cuenta -- <id local> <identificador de la cuenta de Yosiftware>
+npm run exportar-tablon -- <archivo.json>      # fuera de Git: lleva textos de personas
+```
+
+Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --env-file=.env.dev src/tools/cli.ts …`). Cada orden escribe una línea JSON con la base, el resultado y la fecha.
+
+- `enlazar-cuenta`: idempotente (`linked`, `unchanged`). Si la persona entró antes de enlazar y la API le creó un usuario vacío, mueve el identificador al antiguo y borra el vacío (`moved`); si ese usuario tiene proyectos, no toca nada (`taken_by_other`). No reasigna un usuario ya enlazado con otra cuenta (`already_linked`).
+- `exportar-tablon`: formato `nodaria-tablon-1` de la petición de migración, con los autores y votantes por su identificador global; sale con código 1 y los lista si alguno no está enlazado.
 
 ## Migraciones
 
 - Archivos `api/migrations/NNNN_descripcion.sql`, aplicados en orden; cada archivo en una transacción y lotes separados por una línea `GO`.
 - `dbo.schema_migrations` guarda id y SHA-256 de cada migración aplicada. Si se edita una ya aplicada, `migrate` falla: hay que crear una nueva.
+- `0006_platform_identity`: `id_global` (único filtrado), `firebase_uid` opcional (único filtrado), `closed_at`, lo limitado y `platform_feed`.
 
 ## Modelo de datos
 
-| Tabla               | Clave                       | Contenido                                                                                                     |
-| ------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `users`             | `id` (`firebase_uid` único) | Ancla de los datos de cada cuenta de Firebase.                                                                |
-| `projects`          | `user_id`, `project_id`     | Documento JSON del proyecto, `version`, `updated_at` (cliente), `server_updated_at`, `deleted_at`, tamaño.    |
-| `requests`          | `id`                        | Peticiones: `kind` (`idea`/`error`), título, cuerpo, `status`, `duplicate_of`, `author_read_at`.              |
-| `request_updates`   | `id`                        | Respuestas del propietario (estado y mensaje público) con la clave de idempotencia y la huella de Notificapp. |
-| `request_votes`     | `request_id`, `user_id`     | Un voto por usuario e idea.                                                                                   |
-| `notificapp_outbox` | `external_id`               | Avisos pendientes de enviar a Notificapp, con reintentos.                                                     |
+| Tabla            | Clave                               | Contenido                                                                                       |
+| ---------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `users`          | `id` (`id_global` único si no nulo) | Ancla de los proyectos de cada cuenta. `firebase_uid` solo en las cuentas de antes de migrar.  |
+| `projects`       | `(user_id, project_id)`             | Un documento JSON por proyecto, con `version`, `updated_at` y borrado lógico.                   |
+| `platform_feed`  | `id` = 1                            | Cursor del feed de cambios.                                                                     |
 
-`projects` y `requests` cuelgan de `users` con `ON DELETE CASCADE`, y `request_updates` y `request_votes` de `requests`. Los votos propios y las marcas de duplicado que apuntan a peticiones de la cuenta se limpian antes en `UserStore.delete` (SQL Server no admite dos rutas de cascada). `DELETE /api/me` borra todo. La migración `0004_requests` sustituyó a `messages`, que nunca llegó a usarse.
+`projects` cuelga de `users` con `ON DELETE CASCADE`. Las tablas del antiguo tablón (`requests`, `request_updates`, `request_votes`) y `notificapp_outbox` se conservan, sin uso, hasta exportar e importar el tablón en el corte; las retira una migración posterior. Las columnas `email`, `display_name` y `photo_url` ya no se escriben.
 
 ## Endpoints
 
-| Método | Ruta          | Auth | Descripción                                                                                                                    |
-| ------ | ------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------ |
-| GET    | `/api/health` | No   | Estado de la API y de la base de datos (503 si la base falla).                                                                 |
-| GET    | `/api/me`     | Sí   | Perfil del usuario; lo crea en SQL en su primera petición. `excludeFromStats`: la cuenta es del propietario (Yosiftadísticas). |
-| DELETE | `/api/me`     | Sí   | Borra el usuario en SQL (y sus datos) y su cuenta de Firebase. Exige un inicio de sesión de menos de 5 minutos.                |
+| Método | Ruta                 | Auth | Descripción                                                                                                                       |
+| ------ | -------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/health`        | No   | Estado de la API y de la base de datos (503 si la base falla).                                                                   |
+| GET    | `/api/me`            | Sí   | Usuario de Nodaria: `id`, `globalId`, `legacyAccount` (UID de Firebase de antes, para la sincronización), restricciones y normas. |
+| DELETE | `/api/me`            | Sí   | Borra los datos de Nodaria de la cuenta (el usuario local y sus proyectos). La cuenta se borra en la web social.                  |
+| GET    | `/api/projects`      | Sí   | Resumen de los proyectos de la cuenta (id, nombre, `version`, `updatedAt`, `deletedAt`, tamaño), borrados incluidos.             |
+| GET    | `/api/projects/{id}` | Sí   | Documento completo con su versión. 404 `project_not_found` o `project_deleted`.                                                  |
+| PUT    | `/api/projects/{id}` | Sí   | `{ document, baseVersion }`: crea (`baseVersion` 0) o actualiza. 409 `version_conflict`; 413; 400; 403 `creacion_limitada`.       |
+| DELETE | `/api/projects/{id}` | Sí   | Borrado lógico; `?baseVersion=n` opcional para exigir la versión. Idempotente sobre un borrado.                                  |
 
-| GET | `/api/projects` | Sí | Resumen de los proyectos de la cuenta (id, nombre, `version`, `updatedAt`, `deletedAt`, tamaño), borrados incluidos. |
-| GET | `/api/projects/{id}` | Sí | Documento completo con su versión. 404 `project_not_found` o `project_deleted`. |
-| PUT | `/api/projects/{id}` | Sí | `{ document, baseVersion }`: crea (`baseVersion` 0) o actualiza. 409 `version_conflict` con `current`; 413 `project_too_large`; 400 `project_id_mismatch`. |
-| DELETE | `/api/projects/{id}` | Sí | Borrado lógico; `?baseVersion=n` opcional para exigir la versión. Idempotente sobre un borrado. |
-
-El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista: el cliente guarda la versión que sincronizó y la envía como `baseVersion`.
-
-### Peticiones
-
-| Método | Ruta                         | Auth     | Descripción                                                                                                                          |
-| ------ | ---------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| GET    | `/api/requests`              | Opcional | Tablón: ideas públicas. `sort=votes\|recent`, `status`, `limit` (≤100), `offset`. Con sesión, cada idea lleva `voted` y `mine`.      |
-| GET    | `/api/requests/{id}`         | Opcional | Detalle con historial si es pública o del visitante; si no, 404 `request_not_found`.                                                 |
-| POST   | `/api/requests`              | Sí       | `{ kind, title (4–120), body (10–4000) }` → 201. Nace en `revision`; una idea lleva el voto del autor. 429 `request_limit` (5/24 h). |
-| PUT    | `/api/requests/{id}/vote`    | Sí       | Vota una idea pública. 409 `voting_closed` si ya no admite votos (`hecha`, `descartada`, `duplicada`).                               |
-| DELETE | `/api/requests/{id}/vote`    | Sí       | Quita el voto.                                                                                                                       |
-| GET    | `/api/me/requests`           | Sí       | Peticiones propias con historial y `unread` (respuestas posteriores a la última lectura).                                            |
-| POST   | `/api/me/requests/{id}/read` | Sí       | Marca como leídas las respuestas de una petición propia. 204.                                                                        |
-
-Estados: `revision` y `rechazada` nunca son públicos; una idea en `abierta`, `planificada`, `en_curso`, `hecha`, `descartada` o `duplicada` sale en el tablón (sin autor). Los errores son siempre privados. Reglas en `src/requests/model.ts`.
-
-### Administración
-
-Las cuentas con `users.is_admin = 1` (migración `0005_admins`) ven «Administración» en el menú de cuenta y usan estas rutas. Las demás reciben 403 `admin_required`. `GET /api/me` devuelve `isAdmin`. El permiso se concede a mano, con la API en marcha o sin ella:
-
-```sql
-UPDATE dbo.users SET is_admin = 1 WHERE firebase_uid = N'<uid>';  -- 0 para retirarlo
-```
-
-| Método | Ruta                                 | Descripción                                                                                                                |
-| ------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/admin/requests`                | `scope=open\|all` (por defecto `open`: las que hay que atender), `status`, `kind`, `limit`, `offset` → `{ items, total }`. |
-| GET    | `/api/admin/requests/{id}`           | Igual que el detalle del panel de Notificapp.                                                                              |
-| POST   | `/api/admin/requests/{id}/responses` | Igual que la respuesta de Notificapp (`Idempotency-Key` obligatoria; el front la genera y la reutiliza al reintentar).     |
-
-La validación y la idempotencia de las respuestas viven en `src/requests/answer.ts` y las comparten las dos vías.
-
-### Notificapp (plugin `nodaria-api`)
-
-- **Avisos**: cada petición nueva escribe en `notificapp_outbox`, en la misma transacción, el aviso `nodaria_request` con `externalId = request-<id>` y el texto completo (solo con `NODE_ENV=production`). El drenador en proceso (`src/notificapp/outbox.ts`) lo publica en `NOTIFICAPP_URL/v1/events` con la credencial de emisor de `NOTIFICAPP_SENDER_TOKEN_FILE`. Si falla, reintenta a 1, 2, 4… minutos (hasta 6 h). Si falta la credencial, los avisos esperan en la cola.
-- **Panel**: `GET /notificapp/v1/requests` (abiertas: `revision`, `abierta`, `planificada`, `en_curso`; hasta 100 y `hasMore`), `GET /notificapp/v1/requests/{id}` (con autor, votos, `externalId` y las 20 últimas respuestas) y `POST /notificapp/v1/requests/{id}/responses` (`{ status, message?, duplicateOf? }`). Solo aceptan `Authorization: Bearer <credencial externa>` (archivo `NOTIFICAPP_UPSTREAM_TOKEN_FILE`; sin él, 503 `notificapp_unavailable`; distinta, 401). El `POST` exige `Idempotency-Key`: la misma clave con la misma respuesta devuelve el resultado con `replayed: true`; con otra respuesta u otra petición, 409 `idempotency_conflict`.
-- **Paquete**: `notificapp-plugin/manifest.json` y `ui/index.html`. Se empaqueta con `python plugin-kit/pack.py --template notificapp-plugin --output api/.runtime/nodaria-api-<versión>.notificapp.zip`.
-- **Credenciales** (en `api/.runtime/`, ignorada por Git):
-  - `notificapp-sender.token`: la de emisor, que da `plugin_cli install`.
-  - `notificapp-upstream.token`: valor aleatorio largo que se registra con `plugin_cli set-upstream-token nodaria-api <archivo>`. Para revocarla, cambia o borra el archivo.
-  - `notificapp-update.token`: la de actualización, que se copia de `notificapp/.runtime/plugin-credentials/nodaria-api-update.token` cuando el propietario activa o regenera las actualizaciones en la APK.
-- **Publicar una versión** del panel: sube `version` en el manifiesto, empaqueta y ejecuta `python plugin-kit/publish.py --url https://notificapp-api.yosiftware.es --id nodaria-api --token-file api/.runtime/notificapp-update.token <zip>`. Respuestas: 200, publicada; 401, credencial antigua; 403, permiso apagado o permisos cambiados; 409, versión no creciente. Cambiar `eventKinds`, `agents` o `api` exige un `upgrade` local del propietario.
-
-## Producción
-
-La API corre en este servidor y se publica en `https://nodaria-api.yosiftware.es` por el Cloudflare Tunnel (`C:\cloudflared\config.yml` → `http://127.0.0.1:5003`; copia previa en `config.yml.bak-20261004-nodaria`).
-
-- `ops\install-autostart.ps1` (una vez, **como administrador**): registra las tareas `Nodaria API` y `Nodaria DB Backup` como el usuario `Yosi` (S4U), da permiso de escritura a SQL Server en la carpeta de copias y reinicia `Cloudflared`.
-- `ops\run-api.ps1`: vigilante que ejecuta `dist/server.js` con `NODE_ENV=production` y `LOG_DIR=api\logs`, y lo reinicia si se cae (espera creciente hasta 5 min).
-- Desplegar un cambio: `npm run build` y `ops\restart-api.ps1` (crea `logs\restart.request`; la API lo detecta, se cierra y el vigilante arranca el build nuevo).
-- `ops\stop-api.ps1` para el vigilante y la API; `ops\status.ps1` muestra tareas, proceso, salud local y pública y la última copia.
-- Logs: `api\logs\api.<fecha>.<n>.log` (JSON de pino, rotación diaria, 30 días), `supervisor.log` y `stderr.log` del último arranque.
-- Copias: `ops\backup-db.ps1` → `C:\Users\Yosi\nodaria-backups\db\Nodaria-<fecha>.bak`, 30 días. Restaurar con `RESTORE DATABASE [Nodaria] FROM DISK = N'…' WITH REPLACE` (parando antes la API).
+El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista.
 
 Errores con formato `{ "error": "<codigo>", "message": "<texto en español>" }`. Límite general de 300 peticiones/minuto por IP (`CF-Connecting-IP` detrás del túnel) y 120 por usuario autenticado.
 
-## Autenticación
+## Producción
 
-Las rutas privadas reciben `Authorization: Bearer <Firebase ID token>`. La API lo verifica con `firebase-admin` (firma, proyecto, caducidad, revocación y cuenta desactivada), da de alta o actualiza el usuario en `dbo.users` y lo deja en `request.user`.
+La API corre en este servidor y se publica en `https://nodaria-api.yosiftware.es` por el Cloudflare Tunnel (`C:\cloudflared\config.yml` → `http://127.0.0.1:5003`).
 
-| Código                  | HTTP | Cuándo                                                             |
-| ----------------------- | ---- | ------------------------------------------------------------------ |
-| `missing_token`         | 401  | No hay cabecera `Authorization: Bearer`.                           |
-| `invalid_token`         | 401  | Token mal formado, de otro proyecto o de una cuenta borrada.       |
-| `token_expired`         | 401  | Token caducado: el cliente debe pedir uno nuevo a Firebase.        |
-| `token_revoked`         | 401  | Sesiones revocadas: hay que volver a iniciar sesión.               |
-| `email_not_verified`    | 403  | Cuenta de email/contraseña sin verificar (Google no lo necesita).  |
-| `account_disabled`      | 403  | Cuenta desactivada en Firebase o con `disabled_at` en SQL.         |
-| `recent_login_required` | 403  | `DELETE /api/me` con un inicio de sesión de hace más de 5 minutos. |
-
-Para nuevas rutas privadas, regístralas dentro del bloque de rutas privadas de `src/app.ts` y obtén el usuario con `authenticatedUser(request)`.
+- `ops\install-autostart.ps1` (una vez, **como administrador**): registra las tareas `Nodaria API` y `Nodaria DB Backup` como el usuario `Yosi` (S4U), da permiso de escritura a SQL Server en la carpeta de copias y reinicia `Cloudflared`.
+- `ops\run-api.ps1`: vigilante que ejecuta `dist/server.js` con `NODE_ENV=production` y `LOG_DIR=api\logs`, y lo reinicia si se cae.
+- Desplegar un cambio: `npm run build` (compila y copia el validador `.mjs` del kit a `dist`) y `ops\restart-api.ps1`.
+- `ops\stop-api.ps1` para el vigilante y la API; `ops\status.ps1` muestra tareas, proceso, salud local y pública y la última copia.
+- Logs: `api\logs\api.<fecha>.<n>.log` (JSON de pino, rotación diaria, 30 días), `supervisor.log` y `stderr.log` del último arranque.
+- Copias: `ops\backup-db.ps1` → `C:\Users\Yosi\nodaria-backups\db\Nodaria-<fecha>.bak`, 30 días. Restaurar con `RESTORE DATABASE [Nodaria] FROM DISK = N'…' WITH REPLACE` (parando antes la API).
 
 ## Tests
 
 ```powershell
 cd api
-npm test                    # unitarios (sin base de datos)
+npm test                    # unitarios: tokens firmados con una clave ES256 de prueba y el validador del kit
 $env:DB_TESTS='1'; npm test # incluye integración: crea y borra Nodaria_test_<hex>
-npm run test:emulator       # emulador de Firebase Auth (Java 21), proyecto demo-nodaria
 ```
