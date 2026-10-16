@@ -27,9 +27,9 @@ const putSchema = z.object({
 
 const deleteQuerySchema = z.object({ baseVersion: z.coerce.number().int().min(0).optional() });
 
-export const projectRoutes: FastifyPluginAsync<Pick<AppDependencies, 'projects' | 'config'>> = async (
+export const projectRoutes: FastifyPluginAsync<Pick<AppDependencies, 'projects' | 'config' | 'conversations'>> = async (
   app,
-  { projects, config },
+  { projects, config, conversations },
 ) => {
   app.get('/projects', async request => ({ projects: await projects.list(authenticatedUser(request).id) }));
 
@@ -87,6 +87,8 @@ export const projectRoutes: FastifyPluginAsync<Pick<AppDependencies, 'projects' 
         current: result.current,
       });
     }
+    // Las conversaciones con la IA de un proyecto borrado se borran con él.
+    await conversations.deleteForProject(authenticatedUser(request).id, id);
     return { id, version: result.version, serverUpdatedAt: result.serverUpdatedAt };
   });
 };

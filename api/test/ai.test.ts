@@ -3,13 +3,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AiError, createGatewayAssistant, type AiAssistant, type AiRequest } from '../src/ai/assistant.ts';
+import { createMemoryConversationStore } from '../src/ai/conversations.ts';
+import { conversationTurns } from '../src/ai/history.ts';
 import { findModel } from '../src/ai/models.ts';
 import type { AiDatabaseContext, AiProposal } from '../src/ai/schema.ts';
 import { fromWire, parseSqlType, wireProposalSchema, type WireProposal } from '../src/ai/wire.ts';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { buildApp } from '../src/app.ts';
-import { OWNER, platformTokens, testDependencies } from './helpers/fakes.ts';
+import { OTHER, OWNER, platformTokens, testDependencies } from './helpers/fakes.ts';
 
 const context: AiDatabaseContext = {
   projectName: 'Tienda',
@@ -134,13 +136,16 @@ const body = (patch: Record<string, unknown> = {}) => ({
   scope: 'base-de-datos',
   instruction: 'Añade pedidos de clientes',
   context,
+  projectId: 'project_tienda',
+  refs: { tables: { t1: 'node_cliente' }, bases: {} },
   ...patch,
 });
 
 async function appWith(ai: AiAssistant) {
   const tokens = await platformTokens();
-  const app = await buildApp(testDependencies({ auth: tokens.provider, ai }));
-  return { app, tokens };
+  const conversations = createMemoryConversationStore();
+  const app = await buildApp(testDependencies({ auth: tokens.provider, ai, conversations }));
+  return { app, tokens, conversations };
 }
 
 describe('rutas de la IA', () => {
@@ -181,6 +186,9 @@ describe('rutas de la IA', () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
+      conversationId: 1,
+      userMessageId: 1,
+      messageId: 2,
       proposal,
       model: { provider: 'anthropic', id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
       usage: { inputTokens: 120, outputTokens: 80 },
@@ -220,6 +228,7 @@ describe('rutas de la IA', () => {
     expect(response.json()).toEqual({
       error: 'sin_clave_de_ia',
       message: 'No tienes clave.',
+      conversationId: 1,
       manageUrl: 'https://social.yosiftware.es/?vista=claves-ia',
     });
   });
@@ -503,5 +512,120 @@ describe('formato plano de la respuesta del modelo', () => {
       'Se ha descartado la operación 2 (add-column): el tipo «texto» no es de SQL Server.',
       'Se ha descartado la operación 3 (add-column): añadir columna necesita exactamente una columna.',
     ]);
+  });
+});
+
+describe('historial de conversaciones', () => {
+  async function setup() {
+    const seen: AiRequest[] = [];
+    let fail = false;
+    const env = await appWith({
+      propose: async request => {
+        seen.push(request);
+        if (fail) throw new AiError(429, 'tope_de_gasto', 'Tope alcanzado.');
+        return { proposal, usage: { inputTokens: 10, outputTokens: 5 } };
+      },
+    });
+    const owner = { authorization: `Bearer ${await env.tokens.sign()}` };
+    const other = { authorization: `Bearer ${await env.tokens.sign({ sub: OTHER })}` };
+    const inject = (
+      method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+      url: string,
+      headers = owner,
+      payload?: object,
+    ) => env.app.inject({ method, url, headers, ...(payload ? { payload } : {}) });
+    return { ...env, seen, owner, other, inject, failNext: () => (fail = true) };
+  }
+
+  it('guarda la conversación y la sigue con los turnos anteriores resumidos', async () => {
+    const t = await setup();
+    const first = (await t.inject('POST', '/api/ia/propuestas', t.owner, body())).json();
+    expect(t.seen[0].history).toEqual([]);
+    expect(
+      (await t.inject('PATCH', `/api/ia/mensajes/${first.messageId}`, t.owner, { applied: [0, 1] })).statusCode,
+    ).toBe(200);
+    await t.inject(
+      'POST',
+      '/api/ia/propuestas',
+      t.owner,
+      body({ conversationId: first.conversationId, instruction: 'Ahora añade el precio' }),
+    );
+    expect(t.seen[1].history).toEqual([
+      { role: 'user', text: 'Añade pedidos de clientes' },
+      {
+        role: 'assistant',
+        text: 'Propuse: Añade los pedidos.\nOperaciones: 1. crear la tabla Pedido (n1); 2. FK n1.id_cliente → t1\nLa persona aplicó las operaciones 1, 2; el esquema actual ya las incluye.',
+      },
+    ]);
+    const list = (await t.inject('GET', '/api/ia/conversaciones?proyecto=project_tienda')).json();
+    expect(list.conversations).toMatchObject([{ id: first.conversationId, title: 'Añade pedidos de clientes' }]);
+    const full = (await t.inject('GET', `/api/ia/conversaciones/${first.conversationId}`)).json();
+    expect(full.messages.map((m: { role: string }) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
+    expect(full.messages[1].content).toMatchObject({
+      proposal,
+      applied: [0, 1],
+      refs: { tables: { t1: 'node_cliente' } },
+    });
+  });
+
+  it('guarda los errores y no los manda al modelo como turnos', async () => {
+    const t = await setup();
+    t.failNext();
+    const failed = (await t.inject('POST', '/api/ia/propuestas', t.owner, body())).json();
+    expect(failed).toMatchObject({ error: 'tope_de_gasto', conversationId: 1 });
+    const full = (await t.inject('GET', '/api/ia/conversaciones/1')).json();
+    expect(full.messages.map((m: { role: string; content: unknown }) => [m.role, m.content])).toEqual([
+      ['user', { instruction: 'Añade pedidos de clientes' }],
+      ['error', { code: 'tope_de_gasto', message: 'Tope alcanzado.' }],
+    ]);
+    expect(conversationTurns(full.messages)).toEqual([]);
+  });
+
+  it('cada cuenta solo ve, sigue y borra sus conversaciones', async () => {
+    const t = await setup();
+    const first = (await t.inject('POST', '/api/ia/propuestas', t.owner, body())).json();
+    expect((await t.inject('GET', `/api/ia/conversaciones/${first.conversationId}`, t.other)).statusCode).toBe(404);
+    expect((await t.inject('GET', '/api/ia/conversaciones?proyecto=project_tienda', t.other)).json()).toEqual({
+      conversations: [],
+    });
+    expect((await t.inject('PATCH', `/api/ia/mensajes/${first.messageId}`, t.other, { applied: [] })).statusCode).toBe(
+      404,
+    );
+    expect(
+      (await t.inject('POST', '/api/ia/propuestas', t.other, body({ conversationId: first.conversationId })))
+        .statusCode,
+    ).toBe(404);
+    // Otra conversación no se puede seguir desde otro proyecto.
+    expect(
+      (
+        await t.inject(
+          'POST',
+          '/api/ia/propuestas',
+          t.owner,
+          body({ conversationId: first.conversationId, projectId: 'project_otro' }),
+        )
+      ).statusCode,
+    ).toBe(404);
+    expect((await t.inject('DELETE', `/api/ia/conversaciones/${first.conversationId}`, t.other)).statusCode).toBe(404);
+    expect((await t.inject('DELETE', `/api/ia/conversaciones/${first.conversationId}`)).statusCode).toBe(200);
+    expect((await t.inject('GET', `/api/ia/conversaciones/${first.conversationId}`)).statusCode).toBe(404);
+  });
+
+  it('borrar el proyecto borra sus conversaciones', async () => {
+    const t = await setup();
+    await t.inject('POST', '/api/ia/propuestas', t.owner, body());
+    const document = {
+      id: 'project_tienda',
+      name: 'Tienda',
+      updatedAt: '2026-10-16T10:00:00.000Z',
+      schemas: [],
+      nodes: [],
+      relations: [],
+    };
+    expect(
+      (await t.inject('PUT', '/api/projects/project_tienda', t.owner, { document, baseVersion: 0 })).statusCode,
+    ).toBe(200);
+    expect((await t.inject('DELETE', '/api/projects/project_tienda')).statusCode).toBe(200);
+    expect(await t.conversations.list(1, 'project_tienda')).toEqual([]);
   });
 });

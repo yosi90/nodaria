@@ -24,6 +24,9 @@ export interface Preferences {
   collapsedRows: Record<string, string[]>;
   /** Último modelo elegido en el asistente de IA («proveedor:modelo»), o ninguno. */
   aiModel: string | null;
+  /** Panel del asistente de IA abierto y su anchura. */
+  aiPanelOpen: boolean;
+  aiPanelWidth: number;
 }
 
 /** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
@@ -62,6 +65,8 @@ const DEFAULTS: Preferences = {
   welcomed: false,
   collapsedRows: {},
   aiModel: null,
+  aiPanelOpen: false,
+  aiPanelWidth: 420,
 };
 
 function loadPreferences(): Preferences {

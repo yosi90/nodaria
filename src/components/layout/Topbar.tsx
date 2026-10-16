@@ -47,7 +47,6 @@ import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
 import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
-import { AiAssistantDialog } from '../ai/AiAssistantDialog';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
 
 export type { View } from '../../state/navigation';
@@ -78,7 +77,9 @@ export function Topbar({
   const file = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
+  // El asistente de IA trabaja de momento sobre esquemas de base de datos.
+  const aiAvailable = project.kind === 'database' || tableTypes(project).length > 0;
+  const toggleAi = () => setPreference('aiPanelOpen', !preferences.aiPanelOpen);
   const [kindOpen, setKindOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -151,8 +152,8 @@ export function Topbar({
     },
     { label: 'Calendario del proyecto…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
     // El asistente de IA trabaja de momento sobre esquemas de base de datos.
-    ...(project.kind === 'database' || tableTypes(project).length
-      ? [{ label: 'Asistente de IA…', icon: Sparkles, onSelect: () => setAiOpen(true) }]
+    ...(aiAvailable
+      ? [{ label: 'Asistente de IA', icon: Sparkles, checked: preferences.aiPanelOpen, onSelect: toggleAi }]
       : []),
     'separator',
     { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
@@ -212,7 +213,6 @@ export function Topbar({
         />
       )}
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
-      {aiOpen && <AiAssistantDialog onClose={() => setAiOpen(false)} />}
       {kindOpen && <ProjectKindDialog onClose={() => setKindOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">
@@ -257,6 +257,15 @@ export function Topbar({
       <div className="topbar-actions">
         <IconButton icon={Undo2} label="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={undo} />
         <IconButton icon={Redo2} label="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo} />
+        {aiAvailable && (
+          <IconButton
+            icon={Sparkles}
+            label={preferences.aiPanelOpen ? 'Cerrar el asistente de IA' : 'Asistente de IA'}
+            active={preferences.aiPanelOpen}
+            aria-pressed={preferences.aiPanelOpen}
+            onClick={toggleAi}
+          />
+        )}
         <span className="divider" aria-hidden />
         <IconButton
           icon={theme.icon}

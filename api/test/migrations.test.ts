@@ -25,6 +25,7 @@ describe('migration files', () => {
       '0005_admins',
       '0006_platform_identity',
       '0007_drop_request_board',
+      '0008_ai_conversations',
     ]);
     for (const migration of migrations) {
       expect(migration.checksum).toMatch(/^[0-9a-f]{64}$/);

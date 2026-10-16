@@ -648,12 +648,12 @@ export function reviewProposal(
       };
     }
     const apply = base.selected;
+    // Las operaciones siguientes nombran la tabla nueva por su nombre, aunque no llegue a crearse.
+    if (operation.op === 'create-table' && operation.ref.trim() && !created.has(operation.ref.trim()))
+      created.set(operation.ref.trim(), operation.name.trim());
     try {
       const messages = step(s, operation, apply);
-      if (operation.op === 'create-table') {
-        created.set(operation.ref.trim(), operation.name.trim());
-        if (!apply) s.missing.add(operation.ref.trim());
-      }
+      if (operation.op === 'create-table' && !apply) s.missing.add(operation.ref.trim());
       return { ...base, status: messages.length ? 'warning' : 'ok', messages, applied: apply };
     } catch (error) {
       if (!(error instanceof Rejected)) throw error;

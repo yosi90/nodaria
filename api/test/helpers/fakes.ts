@@ -3,6 +3,7 @@ import type { AppDependencies } from '../../src/app.ts';
 import { AuthTokenError, identityFromClaims, type AuthProvider } from '../../src/auth/platform.ts';
 import { TokenCaducado, TokenNoValido, crearVerificador } from '../../src/auth/yosiftware-tokens.mjs';
 import { loadConfig } from '../../src/config.ts';
+import { createMemoryConversationStore } from '../../src/ai/conversations.ts';
 import { createMemoryProjectStore } from '../../src/projects/repository.ts';
 import type { User, UserStore } from '../../src/users/repository.ts';
 
@@ -99,6 +100,7 @@ export function testDependencies(overrides: Partial<AppDependencies> = {}): AppD
     users: fakeUsers().store,
     projects: createMemoryProjectStore(),
     ai: { propose: async () => Promise.reject(new Error('IA no configurada en la prueba')) },
+    conversations: createMemoryConversationStore(),
     ...overrides,
   };
 }

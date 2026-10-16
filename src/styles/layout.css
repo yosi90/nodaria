@@ -1975,3 +1975,15 @@ button.type-twist:hover {
   opacity: 0.55;
   text-decoration: line-through;
 }
+
+/* Cuerpo de la app: la vista y, si está abierto, el asistente de IA a su derecha (`App.tsx`). */
+.app-body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+.app-body > * {
+  min-width: 0;
+  min-height: 0;
+}

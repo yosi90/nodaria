@@ -121,3 +121,141 @@
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }
+
+/* ---------- Panel del asistente (AiPanel) ---------- */
+.ai-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ai-panel-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  height: var(--panel-head-height);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.ai-panel-head svg {
+  color: var(--accent);
+}
+.ai-panel-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.ai-panel-empty {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  padding: var(--space-4) var(--space-3);
+}
+.ai-conversation-picker {
+  display: block;
+  padding: var(--space-2) var(--space-3) 0;
+}
+.ai-conversation-picker select {
+  width: 100%;
+}
+.ai-thread {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+.ai-bubble {
+  align-self: flex-end;
+  max-width: 88%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+  background: var(--accent-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ai-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.ai-card .ai-summary {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.ai-meta {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+}
+.ai-ops.compact {
+  gap: 2px;
+}
+.ai-ops.compact .ai-op {
+  padding: 2px var(--space-2);
+  border: 0;
+  background: transparent;
+  font-size: var(--fs-sm);
+}
+.ai-ops.compact .ai-op-title {
+  font-weight: 400;
+}
+.ai-op.skipped {
+  color: var(--text-subtle);
+}
+.ai-card-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+.ai-composer {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.ai-composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5em;
+}
+.ai-composer-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.ai-composer-row select {
+  flex: 1;
+  min-width: 0;
+}
+.ai-scope {
+  font-size: var(--fs-sm);
+}
+.ai-privacy-line {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+}
+.ai-privacy-line .ai-manage {
+  font-size: inherit;
+}
+
+/* En pantallas estrechas el asistente ocupa el ancho de la vista. */
+@media (max-width: 760px) {
+  .app-body:has(.ai-panel) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .app-body > .ai-panel {
+    position: fixed;
+    inset: var(--topbar-height) 0 0 0;
+    z-index: 20;
+  }
+  .ai-panel .splitter {
+    display: none;
+  }
+}

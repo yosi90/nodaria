@@ -4,6 +4,7 @@ import path from 'node:path';
 import Fastify, { type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import { ZodError } from 'zod';
 import type { AiAssistant } from './ai/assistant.ts';
+import type { ConversationStore } from './ai/conversations.ts';
 import type { AuthProvider } from './auth/platform.ts';
 import { createAuthenticate, HttpError } from './auth/plugin.ts';
 import type { AppConfig } from './config.ts';
@@ -22,6 +23,7 @@ export interface AppDependencies {
   users: UserStore;
   projects: ProjectStore;
   ai: AiAssistant;
+  conversations: ConversationStore;
 }
 
 // Peticiones por minuto de cada usuario con sesión, además del límite por IP.
@@ -62,7 +64,7 @@ function loggerOptions(config: AppConfig): FastifyServerOptions['logger'] {
   };
 }
 
-export async function buildApp({ config, db, auth, users, projects, ai }: AppDependencies) {
+export async function buildApp({ config, db, auth, users, projects, ai, conversations }: AppDependencies) {
   const app = Fastify({
     logger: loggerOptions(config),
     trustProxy: 'loopback',
@@ -76,7 +78,7 @@ export async function buildApp({ config, db, auth, users, projects, ai }: AppDep
       if (!origin || config.corsOrigins.includes(origin)) return callback(null, true);
       callback(null, false);
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
     maxAge: 86_400,
   });
@@ -139,8 +141,8 @@ export async function buildApp({ config, db, auth, users, projects, ai }: AppDep
         return reply.status(429).send(tooManyRequests(request, limit));
       });
       await privateApp.register(meRoutes, { users });
-      await privateApp.register(projectRoutes, { projects, config });
-      await privateApp.register(aiRoutes, { ai, config });
+      await privateApp.register(projectRoutes, { projects, config, conversations });
+      await privateApp.register(aiRoutes, { ai, config, conversations });
     },
     { prefix: '/api' },
   );

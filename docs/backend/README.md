@@ -89,8 +89,10 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | `users`          | `id` (`id_global` único si no nulo) | Ancla de los proyectos de cada cuenta. `firebase_uid` solo en las cuentas de antes de migrar.  |
 | `projects`       | `(user_id, project_id)`             | Un documento JSON por proyecto, con `version`, `updated_at` y borrado lógico.                   |
 | `platform_feed`  | `id` = 1                            | Cursor del feed de cambios.                                                                     |
+| `ai_conversations` | `id` (por `user_id` y `project_id`) | Conversaciones del asistente de IA de cada cuenta y proyecto, con título y fechas.             |
+| `ai_messages`    | `id` (por `conversation_id`)        | Mensajes: `role` `user`, `assistant` o `error` y su `content` en JSON.                          |
 
-`projects` cuelga de `users` con `ON DELETE CASCADE`. El antiguo tablón (`requests`, `request_updates`, `request_votes`) y `notificapp_outbox` se retiraron con `0007_drop_request_board` tras importarlo la plataforma. Las columnas `email`, `display_name` y `photo_url` ya no se escriben.
+`projects` y `ai_conversations` cuelgan de `users` con `ON DELETE CASCADE`, y `ai_messages` de `ai_conversations`; borrar un proyecto borra sus conversaciones desde la API. El antiguo tablón (`requests`, `request_updates`, `request_votes`) y `notificapp_outbox` se retiraron con `0007_drop_request_board` tras importarlo la plataforma. Las columnas `email`, `display_name` y `photo_url` ya no se escriben.
 
 ## Endpoints
 
@@ -104,7 +106,11 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | PUT    | `/api/projects/{id}` | Sí   | `{ document, baseVersion }`: crea (`baseVersion` 0) o actualiza. 409 `version_conflict`; 413; 400; 403 `creacion_limitada`.       |
 | DELETE | `/api/projects/{id}` | Sí   | Borrado lógico; `?baseVersion=n` opcional para exigir la versión. Idempotente sobre un borrado.                                  |
 | GET    | `/api/ia/modelos`    | Sí   | Modelos que ofrece el asistente de IA (`api/src/ai/models.ts`) y `manageUrl`, la gestión de claves de la web social del entorno. |
-| POST   | `/api/ia/propuestas` | Sí   | `{ provider, model, scope: "base-de-datos", instruction, context }` → `{ proposal, model, usage }`. Ver «Asistencia de IA».       |
+| POST   | `/api/ia/propuestas` | Sí   | `{ provider, model, scope: "base-de-datos", instruction, context, projectId, conversationId?, refs }` → `{ conversationId, userMessageId, messageId, proposal, model, usage }`. Ver «Asistencia de IA». |
+| GET    | `/api/ia/conversaciones?proyecto=` | Sí | Las 50 conversaciones más recientes de la cuenta en ese proyecto.                                                  |
+| GET    | `/api/ia/conversaciones/{id}` | Sí | Una conversación con sus mensajes (los 200 últimos). 404 si no es de la cuenta.                                       |
+| DELETE | `/api/ia/conversaciones/{id}` | Sí | Borra la conversación y sus mensajes.                                                                                |
+| PATCH  | `/api/ia/mensajes/{id}` | Sí | `{ applied: number[] }`: apunta qué operaciones de una propuesta se aplicaron.                                           |
 
 El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista.
 
@@ -116,8 +122,10 @@ Errores con formato `{ "error": "<codigo>", "message": "<texto en español>" }`.
 
 - El navegador manda el contexto mínimo del esquema (`src/domain/aiContext.ts`); la API no lee el proyecto. Cuerpo hasta 1 MiB; 10 propuestas por minuto y cuenta, además del límite general. Con `creacion` limitada, 403 `creacion_limitada`.
 - La propuesta se valida con zod y con los límites de `checkProposalLimits` antes de devolverla; la web vuelve a validar cada operación con las reglas del editor (`src/domain/aiProposal.ts`).
-- Errores: `sin_clave_de_ia` y `tope_sin_fijar` (409), `tope_de_gasto` (429) llevan `manageUrl`; `modelo_sin_tarifa`, `demasiadas_peticiones`, `llamada_demasiado_grande`, `cuenta_no_disponible` y `proveedor_sin_respuesta` pasan con su estado; `credencial_no_valida`, `ruta_no_permitida` y los de configuración de la plataforma, como 503 `ia_no_disponible`. Propios: `modelo_no_admitido` (400), `propuesta_incompleta` (422, la salida se cortó, a menudo por el tope), `propuesta_rechazada` (422), `propuesta_no_valida` y `proveedor_error` (502), `ia_sin_respuesta` (504). El detalle de un error del proveedor no se devuelve.
-- Logs: cuenta, modelo, tokens, código y duración. Nunca la petición, el contexto ni la propuesta.
+- Errores (todos llevan `conversationId`): `sin_clave_de_ia` y `tope_sin_fijar` (409), `tope_de_gasto` (429) y `clave_rechazada` (424, el proveedor rechazó la clave) llevan `manageUrl`; `modelo_sin_tarifa`, `demasiadas_peticiones`, `llamada_demasiado_grande` y `cuenta_no_disponible` pasan con su estado y `proveedor_sin_respuesta`, con 424; `credencial_no_valida`, `ruta_no_permitida` y los de configuración de la plataforma, como 424 `ia_no_disponible`. Propios: `modelo_no_admitido` (400), `propuesta_incompleta` (422, la salida se cortó, a menudo por el tope), `propuesta_rechazada` (422), `propuesta_no_valida`, `proveedor_error` e `ia_sin_respuesta` (424). El detalle de un error del proveedor no se devuelve: queda en el registro.
+- **Historial:** cada petición pertenece a una conversación del proyecto (`conversationId`; sin él, se crea con el comienzo de la petición como título). Se guardan la petición, la respuesta (propuesta, modelo, uso, `refs` y lo aplicado) o el error; no el contexto. Al modelo le llegan los últimos 6 turnos completos resumidos (`api/src/ai/history.ts`). Una conversación admite hasta 200 mensajes (409 `conversacion_llena`).
+- **Formato de la respuesta del modelo:** plano (`api/src/ai/wire.ts`), sin uniones ni campos con null, porque Anthropic rechaza la gramática del esquema con uniones («The compiled grammar is too large»); la API lo traduce a la propuesta (`schema.ts`). Los fallos del proveedor o de la pasarela se responden con 424 (Cloudflare tapa los 502 y 504 del origen con su página).
+- Logs: cuenta, modelo, tokens, código, motivo del proveedor (`detail`) y duración. Nunca la petición, el contexto ni la propuesta.
 
 ## Producción
 

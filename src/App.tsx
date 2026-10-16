@@ -16,6 +16,7 @@ import { HealthView } from './components/health/HealthView';
 import { TableView } from './components/table/TableView';
 import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
+import { AiPanel } from './components/ai/AiPanel';
 import { useApp } from './state/AppContext';
 import { useNavigation, type View } from './state/navigation';
 
@@ -42,25 +43,34 @@ export default function App() {
   const openTemplates = useCallback(() => setTemplatesOpen(true), []);
   const closeTemplates = useCallback(() => setTemplatesOpen(false), []);
   const welcome = useWelcome();
+  const { preferences, setPreference } = usePreferences();
+  const aiOpen = preferences.aiPanelOpen;
   return (
     <div className="app">
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} onTemplates={openTemplates} />
-      {/* Cada vista guarda estado local (tipo elegido, filtros, plegados) que solo vale para un proyecto. */}
-      <Fragment key={project.id}>
-        {view === 'map' ? (
-          <MapView />
-        ) : view === 'table' ? (
-          <TableView />
-        ) : view === 'schema' ? (
-          <SchemaView kind="entity" />
-        ) : view === 'relations' ? (
-          <SchemaView kind="relationship" />
-        ) : view === 'health' ? (
-          <HealthView />
-        ) : (
-          <PropertiesView />
-        )}
-      </Fragment>
+      <div
+        className="app-body"
+        style={{ gridTemplateColumns: aiOpen ? `minmax(0, 1fr) ${preferences.aiPanelWidth}px` : 'minmax(0, 1fr)' }}
+      >
+        {/* Cada vista guarda estado local (tipo elegido, filtros, plegados) que solo vale para un proyecto. */}
+        <Fragment key={project.id}>
+          {view === 'map' ? (
+            <MapView />
+          ) : view === 'table' ? (
+            <TableView />
+          ) : view === 'schema' ? (
+            <SchemaView kind="entity" />
+          ) : view === 'relations' ? (
+            <SchemaView kind="relationship" />
+          ) : view === 'health' ? (
+            <HealthView />
+          ) : (
+            <PropertiesView />
+          )}
+        </Fragment>
+        {/* El asistente queda al lado de la vista para poder seguir trabajando; su conversación es del proyecto. */}
+        {aiOpen && <AiPanel key={`ai:${project.id}`} onClose={() => setPreference('aiPanelOpen', false)} />}
+      </div>
       <div className="notice-stack">
         <StorageNotice />
         <RepairNotice />

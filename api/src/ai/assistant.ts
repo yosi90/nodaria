@@ -45,7 +45,14 @@ export interface AiRequest {
   account: string;
   instruction: string;
   context: AiDatabaseContext;
+  /** Turnos anteriores de la conversación, ya resumidos (`conversationTurns`), del más antiguo al último. */
+  history?: AiTurn[];
   signal?: AbortSignal;
+}
+
+export interface AiTurn {
+  role: 'user' | 'assistant';
+  text: string;
 }
 
 export interface AiResult {
@@ -247,7 +254,10 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
           model: request.model.id,
           max_tokens: AI_MAX_OUTPUT_TOKENS,
           system: DATABASE_SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: databaseUserMessage(request.instruction, request.context) }],
+          messages: [
+            ...(request.history ?? []).map(t => ({ role: t.role, content: t.text })),
+            { role: 'user' as const, content: databaseUserMessage(request.instruction, request.context) },
+          ],
           output_config: { effort: request.model.effort, format: ANTHROPIC_FORMAT },
         },
         { headers: { 'X-Yosi-Cuenta': request.account }, signal: request.signal },
@@ -275,7 +285,10 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
       {
         model: request.model.id,
         instructions: DATABASE_SYSTEM_PROMPT,
-        input: databaseUserMessage(request.instruction, request.context),
+        input: [
+          ...(request.history ?? []).map(t => ({ role: t.role, content: t.text })),
+          { role: 'user' as const, content: databaseUserMessage(request.instruction, request.context) },
+        ],
         max_output_tokens: AI_MAX_OUTPUT_TOKENS,
         reasoning: { effort: request.model.effort },
         text: { format: zodTextFormat(wireProposalSchema, 'propuesta') },

@@ -20,7 +20,7 @@ export class ApiError extends Error {
 /** La petición no llegó a la API (sin conexión, DNS, CORS…). */
 export class OfflineError extends Error {}
 
-export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export async function apiRequest<TResponse>(
   method: Method,
