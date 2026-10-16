@@ -29,7 +29,7 @@ export interface AiProposalResponse {
 }
 
 /** Errores que dependen de las claves de la persona: se explican con el enlace a su gestión. */
-export const AI_KEY_ERRORS = new Set(['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto']);
+export const AI_KEY_ERRORS = new Set(['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto', 'clave_rechazada']);
 
 export const fetchAiModels = (token: string) => apiRequest<AiModelsResponse>('GET', '/api/ia/modelos', token);
 

@@ -322,7 +322,7 @@ describe('cliente de la pasarela', () => {
       [409, 'tope_sin_fijar', { statusCode: 409, code: 'tope_sin_fijar' }],
       [429, 'tope_de_gasto', { statusCode: 429, code: 'tope_de_gasto' }],
       [400, 'modelo_sin_tarifa', { statusCode: 400, code: 'modelo_sin_tarifa' }],
-      [401, 'credencial_no_valida', { statusCode: 503, code: 'ia_no_disponible' }],
+      [401, 'credencial_no_valida', { statusCode: 424, code: 'ia_no_disponible' }],
     ] as const) {
       for (const [provider, id] of [
         ['anthropic', 'claude-opus-5-5'],
@@ -363,7 +363,22 @@ describe('cliente de la pasarela', () => {
     });
     const error = await ai.propose(request('anthropic', 'claude-sonnet-5-5')).catch(e => e);
     expect(error).toBeInstanceOf(AiError);
-    expect(error).toMatchObject({ code: 'proveedor_error', statusCode: 502 });
+    expect(error).toMatchObject({ code: 'proveedor_error', statusCode: 424 });
     expect(error.message).not.toContain('detalle interno');
+    // El motivo queda para el registro del servidor.
+    expect(error.detail).toContain('detalle interno');
+  });
+
+  it('una clave rechazada por el proveedor enlaza la gestión de claves', async () => {
+    const rejected = () =>
+      Response.json(
+        { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } },
+        { status: 401 },
+      );
+    const ai = createGatewayAssistant({ platformApi, serviceTokenFile: tokenFile(), fetch: fakeFetch(rejected).impl });
+    await expect(ai.propose(request('anthropic', 'claude-sonnet-5-5'))).rejects.toMatchObject({
+      code: 'clave_rechazada',
+      statusCode: 424,
+    });
   });
 });

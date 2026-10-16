@@ -26,6 +26,12 @@ export const AI_MAX_OUTPUT_TOKENS = 32_000;
 const ANTHROPIC_FORMAT = { type: 'json_schema' as const, schema: zodOutputFormat(proposalSchema).schema };
 /** La pasarela corta a los 10 minutos; Nodaria se rinde un poco antes. */
 export const AI_TIMEOUT_MS = 9 * 60 * 1000;
+/**
+ * Estado de los fallos del proveedor o de la pasarela. No es 502 ni 504: Cloudflare cambia esas
+ * respuestas del origen por su propia página, sin CORS, y el navegador lo ve como «sin conexión».
+ */
+export const UPSTREAM_FAILED = 424;
+
 export const MANAGE_KEYS_URL: Record<AppConfig['platform']['env'], string> = {
   produccion: 'https://social.yosiftware.es/?vista=claves-ia',
   qa: 'https://qa-social.yosiftware.es/?vista=claves-ia',
@@ -54,10 +60,13 @@ export interface AiAssistant {
 export class AiError extends Error {
   readonly statusCode: number;
   readonly code: string;
-  constructor(statusCode: number, code: string, message: string) {
+  /** Lo que dijo el proveedor (estado y motivo), solo para el registro del servidor; nunca va a la web. */
+  readonly detail: string | undefined;
+  constructor(statusCode: number, code: string, message: string, detail?: string) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
+    this.detail = detail;
   }
 }
 
@@ -94,17 +103,25 @@ const PLATFORM_ERRORS: Record<string, { status: number; message: string }> = {
     message: 'El esquema es demasiado grande para enviarlo entero. Elige una parte.',
   },
   cuenta_no_disponible: { status: 403, message: 'Tu cuenta no está activa en la plataforma.' },
-  proveedor_sin_respuesta: { status: 502, message: 'El proveedor de IA no ha respondido. Inténtalo de nuevo.' },
+  proveedor_sin_respuesta: {
+    status: UPSTREAM_FAILED,
+    message: 'El proveedor de IA no ha respondido. Inténtalo de nuevo.',
+  },
 };
 
 /** Los errores que dependen de la persona (enlazan la gestión de sus claves). */
-export const KEY_ERRORS = new Set(['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto']);
+export const KEY_ERRORS = new Set(['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto', 'clave_rechazada']);
 
 function platformError(rejection: PlatformRejection): AiError {
   const known = PLATFORM_ERRORS[rejection.code];
   if (known) return new AiError(known.status, rejection.code, known.message);
   // credencial_no_valida, ruta_no_permitida, solicitud_invalida, claves_ia_*: problema de configuración.
-  return new AiError(503, 'ia_no_disponible', 'La asistencia de IA no está disponible ahora. Inténtalo más tarde.');
+  return new AiError(
+    UPSTREAM_FAILED,
+    'ia_no_disponible',
+    'La asistencia de IA no está disponible ahora. Inténtalo más tarde.',
+    `${rejection.status} ${rejection.code}`,
+  );
 }
 
 /**
@@ -140,12 +157,24 @@ function translate(error: unknown, signal?: AbortSignal): AiError {
   if (cause instanceof PlatformRejection) return platformError(cause);
   if (signal?.aborted) return new AiError(499, 'ia_cancelada', 'Se canceló la petición.');
   if (error instanceof Anthropic.APIConnectionTimeoutError || error instanceof OpenAI.APIConnectionTimeoutError)
-    return new AiError(504, 'ia_sin_respuesta', 'La IA ha tardado demasiado. Prueba con una parte más pequeña.');
+    return new AiError(
+      UPSTREAM_FAILED,
+      'ia_sin_respuesta',
+      'La IA ha tardado demasiado. Prueba con una parte más pequeña.',
+    );
   if (error instanceof Anthropic.APIError || error instanceof OpenAI.APIError) {
-    const status = typeof error.status === 'number' ? error.status : 502;
+    const status = typeof error.status === 'number' ? error.status : 0;
+    const detail = `${status} ${error.message}`.slice(0, 500);
     if (status === 429)
-      return new AiError(429, 'proveedor_ocupado', 'El proveedor de IA está saturado. Inténtalo más tarde.');
-    return new AiError(502, 'proveedor_error', 'El proveedor de IA ha rechazado la petición.');
+      return new AiError(429, 'proveedor_ocupado', 'El proveedor de IA está saturado. Inténtalo más tarde.', detail);
+    if (status === 401 || status === 403)
+      return new AiError(
+        UPSTREAM_FAILED,
+        'clave_rechazada',
+        'El proveedor ha rechazado tu clave de IA. Revísala en tu cuenta de Yosiftware.',
+        detail,
+      );
+    return new AiError(UPSTREAM_FAILED, 'proveedor_error', 'El proveedor de IA ha rechazado la petición.', detail);
   }
   throw error;
 }
@@ -155,13 +184,21 @@ function parseProposal(raw: string): AiProposal {
   try {
     json = JSON.parse(raw);
   } catch {
-    throw new AiError(502, 'propuesta_no_valida', 'La IA no ha devuelto una propuesta válida. Inténtalo de nuevo.');
+    throw new AiError(
+      UPSTREAM_FAILED,
+      'propuesta_no_valida',
+      'La IA no ha devuelto una propuesta válida. Inténtalo de nuevo.',
+    );
   }
   const parsed = proposalSchema.safeParse(json);
   if (!parsed.success)
-    throw new AiError(502, 'propuesta_no_valida', 'La IA no ha devuelto una propuesta válida. Inténtalo de nuevo.');
+    throw new AiError(
+      UPSTREAM_FAILED,
+      'propuesta_no_valida',
+      'La IA no ha devuelto una propuesta válida. Inténtalo de nuevo.',
+    );
   const problem = checkProposalLimits(parsed.data);
-  if (problem) throw new AiError(502, 'propuesta_no_valida', problem);
+  if (problem) throw new AiError(UPSTREAM_FAILED, 'propuesta_no_valida', problem);
   return parsed.data;
 }
 

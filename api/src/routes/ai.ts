@@ -77,7 +77,7 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config'>
     } catch (error) {
       if (!(error instanceof AiError)) throw error;
       request.log.info(
-        { userId: user.id, model: model.id, code: error.code, ms: Date.now() - started },
+        { userId: user.id, model: model.id, code: error.code, detail: error.detail, ms: Date.now() - started },
         'IA sin propuesta',
       );
       throw new HttpError(
