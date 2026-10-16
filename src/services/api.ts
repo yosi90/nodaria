@@ -28,6 +28,7 @@ export async function apiRequest<TResponse>(
   token: string | null,
   body?: unknown,
   extraHeaders: Record<string, string> = {},
+  signal?: AbortSignal,
 ): Promise<TResponse> {
   let response: Response;
   try {
@@ -39,8 +40,11 @@ export async function apiRequest<TResponse>(
         ...extraHeaders,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
     });
   } catch (error) {
+    // Cancelar no es estar sin conexión: el llamante lo distingue por `signal.aborted`.
+    if (signal?.aborted) throw error;
     throw new OfflineError(error instanceof Error ? error.message : String(error));
   }
 

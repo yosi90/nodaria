@@ -15,6 +15,8 @@ import { addFolder, deleteFolder, renameFolder, setNodeFolder } from '../domain/
 import type { Calendar } from '../domain/calendar';
 import type { SavedQuery } from '../domain/queries';
 import { applySqlAnnotations, setColumnSql, setFieldSql, type SqlColumn } from '../domain/database';
+import { applyProposal, type AiProposal } from '../domain/aiProposal';
+import type { AiContextRefs } from '../domain/aiContext';
 import type {
   AppState,
   ProjectKind,
@@ -101,6 +103,8 @@ export type Action =
   | { type: 'set-column-sql'; typeId: string; fieldId: string; sql: SqlColumn | null }
   /** Usa como tipo SQL las anotaciones escritas como valor inicial en las tablas (de un tipo o de todas). */
   | { type: 'apply-sql-annotations'; typeId?: string }
+  /** Aplica las operaciones marcadas de una propuesta de la IA, en un solo paso (`aiProposal.ts`). */
+  | { type: 'apply-ai-proposal'; proposal: AiProposal; refs: AiContextRefs; selected: number[]; seed: string }
   | { type: 'duplicate-node'; id: string; withRelations?: boolean; newId?: string }
   | { type: 'duplicate-schema'; id: string; newId?: string }
   | {
@@ -289,6 +293,8 @@ function projectReducer(p: Project, action: Action): Project {
       return setColumnSql(p, action.typeId, action.fieldId, action.sql);
     case 'apply-sql-annotations':
       return applySqlAnnotations(p, action.typeId);
+    case 'apply-ai-proposal':
+      return applyProposal(p, action.proposal, action.refs, action.selected, action.seed);
     case 'fill-defaults':
       return ops.fillDefaults(p, action.fieldId);
     case 'add-relation':

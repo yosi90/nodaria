@@ -103,10 +103,21 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | GET    | `/api/projects/{id}` | Sí   | Documento completo con su versión. 404 `project_not_found` o `project_deleted`.                                                  |
 | PUT    | `/api/projects/{id}` | Sí   | `{ document, baseVersion }`: crea (`baseVersion` 0) o actualiza. 409 `version_conflict`; 413; 400; 403 `creacion_limitada`.       |
 | DELETE | `/api/projects/{id}` | Sí   | Borrado lógico; `?baseVersion=n` opcional para exigir la versión. Idempotente sobre un borrado.                                  |
+| GET    | `/api/ia/modelos`    | Sí   | Modelos que ofrece el asistente de IA (`api/src/ai/models.ts`) y `manageUrl`, la gestión de claves de la web social del entorno. |
+| POST   | `/api/ia/propuestas` | Sí   | `{ provider, model, scope: "base-de-datos", instruction, context }` → `{ proposal, model, usage }`. Ver «Asistencia de IA».       |
 
 El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista.
 
 Errores con formato `{ "error": "<codigo>", "message": "<texto en español>" }`. Límite general de 300 peticiones/minuto por IP (`CF-Connecting-IP` detrás del túnel) y 120 por usuario autenticado.
+
+## Asistencia de IA
+
+`POST /api/ia/propuestas` (`api/src/routes/ai.ts`) llama al proveedor a través de la **pasarela de IA de la plataforma** (`ecosistema-kit/CLAVES_DE_IA.md`) con la credencial de servicio de `PLATFORM_SERVICE_TOKEN_FILE` y la cuenta que actúa (`sub`) en `X-Yosi-Cuenta`: la plataforma pone la clave de la persona y Nodaria nunca la ve. Usa los SDK oficiales `@anthropic-ai/sdk@0.132.1` (Messages en streaming) y `openai@7.30.1` (Responses, `store: false`), con la dirección base de la pasarela, salida estructurada con el esquema de `api/src/ai/schema.ts`, sin reintentos y con 9 minutos de espera (`api/src/ai/assistant.ts`).
+
+- El navegador manda el contexto mínimo del esquema (`src/domain/aiContext.ts`); la API no lee el proyecto. Cuerpo hasta 1 MiB; 10 propuestas por minuto y cuenta, además del límite general. Con `creacion` limitada, 403 `creacion_limitada`.
+- La propuesta se valida con zod y con los límites de `checkProposalLimits` antes de devolverla; la web vuelve a validar cada operación con las reglas del editor (`src/domain/aiProposal.ts`).
+- Errores: `sin_clave_de_ia` y `tope_sin_fijar` (409), `tope_de_gasto` (429) llevan `manageUrl`; `modelo_sin_tarifa`, `demasiadas_peticiones`, `llamada_demasiado_grande`, `cuenta_no_disponible` y `proveedor_sin_respuesta` pasan con su estado; `credencial_no_valida`, `ruta_no_permitida` y los de configuración de la plataforma, como 503 `ia_no_disponible`. Propios: `modelo_no_admitido` (400), `propuesta_incompleta` (422, la salida se cortó, a menudo por el tope), `propuesta_rechazada` (422), `propuesta_no_valida` y `proveedor_error` (502), `ia_sin_respuesta` (504). El detalle de un error del proveedor no se devuelve.
+- Logs: cuenta, modelo, tokens, código y duración. Nunca la petición, el contexto ni la propuesta.
 
 ## Producción
 

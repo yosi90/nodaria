@@ -1,5 +1,6 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { createGatewayAssistant } from './ai/assistant.ts';
 import { buildApp } from './app.ts';
 import { createPlatformAuthProvider } from './auth/platform.ts';
 import { loadConfig } from './config.ts';
@@ -16,6 +17,10 @@ const app = await buildApp({
   auth: createPlatformAuthProvider(config),
   users: createSqlUserStore(db),
   projects: createSqlProjectStore(db),
+  ai: createGatewayAssistant({
+    platformApi: config.platform.api,
+    serviceTokenFile: config.platform.serviceTokenFile,
+  }),
 });
 
 // El feed de la plataforma avisa de las cuentas cerradas o borradas (ecosistema-kit/FEED_DE_CAMBIOS.md).

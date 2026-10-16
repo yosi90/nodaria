@@ -1,0 +1,123 @@
+/* ---------- Asistente de IA (AiAssistantDialog) ---------- */
+.ai-privacy {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.ai-privacy svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.ai-privacy p {
+  margin: 0;
+}
+.ai-manage {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--accent);
+  font-size: var(--fs-sm);
+}
+.ai-waiting {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.ai-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
+.ai-error a {
+  color: inherit;
+  font-weight: 600;
+}
+.ai-notice {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--fs-sm);
+}
+.ai-review {
+  display: grid;
+  gap: var(--space-3);
+}
+.ai-summary {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.ai-ops {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ai-op {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+.ai-op.warning {
+  border-color: var(--warning);
+}
+.ai-op.invalid {
+  background: var(--surface-inset);
+  color: var(--text-muted);
+}
+.ai-op label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  cursor: pointer;
+}
+.ai-op-title {
+  flex: 1 1 14em;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ai-op .badge.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.ai-op-reason,
+.ai-op-message {
+  margin: var(--space-1) 0 0 calc(13px + var(--space-2));
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.ai-op-reason {
+  color: var(--text-muted);
+}
+.ai-op-message {
+  color: var(--warning);
+}
+.ai-op.invalid .ai-op-message {
+  color: var(--danger);
+}
+.ai-section h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-sm);
+}
+.ai-section ul {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}

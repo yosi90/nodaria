@@ -98,6 +98,7 @@ export function testDependencies(overrides: Partial<AppDependencies> = {}): AppD
     auth: { verify: async () => Promise.reject(new AuthTokenError('invalid_token')) },
     users: fakeUsers().store,
     projects: createMemoryProjectStore(),
+    ai: { propose: async () => Promise.reject(new Error('IA no configurada en la prueba')) },
     ...overrides,
   };
 }

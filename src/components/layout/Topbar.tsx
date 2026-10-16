@@ -19,6 +19,7 @@ import {
   Search,
   Settings,
   Shapes,
+  Sparkles,
   Sun,
   Trash2,
   Undo2,
@@ -46,6 +47,7 @@ import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
 import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
+import { AiAssistantDialog } from '../ai/AiAssistantDialog';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
 
 export type { View } from '../../state/navigation';
@@ -76,6 +78,7 @@ export function Topbar({
   const file = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [kindOpen, setKindOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -147,6 +150,10 @@ export function Topbar({
       onSelect: () => setKindOpen(true),
     },
     { label: 'Calendario del proyecto…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
+    // El asistente de IA trabaja de momento sobre esquemas de base de datos.
+    ...(project.kind === 'database' || tableTypes(project).length
+      ? [{ label: 'Asistente de IA…', icon: Sparkles, onSelect: () => setAiOpen(true) }]
+      : []),
     'separator',
     { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
     ...(tableTypes(project).length
@@ -205,6 +212,7 @@ export function Topbar({
         />
       )}
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
+      {aiOpen && <AiAssistantDialog onClose={() => setAiOpen(false)} />}
       {kindOpen && <ProjectKindDialog onClose={() => setKindOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">

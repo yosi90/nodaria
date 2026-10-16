@@ -3,10 +3,12 @@ import rateLimit from '@fastify/rate-limit';
 import path from 'node:path';
 import Fastify, { type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import { ZodError } from 'zod';
+import type { AiAssistant } from './ai/assistant.ts';
 import type { AuthProvider } from './auth/platform.ts';
 import { createAuthenticate, HttpError } from './auth/plugin.ts';
 import type { AppConfig } from './config.ts';
 import type { Database } from './db/pool.ts';
+import { aiRoutes } from './routes/ai.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meRoutes } from './routes/me.ts';
 import { projectRoutes } from './routes/projects.ts';
@@ -19,6 +21,7 @@ export interface AppDependencies {
   auth: AuthProvider;
   users: UserStore;
   projects: ProjectStore;
+  ai: AiAssistant;
 }
 
 // Peticiones por minuto de cada usuario con sesión, además del límite por IP.
@@ -59,7 +62,7 @@ function loggerOptions(config: AppConfig): FastifyServerOptions['logger'] {
   };
 }
 
-export async function buildApp({ config, db, auth, users, projects }: AppDependencies) {
+export async function buildApp({ config, db, auth, users, projects, ai }: AppDependencies) {
   const app = Fastify({
     logger: loggerOptions(config),
     trustProxy: 'loopback',
@@ -137,6 +140,7 @@ export async function buildApp({ config, db, auth, users, projects }: AppDepende
       });
       await privateApp.register(meRoutes, { users });
       await privateApp.register(projectRoutes, { projects, config });
+      await privateApp.register(aiRoutes, { ai, config });
     },
     { prefix: '/api' },
   );

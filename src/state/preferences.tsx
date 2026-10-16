@@ -22,6 +22,8 @@ export interface Preferences {
   welcomed: boolean;
   /** Ramas plegadas del árbol de estructura, por proyecto y estructura («proyecto:estructura» → claves de fila). */
   collapsedRows: Record<string, string[]>;
+  /** Último modelo elegido en el asistente de IA («proveedor:modelo»), o ninguno. */
+  aiModel: string | null;
 }
 
 /** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
@@ -59,6 +61,7 @@ const DEFAULTS: Preferences = {
   autoHiddenKinship: {},
   welcomed: false,
   collapsedRows: {},
+  aiModel: null,
 };
 
 function loadPreferences(): Preferences {
