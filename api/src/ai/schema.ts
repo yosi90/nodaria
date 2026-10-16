@@ -54,10 +54,34 @@ export const contextSchema = z.object({
         id: z.string().regex(/^t\d{1,4}$/),
         name: text(200),
         typeName: text(200),
+        base: text(16).nullable(),
         description: text(2000),
         sharesColumnsWith: z.array(text(16)).max(500),
         partial: z.boolean(),
         columns: z.array(columnContext).max(300),
+      }),
+    )
+    .max(500),
+  bases: z
+    .array(
+      z.object({
+        id: z.string().regex(/^b\d{1,4}$/),
+        name: text(200),
+        base: text(16).nullable(),
+        columns: z.array(columnContext).max(300),
+        tables: z.number().int().min(0),
+      }),
+    )
+    .max(200),
+  preforms: z
+    .array(
+      z.object({
+        name: text(128),
+        type: text(40),
+        reference: z.boolean(),
+        primaryKey: z.boolean(),
+        nullable: z.boolean(),
+        description: text(2000),
       }),
     )
     .max(500),
@@ -80,6 +104,7 @@ const columnSpec = z.object({
   unique: z.boolean(),
   identity: z.boolean(),
   description: z.string(),
+  preform: z.string().nullable(),
 });
 
 const columnChanges = z.object({
@@ -99,6 +124,7 @@ export const operationSchema = z.discriminatedUnion('op', [
     ref: z.string(),
     name: z.string(),
     description: z.string(),
+    base: z.string().nullable(),
     columns: z.array(columnSpec),
     reason,
   }),
@@ -114,6 +140,7 @@ export const operationSchema = z.discriminatedUnion('op', [
     column: z.string(),
     references: z.string(),
     nullable: z.boolean(),
+    primaryKey: z.boolean(),
     reason,
   }),
 ]);

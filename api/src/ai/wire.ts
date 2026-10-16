@@ -18,6 +18,8 @@ const wireColumn = z.object({
   unique: z.boolean(),
   identity: z.boolean(),
   description: z.string(),
+  /** Preforma que se vincula en lugar de crear la columna; vacío = columna nueva. */
+  preform: z.string(),
 });
 
 /** «si», «no» o vacío (no cambia). */
@@ -36,11 +38,15 @@ export const wireOperationSchema = z.object({
   ]),
   table: z.string(),
   ref: z.string(),
+  /** Base de la que hereda una tabla nueva (`b1`…); vacío = ninguna. */
+  base: z.string(),
   name: z.string(),
   description: z.string(),
   column: z.string(),
   references: z.string(),
   nullable: z.boolean(),
+  /** En una clave foránea, si forma parte de la clave primaria (tablas intermedias). */
+  primaryKey: z.boolean(),
   columns: z.array(wireColumn),
   changes: z.object({
     type: z.string(),
@@ -119,13 +125,22 @@ const column = (c: WireOperation['columns'][number]) => ({
   unique: c.unique,
   identity: c.identity,
   description: c.description,
+  preform: c.preform.trim() || null,
 });
 
 function translate(o: WireOperation): Operation {
   const { table, reason } = o;
   switch (o.op) {
     case 'create-table':
-      return { op: o.op, ref: o.ref, name: o.name, description: o.description, columns: o.columns.map(column), reason };
+      return {
+        op: o.op,
+        ref: o.ref,
+        name: o.name,
+        description: o.description,
+        base: o.base.trim() || null,
+        columns: o.columns.map(column),
+        reason,
+      };
     case 'rename-table':
       return { op: o.op, table, name: o.name, reason };
     case 'delete-table':
@@ -153,7 +168,15 @@ function translate(o: WireOperation): Operation {
     case 'delete-column':
       return { op: o.op, table, column: o.column, reason };
     case 'add-foreign-key':
-      return { op: o.op, table, column: o.column, references: o.references, nullable: o.nullable, reason };
+      return {
+        op: o.op,
+        table,
+        column: o.column,
+        references: o.references,
+        nullable: o.nullable,
+        primaryKey: o.primaryKey,
+        reason,
+      };
   }
 }
 

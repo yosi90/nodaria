@@ -18,6 +18,7 @@ const context: AiDatabaseContext = {
       id: 't1',
       name: 'Cliente',
       typeName: 'Cliente',
+      base: null,
       description: '',
       sharesColumnsWith: [],
       partial: false,
@@ -36,6 +37,8 @@ const context: AiDatabaseContext = {
       ],
     },
   ],
+  bases: [],
+  preforms: [],
   issues: [],
 };
 
@@ -47,6 +50,7 @@ const proposal: AiProposal = {
       ref: 'n1',
       name: 'Pedido',
       description: '',
+      base: null,
       columns: [
         {
           name: 'id',
@@ -56,6 +60,7 @@ const proposal: AiProposal = {
           unique: false,
           identity: true,
           description: '',
+          preform: null,
         },
       ],
       reason: 'Cada cliente hace pedidos.',
@@ -66,6 +71,7 @@ const proposal: AiProposal = {
       column: 'id_cliente',
       references: 't1',
       nullable: false,
+      primaryKey: false,
       reason: 'Quién pide.',
     },
   ],
@@ -75,6 +81,8 @@ const proposal: AiProposal = {
 const blank = {
   table: '',
   ref: '',
+  base: '',
+  primaryKey: false,
   name: '',
   description: '',
   column: '',
@@ -93,7 +101,16 @@ const wire: WireProposal = {
       ref: 'n1',
       name: 'Pedido',
       columns: [
-        { name: 'id', type: 'int', primaryKey: true, nullable: false, unique: false, identity: true, description: '' },
+        {
+          name: 'id',
+          type: 'int',
+          primaryKey: true,
+          nullable: false,
+          unique: false,
+          identity: true,
+          description: '',
+          preform: '',
+        },
       ],
       changes: noChanges,
       reason: 'Cada cliente hace pedidos.',
