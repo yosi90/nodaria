@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { AiError, createGatewayAssistant, type AiAssistant, type AiRequest } from '../src/ai/assistant.ts';
 import { findModel } from '../src/ai/models.ts';
 import type { AiDatabaseContext, AiProposal } from '../src/ai/schema.ts';
+import { fromWire, parseSqlType, wireProposalSchema, type WireProposal } from '../src/ai/wire.ts';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { zodTextFormat } from 'openai/helpers/zod';
 import { buildApp } from '../src/app.ts';
 import { OWNER, platformTokens, testDependencies } from './helpers/fakes.ts';
 
@@ -63,6 +66,45 @@ const proposal: AiProposal = {
       column: 'id_cliente',
       references: 't1',
       nullable: false,
+      reason: 'Quién pide.',
+    },
+  ],
+  advice: [],
+};
+
+const blank = {
+  table: '',
+  ref: '',
+  name: '',
+  description: '',
+  column: '',
+  references: '',
+  nullable: false,
+  columns: [],
+};
+const noChanges = { type: '', primaryKey: '', nullable: '', unique: '', identity: '', description: '' };
+/** La misma propuesta en el formato plano que devuelve el modelo. */
+const wire: WireProposal = {
+  summary: proposal.summary,
+  operations: [
+    {
+      ...blank,
+      op: 'create-table',
+      ref: 'n1',
+      name: 'Pedido',
+      columns: [
+        { name: 'id', type: 'int', primaryKey: true, nullable: false, unique: false, identity: true, description: '' },
+      ],
+      changes: noChanges,
+      reason: 'Cada cliente hace pedidos.',
+    },
+    {
+      ...blank,
+      op: 'add-foreign-key',
+      table: 'n1',
+      column: 'id_cliente',
+      references: 't1',
+      changes: noChanges,
       reason: 'Quién pide.',
     },
   ],
@@ -264,7 +306,7 @@ describe('cliente de la pasarela', () => {
   const platformApi = 'https://qa-cuentas-api.yosiftware.es';
 
   it('llama a Anthropic con la credencial de Nodaria y la cuenta, con salida estructurada', async () => {
-    const { impl, calls } = fakeFetch(() => anthropicStream(JSON.stringify(proposal)));
+    const { impl, calls } = fakeFetch(() => anthropicStream(JSON.stringify(wire)));
     const ai = createGatewayAssistant({ platformApi, serviceTokenFile: tokenFile(), fetch: impl });
     const result = await ai.propose(request('anthropic', 'claude-sonnet-5-5'));
     expect(result).toEqual({ proposal, usage: { inputTokens: 200, outputTokens: 90 } });
@@ -283,7 +325,7 @@ describe('cliente de la pasarela', () => {
   });
 
   it('llama a OpenAI por la ruta de respuestas, sin guardar el contenido en el proveedor', async () => {
-    const { impl, calls } = fakeFetch(() => openaiResponse(JSON.stringify(proposal)));
+    const { impl, calls } = fakeFetch(() => openaiResponse(JSON.stringify(wire)));
     const ai = createGatewayAssistant({ platformApi, serviceTokenFile: tokenFile(), fetch: impl });
     const result = await ai.propose(request('openai', 'gpt-5.6-terra'));
     expect(result).toEqual({ proposal, usage: { inputTokens: 150, outputTokens: 60 } });
@@ -299,7 +341,7 @@ describe('cliente de la pasarela', () => {
   });
 
   it('trata la salida cortada como incompleta y no la devuelve', async () => {
-    const half = JSON.stringify(proposal).slice(0, 40);
+    const half = JSON.stringify(wire).slice(0, 40);
     for (const [provider, id, response] of [
       ['anthropic', 'claude-haiku-5-5', () => anthropicStream(half, 'max_tokens')],
       ['openai', 'gpt-5.6-luna', () => openaiResponse(half, 'incomplete')],
@@ -337,7 +379,7 @@ describe('cliente de la pasarela', () => {
   });
 
   it('rechaza una respuesta que no cumple el esquema o pasa de los límites', async () => {
-    const tooMany = { ...proposal, operations: Array(201).fill(proposal.operations[1]) };
+    const tooMany = { ...wire, operations: Array(201).fill(wire.operations[1]) };
     for (const text of ['no es json', JSON.stringify({ summary: 'x' }), JSON.stringify(tooMany)]) {
       const ai = createGatewayAssistant({
         platformApi,
@@ -380,5 +422,69 @@ describe('cliente de la pasarela', () => {
       code: 'clave_rechazada',
       statusCode: 424,
     });
+  });
+});
+
+describe('formato plano de la respuesta del modelo', () => {
+  it('no lleva uniones, para que el proveedor pueda compilar su gramática', () => {
+    // Anthropic rechazó la versión con uniones: «The compiled grammar is too large».
+    expect(JSON.stringify(zodOutputFormat(wireProposalSchema).schema)).not.toMatch(/anyOf|oneOf/);
+    expect(JSON.stringify(zodTextFormat(wireProposalSchema, 'propuesta'))).not.toMatch(/anyOf|oneOf/);
+  });
+
+  it('lee los tipos de SQL Server escritos como texto', () => {
+    expect(parseSqlType('NVARCHAR(50)')).toEqual({ name: 'nvarchar', length: 50, precision: null, scale: null });
+    expect(parseSqlType('varchar(max)')).toEqual({ name: 'varchar', length: 'max', precision: null, scale: null });
+    expect(parseSqlType('decimal(10, 2)')).toEqual({ name: 'decimal', length: null, precision: 10, scale: 2 });
+    expect(parseSqlType('datetime2(3)')).toEqual({ name: 'datetime2', length: null, precision: null, scale: 3 });
+    expect(parseSqlType('int')).toEqual({ name: 'int', length: null, precision: null, scale: null });
+    expect(parseSqlType('text')).toBeNull();
+    expect(parseSqlType('int(4)')).toBeNull();
+  });
+
+  it('traduce cambios de columna y descarta, avisando, lo que no se puede traducir', () => {
+    const result = fromWire({
+      summary: '',
+      operations: [
+        {
+          ...blank,
+          op: 'update-column',
+          table: 't1',
+          column: 'email',
+          changes: { ...noChanges, type: 'nvarchar(320)', nullable: 'no', description: 'Correo' },
+          reason: '',
+        },
+        {
+          ...blank,
+          op: 'add-column',
+          table: 't1',
+          columns: [{ ...wire.operations[0].columns[0], type: 'texto' }],
+          changes: noChanges,
+          reason: '',
+        },
+        { ...blank, op: 'add-column', table: 't1', changes: noChanges, reason: '' },
+      ],
+      advice: [],
+    });
+    expect(result.operations).toEqual([
+      {
+        op: 'update-column',
+        table: 't1',
+        column: 'email',
+        changes: {
+          type: { name: 'nvarchar', length: 320, precision: null, scale: null },
+          primaryKey: null,
+          nullable: false,
+          unique: null,
+          identity: null,
+          description: 'Correo',
+        },
+        reason: '',
+      },
+    ]);
+    expect(result.advice).toEqual([
+      'Se ha descartado la operación 2 (add-column): el tipo «texto» no es de SQL Server.',
+      'Se ha descartado la operación 3 (add-column): añadir columna necesita exactamente una columna.',
+    ]);
   });
 });

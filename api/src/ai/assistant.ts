@@ -8,6 +8,7 @@ import { USER_AGENT } from '../platform/feed.ts';
 import type { AiModel } from './models.ts';
 import { DATABASE_SYSTEM_PROMPT, databaseUserMessage } from './prompt.ts';
 import { checkProposalLimits, proposalSchema, type AiDatabaseContext, type AiProposal } from './schema.ts';
+import { fromWire, wireProposalSchema } from './wire.ts';
 
 /*
  * Llamadas a la IA a través de la pasarela de la plataforma (`ecosistema-kit/CLAVES_DE_IA.md`). Los
@@ -23,7 +24,7 @@ import { checkProposalLimits, proposalSchema, type AiDatabaseContext, type AiPro
 export const AI_MAX_OUTPUT_TOKENS = 32_000;
 // Solo el esquema: con el formato «auto-parseable» el SDK interpretaría la salida por su cuenta
 // antes de poder mirar si se cortó. Se valida aquí, igual para los dos proveedores.
-const ANTHROPIC_FORMAT = { type: 'json_schema' as const, schema: zodOutputFormat(proposalSchema).schema };
+const ANTHROPIC_FORMAT = { type: 'json_schema' as const, schema: zodOutputFormat(wireProposalSchema).schema };
 /** La pasarela corta a los 10 minutos; Nodaria se rinde un poco antes. */
 export const AI_TIMEOUT_MS = 9 * 60 * 1000;
 /**
@@ -190,7 +191,9 @@ function parseProposal(raw: string): AiProposal {
       'La IA no ha devuelto una propuesta válida. Inténtalo de nuevo.',
     );
   }
-  const parsed = proposalSchema.safeParse(json);
+  // El modelo responde en el formato plano (`wire.ts`); se traduce y se vuelve a validar el resultado.
+  const wire = wireProposalSchema.safeParse(json);
+  const parsed = wire.success ? proposalSchema.safeParse(fromWire(wire.data)) : wire;
   if (!parsed.success)
     throw new AiError(
       UPSTREAM_FAILED,
@@ -275,7 +278,7 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
         input: databaseUserMessage(request.instruction, request.context),
         max_output_tokens: AI_MAX_OUTPUT_TOKENS,
         reasoning: { effort: request.model.effort },
-        text: { format: zodTextFormat(proposalSchema, 'propuesta') },
+        text: { format: zodTextFormat(wireProposalSchema, 'propuesta') },
         store: false,
       },
       { headers: { 'X-Yosi-Cuenta': request.account }, signal: request.signal },

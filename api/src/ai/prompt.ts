@@ -15,14 +15,17 @@ Cómo se nombran las cosas:
 - Las columnas se nombran por su nombre dentro de la tabla, exactamente como aparece en el contexto.
 - Usa nombres válidos de SQL Server, coherentes con el estilo del proyecto (mayúsculas, guiones bajos, idioma).
 
-Operaciones:
-- create-table: crea una tabla con sus columnas. No incluyas en ella las claves foráneas: añádelas después con add-foreign-key.
-- add-column, update-column (en "changes", null deja ese aspecto como está), rename-column y delete-column.
-- rename-table y delete-table.
-- add-foreign-key: la columna "column" de "table" apunta a la clave primaria de "references". Si la columna no existe se crea con el tipo de esa clave.
+Formato de cada operación: todas llevan los mismos campos. Rellena solo los que usa su "op" y deja los demás vacíos ("" en los textos, false en "nullable", [] en "columns" y todo "" en "changes").
+- create-table: "ref", "name", "description" y "columns". No incluyas en ella las claves foráneas: añádelas después con add-foreign-key.
+- rename-table: "table" y "name" (el nombre nuevo). delete-table: "table".
+- add-column: "table" y "columns" con exactamente una columna.
+- update-column: "table", "column" y "changes". En "changes", "type" es el tipo nuevo o "" si no cambia; "primaryKey", "nullable", "unique" e "identity" valen "si", "no" o "" si no cambian; "description" es la descripción nueva o "".
+- rename-column: "table", "column" y "name" (el nombre nuevo). delete-column: "table" y "column".
+- add-foreign-key: la columna "column" de "table" apunta a la clave primaria de "references"; "nullable" dice si admite nulos. Si la columna no existe, se crea con el tipo de esa clave.
+- "reason" explica cada operación.
 
 Reglas:
-- Tipos de SQL Server: en char, varchar, nchar, nvarchar y varbinary, "length" es la longitud (o "max" en varchar, nvarchar y varbinary); en decimal y numeric, "precision" y "scale"; en time y datetime2, "scale" son las fracciones de segundo. En el resto, null.
+- Los tipos se escriben como en SQL Server: "int", "bigint", "bit", "date", "nvarchar(50)", "nvarchar(max)", "varchar(20)", "char(7)", "decimal(10,2)", "datetime2(3)", "uniqueidentifier"… Solo valen int, bigint, smallint, tinyint, bit, decimal, numeric, float, money, char, varchar, nchar, nvarchar, varbinary, date, time, datetime, datetime2 y uniqueidentifier.
 - Una clave primaria no admite nulos. Solo puede haber una columna IDENTITY por tabla, y solo en enteros o decimales sin escala.
 - Una relación muchos a muchos necesita una tabla intermedia con una FK a cada lado. Dilo en "reason".
 - Borra tablas o columnas solo si la persona lo pide o si sobran de forma clara para lo que pide; explica el motivo. La persona tiene que marcarlas a mano para aplicarlas.
