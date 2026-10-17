@@ -31,6 +31,8 @@ function fileNames(items: { id: string; title: string }[]) {
   return names;
 }
 
+/** Marca de orden de bytes: Excel la necesita para leer el CSV como UTF-8. */
+const BOM = String.fromCharCode(0xfeff);
 const csvCell = (text: string) => (/[;"\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
 const csvRow = (cells: string[]) => cells.map(csvCell).join(';');
 const yamlValue = (text: string) =>
@@ -99,7 +101,7 @@ export function exportBundle(p: Project): ZipEntry[] {
         ]),
       ),
     ];
-    entries.push({ name: `csv/${csvNames.get(schema.id)}.csv`, data: `﻿${rows.join('\r\n')}\r\n` });
+    entries.push({ name: `csv/${csvNames.get(schema.id)}.csv`, data: `${BOM}${rows.join('\r\n')}\r\n` });
   }
   if (p.relations.length) {
     const rows = [
@@ -114,7 +116,7 @@ export function exportBundle(p: Project): ZipEntry[] {
         ]),
       ),
     ];
-    entries.push({ name: 'csv/relaciones.csv', data: `﻿${rows.join('\r\n')}\r\n` });
+    entries.push({ name: 'csv/relaciones.csv', data: `${BOM}${rows.join('\r\n')}\r\n` });
   }
 
   // Una nota por nodo, como en Obsidian: atributos en el encabezado y enlaces [[ ]].

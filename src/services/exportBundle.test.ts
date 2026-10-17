@@ -52,7 +52,8 @@ describe('exportBundle', () => {
       ].sort(),
     );
     const csv = byName.get('csv/Persona.csv') as string;
-    expect(csv.startsWith('﻿Título;Dentro de;Edad;Amigo;Foto;Notas')).toBe(true);
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv.slice(1).startsWith('Título;Dentro de;Edad;Amigo;Foto;Notas')).toBe(true);
     // El «;» y las comillas del título van entre comillas; la referencia, por título; la imagen, su archivo.
     expect(csv).toContain('"Ana; ""la mayor""";;30;Luis;"imagenes/Ana; la mayor - Foto.png";');
     const note = byName.get('notas/Luis.md') as string;
