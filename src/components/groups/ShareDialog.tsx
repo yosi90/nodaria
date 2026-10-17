@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { groupErrorMessage, type GroupInfo } from '../../services/groups';
+import { GROUP_NAME_MAX, groupErrorMessage, type GroupInfo } from '../../services/groups';
 import { useApp } from '../../state/AppContext';
 import { useGroups } from '../../state/groups';
 import { Modal } from '../common/Modal';
@@ -11,7 +11,8 @@ import { Modal } from '../common/Modal';
 export function ShareDialog({ onClose, onShared }: { onClose: () => void; onShared: (group: GroupInfo) => void }) {
   const { project } = useApp();
   const { share } = useGroups();
-  const [name, setName] = useState(project.name);
+  // El nombre del grupo admite menos que el de un proyecto: se propone el del proyecto, recortado.
+  const [name, setName] = useState(project.name.slice(0, GROUP_NAME_MAX));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -43,7 +44,7 @@ export function ShareDialog({ onClose, onShared }: { onClose: () => void; onShar
         </p>
         <label className="field">
           Nombre del grupo
-          <input ref={input} value={name} maxLength={200} onChange={e => setName(e.target.value)} />
+          <input ref={input} value={name} maxLength={GROUP_NAME_MAX} onChange={e => setName(e.target.value)} />
           <small>Lo ven los miembros y aparece en sus invitaciones.</small>
         </label>
         {error && (

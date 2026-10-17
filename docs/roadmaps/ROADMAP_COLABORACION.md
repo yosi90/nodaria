@@ -311,6 +311,14 @@ Responsables: Nodaria y propietario. Depende de las funciones que se decida incl
 - [x] Revisar CSP/SDK y, si afecta al script de medición, seguir las instrucciones de Yosiftadísticas: la CSP no cambia (el canal y el chat van por la API y el gateway de la plataforma, ya permitidos) y el script de medición no se toca. Sin plugin de Administración: no hay operaciones que lo pidan.
 - [x] Completar lint, build y pruebas aplicables; publicar según el flujo vigente y comprobar la revisión y comportamiento servidos: en cada entrega del 2026-10-17 (mismo bundle en los dos dominios, salud de la API, producción sin errores propios).
 
+### Kit 1.39 (2026-10-17)
+
+Petición de la plataforma `docs/peticiones/limitar-el-nombre-de-los-grupos-y-copiar-el-kit-1-39.md`, resuelta el mismo día:
+
+- **Nombre del grupo hasta 150 caracteres**, el límite del nombre de un espacio (antes, 80 en la plataforma y 200 en Nodaria, que daba `424 plataforma_no_disponible` con nombres largos). `GROUP_NAME_MAX` en la API (`api/src/groups/model.ts`, validación de `POST /api/grupos`, con prueba de 150 y 151) y en la web (`src/services/groups.ts`; `ShareDialog` propone el nombre del proyecto recortado y no deja escribir más). Renombrar el espacio lo hace la plataforma (quien gestiona), con su propio límite.
+- **Avisos de las solicitudes para entrar:** los da la plataforma (a quien puede aprobar, con «Aprobar» y «Rechazar», y a quien la pidió). Los grupos de Nodaria se crean solo por invitación, así que hoy no aplica; si algún día se abren a solicitudes, **no se montan avisos propios**.
+- Kit 1.39 copiado en `ecosistema-kit/` (ignorado por Git).
+
 ### Límites y operación (hito 6, 2026-10-17)
 
 - **Tamaño:** el proyecto de un grupo tiene el mismo límite que uno propio (`PROJECT_MAX_BYTES`, 20 MB por defecto) y se sube entero en cada guardado (2,5 s después del último cambio). Medido con un proyecto de 3,6 MB (60 tipos, 3000 nodos, 4000 relaciones y una imagen de mapa de 1,5 MB): huella SHA-256 en 15 ms y combinación a tres bandas en 12 ms, sin conflictos al tocar nodos distintos. El coste real es la subida del documento: con imágenes grandes, conviene que las imágenes sean ligeras.

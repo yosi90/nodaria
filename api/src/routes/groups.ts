@@ -7,6 +7,7 @@ import {
   changedSchemaKeys,
   CREATOR_ROLE,
   groupExternalId,
+  GROUP_NAME_MAX,
   type PlatformSpace,
 } from '../groups/model.ts';
 import type { GroupRecord, GroupView } from '../groups/repository.ts';
@@ -31,7 +32,11 @@ const projectParams = groupParams.extend({
 const createSchema = z.object({
   /** UUID que elige el frontend: repetir la creación con el mismo no crea otro grupo. */
   id: z.uuid(),
-  name: z.string().trim().min(1).max(200),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Escribe el nombre del grupo.')
+    .max(GROUP_NAME_MAX, `El nombre del grupo admite hasta ${GROUP_NAME_MAX} caracteres.`),
   document: documentSchema,
 });
 

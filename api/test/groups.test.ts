@@ -505,6 +505,16 @@ describe('group routes', () => {
     expect((await other.create()).statusCode).toBe(200);
   });
 
+  it('limita el nombre del grupo a 150 caracteres, como la plataforma', async () => {
+    const { call, spaces } = await setup();
+    const long = await call('POST', '/api/grupos', { id: GROUP, name: 'x'.repeat(151), document: doc('p1') });
+    expect(long.statusCode).toBe(400);
+    expect(spaces.calls).toEqual([]);
+    expect(
+      (await call('POST', '/api/grupos', { id: GROUP, name: 'x'.repeat(150), document: doc('p1') })).statusCode,
+    ).toBe(200);
+  });
+
   it('no comparte en un grupo nuevo un proyecto que ya es de otro', async () => {
     const { call, create } = await setup();
     await create();
