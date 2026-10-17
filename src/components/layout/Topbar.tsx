@@ -89,7 +89,7 @@ export function Topbar({
   const [kindOpen, setKindOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const { status: authStatus, signIn } = useAuth();
-  const { groupOf } = useGroups();
+  const { groupOf, present } = useGroups();
   const group = groupOf(project.id);
   const [shareOpen, setShareOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState<GroupInfo | null>(null);
@@ -237,11 +237,20 @@ export function Topbar({
           <button
             type="button"
             className="group-chip"
-            title={`Proyecto del grupo «${group.name}». Tu rol: ${group.isOwner ? 'propiedad' : roleLabel(group.role)}`}
+            title={`Proyecto del grupo «${group.name}». Tu rol: ${group.isOwner ? 'propiedad' : roleLabel(group.role)}.${
+              present.length
+                ? ` ${present.length === 1 ? 'Otra persona lo tiene' : `${present.length} personas más lo tienen`} abierto ahora.`
+                : ''
+            }`}
             onClick={() => setGroupOpen(group)}
           >
             <Users size={13} aria-hidden />
             <span className="label">{group.isOwner ? 'Propiedad' : roleLabel(group.role)}</span>
+            {present.length > 0 && (
+              <span className="group-presence" aria-label={`${present.length} más conectadas`}>
+                +{present.length}
+              </span>
+            )}
           </button>
         )}
       </div>

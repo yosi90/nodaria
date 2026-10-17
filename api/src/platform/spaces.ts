@@ -33,6 +33,11 @@ export interface SpacesClient {
   create(globalId: string, space: SpaceCreation): Promise<PlatformSpace>;
   /** Borra el espacio. Borrar uno que ya no existe no es un error. */
   remove(externalId: string): Promise<void>;
+  /**
+   * Publica en el canal del espacio algo que ya está guardado (hasta 16 KB, opaco para la plataforma).
+   * Repetirlo con el mismo `idExterno` no lo duplica.
+   */
+  publish(externalId: string, idExterno: string, datos: Record<string, unknown>): Promise<void>;
 }
 
 export function createPlatformSpacesClient(config: AppConfig['platform']): SpacesClient {
@@ -76,6 +81,9 @@ export function createPlatformSpacesClient(config: AppConfig['platform']): Space
         dosPasos: data?.dosPasos === true,
         propietario: typeof data?.propietario === 'string' ? data.propietario.toLowerCase() : globalId,
       };
+    },
+    async publish(externalId, idExterno, datos) {
+      await call('POST', `/${encodeURIComponent(externalId)}/canal`, { body: { idExterno, datos } });
     },
     async remove(externalId) {
       try {

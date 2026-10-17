@@ -1,7 +1,7 @@
 # Roadmap por hitos: grupos de trabajo y colaboración
 
 Fecha: 2026-10-13.
-Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Siguiente: hito 3 (canal de tiempo real) y hito 4 (chat del grupo). La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
+Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Hito 3 hecho el 2026-10-17 (ver «Tiempo real y combinación (hito 3)»), salvo un indicador de «sin conexión» propio de los compartidos. Siguiente: hito 4 (chat del grupo). La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
 
 ## Puesta al día del 2026-10-17: los espacios de la plataforma
 
@@ -249,11 +249,18 @@ Responsable: Nodaria, usando identidad/entrega acordadas. Depende del hito 1.
 
 Responsable: Nodaria; transporte según respuesta de la plataforma. Depende del hito 2.
 
-- [ ] Confirmar y distribuir operaciones con secuencia e idempotencia, usando la autorización del tablero.
-- [ ] Ver cambios de nodos, relaciones, notas, esquema y posiciones comunes mientras otras cuentas lo tienen abierto.
-- [ ] Recuperar cambios tras un corte o recargar la instantánea si el cursor quedó antiguo.
-- [ ] Mostrar borradores/conflictos y «sin conexión»; impedir sobrescrituras por el motor de sincronización antiguo.
-- [ ] Resolver y comprobar el deshacer propio frente a cambios ajenos; presencia del tablero opcional después de asegurar los datos.
+- [x] Confirmar y distribuir operaciones con secuencia e idempotencia, usando la autorización del tablero: por versiones del documento (la versión es la secuencia; `idExterno` `<proyecto>-v<versión>` en el canal), no por operaciones sueltas.
+- [x] Ver cambios de nodos, relaciones, notas, esquema y posiciones comunes mientras otras cuentas lo tienen abierto.
+- [x] Recuperar cambios tras un corte o recargar la instantánea si el cursor quedó antiguo (el SDK recupera lo perdido; con `desfase`, `cerrado` o `error` se relee de la API; y el sondeo cada minuto).
+- [ ] Mostrar borradores/conflictos y «sin conexión»; impedir sobrescrituras por el motor de sincronización antiguo. Hecho: conflictos (aviso y copia «(tus cambios)») y el motor antiguo excluido. Falta un indicador de «sin conexión» de los compartidos (hoy solo el estado de la sincronización en el menú de la cuenta).
+- [x] Resolver y comprobar el deshacer propio frente a cambios ajenos; presencia del tablero opcional después de asegurar los datos (deshacer no cruza una versión bajada; presencia en la insignia y en el diálogo del grupo).
+
+### Tiempo real y combinación (hito 3, 2026-10-17)
+
+- **API:** tras guardar el proyecto del grupo, publica en el canal del espacio `{ tipo: 'proyecto', id, version, por }` con `idExterno` `<proyecto>-v<versión>` (solo la referencia; el canal admite 16 KB). Tras aplicar cambios de pertenencia del feed, `{ tipo: 'grupo' }` con `idExterno` `miembros-<id del cambio>` (`createFeedReader`, `onSpaces`). Si publicar falla se registra: lo recoge el sondeo.
+- **Frontend:** `GroupsProvider` abre el canal del grupo del proyecto abierto (`yosiftware.espacios.canal`). Un aviso de una versión que este navegador no tiene, `grupo`, `desfase`, `cerrado` o `error` lanzan la sincronización; `abierto` y `presencia` dan quién lo tiene abierto (insignia «+N» y «conectado» en el diálogo del grupo).
+- **Combinar** (`src/services/merge.ts`, con pruebas): si cambiaron los dos lados (o la subida da 409), combina a tres bandas con la versión base que el navegador guarda de cada compartido (IndexedDB, `backups`, clave `shared-base:<id>`; sin IndexedDB, en memoria). Listas con `id` (o `{ ref }`) elemento a elemento y objetos clave a clave: lo que cambió un solo lado se queda; el mismo dato cambiado distinto en los dos es un conflicto y gana el grupo, con aviso y la versión de aquí completa en «(tus cambios)»; borrar lo que el otro cambió lo conserva. El resultado se repara (`prepareProject`: ciclos, referencias rotas) y se sube con la versión del grupo; si otra persona vuelve a guardar, se repite (hasta tres vueltas). Sin versión base, se guarda aparte lo de aquí como antes.
+- **Verificado:** 66 pruebas de la API (con el canal y el lector del feed) y 323 del front (con la combinación); Edge con la plataforma y la API simuladas: dos cambios a la vez en partes distintas se combinan sin copia (versión 5), un aviso del canal baja el cambio al momento y la insignia cuenta a la otra persona conectada; sin errores de JavaScript. No probado con cuentas reales, cortes de red ni varias pestañas.
 
 **Termina cuando:** dos cuentas editan elementos distintos sin pérdidas, el mismo campo produce el resultado/conflicto definido, los movimientos no introducen ciclos, un reintento no duplica operaciones y expulsar a una cuenta conectada detiene su acceso. Probar cortes de red, varias pestañas y reinicio del proceso.
 

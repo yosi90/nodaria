@@ -114,11 +114,17 @@ export function createFeedReader({
   fetchPage,
   intervalMs,
   log,
+  onSpaces,
 }: {
   store: FeedStore;
   fetchPage: (since: number) => Promise<FeedPage>;
   intervalMs: number;
   log: Pick<FastifyBaseLogger, 'info' | 'warn' | 'error'>;
+  /**
+   * Tras aplicar una página: los grupos cuya pertenencia o datos cambiaron, con el id del último cambio
+   * de cada uno (para avisar por su canal a quien los tiene abiertos). No se llama por los borrados.
+   */
+  onSpaces?: (changed: { externalId: string; changeId: number }[]) => void;
 }) {
   let timer: NodeJS.Timeout | null = null;
   let running: Promise<number> | null = null;
@@ -130,6 +136,15 @@ export function createFeedReader({
       const result = await fetchPage(cursor);
       await store.apply(result.cambios, result.cursor);
       applied += result.cambios.length;
+      if (onSpaces) {
+        const changed = new Map<string, number>();
+        for (const change of result.cambios) {
+          const effect = spaceFeedEffect(change);
+          if (!effect || effect.kind === 'space-deleted') continue;
+          changed.set(effect.kind === 'space' ? effect.space.idExterno : effect.externalId, change.id);
+        }
+        if (changed.size) onSpaces([...changed].map(([externalId, changeId]) => ({ externalId, changeId })));
+      }
       cursor = result.cursor;
       if (!result.hayMas) break;
     }

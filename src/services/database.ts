@@ -129,6 +129,28 @@ export async function takeVault(db: IDBDatabase, account: string): Promise<Proje
   return found?.projects ?? [];
 }
 
+/**
+ * Versión base de un proyecto compartido: la última que este navegador tiene del grupo, para combinar
+ * con ella los cambios de aquí y los de otra persona (`merge.ts`). Sin proyecto, se borra.
+ */
+const sharedBaseKey = (id: string) => `shared-base:${id}`;
+
+export function putSharedBase(db: IDBDatabase, id: string, project: Project | null) {
+  const tx = db.transaction('backups', 'readwrite');
+  const store = tx.objectStore('backups');
+  if (project) store.put({ kind: 'shared-base', project }, sharedBaseKey(id));
+  else store.delete(sharedBaseKey(id));
+  return committed(tx);
+}
+
+export async function getSharedBase(db: IDBDatabase, id: string): Promise<Project | null> {
+  const tx = db.transaction('backups', 'readonly');
+  const found = await settled(
+    tx.objectStore('backups').get(sharedBaseKey(id)) as IDBRequest<{ project: Project } | undefined>,
+  );
+  return found?.project ?? null;
+}
+
 export function clearBackups(db: IDBDatabase) {
   const tx = db.transaction('backups', 'readwrite');
   tx.objectStore('backups').clear();

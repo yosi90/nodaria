@@ -42,6 +42,13 @@ feed = config.platform.feedEnabled
       fetchPage: createFeedClient(config.platform),
       intervalMs: config.platform.feedIntervalMs,
       log: app.log,
+      // Un miembro que entra, sale o cambia de rol: quien tiene el grupo abierto relee sus permisos.
+      onSpaces: changed => {
+        for (const { externalId, changeId } of changed)
+          void spaces
+            .publish(externalId, `miembros-${changeId}`, { tipo: 'grupo' })
+            .catch(error => app.log.warn({ err: error, group: externalId }, 'No se pudo avisar al canal del grupo'));
+      },
     })
   : null;
 feed?.start();

@@ -118,6 +118,7 @@ export function memoryGroups(projects: ProjectStore) {
 export function fakeSpaces() {
   const created = new Map<string, PlatformSpace>();
   const calls: string[] = [];
+  const published: { externalId: string; idExterno: string; datos: Record<string, unknown> }[] = [];
   let nextId = 100;
   let failNext: PlatformError | null = null;
   const client: SpacesClient = {
@@ -144,6 +145,10 @@ export function fakeSpaces() {
       created.set(space.idExterno, value);
       return value;
     },
+    async publish(externalId, idExterno, datos) {
+      calls.push(`publish:${externalId}:${idExterno}`);
+      published.push({ externalId, idExterno, datos });
+    },
     async remove(externalId) {
       calls.push(`remove:${externalId}`);
       if (failNext) {
@@ -158,6 +163,7 @@ export function fakeSpaces() {
     client,
     created,
     calls,
+    published,
     failOnce(error: PlatformError) {
       failNext = error;
     },

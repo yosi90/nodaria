@@ -9,9 +9,9 @@ import { PLATFORM_API_URL, sdk } from './yosiftware';
  * reglas puras de la sincronización de los compartidos, que el motor (`src/state/groups.tsx`) ejecuta.
  *
  * A diferencia de los proyectos propios, en un compartido nunca gana en silencio «el último cambio»:
- * si cambiaron los dos lados, los cambios de aquí se guardan como un proyecto propio aparte y se baja
- * la versión del grupo. La vista del mapa (`view`) es de cada persona: no cuenta como cambio y se
- * conserva al bajar.
+ * si cambiaron los dos lados, se combinan con la versión base (`merge.ts`); si coinciden en el mismo
+ * dato, gana el grupo y lo de aquí se guarda como un proyecto propio aparte. La vista del mapa
+ * (`view`) es de cada persona: no cuenta como cambio y se conserva al bajar.
  */
 
 export interface GroupCapabilities {
@@ -255,8 +255,10 @@ export async function contentSignature(project: Project): Promise<string> {
 }
 
 export interface SharedPlan {
-  /** Bajar la versión del grupo (nuevo aquí o cambiado allí). `keepLocalAs`: guardar antes lo de aquí aparte. */
+  /** Bajar la versión del grupo (nuevo aquí o cambiado allí). `keepLocal`: si difiere, guardar aparte lo de aquí. */
   download: { group: string; id: string; keepLocal: boolean }[];
+  /** Cambió aquí y allí: combinar las dos versiones con la base y subir el resultado. */
+  merge: { group: string; id: string }[];
   upload: { group: string; project: Project; baseVersion: number }[];
   /** Ya no es de un grupo de la cuenta (salió, la echaron o se borró): fuera de aquí, salvo cambios sin subir. */
   release: { id: string; keepLocal: boolean }[];
@@ -272,7 +274,7 @@ export function planShared(
   meta: SharedMeta,
   signatures: Record<string, string>,
 ): SharedPlan {
-  const plan: SharedPlan = { download: [], upload: [], release: [] };
+  const plan: SharedPlan = { download: [], merge: [], upload: [], release: [] };
   const localById = new Map(local.map(p => [p.id, p]));
   const remote = new Map<string, { group: GroupInfo; project: SharedProjectSummary }>();
   for (const group of groups) for (const project of group.projects) remote.set(project.id, { group, project });
@@ -293,7 +295,8 @@ export function planShared(
     const remoteChanged = R.version !== M.version;
     const localChanged = group.capabilities.edit && signatures[id] !== undefined && signatures[id] !== M.signature;
     if (localChanged && !remoteChanged) plan.upload.push({ group: group.id, project: L, baseVersion: M.version });
-    else if (remoteChanged) plan.download.push({ group: group.id, id, keepLocal: localChanged });
+    else if (localChanged) plan.merge.push({ group: group.id, id });
+    else if (remoteChanged) plan.download.push({ group: group.id, id, keepLocal: false });
   }
 
   for (const [id, M] of Object.entries(meta.projects)) {

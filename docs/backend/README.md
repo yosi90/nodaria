@@ -134,6 +134,7 @@ Cada grupo es un espacio de la plataforma (`ecosistema-kit/ESPACIOS.md`); el pla
 - **Capacidades** (`capabilitiesOf`): solo los miembros `activo`; la propiedad, todo; responsable, editar y cambiar el esquema; editor, editar sin cambiar el esquema; lector o rol desconocido, leer.
 - **Crear** (`POST /api/grupos`): apunta el grupo (`creando`), crea el espacio con `X-Yosi-Cuenta` y el rol `responsable`, y mete el documento como proyecto del grupo; la copia personal queda borrada. Idempotente por `id`. Los fallos de la plataforma responden `424 plataforma_no_disponible`.
 - **Proyecto propio con el id de un grupo**: `PUT /api/projects/{id}` responde `409 proyecto_compartido` (`group`) si la cuenta es miembro de ese grupo.
+- **Canal del espacio** (hito 3): tras guardar el proyecto del grupo, la API publica `{ tipo: 'proyecto', id, version, por }` (`idExterno` `<proyecto>-v<versión>`); tras aplicar cambios de pertenencia del feed, `{ tipo: 'grupo' }` (`miembros-<id del cambio>`). Solo referencias: el frontend baja el documento de esta API. Un fallo al publicar se registra y lo recoge el sondeo del frontend.
 - **Borrar** (`DELETE /api/grupos/{grupo}?recipient=`): solo la propiedad; el proyecto pasa a la cuenta elegida (miembro activo) y se borra el espacio. Si la plataforma falla, el grupo queda `borrando` y el mantenimiento lo termina con el ritmo del feed.
 
 ## Asistencia de IA

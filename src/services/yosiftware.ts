@@ -44,6 +44,14 @@ export interface PlatformSpace {
   } | null;
 }
 
+/** Lo que llega por el canal de un espacio (`ecosistema-kit/ESPACIOS.md`, «El canal de tiempo real»). */
+export type SpaceChannelMessage =
+  | { tipo: 'abierto' | 'presencia'; espacio: number; presentes: string[] }
+  | { tipo: 'mensaje'; espacio: number; secuencia: number; idExterno: string; datos: Record<string, unknown> }
+  | { tipo: 'desfase'; espacio: number }
+  | { tipo: 'cerrado'; espacio: number; motivo: string }
+  | { tipo: 'error'; espacio: number; code: string };
+
 /** Lo que lanza el SDK al cerrar su ventana de invitaciones (`yosiftware:espacio`). */
 export type SpaceEvent =
   { tipo: 'aceptada'; espacio: PlatformSpace | null } | { tipo: 'rechazada'; invitacion: number };
@@ -67,6 +75,15 @@ export interface YosiftwareSdk {
     mios(): Promise<PlatformSpace[] | null>;
     miembros(id: number): Promise<unknown[] | null>;
     invitar(id: number, a: { cuenta: string } | { correo: string }, rol?: string): Promise<unknown>;
+    /**
+     * El canal de tiempo real del espacio: lo que publica la API de Nodaria, en orden y sin perder nada al
+     * reconectar, y quién lo tiene abierto.
+     */
+    canal?(
+      id: number,
+      oyente: (mensaje: SpaceChannelMessage) => void,
+      opciones?: { desde?: number },
+    ): { cerrar(): void };
     /** La ventana de la plataforma con las invitaciones pendientes en Nodaria. */
     verInvitaciones(opciones?: { codigo?: string }): Promise<void>;
   };

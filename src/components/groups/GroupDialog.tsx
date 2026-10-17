@@ -33,7 +33,7 @@ const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ valu
  */
 export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () => void }) {
   const { user } = useAuth();
-  const { refresh, leave, removeGroup } = useGroups();
+  const { refresh, leave, removeGroup, present } = useGroups();
   const { confirm } = useDialogs();
   const toast = useToast();
   const [members, setMembers] = useState<SpaceMember[] | null>(null);
@@ -146,6 +146,11 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
                     <span className="group-member-name">
                       {member.nombre ?? member.alias}
                       {me && <span className="badge">tú</span>}
+                      {!me && present.includes(member.cuenta.toLowerCase()) && (
+                        <span className="badge online" title="Tiene el proyecto abierto ahora">
+                          conectado
+                        </span>
+                      )}
                       {member.propietario && (
                         <span className="badge accent">
                           <Crown size={11} aria-hidden /> propiedad

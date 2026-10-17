@@ -191,6 +191,11 @@ export const groupRoutes: FastifyPluginAsync<
         current: result.current,
       });
     }
+    // Ya guardado: se avisa por el canal del espacio a quien lo tiene abierto (hito 3). Solo la
+    // referencia, que el frontend baja de esta API; si falla, lo recogen al sondear.
+    spaces
+      .publish(group, `${id}-v${result.version}`, { tipo: 'proyecto', id, version: result.version, por: user.globalId })
+      .catch(error => request.log.warn({ err: error, group }, 'No se pudo publicar en el canal del grupo'));
     return { id, version: result.version, serverUpdatedAt: result.serverUpdatedAt };
   });
 

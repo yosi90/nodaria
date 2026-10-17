@@ -30,7 +30,7 @@ const local = (id: string) => project({ id, name: id, schemas: [schema('t')] });
 describe('planShared', () => {
   it('baja los proyectos de grupo nuevos aquí', () => {
     const plan = planShared([], [group('g', [['p', 1]])], meta({}), {});
-    expect(plan).toEqual({ download: [{ group: 'g', id: 'p', keepLocal: false }], upload: [], release: [] });
+    expect(plan).toEqual({ download: [{ group: 'g', id: 'p', keepLocal: false }], merge: [], upload: [], release: [] });
   });
 
   it('sube lo cambiado aquí y baja lo cambiado allí', () => {
@@ -45,12 +45,13 @@ describe('planShared', () => {
     // Sin cambios en ningún lado, nada.
     expect(planShared([mine], [group('g', [['p', 2]])], meta({ p: entry }), { p: 'antes' })).toEqual({
       download: [],
+      merge: [],
       upload: [],
       release: [],
     });
   });
 
-  it('con cambios en los dos lados baja la del grupo y guarda aparte lo de aquí', () => {
+  it('con cambios en los dos lados los combina', () => {
     const plan = planShared(
       [local('p')],
       [group('g', [['p', 3]])],
@@ -58,7 +59,8 @@ describe('planShared', () => {
       { p: 'ahora' },
     );
     expect(plan.upload).toEqual([]);
-    expect(plan.download).toEqual([{ group: 'g', id: 'p', keepLocal: true }]);
+    expect(plan.download).toEqual([]);
+    expect(plan.merge).toEqual([{ group: 'g', id: 'p' }]);
   });
 
   it('sin permiso de edición nunca sube: solo baja', () => {

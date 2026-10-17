@@ -12,7 +12,7 @@ import {
   type PlatformSpace,
 } from '../src/groups/model.ts';
 import { createSqlGroupStore, type GroupStore } from '../src/groups/repository.ts';
-import { createSqlFeedStore } from '../src/platform/feed.ts';
+import { createFeedReader, createSqlFeedStore } from '../src/platform/feed.ts';
 import { PlatformError } from '../src/platform/spaces.ts';
 import { createMemoryProjectStore, createSqlProjectStore, type ProjectStore } from '../src/projects/repository.ts';
 import { createSqlUserStore } from '../src/users/repository.ts';
@@ -499,6 +499,20 @@ describe('group routes', () => {
     ).toBe(404);
   });
 
+  it('avisa por el canal del espacio de cada versión guardada, con solo la referencia', async () => {
+    const { call, create, join, spaces } = await setup();
+    await create();
+    await join(OTHER, 'editor');
+    const url = `/api/grupos/${EXTERNAL}/proyectos/p1`;
+    await call('PUT', url, { document: doc('p1', { nodes: [{ id: 'n1' }] }), baseVersion: 1 }, 'other');
+    expect(spaces.published).toEqual([
+      { externalId: EXTERNAL, idExterno: 'p1-v2', datos: { tipo: 'proyecto', id: 'p1', version: 2, por: OTHER } },
+    ]);
+    // Un conflicto no publica nada.
+    await call('PUT', url, { document: doc('p1'), baseVersion: 1 }, 'other');
+    expect(spaces.published).toHaveLength(1);
+  });
+
   it('lee el feed a petición tras aceptar una invitación', async () => {
     const { call, create, feedReads } = await setup();
     await create();
@@ -542,5 +556,49 @@ describe('group routes', () => {
     expect(spaces.calls).toEqual([`create:${EXTERNAL}`, `remove:${EXTERNAL}`, 'roles', `remove:${EXTERNAL}`]);
     expect(await groups.find(EXTERNAL)).toMatchObject({ state: 'borrado' });
     expect(await groups.pendingDeletes()).toEqual([]);
+  });
+});
+
+describe('lector del feed', () => {
+  it('avisa de los grupos con cambios de pertenencia, no de los borrados', async () => {
+    const changes = [
+      {
+        id: 7,
+        tipo: 'miembro.entrado',
+        cuenta: OTHER,
+        cuenta2: null,
+        fecha: '',
+        datos: { espacio: { id: 1, idExterno: 'grupo-a' }, rol: 'lector', estado: 'activo' },
+      },
+      {
+        id: 8,
+        tipo: 'miembro.cambiado',
+        cuenta: OTHER,
+        cuenta2: null,
+        fecha: '',
+        datos: { espacio: { id: 1, idExterno: 'grupo-a' }, rol: 'editor', estado: 'activo' },
+      },
+      {
+        id: 9,
+        tipo: 'espacio.borrado',
+        cuenta: OWNER,
+        cuenta2: null,
+        fecha: '',
+        datos: { espacio: { id: 2, idExterno: 'grupo-b' } },
+      },
+      { id: 10, tipo: 'cuenta.estado', cuenta: OWNER, cuenta2: null, fecha: '', datos: { estado: 'activa' } },
+    ];
+    const seen: { externalId: string; changeId: number }[][] = [];
+    let cursor = 0;
+    const reader = createFeedReader({
+      store: { cursor: async () => cursor, apply: async (_changes, next) => void (cursor = next) },
+      fetchPage: async () => ({ cambios: changes, cursor: 10, hayMas: false }),
+      intervalMs: 60_000,
+      log: { info() {}, warn() {}, error() {} },
+      onSpaces: changed => seen.push(changed),
+    });
+    await reader.readOnce();
+    expect(seen).toEqual([[{ externalId: 'grupo-a', changeId: 8 }]]);
+    expect(cursor).toBe(10);
   });
 });

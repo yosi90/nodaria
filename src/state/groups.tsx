@@ -32,7 +32,9 @@ import {
   type GroupInfo,
   type SharedMeta,
 } from '../services/groups';
-import { prepareProject } from '../services/storage';
+import { mergeProjects } from '../services/merge';
+import { loadSharedBase, prepareProject, saveSharedBase } from '../services/storage';
+import { sdk } from '../services/yosiftware';
 import { useToast } from '../components/common/toasts';
 import { useApp } from './AppContext';
 import { useAuth } from './auth';
@@ -41,8 +43,10 @@ import { useAuth } from './auth';
  * Motor de los proyectos compartidos (docs/roadmaps/ROADMAP_COLABORACION.md). Lee los grupos de la
  * cuenta, baja y sube el proyecto de cada grupo con control de versión y aplica lo que el rol deja hacer
  * con el proyecto abierto. Va aparte de la sincronización de los proyectos propios (`sync.tsx`), que
- * excluye los compartidos. Hasta el canal de tiempo real (hito 3), los cambios de otros se leen cada
- * minuto, al volver a la pestaña y después de cada cambio de aquí.
+ * excluye los compartidos. Si los dos lados cambiaron, combina las versiones con la base que guarda de
+ * cada compartido (`merge.ts`). Los cambios de otros llegan por el canal del espacio del proyecto
+ * abierto (hito 3), que también dice quién lo tiene abierto; además se leen cada minuto, al volver a la
+ * pestaña y después de cada cambio de aquí, por si el canal no llega.
  */
 
 interface GroupsContextValue {
@@ -57,6 +61,8 @@ interface GroupsContextValue {
   share: (project: Project, name: string) => Promise<GroupInfo>;
   removeGroup: (group: GroupInfo, recipient: string) => Promise<void>;
   leave: (group: GroupInfo) => Promise<void>;
+  /** Otras cuentas con el proyecto abierto ahora (ids en minúsculas), según el canal de su grupo. */
+  present: string[];
 }
 
 const Context = createContext<GroupsContextValue | null>(null);
@@ -65,6 +71,8 @@ const PUSH_DELAY_MS = 2500;
 const POLL_MS = 60 * 1000;
 /** Tras aceptar una invitación, la plataforma tarda un momento en dejar el cambio en el feed. */
 const REFRESH_RETRIES_MS = [0, 2000, 5000, 10000];
+/** Vueltas seguidas como mucho cuando otra persona guarda mientras se combina. */
+const MAX_PASSES = 3;
 
 /** Los cambios de aquí que no pudieron subir se guardan como un proyecto propio aparte. */
 const localCopy = (project: Project): Project => {
@@ -116,10 +124,11 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     return next;
   }, []);
 
+  /** Una vuelta; devuelve si hace falta otra (otra persona guardó mientras se combinaba). */
   const runOnce = useCallback(
-    async (fresh: boolean) => {
+    async (fresh: boolean): Promise<boolean> => {
       const token = await getToken();
-      if (!token || !uidRef.current || meta.current.uid !== uidRef.current) return;
+      if (!token || !uidRef.current || meta.current.uid !== uidRef.current) return false;
       const list = await (fresh ? refreshGroups(token) : listGroups(token));
       publish(list);
 
@@ -136,6 +145,9 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       /** Copias de lo de aquí, con el id del compartido del que salen. */
       const copies: { from: string; project: Project }[] = [];
       const remove: string[] = [];
+      /** Versiones base que guardar (la última del grupo que queda aquí); `null` la borra. */
+      const bases = new Map<string, Project | null>();
+      let again = false;
 
       for (const item of plan.upload) {
         try {
@@ -145,11 +157,53 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
             version: written.version,
             signature: signatures[item.project.id],
           };
+          bases.set(item.project.id, item.project);
         } catch (error) {
-          // Otra persona guardó antes, o el rol ya no deja: se baja la del grupo y lo de aquí queda aparte.
           if (!(error instanceof ApiError) || (error.status !== 409 && error.status !== 403)) throw error;
-          plan.download.push({ group: item.group, id: item.project.id, keepLocal: true });
-          if (error.status === 403) toastRef.current({ message: groupErrorMessage(error), duration: 9000 });
+          // Otra persona guardó antes: se combinan. El rol ya no deja: se baja la del grupo y lo de aquí queda aparte.
+          if (error.status === 409) plan.merge.push({ group: item.group, id: item.project.id });
+          else {
+            plan.download.push({ group: item.group, id: item.project.id, keepLocal: true });
+            toastRef.current({ message: groupErrorMessage(error), duration: 9000 });
+          }
+        }
+      }
+
+      for (const item of plan.merge) {
+        const L = localById.get(item.id);
+        const base = await loadSharedBase(item.id);
+        // Sin la versión base (otro navegador, o sin IndexedDB) no se puede combinar: lo de aquí queda aparte.
+        if (!L || !base) {
+          plan.download.push({ group: item.group, id: item.id, keepLocal: true });
+          continue;
+        }
+        const stored = await getSharedProject(token, item.group, item.id);
+        const remote: Project = { ...prepareProject(stored.document).project, id: item.id, view: L.view };
+        const { project: combined, conflicts } = mergeProjects(base, L, remote);
+        const repaired: Project = { ...prepareProject(combined).project, id: item.id, view: L.view };
+        if (conflicts.length) {
+          copies.push({ from: item.id, project: localCopy(L) });
+          toastRef.current({
+            message: `«${remote.name}»: otra persona cambió ${conflicts.length === 1 ? 'un dato' : `${conflicts.length} datos`} que tú también cambiaste, y se queda su versión. Lo demás se ha juntado; tu versión completa está en «${L.name} (tus cambios)».`,
+            duration: 12000,
+          });
+        }
+        const [remoteSignature, combinedSignature] = [await contentSignature(remote), await contentSignature(repaired)];
+        if (combinedSignature === remoteSignature) {
+          upsert.push(repaired);
+          next.projects[item.id] = { group: item.group, version: stored.version, signature: remoteSignature };
+          bases.set(item.id, repaired);
+          continue;
+        }
+        try {
+          const written = await putSharedProject(token, item.group, item.id, repaired, stored.version);
+          upsert.push(repaired);
+          next.projects[item.id] = { group: item.group, version: written.version, signature: combinedSignature };
+          bases.set(item.id, repaired);
+        } catch (error) {
+          if (!(error instanceof ApiError) || error.status !== 409) throw error;
+          // Otra persona volvió a guardar: se repite con su versión. La copia, si la hubo, ya está.
+          again = true;
         }
       }
 
@@ -170,6 +224,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         }
         upsert.push(merged);
         next.projects[item.id] = { group: item.group, version: stored.version, signature };
+        bases.set(item.id, merged);
       }
 
       for (const item of plan.release) {
@@ -185,9 +240,10 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
           });
         }
         delete next.projects[item.id];
+        bases.set(item.id, null);
       }
 
-      // Lo que se editó aquí mientras se bajaba no se pisa: se resuelve en la siguiente vuelta.
+      // Lo que se editó aquí mientras se bajaba no se pisa: se resuelve (combinando) en la siguiente vuelta.
       const current = new Map(projects.current.map(p => [p.id, p]));
       const skipped = new Set(upsert.filter(p => current.get(p.id) !== localById.get(p.id)).map(p => p.id));
       const safeUpsert = upsert.filter(p => !skipped.has(p.id));
@@ -196,6 +252,8 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         const before = meta.current.projects[id];
         if (before) next.projects[id] = before;
         else delete next.projects[id];
+        bases.delete(id);
+        again = true;
       }
 
       if (safeUpsert.length || safeCopies.length || remove.length) {
@@ -206,14 +264,18 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
           fresh: safeUpsert.length + remove.length > 0,
         });
       }
+      for (const [id, project] of bases) await saveSharedBase(id, project).catch(() => undefined);
       saveMeta(next);
+      return again;
     },
     [getToken, publish, saveMeta, dispatch, reportRepairs],
   );
 
   const run = useCallback(
     (fresh = false) =>
-      enqueue(() => runOnce(fresh)).catch(error => {
+      enqueue(async () => {
+        for (let pass = 0; pass < MAX_PASSES; pass++) if (!(await runOnce(fresh && pass === 0))) break;
+      }).catch(error => {
         if (!(error instanceof OfflineError))
           console.warn('No se pudieron sincronizar los proyectos compartidos', error);
       }),
@@ -284,6 +346,38 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('yosiftware:espacio', accepted);
   }, [signedIn, refresh, dispatch]);
 
+  // El canal del grupo del proyecto abierto: lo que otros guardan llega al momento, y quién lo tiene abierto.
+  const activeGroup = signedIn ? groups.find(g => g.projects.some(p => p.id === state.activeProjectId)) : undefined;
+  const spaceId = activeGroup?.spaceId ?? null;
+  const [presence, setPresence] = useState<{ space: number; ids: string[] } | null>(null);
+  useEffect(() => {
+    const espacios = sdk()?.espacios;
+    if (!spaceId || !espacios?.canal) return;
+    const channel = espacios.canal(spaceId, message => {
+      switch (message.tipo) {
+        case 'mensaje': {
+          const { tipo, id, version } = message.datos as { tipo?: string; id?: string; version?: number };
+          // Lo que guardó este navegador ya está aquí.
+          if (tipo === 'proyecto' && id && (meta.current.projects[id]?.version ?? 0) >= (version ?? 0)) return;
+          void syncShared();
+          return;
+        }
+        case 'abierto':
+        case 'presencia':
+          setPresence({ space: spaceId, ids: message.presentes.map(id => id.toLowerCase()) });
+          return;
+        default:
+          // Lo perdido ya no se conserva, o ya no es miembro: se relee todo de la API.
+          void syncShared();
+      }
+    });
+    return () => channel.cerrar();
+  }, [spaceId, syncShared]);
+  const present = useMemo(
+    () => (presence && presence.space === spaceId ? presence.ids.filter(id => id !== user?.id) : []),
+    [presence, spaceId, user],
+  );
+
   // El rol decide qué se puede cambiar en el compartido abierto.
   useEffect(() => {
     setActionGuard((action, appState) => {
@@ -307,6 +401,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         const shared = group.projects.find(p => p.id === project.id);
         const base = meta.current.uid === uidRef.current ? meta.current : emptySharedMeta(uidRef.current);
         if (shared) {
+          await saveSharedBase(project.id, project).catch(() => undefined);
           saveMeta({
             uid: uidRef.current,
             projects: { ...base.projects, [project.id]: { group: group.id, version: shared.version, signature } },
@@ -346,8 +441,8 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const isShared = useCallback((projectId: string) => known.current.has(projectId), []);
 
   const value = useMemo(
-    () => ({ groups: visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave }),
-    [visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave],
+    () => ({ groups: visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present }),
+    [visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

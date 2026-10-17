@@ -19,6 +19,16 @@
 .group-chip:hover {
   border-color: var(--accent);
 }
+.group-presence {
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--success-soft);
+  color: var(--success);
+}
+.badge.online {
+  background: var(--success-soft);
+  color: var(--success);
+}
 .group-chip .label {
   overflow: hidden;
   text-overflow: ellipsis;

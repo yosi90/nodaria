@@ -372,6 +372,23 @@ export async function takeVault(account: string): Promise<Project[]> {
 }
 
 /** Borra las copias apartadas (al vaciar el navegador). */
+/**
+ * Versión base de cada compartido (la última del grupo que tiene el navegador). Sin IndexedDB se guarda
+ * solo en memoria: al recargar, un conflicto se resuelve guardando aparte lo de aquí, sin combinar.
+ */
+const memoryBases = new Map<string, Project>();
+
+export async function saveSharedBase(id: string, project: Project | null) {
+  if (backend.kind === 'indexeddb') return database.putSharedBase(backend.db, id, project);
+  if (project) memoryBases.set(id, project);
+  else memoryBases.delete(id);
+}
+
+export async function loadSharedBase(id: string): Promise<Project | null> {
+  if (backend.kind === 'indexeddb') return database.getSharedBase(backend.db, id).catch(() => null);
+  return memoryBases.get(id) ?? null;
+}
+
 export async function clearBackups() {
   for (const key of localRescueKeys()) removeLocal(key);
   if (backend.kind === 'indexeddb') await database.clearBackups(backend.db);
