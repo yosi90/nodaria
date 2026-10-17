@@ -103,6 +103,7 @@ export function createView(): ProjectView {
     hiddenRelationTypeIds: [],
     hiddenEntityTypeIds: [],
     hiddenReferenceFieldIds: [],
+    tagFilter: [],
     layoutFilters: {},
     showHierarchy: true,
     hierarchyOnlyIfUnrelated: true,

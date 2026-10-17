@@ -43,7 +43,7 @@ Resuelto así: `parseState` prepara cada proyecto por separado; si alguno falla,
 ## 4. Vistas y lienzo
 
 - [ ] **Línea temporal** (Fase 5): acontecimientos y nodos con fechas sobre el calendario del mundo (`src/domain/calendar.ts`, ya hecho). Quedaron fuera del calendario las eras, los años negativos y un aviso en Salud de las fechas escritas fuera del calendario.
-- [ ] Filtro por etiquetas en la leyenda del mapa. Se aplazó en la Fase 2 «hasta que existan etiquetas»; el atributo «Etiquetas» ya existe.
+- [x] Filtro por etiquetas en la leyenda del mapa. Hecho el 2026-10-17: sección «Etiquetas» de la leyenda con las del proyecto y cuántos nodos las llevan (`src/domain/tagFilter.ts`); con alguna marcada, el lienzo solo muestra los nodos que llevan al menos una en cualquier atributo «Etiquetas», y «Ver todos» lo quita. Se guarda en la vista (`view.tagFilter`, vacío por defecto y en los proyectos anteriores) y, por tanto, en las vistas guardadas.
 - [ ] Selección múltiple en el lienzo. Se aplazó en la Fase 2; la Tabla ya tiene operaciones masivas, que podrían reutilizarse.
 - [ ] Rendimiento en mapas grandes (prioridad conocida en `PROJECT_CONTEXT.md`). Medición de la Fase 2 con 500 nodos y 1500 relaciones: jerárquica 1,3 s, fuerzas 2,5 s y resaltado 0,22 s.
 

@@ -227,6 +227,8 @@ export interface ProjectView {
   hiddenEntityTypeIds: string[];
   /** Atributos de referencia que no se dibujan como vínculos en el lienzo. */
   hiddenReferenceFieldIds: string[];
+  /** Etiquetas marcadas en la leyenda: solo se ven los nodos con alguna; vacía = sin filtro (`tagFilter.ts`). */
+  tagFilter: string[];
   /** Filtros de las demás disposiciones (los de la activa son los tres anteriores); ver `src/domain/layoutFilters.ts`. */
   layoutFilters: Partial<Record<LayoutMode, LayoutFilters>>;
   /** Cuándo mostrar las etiquetas de las aristas. */

@@ -35,6 +35,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import { getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
 import { usePreferences } from '../../state/preferences';
 import { referenceFields, referenceLinks } from '../../domain/references';
+import { passesTagFilter } from '../../domain/tagFilter';
 import {
   impliedKinship,
   isImpliedKinship,
@@ -198,6 +199,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     structure.id,
     view.focusDepth,
     view.hiddenEntityTypeIds,
+    view.tagFilter,
     isolated?.nodeId ?? null,
   ]);
   const lastFrameKey = useRef(savedViewport?.frameKey);
@@ -240,13 +242,17 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     [project],
   );
   const visibleIds = useMemo(() => {
-    let ids = new Set(project.nodes.filter(n => !hiddenEntities.has(n.typeId)).map(n => n.id));
+    let ids = new Set(
+      project.nodes
+        .filter(n => !hiddenEntities.has(n.typeId) && passesTagFilter(project, n, view.tagFilter))
+        .map(n => n.id),
+    );
     if (focusId && focusDepth > 0 && ids.has(focusId)) {
       const near = neighborhood(focusId, links, focusDepth);
       ids = new Set([...ids].filter(id => near.has(id)));
     }
     return ids;
-  }, [project.nodes, hiddenEntities, focusDepth, focusId, links]);
+  }, [project, hiddenEntities, view.tagFilter, focusDepth, focusId, links]);
 
   // La disposición solo cuenta lo visible: un nodo oculto no reserva sitio ni separa a los demás, y al
   // mostrar u ocultar tipos (o cambiar el foco) todo se redistribuye con lo que queda.

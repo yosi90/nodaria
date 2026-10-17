@@ -606,6 +606,22 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.legend-title .legend-clear {
+  float: right;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  cursor: pointer;
+}
+.legend-hint {
+  margin: 0 0 2px;
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+}
 .legend-row.legend-sub {
   padding-left: 26px;
   font-size: var(--fs-xs);

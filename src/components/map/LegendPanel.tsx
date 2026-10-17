@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { referenceFields, referenceLinks } from '../../domain/references';
+import { projectTags } from '../../domain/tagFilter';
 import { useApp } from '../../state/AppContext';
 import { IconButton } from '../common/Button';
 import { TypeIcon } from '../common/icons';
@@ -16,6 +17,20 @@ export function LegendPanel({ onClose }: { onClose: () => void }) {
   const refs = referenceFields(project);
   const refCounts = new Map<string, number>();
   referenceLinks(project).forEach(l => refCounts.set(l.fieldId, (refCounts.get(l.fieldId) ?? 0) + 1));
+
+  const tags = projectTags(project);
+  // Una etiqueta marcada que ya nadie lleva sigue en el filtro: se muestra para poder quitarla.
+  const tagRows = [
+    ...tags,
+    ...view.tagFilter.filter(t => !tags.some(x => x.tag === t)).map(tag => ({ tag, count: 0 })),
+  ];
+  const toggleTag = (tag: string) =>
+    dispatch({
+      type: 'update-view',
+      view: {
+        tagFilter: view.tagFilter.includes(tag) ? view.tagFilter.filter(t => t !== tag) : [...view.tagFilter, tag],
+      },
+    });
 
   const toggle = (key: 'hiddenEntityTypeIds' | 'hiddenRelationTypeIds' | 'hiddenReferenceFieldIds', id: string) => {
     const list = view[key];
@@ -104,6 +119,34 @@ export function LegendPanel({ onClose }: { onClose: () => void }) {
           </label>
         ))}
       </div>
+      {tagRows.length > 0 && (
+        <div className="legend-group">
+          <div className="legend-title">
+            Etiquetas
+            {view.tagFilter.length > 0 && (
+              <button
+                type="button"
+                className="legend-clear"
+                onClick={() => dispatch({ type: 'update-view', view: { tagFilter: [] } })}
+              >
+                Ver todos
+              </button>
+            )}
+          </div>
+          <p className="legend-hint">
+            {view.tagFilter.length
+              ? 'Solo se ven los nodos con alguna de las marcadas.'
+              : 'Marca alguna para ver solo los nodos que la llevan.'}
+          </p>
+          {tagRows.map(({ tag, count }) => (
+            <label key={tag} className="legend-row">
+              <input type="checkbox" checked={view.tagFilter.includes(tag)} onChange={() => toggleTag(tag)} />
+              <span className="label">{tag}</span>
+              <span className="count">{count}</span>
+            </label>
+          ))}
+        </div>
+      )}
       {refs.length > 0 && (
         <div className="legend-group">
           <div className="legend-title">Referencias</div>
