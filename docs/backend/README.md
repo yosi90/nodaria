@@ -64,7 +64,7 @@ Para nuevas rutas privadas, regístralas dentro del bloque de rutas privadas de 
 
 ## Feed de cambios
 
-`src/platform/feed.ts` lee `GET /v1/servicio/cambios` con la credencial de servicio y `User-Agent: nodaria-api/1.0`, hasta ponerse al día, cada `PLATFORM_FEED_INTERVAL_MS`. Solo usa `cuenta.estado`: `cerrada` marca `closed_at`, `activa` lo quita, `borrada` borra el usuario y sus proyectos; guarda lo limitado (`restrictions`, `restrictions_until`). Ignora perfiles y relaciones (Nodaria no los enseña). El cursor está en `dbo.platform_feed` (`feed_cursor`) y se guarda en la misma transacción que los cambios.
+`src/platform/feed.ts` lee `GET /v1/servicio/cambios` con la credencial de servicio y `User-Agent: nodaria-api/1.0`, hasta ponerse al día, cada `PLATFORM_FEED_INTERVAL_MS`. Usa `cuenta.estado`: `cerrada` marca `closed_at`, `activa` lo quita, `borrada` borra el usuario y sus proyectos propios (los de sus grupos son del grupo y no se tocan); guarda lo limitado (`restrictions`, `restrictions_until`). Y los cambios de los espacios (`espacio.*`, `miembro.*`), que ponen al día la copia de los grupos (ver «Grupos de trabajo»). Ignora perfiles y relaciones (Nodaria no los enseña). `POST /api/grupos/actualizar` lo lee a petición. El cursor está en `dbo.platform_feed` (`feed_cursor`) y se guarda en la misma transacción que los cambios.
 
 ## Órdenes de la migración
 
@@ -81,6 +81,7 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 - Archivos `api/migrations/NNNN_descripcion.sql`, aplicados en orden; cada archivo en una transacción y lotes separados por una línea `GO`.
 - `dbo.schema_migrations` guarda id y SHA-256 de cada migración aplicada. Si se edita una ya aplicada, `migrate` falla: hay que crear una nueva.
 - `0006_platform_identity`: `id_global` (único filtrado), `firebase_uid` opcional (único filtrado), `closed_at`, lo limitado y `platform_feed`.
+- `0009_groups`: `groups`, `group_members` y `group_projects` (grupos de trabajo).
 
 ## Modelo de datos
 
@@ -91,6 +92,9 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | `platform_feed`  | `id` = 1                            | Cursor del feed de cambios.                                                                     |
 | `ai_conversations` | `id` (por `user_id` y `project_id`) | Conversaciones del asistente de IA de cada cuenta y proyecto, con título y fechas.             |
 | `ai_messages`    | `id` (por `conversation_id`)        | Mensajes: `role` `user`, `assistant` o `error` y su `content` en JSON.                          |
+| `groups`         | `id` (`external_id` y `space_id` únicos) | Grupos de trabajo: el espacio de la plataforma (`grupo-<uuid>`), su nombre, propietario y estado (`creando`, `activo`, `borrando`, `borrado`). |
+| `group_members`  | `(group_id, global_id)`             | Copia del feed de los miembros: rol y estado (solo `activo` tiene acceso). Sin clave ajena a `users`. |
+| `group_projects` | `project_id` (único entre grupos)   | El proyecto del grupo: documento, `version`, `updated_by`. No cuelga de ninguna cuenta.         |
 
 `projects` y `ai_conversations` cuelgan de `users` con `ON DELETE CASCADE`, y `ai_messages` de `ai_conversations`; borrar un proyecto borra sus conversaciones desde la API. El antiguo tablón (`requests`, `request_updates`, `request_votes`) y `notificapp_outbox` se retiraron con `0007_drop_request_board` tras importarlo la plataforma. Las columnas `email`, `display_name` y `photo_url` ya no se escriben.
 
@@ -111,10 +115,26 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | GET    | `/api/ia/conversaciones/{id}` | Sí | Una conversación con sus mensajes (los 200 últimos). 404 si no es de la cuenta.                                       |
 | DELETE | `/api/ia/conversaciones/{id}` | Sí | Borra la conversación y sus mensajes.                                                                                |
 | PATCH  | `/api/ia/mensajes/{id}` | Sí | `{ applied: number[] }`: apunta qué operaciones de una propuesta se aplicaron.                                           |
+| GET    | `/api/grupos`        | Sí   | Grupos activos de la cuenta: `id`, `spaceId`, `name`, `owner`, `role`, `memberState`, `isOwner`, `capabilities`, `projects`. |
+| POST   | `/api/grupos/actualizar` | Sí | Lee el feed ya y devuelve la lista (tras aceptar una invitación o cambiar un rol).                                     |
+| POST   | `/api/grupos`        | Sí   | `{ id, name, document }`: crea el grupo y su espacio y hace del documento el proyecto del grupo. Ver «Grupos de trabajo». |
+| GET    | `/api/grupos/{grupo}/proyectos/{id}` | Sí | Documento del proyecto del grupo con su versión (miembro activo).                                         |
+| PUT    | `/api/grupos/{grupo}/proyectos/{id}` | Sí | `{ document, baseVersion }` (con `edit`). 409 `version_conflict` con la vigente; 403 `sin_permiso_en_el_grupo` o `cambio_de_esquema_no_permitido`. |
+| DELETE | `/api/grupos/{grupo}?recipient=` | Sí | Solo la propiedad: el proyecto pasa a la cuenta elegida y se borra el espacio. `{ id, state: borrado \| borrando }`. |
 
 El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista.
 
 Errores con formato `{ "error": "<codigo>", "message": "<texto en español>" }`. Límite general de 300 peticiones/minuto por IP (`CF-Connecting-IP` detrás del túnel) y 120 por usuario autenticado.
+
+## Grupos de trabajo
+
+Cada grupo es un espacio de la plataforma (`ecosistema-kit/ESPACIOS.md`); el plan está en `docs/roadmaps/ROADMAP_COLABORACION.md` («Contrato del hito 1»). Código en `src/groups/` (reglas en `model.ts`, almacén SQL y en memoria en `repository.ts`, mantenimiento en `maintenance.ts`), `src/routes/groups.ts` y `src/platform/spaces.ts`.
+
+- **La pertenencia es de la plataforma.** `group_members` es la copia del feed con la que se autoriza; invitar, aceptar, salir y cambiar roles los hace la persona desde el frontend con el SDK. La API declara los roles (`responsable`, `editor`, `lector` por defecto) al arrancar con el feed activo y los repite hasta que la plataforma los acepta; si al crear responde `sin_roles`, los declara y repite.
+- **Capacidades** (`capabilitiesOf`): solo los miembros `activo`; la propiedad, todo; responsable, editar y cambiar el esquema; editor, editar sin cambiar el esquema; lector o rol desconocido, leer.
+- **Crear** (`POST /api/grupos`): apunta el grupo (`creando`), crea el espacio con `X-Yosi-Cuenta` y el rol `responsable`, y mete el documento como proyecto del grupo; la copia personal queda borrada. Idempotente por `id`. Los fallos de la plataforma responden `424 plataforma_no_disponible`.
+- **Proyecto propio con el id de un grupo**: `PUT /api/projects/{id}` responde `409 proyecto_compartido` (`group`) si la cuenta es miembro de ese grupo.
+- **Borrar** (`DELETE /api/grupos/{grupo}?recipient=`): solo la propiedad; el proyecto pasa a la cuenta elegida (miembro activo) y se borra el espacio. Si la plataforma falla, el grupo queda `borrando` y el mantenimiento lo termina con el ritmo del feed.
 
 ## Asistencia de IA
 

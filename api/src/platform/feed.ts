@@ -2,14 +2,18 @@ import { readFile } from 'node:fs/promises';
 import type { FastifyBaseLogger } from 'fastify';
 import type { AppConfig } from '../config.ts';
 import { type Database, sql, withTransaction } from '../db/pool.ts';
+import { spaceFeedEffect } from '../groups/model.ts';
+import { applySpaceEffectSql } from '../groups/repository.ts';
 import { DELETE_USER } from '../users/repository.ts';
 
 /*
  * Feed de cambios de la plataforma (`ecosistema-kit/FEED_DE_CAMBIOS.md`). Nodaria no enseña perfiles
  * ni relaciones: solo le importa el estado de las cuentas. Con `cerrada` (borrado pedido o
  * suspensión) esconde la cuenta, con `activa` la recupera y con `borrada` borra lo suyo (el usuario y
- * sus proyectos). Lo limitado por moderación se guarda. El cursor se guarda en la misma transacción
- * que los cambios aplicados; repetir una lectura no cambia nada.
+ * sus proyectos propios; los de sus grupos son del grupo y no se tocan). Lo limitado por moderación se
+ * guarda. Los cambios de los espacios (`espacio.*`, `miembro.*`) ponen al día la copia de los grupos con
+ * la que se autoriza (`ecosistema-kit/ESPACIOS.md`). El cursor se guarda en la misma transacción que los
+ * cambios aplicados; repetir una lectura no cambia nada.
  */
 
 export const USER_AGENT = 'nodaria-api/1.0';
@@ -53,6 +57,11 @@ export function createSqlFeedStore(db: Database): FeedStore {
     async apply(changes, cursor) {
       await withTransaction(db, async transaction => {
         for (const change of changes) {
+          const effect = spaceFeedEffect(change);
+          if (effect) {
+            await applySpaceEffectSql(transaction, effect);
+            continue;
+          }
           if (change.tipo !== 'cuenta.estado') continue;
           const datos = (change.datos ?? {}) as AccountState;
           const request = () => new sql.Request(transaction).input('globalId', sql.UniqueIdentifier, change.cuenta);

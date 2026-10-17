@@ -1,7 +1,58 @@
 # Roadmap por hitos: grupos de trabajo y colaboración
 
 Fecha: 2026-10-13.
-Estado: **planificado, en espera de la migración de Nodaria a la plataforma Yosiftware**. Solo documentación; ningún hito de implementación está iniciado. No sustituye al roadmap principal vigente.
+Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hito 1 en curso: el modelo de la API está hecho y probado en local, sin publicar (ver «Contrato del hito 1»); faltan el frontend, las maquetas de los flujos y el ensayo en QA. La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
+
+## Puesta al día del 2026-10-17: los espacios de la plataforma
+
+Redactada por la plataforma a petición del propietario (fase 9 de su roadmap de los espacios), sin tocar el código de Nodaria. Nodaria la revisa al activar este roadmap. La plataforma respondió la petición de coordinación con los **espacios** (kit 1.38: `ecosistema-kit/ESPACIOS.md`; guía `docs/publica/ESPACIOS.md` de la plataforma). Cambia el reparto: **la pertenencia del grupo de trabajo es de la plataforma**, y el tablero, sus operaciones y sus conflictos siguen en Nodaria. Lo que este documento dice más abajo sobre grupos, invitaciones, correo y transporte se lee con esta tabla, que manda sobre él:
+
+| Pieza | Antes (2026-10-13) | Ahora |
+| --- | --- | --- |
+| Grupo de trabajo, miembros, roles y propietario | Nodaria | **Plataforma**: un espacio por grupo. Nodaria declara sus roles (`PUT /v1/servicio/espacios/roles`) y crea el espacio a nombre de quien lo pide; se entera de los miembros por el feed (`espacio.*`, `miembro.*`) y autoriza el tablero en local, solo a los miembros `activo` |
+| Capacidades | Nodaria | La plataforma aplica tres por rol: gestionar miembros, invitar y el chat (escribir, leer o nada). Leer o editar el tablero, cambiar el esquema y comentar siguen siendo de Nodaria, por rol |
+| Propietario único y traspaso | Nodaria | **Plataforma**: la propiedad es una cuenta, lo puede todo y solo se cede con un traspaso aceptado. `propietario` no es un rol que se declare |
+| Invitaciones (persona o correo), caducidad, revocación, reenvíos | Nodaria, con ayuda de la plataforma | **Plataforma**, también el correo (`noreply@yosiftware.es`). Nunca revela si un correo tiene cuenta; para aceptar, la cuenta tiene que tener ese correo confirmado. Se aceptan dentro de Nodaria, con el SDK (su ventana o una interfaz propia con `data-invitaciones="propias"`) |
+| Aviso a quien nunca entró en Nodaria | Por acordar | **Resuelto**: la notificación de la invitación la emite la plataforma |
+| Transporte de los cambios del tablero y presencia | Por acordar | **Canal del espacio**: la API de Nodaria publica lo confirmado (`POST /v1/servicio/espacios/{idExterno}/canal`, hasta 16 KB, con `idExterno` idempotente) y el frontend lo recibe con `yosiftware.espacios.canal()`, en orden, con recuperación al reconectar y la presencia. Lo perdido más de 24 horas (o más allá de los últimos 1000) llega como `desfase`: recargar la instantánea |
+| Chat del grupo | `PUT /v1/servicio/chat/conversaciones/{idExterno}` con la lista de miembros | `PUT /v1/servicio/espacios/{idExterno}/conversacion`: los participantes los pone la plataforma según el permiso de chat de cada rol. Ya no hay que mandar la lista ni reconciliar `ignoradas` |
+| Solo lectura en el chat | Hueco del contrato | **Resuelto**: `chat: "leer"` por rol |
+| Grupos sin cuenta | Aplazado | Sigue aplazado: los espacios son de cuentas |
+
+Proyección propuesta de los roles de este documento sobre los espacios (la decide el propietario al activar el hito 1):
+
+| Rol de Nodaria | `gestionar` | `invitar` | `chat` |
+| --- | --- | --- | --- |
+| Propietario | La propiedad del espacio (no se declara) | | |
+| Responsable | Sí | Sí | `escribir` |
+| Editor | No | No | `escribir` |
+| Revisor (hito 5) | No | No | `escribir` |
+| Lector | No | No | `escribir` (la recomendación de este documento: leer el tablero no impide conversar) |
+
+Consecuencias en los hitos:
+- **Hito 0**: la petición de coordinación queda resuelta por la plataforma; sus decisiones están en `docs/publica/ESPACIOS.md`. La migración de Nodaria terminó el 2026-10-15.
+- **Hitos 1 y 2**: el modelo de Nodaria guarda la copia del feed (grupos y miembros) y sus proyectos compartidos, no invitaciones ni propiedad. Invitar, aceptar, rechazar, salir, cambiar rol y traspasar van por la plataforma (`/v1/espacios`, con el token de la plataforma).
+- **Hito 3**: el transporte es el canal del espacio; la secuencia, la idempotencia y la autorización de las operaciones siguen en la API de Nodaria.
+- **Hito 4**: el chat del grupo es la conversación del espacio, y el correo y el aviso los da la plataforma. Queda incrustar la conversación y las notificaciones propias de Nodaria.
+
+En QA, la plataforma solo envía correos a su propio buzón: una invitación a un correo aparece en las pendientes de la cuenta que lo tiene confirmado, pero el correo no llega. La web de pruebas de la plataforma lo usa de punta a punta (`webs/pruebas/api/espacios.mjs` y `webs/pruebas/src/main.ts`), por si sirve de ejemplo.
+
+## Revisión de Nodaria (2026-10-17)
+
+Contrastada la puesta al día con `ecosistema-kit/ESPACIOS.md` (kit 1.38) y `docs/publica/ESPACIOS.md` de la plataforma: el reparto, las rutas, los límites y la proyección de roles son correctos. Lo que no recoge y hay que tener en cuenta al activar los hitos, con las decisiones del propietario del 2026-10-17. Ninguna necesita cambios en la plataforma, así que no se le envía petición:
+
+1. **Rol por defecto: Lector** (decidido). El catálogo exige uno, y solo uno, con `porDefecto` (lo recibe quien entra sin rol elegido, también una invitación sin `rol`).
+2. **`gestionar` incluye los ajustes del espacio: se acepta** (decidido; manda la plataforma). Un responsable puede cambiar `entrada` (a `solicitud` o `abierto`) y `dosPasos` con `PATCH /v1/espacios/{id}`, también desde fuera de Nodaria; la API se limita a poner al día su copia con `espacio.cambiado`. Cuadra con «el responsable no modifica al propietario»: dar o quitar un rol que gestiona solo lo hace quien tiene la propiedad.
+3. **El proyecto de un grupo es del grupo, no de una cuenta** (decidido).
+   - **Al borrarse una cuenta**, el proyecto del grupo no se borra. La plataforma ya pasa el espacio a quien más tiempo lleve gestionándolo (o al miembro activo más antiguo), y Nodaria lo sigue con `espacio.cambiado`. Hoy el feed de Nodaria borra el usuario y sus proyectos con `cuenta.estado: borrada` (`api/src/platform/feed.ts`): en el hito 1, los proyectos compartidos se guardan a nombre del grupo, no del usuario, y ese borrado no los toca. Si la plataforma borra el espacio porque no queda nadie, no hay a quién darlo y el proyecto se borra.
+   - **Al borrar el grupo**, quien lo borra elige quién se queda el proyecto (él mismo u otro miembro activo), que pasa a ser un proyecto propio de esa cuenta; si no es él, se le avisa. Solo puede hacerlo el administrador del grupo: quien tiene la propiedad, como dice la tabla de capacidades. La plataforma lo permite sin cambios: un espacio solo lo borra el backend de su web (`DELETE /v1/servicio/espacios/{idExterno}`; la persona no tiene ruta para borrarlo), así que la API de Nodaria confirma la elección y el traspaso del proyecto en su base y después borra el espacio, con reintento idempotente.
+4. **El feed descarta lo desconocido.** `createSqlFeedStore` ignora todo lo que no sea `cuenta.estado` y avanza el cursor. Tratar `espacio.*` y `miembro.*` tiene que llegar en la misma entrega que declare los roles o cree el primer espacio; si no, esos cambios se pierden y hay que resincronizar con `GET /v1/servicio/espacios/{idExterno}/miembros`.
+5. **El canal admite 16 KB.** Las imágenes de los atributos (data URL de hasta 384 px), la imagen del mapa (hasta 2400 px) y las operaciones grandes no caben: el canal lleva la operación pequeña o una referencia con la revisión, y el frontend pide el resto a la API.
+6. **Presencia por espacio, no por proyecto.** Con un proyecto por grupo equivalen, si el frontend abre el canal solo con el tablero abierto. Con varios proyectos por grupo (hito 5) habrá que distinguirlos en `datos`.
+7. **Verificación en dos pasos** (aceptado). `dosPasos` es opcional (por defecto `false`); un miembro `sin_dos_pasos` está en pausa y no tiene acceso. Nodaria solo autoriza a los `activo`.
+8. **Clave de IA del grupo, solo en sus proyectos** (decidido). La API de Nodaria envía `X-Yosi-Espacio` en el asistente de IA (`ROADMAP_IA.md`) solo cuando el proyecto es del grupo, o es otro proyecto compartido que el administrador del grupo ha marcado como válido para usar su clave. En el resto, la clave de la persona. La plataforma ya exige que la cuenta sea miembro activo y aplica los proveedores y modelos que permite el grupo; qué proyecto la usa lo decide Nodaria, así que no hace falta pedirle nada. Con `409 sin_clave_de_ia` para el grupo, no se pasa a la clave de la persona sin que lo sepa.
+9. **Kit y SDK.** El kit local es el 1.32: copiar el 1.38 al activar. El SDK 1.17 ya se sirve en `sdk/v1`: sin espacios no cambia nada en Nodaria. La CSP ya admite el gateway (`src/services/csp.ts`, `connect-src`).
+10. **Secciones que quedan obsoletas** y se reescriben al activar: «Reparto de responsabilidades», «Huecos de integración», «Invitaciones» (secreto, huella, estados y entregas son de la plataforma) y, en el hito 4, poner al día los miembros del chat y reconciliar `ignoradas`.
 
 ## Objetivo
 
@@ -44,42 +95,36 @@ No se han probado servicios ni escrituras en producción para este análisis. La
 
 ## Reparto de responsabilidades
 
-| Pieza                                                                    | Responsable                                      | Situación                                                                                                          |
-| ------------------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Cuenta, alta, sesión, perfil, identidad global                           | Plataforma Yosiftware                            | Servicio común; Nodaria lo integra durante su migración.                                                           |
-| Grupos de trabajo, proyectos, miembros, roles y permisos del tablero     | Nodaria                                          | Dominio propio. La plataforma decidió que las comunidades se quedan en cada web.                                   |
-| Documento compartido, validación de operaciones, revisiones y conflictos | API de Nodaria                                   | Trabajo nuevo después de la migración.                                                                             |
-| Chat, mensajes, historial y moderación del chat                          | Plataforma                                       | Disponible. Usar las conversaciones de la web y los componentes del SDK.                                           |
-| Pertenencia al chat del grupo                                            | Nodaria decide; plataforma la aplica             | `PUT /v1/servicio/chat/conversaciones/{idExterno}` con la lista completa de miembros.                              |
-| Centro de notificaciones y push                                          | Plataforma                                       | Disponible; catálogo y emisión desde la API de Nodaria.                                                            |
-| Invitación al proyecto, permiso ofrecido y aceptación                    | Nodaria                                          | Necesita colaboración de la plataforma para entregar por correo e identificar al destinatario con privacidad.      |
-| Envío de correo y aviso antes de la primera visita                       | Por acordar con la plataforma                    | No hay contrato público revisado que lo cubra. No asumir que push también envía email.                             |
-| Transporte de cambios del tablero y presencia en él                      | Por acordar; contenido y autorización de Nodaria | No hay ruta pública genérica de emisión de eventos de proyectos. El tiempo real central sirve sus eventos propios. |
-| Panel del propietario para operaciones de Nodaria                        | Plugin de Nodaria en Administración              | No confundir administración del ecosistema con el rol de responsable de un grupo.                                  |
+Reescrito el 2026-10-17 con los espacios (kit 1.38, `ecosistema-kit/ESPACIOS.md`).
 
-La API de Nodaria sigue alojando sus datos y aplicando sus reglas. Administración no construye automáticamente el servidor de colaboración: aporta los servicios comunes y decide su contrato. No crear un segundo chat ni un segundo sistema de cuentas.
+| Pieza | Responsable | Cómo |
+| --- | --- | --- |
+| Cuenta, alta, sesión, perfil, identidad global | Plataforma | Integrado desde el 2026-10-15. |
+| Grupo, miembros, roles, propiedad y traspaso | Plataforma (un espacio por grupo) | La API de Nodaria declara los roles, crea el espacio a nombre de quien lo pide y lo borra; guarda una copia del feed y autoriza con ella. |
+| Invitaciones (persona o correo), su correo y su aviso, solicitudes, salir | Plataforma | La persona lo hace desde Nodaria con el SDK (`yosiftware.espacios` y su ventana) y el token de la plataforma. Nodaria no guarda invitaciones ni envía correos. |
+| Qué puede hacer cada rol con el proyecto | API de Nodaria | `capabilitiesOf` (`api/src/groups/model.ts`): leer, editar, cambiar el esquema y borrar el grupo. |
+| Proyecto compartido, revisiones y conflictos | API de Nodaria | `dbo.group_projects`: una versión en el servidor; escribir exige la versión vigente. |
+| Transporte de los cambios y presencia | Plataforma (canal del espacio); contenido de Nodaria | Hito 3: la API publica lo confirmado y el frontend lo recibe con `yosiftware.espacios.canal()`. |
+| Chat del grupo | Plataforma (conversación del espacio) | Hito 4: la API la pide y el frontend la incrusta; la plataforma pone los participantes según el rol. |
+| Notificaciones propias de Nodaria | Plataforma (centro común); emisión desde la API | Hito 4, si hacen falta además de las de la invitación. |
+| Clave de IA del grupo | Plataforma (claves de la organización); uso decidido por Nodaria | Solo en los proyectos del grupo o en los que su administrador marque (decisión del 2026-10-17). |
 
-### Huecos de integración
+La API de Nodaria sigue alojando sus datos y aplicando sus reglas. No se crea un segundo chat, un segundo sistema de cuentas ni una pertenencia propia: `dbo.group_members` es una copia del feed, nunca la fuente.
 
-1. **Invitación por email:** las invitaciones de `/v1/chat/…` son a grupos de chat y cuentas existentes; no conceden pertenencia a un proyecto de Nodaria. El contrato no expone un envío de correo de servicio ni búsqueda privada de destinatarios por correo para esta finalidad.
-2. **Cuenta existente que nunca ha entrado en Nodaria:** las notificaciones de servicio y las conversaciones de la web solo admiten cuentas que ya han entrado en ella. No se puede prometer un aviso interno inmediato a todas las cuentas existentes sin acordar una extensión o una alternativa.
-3. **Cambios de tablero:** escuchar `yosiftware.tiempoReal` no permite publicar automáticamente eventos de Nodaria. La plataforma debe confirmar si ofrece un transporte común o si Nodaria necesita uno propio para sus datos. No usar avisos de chat/notificaciones por cada edición como sustituto.
-4. **Solo lectura en el chat:** las conversaciones de la web aceptan `miembros` y `cerrada`, no un permiso de escritura por participante. En el diseño inicial, lectura del tablero y participación en el chat son permisos distintos. Si se exige lectura del chat por persona, requiere ampliar el contrato; ocultar el campo de escribir en Nodaria no lo impide desde otras webs.
+Petición de coordinación: [`acordar-invitaciones-y-tiempo-real-para-la-colaboracion-de-nodaria.md`](../peticiones-enviadas/acordar-invitaciones-y-tiempo-real-para-la-colaboracion-de-nodaria.md). Entregada como documento a la carpeta de peticiones de Administración; respondida el 2026-10-17 con los espacios (ver «Puesta al día del 2026-10-17»). No encarga implementar Nodaria ni altera su prioridad de migración.
 
-Petición de coordinación: [`acordar-invitaciones-y-tiempo-real-para-la-colaboracion-de-nodaria.md`](../peticiones-enviadas/acordar-invitaciones-y-tiempo-real-para-la-colaboracion-de-nodaria.md). Entregada como documento a la carpeta de peticiones de Administración; pendiente de resolución. No encarga implementar Nodaria ni altera su prioridad de migración.
-
-## Diseño recomendado, pendiente de validar al activar los hitos
+## Diseño
 
 ### Grupo, proyecto y pertenencia
 
 - Distinguir el grupo de trabajo del proyecto y de su conversación. Modelo preparado para varios proyectos, con una primera interfaz de **un proyecto por grupo** para limitar complejidad.
 - Primera versión: los miembros del grupo tienen el mismo acceso a ese proyecto. No añadir todavía excepciones por nodo ni mezclar en un mismo chat personas con acceso a distintos proyectos privados.
 - Un proyecto compartido tiene una única identidad y una única versión del contenido en el servidor, independientemente de cuántas cuentas lo abran. No duplicarlo por miembro.
-- Mantener un único propietario del grupo/proyecto inicial. Transferir la propiedad de forma transaccional; el propietario no puede salir dejando el grupo sin responsable. Responsable de grupo y administrador del ecosistema son conceptos distintos.
+- Un único propietario por grupo: la propiedad del espacio, que lleva la plataforma con su traspaso aceptado; el propietario no puede salir sin traspasarlo (`propietario_no_puede_salir`). Responsable de grupo y administrador del ecosistema son conceptos distintos.
 - Representar cuentas con el ID global obtenido después de la migración; el correo sirve para entregar una invitación, no como clave de autorización permanente.
-- Registrar membresías, invitaciones, revisiones y tareas de integración fuera del JSON portable. Importar un proyecto crea una copia propia, no hereda accesos del servidor.
+- Grupos, miembros y revisiones van fuera del JSON portable (las invitaciones, en la plataforma). Importar un proyecto crea una copia propia, no hereda accesos del servidor.
 - Separar «salir del grupo» y «quitar la copia de este navegador» de «eliminar el proyecto compartido». No deducir el borrado del servidor porque falte un proyecto en la lista local.
-- Al cerrar/borrar una cuenta, aplicar la política de la plataforma y resolver la propiedad compartida sin un borrado en cascada de los datos de otras personas. Definir transferencia, archivo y plazos antes de compartir datos reales.
+- El proyecto de un grupo es del grupo (decisión del 2026-10-17): al borrarse una cuenta no se borra, y la plataforma pasa la propiedad a quien más tiempo lleve gestionando el grupo (o al miembro activo más antiguo). Al borrar el grupo, su propietario elige quién se queda el proyecto.
 
 ### Roles y capacidades
 
@@ -113,15 +158,29 @@ Estas son etiquetas sugeridas para **el tablero de Nodaria**: «máster» no con
 
 ### Invitaciones
 
-Flujo deseado: crear la invitación en Nodaria → confirmar la transacción → solicitar sus entregas → el destinatario abre Nodaria → entra o crea su cuenta central → ve grupo y permiso ofrecido → acepta o rechaza → Nodaria confirma la pertenencia → pone al día el chat.
+Reescrito el 2026-10-17: las lleva la plataforma (`ecosistema-kit/ESPACIOS.md`, «Invitar, aceptar y entrar»). Nodaria no guarda invitaciones, secretos ni estados, ni envía correos.
 
-- Objetivo: email para ambos casos y aviso interno para cuentas existentes cuando lo permita el contrato acordado. Respetar preferencias, bloqueos y restricciones; no revelar al remitente si el correo está registrado ni quién lo bloqueó.
-- Si la cuenta ya existe pero nunca ha entrado en Nodaria, utilizar el flujo que acuerde la plataforma; no fabricar una entrada en esa web ni conceder acceso en segundo plano.
-- Enlace con secreto aleatorio de un solo uso, guardado como huella, caducidad y revocación. La invitación ofrece el permiso, pero la API comprueba de nuevo al aceptar que el remitente mantiene autoridad y el grupo sigue vigente.
-- La cuenta que acepta debe demostrar que corresponde al destinatario según el mecanismo documentado por la plataforma; estar autenticado con cualquier correo no basta. Cubrir correo cambiado, Google vinculado, otra cuenta abierta, alta incompleta y registro central cerrado.
-- Aceptación atómica e idempotente: dos clics o dos pestañas no duplican la membresía. Estados: pendiente, aceptada, rechazada, caducada y revocada; limitar envíos y reenvíos.
-- Usar tareas pendientes de integración en la misma transacción y claves externas estables para reintentar sin duplicar entregas. La pertenencia no depende de que el email o el chat respondan al momento.
-- En el contrato actual, los botones de las notificaciones de una web son enlaces a Nodaria; aceptar allí exige su API, no una acción de chat que conceda acceso al proyecto.
+- Invitar (a una cuenta o a un correo, con un rol), ver las pendientes y retirarlas: quien tiene `invitar` (Responsable y la propiedad), desde Nodaria con `yosiftware.espacios.invitar`. Por correo, quien invita nunca sabe si tiene cuenta; caducan a los 14 días.
+- Aceptar: solo dentro de Nodaria. El enlace del correo (`#yosi-invitacion=<código>`) y la campana (`#yosi-invitaciones`) llegan a la raíz de Nodaria, donde el SDK abre su ventana. Al aceptar, el frontend llama a `POST /api/grupos/actualizar` para que la API lea el feed y dé acceso sin esperar a la siguiente vuelta.
+- Lo que la plataforma ya resuelve: otro correo (`correo_de_otra_cuenta`), los dos pasos, la invitación caducada o retirada, el registro cerrado, los bloqueos, los límites y los reenvíos.
+- Primera versión con la ventana del SDK. Si se quiere un diseño propio, `data-invitaciones="propias"` y la interfaz sobre `yosiftware.espacios`, cubriendo esos mismos casos.
+
+### Contrato del hito 1 (API, 2026-10-17)
+
+Implementado en local, sin publicar. Migración `api/migrations/0009_groups.sql`; reglas en `api/src/groups/model.ts`; almacén en `api/src/groups/repository.ts` (SQL y memoria, con el mismo contrato); rutas en `api/src/routes/groups.ts`; cliente de la plataforma en `api/src/platform/spaces.ts`; mantenimiento en `api/src/groups/maintenance.ts`.
+
+- **Datos.** `dbo.groups` (idExterno `grupo-<uuid>`, id del espacio, nombre, propietario, estado `creando`/`activo`/`borrando`/`borrado`), `dbo.group_members` (copia del feed, sin clave ajena a `dbo.users`) y `dbo.group_projects` (el proyecto del grupo: documento, versión, quién lo cambió por última vez; su id es único entre todos los grupos). Ninguno cuelga de una cuenta: borrar una cuenta solo borra sus proyectos propios.
+- **Roles declarados** al arrancar la API y hasta que la plataforma los acepte: `responsable` (gestionar, invitar, chat escribir), `editor` (chat escribir) y `lector` (chat escribir, por defecto). La propiedad no es un rol.
+- **Capacidades en Nodaria.** Solo miembros `activo`. Propiedad: todo. Responsable: leer, editar y cambiar el esquema. Editor: leer y editar, sin cambiar el esquema (la API compara `schemas`, `fieldLibrary`, `kinship`, `calendar`, `kind` y `schemaFolders` con la versión de la que parte y responde `403 cambio_de_esquema_no_permitido`). Lector, o un rol desconocido: leer. Borrar el grupo: solo la propiedad.
+- **Rutas** (con el token de la plataforma, como el resto):
+  - `GET /api/grupos`: los grupos activos de la cuenta, con su `spaceId`, rol, `isOwner`, capacidades y proyectos (versión y resumen).
+  - `POST /api/grupos/actualizar`: lee el feed ya (tras aceptar una invitación o cambiar un rol) y devuelve la lista.
+  - `POST /api/grupos` `{ id, name, document }`: crea el espacio a nombre de quien lo pide (con el rol `responsable` y la propiedad) y hace del documento el proyecto del grupo. La copia personal queda borrada en la cuenta. Repetirla con el mismo `id` no crea otro espacio. Errores: `proyecto_ya_compartido` y `grupo_ya_existe` (409), `creacion_limitada` (403), los límites de espacios (429) y `plataforma_no_disponible` (424; 424 y no 502, que Cloudflare tapa).
+  - `GET` y `PUT /api/grupos/{grupo}/proyectos/{id}` (`{ document, baseVersion }`): leer (miembro activo) y escribir (con `edit`); con otra versión, `409 version_conflict` con la vigente y quién la escribió. Nunca gana en silencio el documento más reciente.
+  - `DELETE /api/grupos/{grupo}?recipient=<cuenta>`: solo la propiedad; el proyecto pasa a ser un proyecto propio de la cuenta elegida (un miembro activo, o ella misma) y después se borra el espacio. Si la plataforma falla, el grupo queda `borrando` y el mantenimiento lo termina.
+- **Proyectos propios.** `PUT /api/projects/{id}` responde `409 proyecto_compartido` si ese id es de un grupo del que la cuenta es miembro: otro dispositivo con la copia de antes no la resucita como proyecto propio. Quien no es del grupo puede tener su propia copia con ese id (de un JSON importado).
+- **Feed.** `espacio.creado`/`cambiado` (nombre, propietario tras un traspaso), `espacio.borrado` (si lo borra la plataforma porque no queda nadie, el proyecto se va con él), `miembro.entrado`/`cambiado`/`salido`, en la misma transacción que el cursor.
+- **Pendiente del frontend (siguiente paso):** un motor de sincronización aparte para los compartidos (excluidos de `planSync`), con conflicto explícito en lugar de «último cambio gana»; `view` y la disposición de cada persona, locales; un id de proyecto propio que choque con uno compartido se renombra en local, como al importar; solo lectura para el lector; tratar `proyecto_compartido` y `proyecto_ya_compartido`; la ventana de invitaciones del SDK y `yosiftware:espacio`.
 
 ### Concurrencia y tiempo real
 
@@ -145,11 +204,11 @@ Sin fechas comprometidas. Se activan en orden por dependencias y con la migraci�
 
 Responsables: Nodaria y plataforma. Es una condición de entrada, no una orden de migrar ahora.
 
-- [ ] Recibir la guía propia, terminar la migración y comprobar que los proyectos del propietario y su administración se conservan.
-- [ ] Cumplir la lista de integración central y resolver la congelación en el contexto vivo.
-- [ ] Resolver la petición de coordinación: invitaciones por correo, avisos a quien no visitó Nodaria y transporte de eventos del tablero.
-- [ ] Confirmar límites, restricciones de cuenta, revocación y el significado de lector respecto al chat.
-- [ ] Aprobar el primer alcance: grupo con un proyecto, roles base y grupos sin cuenta aplazados.
+- [x] Recibir la guía propia, terminar la migración y comprobar que los proyectos del propietario y su administración se conservan (2026-10-15, `ROADMAP_MIGRACION_YOSIFTWARE.md`).
+- [x] Cumplir la lista de integración central y resolver la congelación en el contexto vivo: lista cumplida en la migración; congelación levantada para Nodaria por el propietario el 2026-10-17. La sección «Espacios» de la lista se cumple con los hitos 1 a 4.
+- [x] Resolver la petición de coordinación: invitaciones por correo, avisos a quien no visitó Nodaria y transporte de eventos del tablero (2026-10-17, los espacios).
+- [x] Confirmar límites, restricciones de cuenta, revocación y el significado de lector respecto al chat: los de la plataforma (`ecosistema-kit/ESPACIOS.md`); el lector conversa (`chat: escribir`).
+- [x] Aprobar el primer alcance: grupo con un proyecto, roles base y grupos sin cuenta aplazados (propietario, 2026-10-17, al pedir que se implemente).
 
 **Termina cuando:** la migración está verificada y existen guías/contratos publicados o una alternativa expresamente acordada para los huecos. No programar contra rutas imaginadas. Una ampliación opcional puede quedar descartada por escrito sin bloquear todo el producto.
 
@@ -157,9 +216,9 @@ Responsables: Nodaria y plataforma. Es una condición de entrada, no una orden d
 
 Responsable: Nodaria. Depende del hito 0.
 
-- [ ] Diseñar grupo, proyecto único, membresías, capacidades e invitaciones; separar recursos personales y compartidos.
-- [ ] Definir migración de almacenamiento, propiedad y borrado de cuentas con copia y ensayo en QA.
-- [ ] Excluir los compartidos del motor actual de subida/borrado por ausencia; decidir caché por cuenta y preferencias individuales.
+- [x] Diseñar grupo, proyecto único, membresías, capacidades e invitaciones; separar recursos personales y compartidos (2026-10-17, «Contrato del hito 1»). Lint, tipos y 64 pruebas de la API, también contra SQL Server en una base desechable.
+- [ ] Definir migración de almacenamiento, propiedad y borrado de cuentas con copia y ensayo en QA. Hecho: la migración 0009 y su prueba; la propiedad y el borrado de cuentas, decididos y probados. Falta el ensayo en QA (`NodariaDev`, con dos cuentas de prueba).
+- [ ] Excluir los compartidos del motor actual de subida/borrado por ausencia; decidir caché por cuenta y preferencias individuales. Hecho en la API (`proyecto_compartido`); falta el frontend.
 - [ ] Diseñar operaciones y revisiones, validación de integridad y deshacer seguro (o su suspensión explícita inicial).
 - [ ] Maquetar los flujos de grupos, miembros, compartir, conflictos y permisos antes de implementarlos.
 
@@ -193,11 +252,9 @@ Responsable: Nodaria; transporte según respuesta de la plataforma. Depende del 
 
 Responsables: integración en Nodaria y servicios centrales. Depende del hito 2 y de los contratos correspondientes; puede adelantarse al hito 3 si estos ya están resueltos.
 
-- [ ] Crear una conversación de la web por grupo con un ID externo estable; guardar el ID central para incrustar el chat.
-- [ ] Poner al día los miembros después de confirmar la transacción; reintentos que consulten la membresía vigente y serialicen actualizaciones para no reintroducir expulsados por una tarea antigua.
-- [ ] Reconciliar `ignoradas` después de que una cuenta válida entre en Nodaria y gestionar el archivo del grupo.
-- [ ] Incrustar el chat común y las notificaciones; no copiar mensajes a la base de Nodaria.
-- [ ] Completar email/aviso interno conforme al contrato, con preferencias, caducidades, reenvíos y bloqueos.
+- [ ] Pedir la conversación del espacio (`PUT /v1/servicio/espacios/{idExterno}/conversacion`) y guardar su id para incrustar el chat. Los participantes los pone la plataforma: ya no hay que mandar miembros ni reconciliar `ignoradas`.
+- [ ] Incrustar el chat común (`<yosi-chat-conversacion>`) y, si hacen falta, las notificaciones propias; no copiar mensajes a la base de Nodaria.
+- [ ] Comprobar de punta a punta el correo y el aviso de la invitación de la plataforma (en producción; en QA el correo no sale).
 
 **Termina cuando:** la invitación funciona para una cuenta usuaria de Nodaria, otra cuenta central que nunca entró y una persona que se registra; no hay entregas duplicadas; entrar/salir del grupo se refleja en el chat incluso después de un fallo temporal del servicio. Mostrar el estado pendiente de integración; no afirmar revocación inmediata del chat si todavía está por aplicarse en la plataforma.
 
@@ -252,7 +309,9 @@ Proponer a la plataforma el mecanismo común de entrega por correo y, si compens
 - [x] Contrastar viabilidad con Nodaria y el contrato local de la plataforma.
 - [x] Documentar reparto, huecos, roles, riesgos y criterios por hito.
 - [x] Entregar la petición documental de coordinación a Administración y conservar copia en Nodaria.
-- [ ] Recibir respuesta y actualizar las dependencias sin marcar disponibles capacidades no publicadas.
-- [ ] Terminar la migración y elegir cuándo activar este roadmap.
+- [x] Recibir respuesta y actualizar las dependencias sin marcar disponibles capacidades no publicadas: los espacios, en QA y producción desde el 2026-10-17 (puesta al día del 2026-10-17, con la petición `docs/peticiones/usar-los-espacios-en-la-colaboracion.md`).
+- [x] Terminar la migración (2026-10-15).
+- [x] Revisar la puesta al día de la plataforma (2026-10-17, «Revisión de Nodaria»).
+- [x] Activar este roadmap (2026-10-17, el propietario: «podemos comenzar a implementar»): kit 1.38 copiado (ignorado por Git) y reescritos el reparto, los huecos, las invitaciones y el hito 4.
 
 Todas las casillas de implementación permanecen abiertas. Las propuestas técnicas y de permisos de este documento no son decisiones aprobadas por el propietario hasta validarse en el hito correspondiente.

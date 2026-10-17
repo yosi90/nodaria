@@ -4,7 +4,10 @@ import { AuthTokenError, identityFromClaims, type AuthProvider } from '../../src
 import { TokenCaducado, TokenNoValido, crearVerificador } from '../../src/auth/yosiftware-tokens.mjs';
 import { loadConfig } from '../../src/config.ts';
 import { createMemoryConversationStore } from '../../src/ai/conversations.ts';
-import { createMemoryProjectStore } from '../../src/projects/repository.ts';
+import { createMemoryGroupStore } from '../../src/groups/repository.ts';
+import type { PlatformSpace } from '../../src/groups/model.ts';
+import { PlatformError, type SpacesClient } from '../../src/platform/spaces.ts';
+import { createMemoryProjectStore, type ProjectStore } from '../../src/projects/repository.ts';
 import type { User, UserStore } from '../../src/users/repository.ts';
 
 export const testConfig = loadConfig({
@@ -92,15 +95,88 @@ export function fakeUsers() {
   return { store, byGlobalId };
 }
 
+/** Grupos en memoria cuyos proyectos personales son los del almacén de proyectos dado. */
+export function memoryGroups(projects: ProjectStore) {
+  return createMemoryGroupStore({
+    async remove(userId, projectId) {
+      const existing = await projects.get(userId, projectId);
+      if (existing && !existing.deletedAt) await projects.delete(userId, projectId, null);
+    },
+    async give(userId, project) {
+      const existing = await projects.get(userId, project.id);
+      await projects.put(
+        userId,
+        project.id,
+        { name: project.name, document: project.document, updatedAt: project.updatedAt },
+        existing?.version ?? 0,
+      );
+    },
+  });
+}
+
+/** La plataforma de los espacios, en memoria: crea espacios con ids correlativos y apunta las llamadas. */
+export function fakeSpaces() {
+  const created = new Map<string, PlatformSpace>();
+  const calls: string[] = [];
+  let nextId = 100;
+  let failNext: PlatformError | null = null;
+  const client: SpacesClient = {
+    async declareRoles() {
+      calls.push('roles');
+    },
+    async create(globalId, space) {
+      calls.push(`create:${space.idExterno}`);
+      if (failNext) {
+        const error = failNext;
+        failNext = null;
+        throw error;
+      }
+      const existing = created.get(space.idExterno);
+      if (existing) return existing;
+      const value: PlatformSpace = {
+        id: nextId++,
+        idExterno: space.idExterno,
+        nombre: space.nombre,
+        entrada: 'invitacion',
+        dosPasos: false,
+        propietario: globalId.toLowerCase(),
+      };
+      created.set(space.idExterno, value);
+      return value;
+    },
+    async remove(externalId) {
+      calls.push(`remove:${externalId}`);
+      if (failNext) {
+        const error = failNext;
+        failNext = null;
+        throw error;
+      }
+      created.delete(externalId);
+    },
+  };
+  return {
+    client,
+    created,
+    calls,
+    failOnce(error: PlatformError) {
+      failNext = error;
+    },
+  };
+}
+
 export function testDependencies(overrides: Partial<AppDependencies> = {}): AppDependencies {
+  const projects = overrides.projects ?? createMemoryProjectStore();
   return {
     config: testConfig,
     db: fakeDb(),
     auth: { verify: async () => Promise.reject(new AuthTokenError('invalid_token')) },
     users: fakeUsers().store,
-    projects: createMemoryProjectStore(),
     ai: { propose: async () => Promise.reject(new Error('IA no configurada en la prueba')) },
     conversations: createMemoryConversationStore(),
+    groups: memoryGroups(projects),
+    spaces: fakeSpaces().client,
+    feed: null,
     ...overrides,
+    projects,
   };
 }

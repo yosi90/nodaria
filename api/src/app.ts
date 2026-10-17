@@ -9,7 +9,10 @@ import type { AuthProvider } from './auth/platform.ts';
 import { createAuthenticate, HttpError } from './auth/plugin.ts';
 import type { AppConfig } from './config.ts';
 import type { Database } from './db/pool.ts';
+import type { GroupStore } from './groups/repository.ts';
+import type { SpacesClient } from './platform/spaces.ts';
 import { aiRoutes } from './routes/ai.ts';
+import { groupRoutes } from './routes/groups.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meRoutes } from './routes/me.ts';
 import { projectRoutes } from './routes/projects.ts';
@@ -24,6 +27,10 @@ export interface AppDependencies {
   projects: ProjectStore;
   ai: AiAssistant;
   conversations: ConversationStore;
+  groups: GroupStore;
+  spaces: SpacesClient;
+  /** Lector del feed de la plataforma, para ponerse al día a petición; `null` si no se lee. */
+  feed: { readOnce(): Promise<unknown> } | null;
 }
 
 // Peticiones por minuto de cada usuario con sesión, además del límite por IP.
@@ -64,7 +71,18 @@ function loggerOptions(config: AppConfig): FastifyServerOptions['logger'] {
   };
 }
 
-export async function buildApp({ config, db, auth, users, projects, ai, conversations }: AppDependencies) {
+export async function buildApp({
+  config,
+  db,
+  auth,
+  users,
+  projects,
+  ai,
+  conversations,
+  groups,
+  spaces,
+  feed,
+}: AppDependencies) {
   const app = Fastify({
     logger: loggerOptions(config),
     trustProxy: 'loopback',
@@ -141,7 +159,8 @@ export async function buildApp({ config, db, auth, users, projects, ai, conversa
         return reply.status(429).send(tooManyRequests(request, limit));
       });
       await privateApp.register(meRoutes, { users });
-      await privateApp.register(projectRoutes, { projects, config, conversations });
+      await privateApp.register(projectRoutes, { projects, config, conversations, groups });
+      await privateApp.register(groupRoutes, { groups, spaces, users, config, feed });
       await privateApp.register(aiRoutes, { ai, config, conversations });
     },
     { prefix: '/api' },

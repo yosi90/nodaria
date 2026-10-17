@@ -9,7 +9,7 @@ const paramsSchema = z.object({ id: z.string().regex(PROJECT_ID, 'Identificador 
 
 // Validación mínima del documento: el front es quien migra y repara; aquí solo se comprueba
 // que sea un Project reconocible y coherente con la ruta.
-const documentSchema = z
+export const documentSchema = z
   .object({
     id: z.string(),
     name: z.string().trim().min(1).max(200),
@@ -27,10 +27,9 @@ const putSchema = z.object({
 
 const deleteQuerySchema = z.object({ baseVersion: z.coerce.number().int().min(0).optional() });
 
-export const projectRoutes: FastifyPluginAsync<Pick<AppDependencies, 'projects' | 'config' | 'conversations'>> = async (
-  app,
-  { projects, config, conversations },
-) => {
+export const projectRoutes: FastifyPluginAsync<
+  Pick<AppDependencies, 'projects' | 'config' | 'conversations' | 'groups'>
+> = async (app, { projects, config, conversations, groups }) => {
   app.get('/projects', async request => ({ projects: await projects.list(authenticatedUser(request).id) }));
 
   app.get('/projects/:id', async request => {
@@ -58,6 +57,13 @@ export const projectRoutes: FastifyPluginAsync<Pick<AppDependencies, 'projects' 
       throw new HttpError(413, 'project_too_large', 'El proyecto supera el tamaño máximo admitido.', {
         maxBytes: config.projectMaxBytes,
       });
+    }
+
+    // Un proyecto que la cuenta compartió (o el de un grupo suyo con el mismo id) ya no es suyo: otro
+    // dispositivo con la copia de antes no lo resucita como proyecto propio.
+    const sharedIn = await groups.projectGroup(id);
+    if (sharedIn && (await groups.member(sharedIn, authenticatedUser(request).globalId))) {
+      throw new HttpError(409, 'proyecto_compartido', 'Este proyecto es de un grupo.', { group: sharedIn });
     }
 
     // Subir un proyecto que la cuenta aún no tiene es crear contenido: no se deja con `creacion` limitada.
