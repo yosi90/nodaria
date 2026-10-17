@@ -109,6 +109,8 @@ export function TableView() {
       if (f.type === 'image') return isImageValue(v) ? 'imagen' : '';
       if (f.type === 'boolean') return v ? 'sí' : 'no';
       if (f.type === 'date') return formatDateValue(project.calendar, v);
+      if (f.type === 'list' && Array.isArray(v)) return v.map((x, i) => `${i + 1}. ${x}`).join('  ');
+      if (Array.isArray(v)) return v.join(', ');
       return v === undefined || v === null ? '' : String(v);
     },
     [project, degree],

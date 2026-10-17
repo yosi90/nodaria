@@ -1,4 +1,5 @@
 import { createField, createSchema, now, uid } from './factories';
+import { listItems } from './valueConversion';
 import {
   allFields,
   canChangeSchemaKind,
@@ -59,6 +60,7 @@ export function typedDefault(field: FieldDefinition): FieldValue | undefined {
           .split(',')
           .map(t => t.trim())
           .filter(Boolean);
+  if (field.type === 'list') return Array.isArray(raw) ? raw : listItems(String(raw));
   if (field.type === 'scale') {
     const value = Math.round(Number(raw));
     return value >= 1 && value <= 5 ? value : undefined;

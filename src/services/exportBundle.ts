@@ -79,6 +79,9 @@ export function exportBundle(p: Project): ZipEntry[] {
         return GENDERS.find(([id]) => id === value)?.[1] ?? String(value);
       case 'image':
         return images.get(`${node.id}|${field.id}`) ?? '';
+      case 'list':
+        // Un elemento por línea: el CSV lo pone entre comillas y la importación lo separa igual.
+        return Array.isArray(value) ? value.join('\n') : String(value);
       default:
         return Array.isArray(value) ? value.join(', ') : String(value);
     }

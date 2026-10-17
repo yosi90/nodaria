@@ -13,6 +13,7 @@ const p = project({
         field('nombre', { label: 'Nombre', isTitle: true }),
         field('edad', { label: 'Edad', type: 'number' }),
         field('viva', { label: 'Viva', type: 'boolean' }),
+        field('pasos', { label: 'Pasos', type: 'list' }),
       ],
     }),
   ],
@@ -53,7 +54,7 @@ describe('importCsvRows', () => {
     const source = {
       ...p,
       nodes: [
-        node('ana', 'persona', null, { nombre: 'Ana; "la mayor"', edad: 30, viva: true }),
+        node('ana', 'persona', null, { nombre: 'Ana; "la mayor"', edad: 30, viva: true, pasos: ['Uno, dos', 'Tres'] }),
         { ...node('luis', 'persona', 'ana', { nombre: 'Luis', viva: false }), notes: 'Hermano\nmenor' },
       ],
     };
@@ -63,7 +64,7 @@ describe('importCsvRows', () => {
     expect(result).toMatchObject({ created: 2, skipped: 0, unplaced: 0 });
     const [ana, luis] = result.project.nodes;
     expect(nodeLabel(result.project, ana)).toBe('Ana; "la mayor"');
-    expect(ana.values).toMatchObject({ edad: 30, viva: true });
+    expect(ana.values).toMatchObject({ edad: 30, viva: true, pasos: ['Uno, dos', 'Tres'] });
     expect(luis).toMatchObject({ parentId: ana.id, notes: 'Hermano\nmenor', values: { viva: false } });
   });
 });

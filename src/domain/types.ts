@@ -13,7 +13,8 @@ export type FieldType =
   | 'url'
   | 'color'
   | 'scale'
-  | 'tags';
+  | 'tags'
+  | 'list';
 import type { Calendar } from './calendar';
 import type { Folder } from './folders';
 import type { ImageShape } from './portrait';

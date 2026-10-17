@@ -41,6 +41,14 @@ function asText(p: Project, value: FieldValue, from: FieldDefinition): string | 
   return null;
 }
 
+/** Elementos de una lista ordenada escrita como texto: uno por línea o, en una sola línea, separados por comas. */
+export function listItems(text: string): string[] {
+  return text
+    .split(text.includes('\n') ? /\r?\n/ : ',')
+    .map(t => t.trim())
+    .filter(Boolean);
+}
+
 /** Un nodo por id o, si no, por título (sin mayúsculas ni acentos) entre los tipos admitidos. */
 function resolveNode(p: Project, text: string, to: FieldDefinition): string | null {
   const byId = p.nodes.find(n => n.id === text);
@@ -96,11 +104,20 @@ export function convertValue(
       return text?.trim() || null;
     }
     case 'tags': {
-      if (Array.isArray(value) && from.type !== 'nodeRefs') return value;
+      if (Array.isArray(value) && from.type !== 'nodeRefs') return [...new Set(value)];
       const items = (text ?? '')
         .split(',')
         .map(t => t.trim())
         .filter(Boolean);
+      return items.length ? items : null;
+    }
+    case 'list': {
+      if (Array.isArray(value) && from.type !== 'nodeRefs') return value.length ? value : null;
+      if (from.type === 'nodeRefs' && Array.isArray(value)) {
+        const titles = value.map(id => p.nodes.find(n => n.id === id)).flatMap(n => (n ? [nodeLabel(p, n)] : []));
+        return titles.length ? titles : null;
+      }
+      const items = listItems(text ?? '');
       return items.length ? items : null;
     }
     case 'nodeRef': {

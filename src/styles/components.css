@@ -303,7 +303,52 @@ label.field-inline select {
   align-items: center;
   gap: 5px;
 }
-/* Campos: etiquetas, escala, color y enlace */
+/* Campos: lista ordenada, etiquetas, escala, color y enlace */
+.list-input {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.list-input li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.list-input .list-number {
+  flex: none;
+  min-width: 22px;
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.list-input input {
+  flex: 1;
+  min-width: 0;
+}
+.list-input button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.list-input button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.list-input button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 .tags-input {
   display: flex;
   flex-wrap: wrap;

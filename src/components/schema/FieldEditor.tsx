@@ -79,7 +79,7 @@ export function FieldEditor({
   const refFields = others.filter(f => f.type === 'nodeRef' || f.type === 'nodeRefs');
   const whenField = field.visibleWhen ? listFields.find(f => f.id === field.visibleWhen!.fieldId) : undefined;
   const limitField = field.maxItemsBy ? listFields.find(f => f.id === field.maxItemsBy!.fieldId) : undefined;
-  const canLimit = field.type === 'nodeRefs' || field.type === 'tags';
+  const canLimit = field.type === 'nodeRefs' || field.type === 'tags' || field.type === 'list';
   const defaultSet = typedDefault(field) !== undefined;
   const missing = hasDefault && defaultSet ? nodesMissingValue(project, field.id).length : 0;
 

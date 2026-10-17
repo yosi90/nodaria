@@ -31,6 +31,14 @@ describe('convertValue', () => {
     expect(convertValue(p, '#aa00ff', text, as('color'))).toBe('#aa00ff');
   });
 
+  it('lista ordenada: una línea por elemento o comas, conserva el orden y los repetidos', () => {
+    expect(convertValue(p, 'Llegar, ver\nVencer', text, as('list'))).toEqual(['Llegar, ver', 'Vencer']);
+    expect(convertValue(p, 'b, a, b', text, as('list'))).toEqual(['b', 'a', 'b']);
+    expect(convertValue(p, ['b', 'a', 'b'], as('list'), as('tags'))).toEqual(['b', 'a']);
+    expect(convertValue(p, ['ana', 'luis'], as('nodeRefs'), as('list'))).toEqual(['Ana', 'Luis']);
+    expect(convertValue(p, [], as('tags'), as('list'))).toBeNull();
+  });
+
   it('pasa de texto a referencias por el título del nodo, y de vuelta', () => {
     const ref = as('nodeRef', { referenceTypeIds: ['persona'] });
     const refs = as('nodeRefs', { referenceTypeIds: ['persona'] });

@@ -219,7 +219,7 @@ Objetivo: modelar el mundo con matices sin perder el carácter generalista.
 - [x] (hecho en fases anteriores: nombre inverso por tipo y por relación, sentido «Bidireccional», parentesco) Relaciones con **nombre por dirección** ("padre de" / "hijo de", "venera a" / "venerado por") y relaciones **simétricas** ("hermano de", "aliado de").
 - [x] (hecho: atributos de relación en el formulario de la ficha) Atributos de relación visibles y editables (intensidad, desde cuándo, si es pública o secreta…).
 - [x] (hecho: referencias dibujadas como aristas discontinuas y usables en «Ver por», ocultables en la leyenda) Opción de **dibujar los campos de referencia como aristas** ("Dios: Aurel" se ve en el grafo sin crear además una relación). Decidir y documentar cuándo usar campo de referencia y cuándo relación.
-- [x] Nuevos tipos de campo (2026-10-04): Enlace (URL, con botón para abrir), Color (selector y valor hex), Escala 1–5 (estrellas) y Etiquetas (chips libres); Imagen ya estaba. _Pendiente: lista ordenada. La fecha del mundo llegó con el calendario del mundo (2026-10-05)._
+- [x] Nuevos tipos de campo (2026-10-04): Enlace (URL, con botón para abrir), Color (selector y valor hex), Escala 1–5 (estrellas) y Etiquetas (chips libres); Imagen ya estaba. Lista ordenada hecha el 2026-10-17 (detalle en `PENDIENTES.md`). _La fecha del mundo llegó con el calendario del mundo (2026-10-05)._
 - [x] Valores por defecto tipados y heredados (2026-10-04): el valor inicial se edita con el control del tipo (lista, escala, etiquetas, fecha, color, referencia…), lo heredan los subtipos y el editor ofrece «Rellenar N fichas vacías».
 - [x] Campos calculados reales (2026-10-04): motor en `src/domain/formulas.ts` con `{clave}`, `{referencia.clave}`, `{titulo}`, `{tipo}`, `{padre}`, `{padre.clave}`, `{contar(relaciones[:Tipo])}`, `{contar(hijos)}`, `{contar(clave)}`, `{lista(relaciones[:Tipo])}` y `{lista(hijos)}`; calculados anidados con límite de profundidad; ayuda en el editor de atributos.
 - [x] Validación de campos obligatorios con avisos no bloqueantes y contador de "fichas incompletas" (2026-10-04: marca en la tarjeta y lista con detalle en la vista «Salud»).
@@ -367,7 +367,7 @@ Criterio: una persona nueva crea un tipo, dos nodos y una relación sin ayuda ex
 | 1 — Sistema de diseño          | Completada (2026-10-03)                           |
 | 2 — Lienzo de grafo            | Completada (2026-10-03)                           |
 | 3 — Fichas y navegación        | Completada (2026-10-03); ficha completa pospuesta |
-| 4 — Modelo enriquecido         | Completada (2026-10-04) salvo la lista ordenada   |
+| 4 — Modelo enriquecido         | Completada (2026-10-04; lista ordenada 2026-10-17) |
 | 5 — Vistas y lentes            | Completada salvo la línea temporal                |
 | 6 — Análisis                   | Completada (2026-10-04)                           |
 | 7 — Persistencia y exportación | Pendiente                                         |

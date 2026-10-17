@@ -271,6 +271,7 @@ function deducedType(field: FieldDefinition): SqlDataType {
   switch (field.type) {
     case 'longText':
     case 'tags':
+    case 'list':
       return sqlType('nvarchar', 'max');
     case 'number':
       return sqlType('int');

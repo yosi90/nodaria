@@ -41,6 +41,7 @@ function describe(p: Project, f: FieldDefinition, v: unknown): string {
     return `${f.label}: ${names.join(', ')}`;
   }
   if (f.type === 'image') return f.label;
+  if (f.type === 'list' && Array.isArray(v)) return `${f.label}: ${v.map((x, i) => `${i + 1}. ${x}`).join(' · ')}`;
   if (f.type === 'tags') return `${f.label}: ${Array.isArray(v) ? v.join(', ') : String(v)}`;
   if (f.type === 'scale') return `${f.label}: ${'★'.repeat(Number(v))}${'☆'.repeat(Math.max(0, 5 - Number(v)))}`;
   if (f.type === 'date') return `${f.label}: ${formatDateValue(p.calendar, v)}`;

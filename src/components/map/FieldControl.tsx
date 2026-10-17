@@ -3,6 +3,7 @@ import { GENDERS } from '../../domain/constants';
 import type { FieldDefinition, FieldValue } from '../../domain/types';
 import { ExternalLink, Star } from 'lucide-react';
 import { TagsInput } from '../common/TagsInput';
+import { ListInput } from '../common/ListInput';
 import { ImageControl } from './ImageControl';
 import { imageClasses } from '../../domain/portrait';
 import { ReferenceControl } from './ReferenceControl';
@@ -100,6 +101,14 @@ function FieldInput({ field, value, ownerId, onChange, titleField, autoFocus }: 
     );
   if (field.type === 'tags')
     return <TagsInput value={Array.isArray(value) ? value : []} onChange={tags => onChange(tags)} />;
+  if (field.type === 'list')
+    return (
+      <ListInput
+        label={field.label}
+        value={Array.isArray(value) ? value.map(String) : []}
+        onChange={items => onChange(items)}
+      />
+    );
   if (field.type === 'scale') {
     const current = typeof value === 'number' ? value : 0;
     return (
