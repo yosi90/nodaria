@@ -47,8 +47,11 @@ export type Action =
   | { type: 'rename-folder'; id: string; name: string }
   | { type: 'delete-folder'; id: string }
   | { type: 'set-node-folder'; nodeId: string; folderId: string | null; beforeId?: string | null }
-  /** Resultado de una sincronización: sustituye o añade proyectos y quita otros, sin re-sellar `updatedAt`. */
-  | { type: 'sync-apply'; upsert: Project[]; remove: string[] }
+  /**
+   * Resultado de una sincronización: sustituye o añade proyectos y quita otros, sin re-sellar `updatedAt`.
+   * `fresh` vacía el historial: deshacer no debe reponer una copia anterior a los cambios de otra persona.
+   */
+  | { type: 'sync-apply'; upsert: Project[]; remove: string[]; fresh?: boolean }
   /** Vacía el navegador (al cerrar sesión sin conservar los proyectos). */
   | { type: 'reset-state' }
   | { type: 'add-schema'; name: string; kind: SchemaKind; id?: string; parentTypeId?: string }

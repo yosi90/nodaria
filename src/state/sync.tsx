@@ -24,6 +24,7 @@ import {
 } from '../services/sync';
 import { useApp } from './AppContext';
 import { useAuth } from './auth';
+import { useGroups } from './groups';
 import { useToast } from '../components/common/toasts';
 
 /** `off`: sin sesión. `offline`: no se llega a la API. `error`: la API respondió con error. */
@@ -57,6 +58,8 @@ const MAX_PASSES = 3;
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { state, dispatch, reportRepairs, lostOnLoad } = useApp();
   const { status: authStatus, user, restrictions, getToken } = useAuth();
+  // Los proyectos de los grupos van por su propio motor (`groups.tsx`): aquí ni se suben ni se borran.
+  const { isShared, syncShared } = useGroups();
   // La función de avisos cambia con cada edición del proyecto: se usa desde una referencia.
   const toast = useToast();
   const toastRef = useRef(toast);
@@ -89,8 +92,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     if (!token || !ready.current) return;
     const found: SyncConflict[] = [];
     for (let pass = 0; pass < MAX_PASSES; pass++) {
-      const remote = await listRemoteProjects(token);
-      const plan = planSync(projects.current, remote, meta.current, { recoverMissing: recoverMissing.current });
+      const remote = (await listRemoteProjects(token)).filter(r => !isShared(r.id));
+      const own = projects.current.filter(p => !isShared(p.id));
+      for (const id of Object.keys(meta.current.projects)) if (isShared(id)) delete meta.current.projects[id];
+      const plan = planSync(own, remote, meta.current, { recoverMissing: recoverMissing.current });
       found.push(...plan.conflicts);
       if (isEmptyPlan(plan)) break;
 
@@ -119,7 +124,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           const written = await putRemoteProject(token, item.project.id, item.project, item.baseVersion);
           next.projects[item.project.id] = { version: written.version, updatedAt: item.project.updatedAt };
         } catch (error) {
-          if (error instanceof ApiError && error.status === 409) conflicted = true;
+          // Es de un grupo (se compartió desde otro dispositivo): lo lleva el motor de los compartidos.
+          if (error instanceof ApiError && error.code === 'proyecto_compartido') void syncShared();
+          else if (error instanceof ApiError && error.status === 409) conflicted = true;
           else if (error instanceof ApiError && error.code === 'creacion_limitada') canCreateRef.current = false;
           else throw error;
         }
@@ -140,7 +147,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
     recoverMissing.current = false;
     if (found.length) setConflicts(current => [...current, ...found]);
-  }, [getToken, dispatch, reportRepairs]);
+  }, [getToken, dispatch, reportRepairs, isShared, syncShared]);
 
   const syncNow = useCallback(async () => {
     if (!signedIn) return;

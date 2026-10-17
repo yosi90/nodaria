@@ -27,6 +27,7 @@ import {
   Table2,
   Database,
   Tags,
+  Users,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { downloadProject, downloadText } from '../../services/files';
@@ -48,6 +49,11 @@ import { AccountButton } from '../account/AccountButton';
 import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
+import { GroupDialog } from '../groups/GroupDialog';
+import { ShareDialog } from '../groups/ShareDialog';
+import { roleLabel, type GroupInfo } from '../../services/groups';
+import { useAuth } from '../../state/auth';
+import { useGroups } from '../../state/groups';
 
 export type { View } from '../../state/navigation';
 
@@ -82,6 +88,16 @@ export function Topbar({
   const toggleAi = () => setPreference('aiPanelOpen', !preferences.aiPanelOpen);
   const [kindOpen, setKindOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const { status: authStatus, signIn } = useAuth();
+  const { groupOf } = useGroups();
+  const group = groupOf(project.id);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState<GroupInfo | null>(null);
+  const openSharing = () => {
+    if (group) setGroupOpen(group);
+    else if (authStatus === 'signed-in') setShareOpen(true);
+    else void signIn();
+  };
   const closeMenu = useCallback(() => setMenu(null), []);
   const toggleMenu = (kind: 'projects' | 'settings', target: HTMLElement) =>
     setMenu(menu?.kind === kind ? null : { kind, anchor: anchorOf(target) });
@@ -131,7 +147,8 @@ export function Topbar({
     { section: 'Proyectos' },
     ...state.projects.map(p => ({
       label: p.name,
-      icon: FolderOpen,
+      icon: groupOf(p.id) ? Users : FolderOpen,
+      hint: groupOf(p.id) ? 'Grupo' : undefined,
       checked: p.id === project.id,
       onSelect: () => dispatch({ type: 'set-project', id: p.id }),
     })),
@@ -151,6 +168,19 @@ export function Topbar({
       onSelect: () => setKindOpen(true),
     },
     { label: 'Calendario del proyecto…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
+    group
+      ? {
+          label: `Grupo «${group.name}»…`,
+          hint: group.isOwner ? 'Propiedad' : roleLabel(group.role),
+          icon: Users,
+          onSelect: openSharing,
+        }
+      : {
+          label: 'Compartir con un grupo…',
+          hint: authStatus === 'signed-in' ? undefined : 'Entra con tu cuenta',
+          icon: Users,
+          onSelect: openSharing,
+        },
     // El asistente de IA trabaja de momento sobre esquemas de base de datos.
     ...(aiAvailable
       ? [{ label: 'Asistente de IA', icon: Sparkles, checked: preferences.aiPanelOpen, onSelect: toggleAi }]
@@ -203,6 +233,17 @@ export function Topbar({
           aria-expanded={menu?.kind === 'settings'}
           onClick={event => toggleMenu('settings', event.currentTarget)}
         />
+        {group && (
+          <button
+            type="button"
+            className="group-chip"
+            title={`Proyecto del grupo «${group.name}». Tu rol: ${group.isOwner ? 'propiedad' : roleLabel(group.role)}`}
+            onClick={() => setGroupOpen(group)}
+          >
+            <Users size={13} aria-hidden />
+            <span className="label">{group.isOwner ? 'Propiedad' : roleLabel(group.role)}</span>
+          </button>
+        )}
       </div>
       {menu && (
         <Menu
@@ -284,6 +325,17 @@ export function Topbar({
       </div>
       <input ref={file} hidden type="file" accept="application/json,.json" onChange={upload} />
       {newProjectOpen && <NewProjectDialog onClose={() => setNewProjectOpen(false)} />}
+      {shareOpen && (
+        <ShareDialog
+          onClose={() => setShareOpen(false)}
+          onShared={created => {
+            setShareOpen(false);
+            toast({ message: `«${project.name}» ya es del grupo «${created.name}». Invita a quien quieras.` });
+            setGroupOpen(created);
+          }}
+        />
+      )}
+      {groupOpen && <GroupDialog group={groupOf(project.id) ?? groupOpen} onClose={() => setGroupOpen(null)} />}
     </header>
   );
 }

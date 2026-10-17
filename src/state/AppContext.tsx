@@ -4,8 +4,10 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -24,6 +26,12 @@ import type { Action } from './reducer';
 export type { Action } from './reducer';
 
 const SAVE_DELAY_MS = 400;
+
+/**
+ * Filtro de las acciones: `false` las descarta (y quien lo registra explica por qué). Lo usan los
+ * proyectos compartidos para que el rol en el grupo decida qué se puede cambiar.
+ */
+export type ActionGuard = (action: Action, state: AppState) => boolean;
 
 interface AppContextValue {
   state: AppState;
@@ -48,6 +56,7 @@ interface AppContextValue {
   resolveDamage: () => void;
   /** Hubo proyectos ilegibles al cargar: la sincronización debe recuperarlos, no darlos por borrados. */
   lostOnLoad: boolean;
+  setActionGuard: (guard: ActionGuard | null) => void;
 }
 
 const Context = createContext<AppContextValue | null>(null);
@@ -83,9 +92,27 @@ function LoadedAppProvider({ initial, children }: { initial: LoadResult; childre
   const save = usePersistence(state, Boolean(damage && !damage.rescued), setSaveFailure);
   const lostOnLoad = Boolean(initial.damage);
 
-  const dispatch = useCallback((action: Action) => dispatchHistory({ type: 'apply', action, at: Date.now() }), []);
-  const undo = useCallback(() => dispatchHistory({ type: 'undo' }), []);
-  const redo = useCallback(() => dispatchHistory({ type: 'redo' }), []);
+  const guard = useRef<ActionGuard | null>(null);
+  const current = useRef(state);
+  useLayoutEffect(() => {
+    current.current = state;
+  });
+  const dispatch = useCallback((action: Action) => {
+    if (guard.current && !guard.current(action, current.current)) return;
+    dispatchHistory({ type: 'apply', action, at: Date.now() });
+  }, []);
+  const setActionGuard = useCallback((next: ActionGuard | null) => {
+    guard.current = next;
+  }, []);
+  // Deshacer y rehacer sobre un compartido que el rol no deja cambiar tampoco se permiten.
+  const undo = useCallback(() => {
+    if (guard.current && !guard.current({ type: 'rename-project', name: '' }, current.current)) return;
+    dispatchHistory({ type: 'undo' });
+  }, []);
+  const redo = useCallback(() => {
+    if (guard.current && !guard.current({ type: 'rename-project', name: '' }, current.current)) return;
+    dispatchHistory({ type: 'redo' });
+  }, []);
   const dismissRepairs = useCallback(() => setRepairs([]), []);
   const resolveDamage = useCallback(() => setDamage(null), []);
   const reportRepairs = useCallback(
@@ -115,6 +142,7 @@ function LoadedAppProvider({ initial, children }: { initial: LoadResult; childre
       damage,
       resolveDamage,
       lostOnLoad,
+      setActionGuard,
     }),
     [
       state,
@@ -133,6 +161,7 @@ function LoadedAppProvider({ initial, children }: { initial: LoadResult; childre
       damage,
       resolveDamage,
       lostOnLoad,
+      setActionGuard,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;

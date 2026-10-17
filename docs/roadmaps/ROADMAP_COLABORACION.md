@@ -1,7 +1,7 @@
 # Roadmap por hitos: grupos de trabajo y colaboración
 
 Fecha: 2026-10-13.
-Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hito 1 en curso: el modelo de la API está hecho y probado en local, sin publicar (ver «Contrato del hito 1»); faltan el frontend, las maquetas de los flujos y el ensayo en QA. La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
+Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Siguiente: hito 3 (canal de tiempo real) y hito 4 (chat del grupo). La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
 
 ## Puesta al día del 2026-10-17: los espacios de la plataforma
 
@@ -180,7 +180,16 @@ Implementado en local, sin publicar. Migración `api/migrations/0009_groups.sql`
   - `DELETE /api/grupos/{grupo}?recipient=<cuenta>`: solo la propiedad; el proyecto pasa a ser un proyecto propio de la cuenta elegida (un miembro activo, o ella misma) y después se borra el espacio. Si la plataforma falla, el grupo queda `borrando` y el mantenimiento lo termina.
 - **Proyectos propios.** `PUT /api/projects/{id}` responde `409 proyecto_compartido` si ese id es de un grupo del que la cuenta es miembro: otro dispositivo con la copia de antes no la resucita como proyecto propio. Quien no es del grupo puede tener su propia copia con ese id (de un JSON importado).
 - **Feed.** `espacio.creado`/`cambiado` (nombre, propietario tras un traspaso), `espacio.borrado` (si lo borra la plataforma porque no queda nadie, el proyecto se va con él), `miembro.entrado`/`cambiado`/`salido`, en la misma transacción que el cursor.
-- **Pendiente del frontend (siguiente paso):** un motor de sincronización aparte para los compartidos (excluidos de `planSync`), con conflicto explícito en lugar de «último cambio gana»; `view` y la disposición de cada persona, locales; un id de proyecto propio que choque con uno compartido se renombra en local, como al importar; solo lectura para el lector; tratar `proyecto_compartido` y `proyecto_ya_compartido`; la ventana de invitaciones del SDK y `yosiftware:espacio`.
+- Publicada en producción el 2026-10-17 (`c0f8e01`): copia verificada `Nodaria-antes-de-0009-20261017.bak`, migración 0009 en `NodariaDev` y `Nodaria`, API reiniciada (salud correcta, `/api/grupos` 401 sin token, roles declarados en la plataforma de producción).
+
+### Frontend de los hitos 1 y 2 (2026-10-17)
+
+- **Reglas puras** en `src/services/groups.ts` (con `groups.test.ts`): llamadas a `/api/grupos*` y a la pertenencia de la plataforma (`/v1/espacios/*` con `yosiftware.tokenPlataforma()`, en `PLATFORM_API_URL`, deducida del SDK del entorno); `planShared` (bajar, subir, soltar); `contentSignature` (huella SHA-256 del proyecto sin `view` ni `updatedAt`); `blockedReason` y `SCHEMA_ACTIONS` (qué deja hacer el rol).
+- **Motor** en `src/state/groups.tsx` (`GroupsProvider`, entre `AuthProvider` y `SyncProvider`), aparte de la sincronización de los propios, que excluye los compartidos (`isShared`) y, con `409 proyecto_compartido`, los deja al motor. Recuerdo por cuenta en `nodaria_shared_v1` (grupo, versión y huella de cada compartido). Lee los grupos al entrar, cada minuto con la pestaña visible, al volver a ella o recuperar la conexión, y 2,5 s después de cada cambio en un compartido. Sube con la versión de la que parte; si otra persona guardó antes (409) o el rol ya no deja (403), baja la del grupo y guarda lo de aquí como un proyecto propio «(tus cambios)». Nunca gana en silencio el último. La vista del mapa es de cada persona: no cuenta como cambio y se conserva al bajar. Lo que se edita mientras se baja no se pisa (se resuelve en la vuelta siguiente). Al perder el acceso, el compartido sale del navegador, salvo los cambios sin subir, que quedan aparte. Una copia local con el id de un compartido que no se recuerda se compara al bajar y, si difiere, queda aparte.
+- **Deshacer:** una versión bajada del grupo vacía el historial (`sync-apply` con `fresh`): deshacer no repone lo de antes de los cambios de otra persona.
+- **Permisos en la interfaz:** `AppContext` admite un filtro de acciones (`setActionGuard`). Con un compartido abierto, el lector solo navega, cambia su vista y duplica; el editor no cambia el esquema; nadie lo elimina como si fuera propio (se sale o se borra el grupo). Un aviso explica por qué. Los controles no se ocultan todavía.
+- **Interfaz** (`src/components/groups/`, `src/styles/groups.css`): engranaje → «Compartir con un grupo…» (`ShareDialog`, crea el grupo con el proyecto) o «Grupo «…»…»; insignia del rol junto al proyecto e icono de grupo en la lista de proyectos. `GroupDialog`: miembros (con el SDK), cambiar rol, sacar, ceder la propiedad, invitar por correo con rol, invitaciones pendientes y retirarlas, salir y, para la propiedad, borrar el grupo eligiendo quién se queda el proyecto. Menú de la cuenta → «Invitaciones a grupos» (ventana del SDK). Al aceptar una invitación (`yosiftware:espacio`), la API lee el feed (con reintentos) y se abre el proyecto del grupo.
+- **Verificado:** lint, tipos y 317 pruebas del front; Edge sin ventana con el SDK y la API simulados: compartir, miembros, invitar, subir un cambio (versión 2), no subirlo como propio, bajar el cambio de otra persona, pasar a lector y que se le bloquee y explique, y el diálogo a 390 px; sin errores de JavaScript. El desbordamiento horizontal a 390 px de la barra de vistas es anterior a este cambio. **No probado con cuentas reales**: lo prueba el propietario en producción.
 
 ### Concurrencia y tiempo real
 
@@ -217,10 +226,10 @@ Responsables: Nodaria y plataforma. Es una condición de entrada, no una orden d
 Responsable: Nodaria. Depende del hito 0.
 
 - [x] Diseñar grupo, proyecto único, membresías, capacidades e invitaciones; separar recursos personales y compartidos (2026-10-17, «Contrato del hito 1»). Lint, tipos y 64 pruebas de la API, también contra SQL Server en una base desechable.
-- [ ] Definir migración de almacenamiento, propiedad y borrado de cuentas con copia y ensayo en QA. Hecho: la migración 0009 y su prueba; la propiedad y el borrado de cuentas, decididos y probados. Falta el ensayo en QA (`NodariaDev`, con dos cuentas de prueba).
-- [ ] Excluir los compartidos del motor actual de subida/borrado por ausencia; decidir caché por cuenta y preferencias individuales. Hecho en la API (`proyecto_compartido`); falta el frontend.
-- [ ] Diseñar operaciones y revisiones, validación de integridad y deshacer seguro (o su suspensión explícita inicial).
-- [ ] Maquetar los flujos de grupos, miembros, compartir, conflictos y permisos antes de implementarlos.
+- [x] Definir migración de almacenamiento, propiedad y borrado de cuentas con copia y ensayo en QA: migración 0009 probada y aplicada con copia verificada; sin ensayo en QA por decisión del propietario (2026-10-17).
+- [x] Excluir los compartidos del motor actual de subida/borrado por ausencia; decidir caché por cuenta y preferencias individuales (la vista, de cada persona).
+- [x] Diseñar operaciones y revisiones, validación de integridad y deshacer seguro (o su suspensión explícita inicial): revisiones por documento con conflicto explícito; deshacer no cruza una versión bajada. Las operaciones finas quedan para el hito 3.
+- [x] Maquetar los flujos de grupos, miembros, compartir, conflictos y permisos antes de implementarlos: el propietario decide pasar directamente a programarlos (2026-10-17).
 
 **Termina cuando:** están definidos los contratos de Nodaria y la migración ensayada sin perder proyectos; se demuestra que cambiar de cuenta, borrar una copia local o abandonar un grupo no borra el proyecto de los demás.
 
@@ -228,11 +237,11 @@ Responsable: Nodaria. Depende del hito 0.
 
 Responsable: Nodaria, usando identidad/entrega acordadas. Depende del hito 1.
 
-- [ ] Crear un grupo/proyecto compartido y convertir un proyecto propio conservando contenido e identidad.
-- [ ] Invitar, aceptar, rechazar, revocar, salir, cambiar rol y transferir propiedad.
-- [ ] Implementar propietario, responsable, editor y lector, con nombres por categoría y capacidades visibles.
-- [ ] Autorizar cada lectura/escritura/exportación desde la API y verificar los conflictos de revisión. Sin actualización automática aún: ofrecer recargar y avisar ante una versión incompatible.
-- [ ] Impedir que una invitación revocada o un cambio de rol tardío concedan permisos antiguos.
+- [x] Crear un grupo/proyecto compartido y convertir un proyecto propio conservando contenido e identidad.
+- [x] Invitar, aceptar, rechazar, revocar, salir, cambiar rol y transferir propiedad (con la plataforma y su SDK).
+- [x] Implementar propietario, responsable, editor y lector, con capacidades visibles. Los nombres por categoría de proyecto quedan para el hito 5.
+- [x] Autorizar cada lectura/escritura/exportación desde la API y verificar los conflictos de revisión.
+- [x] Impedir que una invitación revocada o un cambio de rol tardío concedan permisos antiguos: la plataforma lleva las invitaciones y la API autoriza con la copia del feed en cada petición.
 
 **Termina cuando:** dos cuentas ven el mismo proyecto y pueden colaborar por turnos; lector no escribe ni llamando directamente a la API; un tercero no obtiene datos; nunca desaparece una versión por elegir el documento más reciente. Pruebas de invitación doble, expulsión, transferencia y edición concurrente incluidas.
 

@@ -7,6 +7,7 @@ import { DialogProvider } from './components/common/dialogs';
 import { ToastProvider } from './components/common/toasts';
 import { AppProvider } from './state/AppContext';
 import { AuthProvider } from './state/auth';
+import { GroupsProvider } from './state/groups';
 import { SyncProvider } from './state/sync';
 import { SyncNotices } from './components/account/SyncNotices';
 import { StorageError } from './components/layout/StorageError';
@@ -23,6 +24,7 @@ import './styles/flow.css';
 import './styles/account.css';
 import './styles/database.css';
 import './styles/ai.css';
+import './styles/groups.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -30,16 +32,18 @@ createRoot(document.getElementById('root')!).render(
       <AppProvider errorView={error => <StorageError message={error.message} />}>
         <ToastProvider>
           <AuthProvider>
-            <SyncProvider>
-              <NavigationProvider>
-                <TourProvider>
-                  <DialogProvider>
-                    <App />
-                    <SyncNotices />
-                  </DialogProvider>
-                </TourProvider>
-              </NavigationProvider>
-            </SyncProvider>
+            <GroupsProvider>
+              <SyncProvider>
+                <NavigationProvider>
+                  <TourProvider>
+                    <DialogProvider>
+                      <App />
+                      <SyncNotices />
+                    </DialogProvider>
+                  </TourProvider>
+                </NavigationProvider>
+              </SyncProvider>
+            </GroupsProvider>
           </AuthProvider>
         </ToastProvider>
       </AppProvider>
