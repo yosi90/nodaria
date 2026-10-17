@@ -1,0 +1,17 @@
+{
+  "name": "Nodaria — Mapas mentales por esquemas",
+  "short_name": "Nodaria",
+  "description": "Mapas mentales estructurados por esquemas",
+  "lang": "es",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f9f7f2",
+  "theme_color": "#5b45d6",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
