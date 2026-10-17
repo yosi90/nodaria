@@ -116,6 +116,9 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                 <th title="Clave primaria">PK</th>
                 <th title="Admite nulos">Nulos</th>
                 <th title="Valor único (UNIQUE)">Único</th>
+                <th title="UNIQUE compuesta: las columnas con el mismo nombre de grupo forman una sola restricción">
+                  Grupo único
+                </th>
                 <th title="Numeración automática IDENTITY(1,1)">Identity</th>
                 <th title="Valor por defecto: una expresión de SQL Server, como 0, N'texto' o GETDATE()">
                   Por defecto
@@ -228,6 +231,17 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                         checked={sql.unique}
                         disabled={off}
                         onChange={event => set(column, { unique: event.target.checked })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="sql-default"
+                        aria-label={`${field.label}: grupo único`}
+                        value={sql.uniqueGroup ?? ''}
+                        placeholder="—"
+                        maxLength={60}
+                        disabled={off}
+                        onChange={event => set(column, { uniqueGroup: event.target.value || null })}
                       />
                     </td>
                     <td>

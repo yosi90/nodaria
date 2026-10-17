@@ -45,13 +45,25 @@ describe('caso comercial (hito 5)', () => {
     expect(script).toMatch(/FOREIGN KEY \(\[jefe\]\) REFERENCES \[dbo\]\.\[Empleado\]/);
     // Los valores limitados de una lista, como CHECK.
     expect(script).toContain("CONSTRAINT [CK_Pedido_estado] CHECK ([estado] IN (N'Abierto', N'Enviado', N'Cerrado'))");
-    expect(script.match(/FOREIGN KEY/g)).toHaveLength(6);
+    expect(script.match(/FOREIGN KEY/g)).toHaveLength(7);
     // Ampliaciones: DEFAULT, regla de la FK e índice.
     expect(script).toContain('[fecha] date NOT NULL CONSTRAINT [DF_Pedido_fecha] DEFAULT (GETDATE())');
     expect(script).toMatch(
       /FOREIGN KEY \(\[linea_pedido\]\) REFERENCES \[dbo\]\.\[Pedido\] \(\[pedido_id\]\) ON DELETE CASCADE;/,
     );
     expect(script).toContain('CREATE INDEX [IX_Pedido_pedido_cliente] ON [dbo].[Pedido] ([pedido_cliente]);');
+    // UNIQUE compuesta por grupo.
+    expect(script).toContain('CONSTRAINT [UQ_Pedido_cliente_fecha] UNIQUE ([pedido_cliente], [fecha])');
+    // Una referencia a una clave compuesta: una columna por cada parte y una FK de varias columnas.
+    expect(script).toContain('[devuelta_linea_pedido] int NOT NULL');
+    expect(script).toContain('[devuelta_numero] int NOT NULL');
+    expect(script).toContain(
+      'FOREIGN KEY ([devuelta_linea_pedido], [devuelta_numero]) REFERENCES [dbo].[LineaPedido] ([linea_pedido], [numero]);',
+    );
+    expect(script).toContain(
+      'CREATE INDEX [IX_Devolucion_devuelta] ON [dbo].[Devolucion] ([devuelta_linea_pedido], [devuelta_numero]);',
+    );
+    expect(tableIssues(commercialCase(), 'devolucion')).toEqual([]);
   });
 
   it('avisa de las reglas y los valores por defecto que SQL Server rechazaría', () => {
@@ -110,7 +122,7 @@ describe('caso comercial (hito 5)', () => {
     const script = sqlScript(next, DATE);
     expect(script).toContain('CREATE TABLE [dbo].[ProductoProveedor]');
     expect(script).toMatch(/PRIMARY KEY \(\[id_producto\], \[id_proveedor\]\)/);
-    expect(script.match(/FOREIGN KEY/g)).toHaveLength(8);
+    expect(script.match(/FOREIGN KEY/g)).toHaveLength(9);
     expect(databaseLint(next).filter(i => i.severity === 'error')).toEqual([]);
   });
 });

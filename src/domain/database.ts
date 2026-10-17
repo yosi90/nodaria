@@ -62,6 +62,8 @@ export interface SqlColumn {
   defaultValue?: string | null;
   /** Índice no único sobre la columna (`CREATE INDEX`). */
   indexed?: boolean;
+  /** Nombre de una UNIQUE compuesta: las columnas con el mismo grupo forman una sola restricción. */
+  uniqueGroup?: string | null;
   /** En una clave foránea: qué hacer al borrar o actualizar la fila referenciada. */
   onDelete?: FkAction;
   onUpdate?: FkAction;
@@ -231,6 +233,7 @@ export function readSqlColumn(raw: unknown): SqlColumn | null {
   if (typeof r.defaultValue === 'string' && r.defaultValue.trim())
     column.defaultValue = r.defaultValue.trim().slice(0, 200);
   if (flag('indexed')) column.indexed = true;
+  if (typeof r.uniqueGroup === 'string' && r.uniqueGroup.trim()) column.uniqueGroup = r.uniqueGroup.trim().slice(0, 60);
   const action = (value: unknown) =>
     FK_ACTIONS.includes(value as FkAction) && value !== 'NO ACTION' ? (value as FkAction) : undefined;
   if (action(r.onDelete)) column.onDelete = action(r.onDelete);
@@ -510,6 +513,13 @@ export function tableIssues(p: Project, typeId: string): TableIssue[] {
           });
       }
     }
+    const group = c.sql.uniqueGroup?.trim();
+    if (group && columns.filter(o => o.sql.uniqueGroup?.trim() === group).length === 1)
+      issues.push({
+        severity: 'warning',
+        message: `${c.field.label}: el grupo único «${group}» solo tiene esta columna; para eso basta «Único».`,
+        fieldId: c.field.id,
+      });
     if (c.field.type === 'nodeRefs')
       issues.push({
         severity: 'warning',
@@ -519,18 +529,8 @@ export function tableIssues(p: Project, typeId: string): TableIssue[] {
     if (c.field.type === 'nodeRef') {
       const target = referencedTable(p, c.field);
       const targetKeys = target ? tableColumns(p, target.id).filter(k => k.sql.primaryKey) : [];
-      if (target && targetKeys.length > 1)
-        issues.push({
-          severity: 'warning',
-          message: `${c.field.label}: «${target.name}» tiene una clave primaria compuesta; una sola columna no puede referenciarla.`,
-          fieldId: c.field.id,
-        });
-      else if (
-        target &&
-        targetKeys.length === 1 &&
-        !c.deduced &&
-        sqlTypeText(targetKeys[0].type) !== sqlTypeText(c.type)
-      )
+      // Hacia una clave primaria compuesta, el script abre la referencia en una columna por cada parte.
+      if (target && targetKeys.length === 1 && !c.deduced && sqlTypeText(targetKeys[0].type) !== sqlTypeText(c.type))
         issues.push({
           severity: 'warning',
           message: `${c.field.label}: es ${sqlTypeText(c.type)}, pero la clave de «${target.name}» es ${sqlTypeText(targetKeys[0].type)}.`,

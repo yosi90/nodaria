@@ -124,10 +124,12 @@ export function databaseLint(p: Project): DatabaseLintIssue[] {
     const target = nodes.get(l.targetId)!;
     const column = tableColumns(p, source.typeId).find(c => c.field.id === l.fieldId);
     const key = tableColumns(p, target.typeId).find(c => c.field.id === l.targetFieldId);
-    if (!l.targetFieldId)
+    // Hacia una clave primaria compuesta, el script abre la referencia en una columna por parte: vale.
+    // Lo que no vale es apuntar a una tabla sin clave primaria.
+    if (!l.targetFieldId && !tableColumns(p, target.typeId).some(c => c.sql.primaryKey))
       issues.push({
         severity: 'error',
-        message: `${nodeLabel(p, source)}.${column?.field.key}: «${nodeLabel(p, target)}» no tiene una clave primaria de una sola columna a la que apuntar.`,
+        message: `${nodeLabel(p, source)}.${column?.field.key}: «${nodeLabel(p, target)}» no tiene clave primaria a la que apuntar.`,
         node: source,
       });
     else if (column && key && sqlTypeText(column.type) !== sqlTypeText(key.type))

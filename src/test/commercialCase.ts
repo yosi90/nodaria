@@ -64,10 +64,15 @@ export function commercialCase(): Project {
         fields: [
           title('t_pedido'),
           id('pedido_id'),
-          ref('pedido_cliente', 'cliente', { indexed: true }),
+          ref('pedido_cliente', 'cliente', { indexed: true, uniqueGroup: 'cliente_fecha' }),
           field('fecha', {
             type: 'date',
-            sql: column({ type: sqlType('date'), nullable: false, defaultValue: 'GETDATE()' }),
+            sql: column({
+              type: sqlType('date'),
+              nullable: false,
+              defaultValue: 'GETDATE()',
+              uniqueGroup: 'cliente_fecha',
+            }),
           }),
           field('estado', {
             type: 'select',
@@ -85,6 +90,11 @@ export function commercialCase(): Project {
           ref('linea_producto', 'producto'),
           field('cantidad', { type: 'number', sql: column({ type: sqlType('int'), nullable: false }) }),
         ],
+      }),
+      // Una devolución apunta a una línea de pedido, cuya clave primaria es compuesta.
+      schema('devolucion', {
+        table: true,
+        fields: [title('t_devolucion'), id('devolucion_id'), ref('devuelta', 'linea', { indexed: true })],
       }),
       schema('departamento', {
         table: true,
@@ -110,6 +120,7 @@ export function commercialCase(): Project {
         linea_pedido: 'n-pedido',
         linea_producto: 'n-producto',
       }),
+      node('n-devolucion', 'devolucion', null, { t_devolucion: 'Devolucion', devuelta: 'n-linea' }),
       node('n-departamento', 'departamento', null, { t_departamento: 'Departamento', responsable: 'n-empleado' }),
       node('n-empleado', 'empleado', null, {
         t_empleado: 'Empleado',

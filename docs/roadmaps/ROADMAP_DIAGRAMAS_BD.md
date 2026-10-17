@@ -69,7 +69,9 @@ Ampliado el 2026-10-15 (formato 7): ajustes SQL por tipo para heredados y prefor
 
 Ampliaciones del 2026-10-17: CHECK de las listas de opciones; **valor por defecto** de una columna (`SqlColumn.defaultValue`, una expresión de SQL Server; `DEFAULT` en el script; el lint rechaza «;», comentarios, comillas o paréntesis sin cerrar y DEFAULT en IDENTITY); **índices** (`indexed`; `CREATE INDEX` al final, salvo en PK de una columna y UNIQUE); **reglas de las FK** (`onDelete`/`onUpdate`: NO ACTION, CASCADE, SET NULL, SET DEFAULT; el lint exige nulos para SET NULL y un DEFAULT para SET DEFAULT, y marca como error la cascada en una autorreferencia o en un ciclo, que SQL Server rechaza). Las claves nuevas solo se guardan con valor, así que los datos de antes no cambian. Tarjeta «Columnas SQL» con «Por defecto», «Índice» y, en cada clave foránea, «Al borrar» y «Al actualizar». El caso comercial las usa y su script se ejecutó en SQL Server: la fecha toma `GETDATE()` y borrar un pedido borra sus líneas.
 
-Pendientes: claves UNIQUE compuestas con nombre, FK compuestas (una referencia es una columna), cardinalidades en las líneas y enrutado que esquive tablas.
+Después, el mismo día: **UNIQUE compuestas con nombre** (`uniqueGroup`: las columnas con el mismo grupo forman `UQ_Tabla_grupo`; el lint avisa de un grupo de una sola columna); **FK compuestas**: una referencia a una tabla con clave primaria compuesta se abre en el script en una columna por cada parte (`referencia_parte`, con el tipo de la parte) y una FK de varias columnas, y su índice o su UNIQUE cubren todas; el lint ya no lo trata como error (sí, apuntar a una tabla sin clave primaria). **Cardinalidades en las líneas**: «1» en lugar de «∞» si la FK es UNIQUE o es la clave primaria entera, y «0..1» junto a la llave si admite nulos. Todo probado con el caso comercial (una devolución que apunta a una línea de pedido) en SQL Server: la UNIQUE compuesta rechaza el duplicado y la FK compuesta, una línea inexistente.
+
+Pendiente: el enrutado de las líneas que esquive las tablas (hoy van en ángulo recto entre filas y pueden cruzar una tabla intermedia).
 
 ## Hitos y criterios de cierre
 

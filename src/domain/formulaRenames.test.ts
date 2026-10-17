@@ -26,7 +26,10 @@ const base = (): Project =>
       // Otro tipo con un atributo que también se llama «edad»: no se toca.
       schema('mascota', {
         name: 'Mascota',
-        fields: [field('mascota_edad', { key: 'edad', label: 'edad', type: 'number' }), computed('texto', 'Tiene {edad}')],
+        fields: [
+          field('mascota_edad', { key: 'edad', label: 'edad', type: 'number' }),
+          computed('texto', 'Tiene {edad}'),
+        ],
       }),
       schema(
         'amistad',
