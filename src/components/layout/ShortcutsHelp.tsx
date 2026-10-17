@@ -22,6 +22,8 @@ const GROUPS: { title: string; items: [string, string[]][] }[] = [
       ['Mostrar u ocultar la estructura', ['[']],
       ['Cerrar el inspector', ['Esc']],
       ['Eliminar el elemento seleccionado', ['Supr']],
+      ['Marcar o desmarcar varias tarjetas', ['Ctrl', 'clic']],
+      ['Marcar las tarjetas de un recuadro', ['Shift', 'arrastrar']],
     ],
   },
   {

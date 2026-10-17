@@ -32,7 +32,7 @@ import {
   Database,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
+import { allFields, getNode, getSchema, nodeLabel, ownTitle, relationRole } from '../../domain/selectors';
 import { usePreferences } from '../../state/preferences';
 import { referenceFields, referenceLinks } from '../../domain/references';
 import { passesTagFilter } from '../../domain/tagFilter';
@@ -47,7 +47,7 @@ import {
 import { isIncomplete } from '../../domain/health';
 import { viewForLayout, viewAfterIsolation } from '../../domain/layoutFilters';
 import { resolveStructure, structureLinks } from '../../domain/structure';
-import type { LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
+import type { FieldDefinition, LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { pointAnchor, type Anchor } from '../common/anchor';
@@ -83,6 +83,9 @@ import { sqlScript } from '../../domain/sqlScript';
 import { vocabulary } from '../../domain/projectKinds';
 import { downloadText } from '../../services/files';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
+import { BulkBar } from '../table/BulkBar';
+import { useRemoveNodes } from '../table/useRemoveNodes';
+import { isTypingTarget } from '../common/keyboard';
 
 const nodeTypes = { card: NodeCard };
 const fitViewOptions = { padding: 0.2, maxZoom: 1 };
@@ -241,6 +244,9 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     () => Math.max(NODE_H, ...project.nodes.map(n => cardHeight(cardContent(project, n).lines.length))),
     [project],
   );
+  // Selección múltiple (Ctrl/Cmd+clic o Mayús+arrastre): las tarjetas marcadas se mueven juntas y la
+  // barra opera con todas. Con menos de dos manda la selección normal, la del inspector.
+  const [picked, setPicked] = useState<string[]>([]);
   const visibleIds = useMemo(() => {
     let ids = new Set(
       project.nodes
@@ -253,6 +259,17 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     }
     return ids;
   }, [project, hiddenEntities, view.tagFilter, focusDepth, focusId, links]);
+
+  const pickedSet = useMemo(() => new Set(picked.filter(id => visibleIds.has(id))), [picked, visibleIds]);
+  const multi = pickedSet.size >= 2;
+  const pickedFields = useMemo(() => {
+    const byId = new Map<string, FieldDefinition>();
+    for (const id of pickedSet) {
+      const node = getNode(project, id);
+      if (node) allFields(project, node.typeId).forEach(f => byId.set(f.id, f));
+    }
+    return [...byId.values()];
+  }, [project, pickedSet]);
 
   // La disposición solo cuenta lo visible: un nodo oculto no reserva sitio ni separa a los demás, y al
   // mostrar u ocultar tipos (o cambiar el foco) todo se redistribuye con lo que queda.
@@ -527,7 +544,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           hidden: clustered.has(n.id) || undefined,
           width: table ? TABLE_W : compact && !expanded ? MARKER : NODE_W,
           height: table ? tableHeight(table.length) : compact && !expanded ? MARKER : fullHeight,
-          selected: selectedNodeId === n.id,
+          selected: pickedSet.size ? pickedSet.has(n.id) : selectedNodeId === n.id,
           data: {
             compact,
             expanded,
@@ -559,6 +576,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     databaseMode,
     keyFields,
     selectedNodeId,
+    pickedSet,
     unpin,
     hoverOnMap,
     clustered,
@@ -828,29 +846,69 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     [],
   );
   const onNodeClick = useCallback(
-    (_: unknown, n: { id: string }) => {
+    (event: MouseEvent, n: { id: string }) => {
       if (clickTimer.current !== null) window.clearTimeout(clickTimer.current);
+      // Con Ctrl/Cmd el clic marca o desmarca la tarjeta sin cambiar el inspector; la primera vez
+      // parte del nodo que ya estaba seleccionado.
+      if (event.ctrlKey || event.metaKey) {
+        setPicked(current => {
+          const base = current.length ? current : selectedNodeId && selectedNodeId !== n.id ? [selectedNodeId] : [];
+          return base.includes(n.id) ? base.filter(id => id !== n.id) : [...base, n.id];
+        });
+        return;
+      }
+      setPicked([]);
       // Abrir el inspector en el primer clic puede desplazar la tarjeta antes del segundo.
       clickTimer.current = window.setTimeout(() => onSelect({ kind: 'node', id: n.id }), 220);
     },
-    [onSelect],
+    [onSelect, selectedNodeId],
   );
   const onEdgeClick = useCallback(
     (_: unknown, e: Edge) => e.data?.kind === 'relation' && onSelect({ kind: 'relation', id: e.id }),
     [onSelect],
   );
-  const onPaneClick = useCallback(() => onSelect(null), [onSelect]);
+  const onPaneClick = useCallback(() => {
+    setPicked([]);
+    onSelect(null);
+  }, [onSelect]);
   const onNodeMouseEnter = useCallback((_: unknown, n: { id: string }) => setHoveredId(n.id), []);
   const onNodeMouseLeave = useCallback(() => setHoveredId(null), []);
   const minimapColor = useCallback((n: { data: Record<string, unknown> }) => String(n.data.color ?? '#888'), []);
 
+  // Durante el recuadro (Mayús+arrastre) React Flow avisa de qué tarjetas quedan dentro; fuera de él sus
+  // cambios de selección se ignoran: la selección la llevan el inspector y el Ctrl+clic.
+  const boxSelecting = useRef(false);
   const onNodesChange = useCallback((changes: NodeChange<CardNode>[]) => {
     const moved: Record<string, Position> = {};
+    const selects: { id: string; selected: boolean }[] = [];
     changes.forEach(c => {
       if (c.type === 'position' && c.position) moved[c.id] = c.position;
+      if (c.type === 'select' && boxSelecting.current) selects.push(c);
     });
     if (Object.keys(moved).length) setOverrides(current => ({ ...current, ...moved }));
+    if (selects.length)
+      setPicked(current => {
+        const next = new Set(current);
+        selects.forEach(c => (c.selected ? next.add(c.id) : next.delete(c.id)));
+        return [...next];
+      });
   }, []);
+  const removeNodes = useRemoveNodes();
+  useEffect(() => {
+    if (!pickedSet.size) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isTypingTarget(event.target)) return;
+      if (event.key === 'Escape') setPicked([]);
+      else if (multi && (event.key === 'Delete' || event.key === 'Backspace')) {
+        // Antes que el atajo del mapa, que borraría solo el nodo del inspector.
+        event.preventDefault();
+        event.stopPropagation();
+        void removeNodes([...pickedSet]).then(done => done && setPicked([]));
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [multi, pickedSet, removeNodes]);
 
   const onNodeDragStop: OnNodeDrag<CardNode> = useCallback(
     (_, __, dragged) => {
@@ -1174,6 +1232,14 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
           onConnectEnd={onConnectEnd}
+          onSelectionStart={() => {
+            boxSelecting.current = true;
+            setPicked([]);
+          }}
+          onSelectionEnd={() => {
+            // Los últimos cambios del recuadro llegan justo después de soltar.
+            requestAnimationFrame(() => (boxSelecting.current = false));
+          }}
           connectionMode={ConnectionMode.Loose}
           connectionRadius={30}
           defaultViewport={savedViewport?.viewport}
@@ -1245,6 +1311,11 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           {legendOpen && (
             <Panel position="top-right">
               <LegendPanel onClose={() => setLegendOpen(false)} />
+            </Panel>
+          )}
+          {multi && (
+            <Panel position="top-center" className="canvas-bulk">
+              <BulkBar ids={[...pickedSet]} fields={pickedFields} onDone={() => setPicked([])} />
             </Panel>
           )}
           <Panel position="top-left" className="canvas-tools">

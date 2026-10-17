@@ -6,18 +6,20 @@ import type { FieldDefinition, Node, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
-import { useDialogs } from '../common/dialogs';
 import { Popover } from '../common/Popover';
 import { TagsInput } from '../common/TagsInput';
 import { useToast } from '../common/toasts';
+import { useRemoveNodes } from './useRemoveNodes';
 
 /*
- * Barra de operaciones masivas de la tabla: con varias filas marcadas permite cambiarlas de tipo,
+ * Barra de operaciones masivas de la tabla y del lienzo: con varias filas o tarjetas marcadas permite cambiarlas de tipo,
  * moverlas bajo otro nodo (o a la raíz), añadirles etiquetas o eliminarlas de una vez. Cada acción
  * se puede deshacer. Lo que no cabe en una fila concreta (padre que no la admite, ciclo) se omite.
  */
 
 type Menu = 'type' | 'move' | 'tags' | null;
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function BulkBar({
   ids,
@@ -26,12 +28,14 @@ export function BulkBar({
   onDone,
 }: {
   ids: string[];
-  schema: Schema;
+  /** El tipo de la tabla, que no se ofrece al cambiar de tipo; en el lienzo, ninguno. */
+  schema?: Schema;
+  /** Atributos de los nodos marcados (los de etiquetas permiten etiquetar). */
   fields: FieldDefinition[];
   onDone: () => void;
 }) {
   const { project, dispatch } = useApp();
-  const { confirm } = useDialogs();
+  const removeNodes = useRemoveNodes();
   const toast = useToast();
   const [menu, setMenu] = useState<Menu>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -45,7 +49,6 @@ export function BulkBar({
     [ids, project],
   );
   const count = selected.length;
-  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
   const typeOptions = project.schemas.filter(s => s.kind === 'entity' && !s.isAbstract);
   // Padres posibles: nodos fuera de la selección y de sus descendientes que admitan al menos a uno.
@@ -74,19 +77,7 @@ export function BulkBar({
   };
 
   const remove = async () => {
-    const nested = blocked.size - count;
-    const ok = await confirm({
-      title: `Eliminar ${plural(count, 'nodo', 'nodos')}`,
-      message: nested
-        ? `Se eliminarán con sus ${plural(nested, 'subnodo', 'subnodos')} y todas sus relaciones. Puedes deshacerlo después.`
-        : 'Se eliminarán con sus relaciones. Puedes deshacerlo después.',
-      confirmLabel: 'Eliminar',
-      danger: true,
-    });
-    if (!ok) return;
-    dispatch({ type: 'delete-nodes', ids });
-    toast({ message: `${plural(count, 'nodo eliminado', 'nodos eliminados')}`, undoable: true });
-    onDone();
+    if (await removeNodes(ids)) onDone();
   };
 
   const movePreview = bulkPreview(project, ids, { parentId: parentId || null });
@@ -118,7 +109,7 @@ export function BulkBar({
               <select value={typeId} onChange={e => setTypeId(e.target.value)}>
                 <option value="">Elegir tipo…</option>
                 {typeOptions
-                  .filter(s => s.id !== schema.id)
+                  .filter(s => s.id !== schema?.id)
                   .map(s => (
                     <option key={s.id} value={s.id}>
                       {s.name}

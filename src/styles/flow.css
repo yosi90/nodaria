@@ -920,3 +920,16 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Selección múltiple: la barra de operaciones flota arriba, en el centro del lienzo. */
+.canvas-bulk {
+  /* Centrado con left: 50%, sin esto se encogería a la mitad del lienzo. */
+  width: max-content;
+  max-width: calc(100% - 32px);
+}
+.canvas-bulk .bulk-bar {
+  flex-wrap: wrap;
+  margin: 0;
+  background: var(--surface-2);
+  box-shadow: var(--shadow-md);
+}
