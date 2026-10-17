@@ -11,6 +11,7 @@ import {
   Table2,
   HeartPulse,
   Lightbulb,
+  CalendarRange,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
@@ -143,6 +144,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(Library),
         keywords: 'vista propiedades atributos compartidos preformas biblioteca',
         run: () => setView('properties'),
+      },
+      {
+        id: 'view:timeline',
+        label: 'Ir a la cronología',
+        group: 'Acciones',
+        leading: icon(CalendarRange),
+        keywords: 'vista cronología línea temporal fechas calendario acontecimientos historia',
+        run: () => setView('timeline'),
       },
       {
         id: 'view:health',

@@ -13,6 +13,7 @@ import { usePreferences } from './state/preferences';
 import { MapView } from './components/map/MapView';
 import { PropertiesView } from './components/schema/PropertiesView';
 import { HealthView } from './components/health/HealthView';
+import { TimelineView } from './components/timeline/TimelineView';
 import { TableView } from './components/table/TableView';
 import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
@@ -72,6 +73,8 @@ export default function App() {
             <SchemaView kind="relationship" />
           ) : view === 'health' ? (
             <HealthView />
+          ) : view === 'timeline' ? (
+            <TimelineView />
           ) : (
             <PropertiesView />
           )}
@@ -141,10 +144,12 @@ function useGlobalShortcuts(
       else if (
         event.altKey &&
         !mod &&
-        ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'].includes(event.code)
+        ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7'].includes(event.code)
       )
         setView(
-          (['map', 'table', 'health', 'schema', 'relations', 'properties'] as const)[Number(event.code.slice(-1)) - 1],
+          (['map', 'table', 'health', 'schema', 'relations', 'properties', 'timeline'] as const)[
+            Number(event.code.slice(-1)) - 1
+          ],
         );
       else if (event.altKey && !mod && event.key === 'ArrowLeft') back();
       else if (event.altKey && !mod && event.key === 'ArrowRight') forward();

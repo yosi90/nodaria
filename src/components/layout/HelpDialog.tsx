@@ -41,7 +41,8 @@ export function HelpDialog({
           <p>
             Nodaria se usa en tres pasos: define en <strong>Tipos</strong> qué clases de cosas existen y qué atributos
             tienen; define en <strong>Relaciones</strong> cómo se conectan; crea después los nodos en el{' '}
-            <strong>Mapa</strong> o en la <strong>Tabla</strong>. <strong>Salud</strong> te dice qué falta.
+            <strong>Mapa</strong> o en la <strong>Tabla</strong>. La <strong>Cronología</strong> ordena sus fechas y{' '}
+            <strong>Salud</strong> te dice qué falta.
           </p>
           <h3>Conceptos clave</h3>
           <p>

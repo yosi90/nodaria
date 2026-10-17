@@ -208,7 +208,7 @@ estart-api.ps1`): salud correcta y `/api/ia/modelos` y `/api/ia/propuestas` resp
 
 `docs/roadmaps/ROADMAP_BACKEND.md` (creado y finalizado el 2026-10-04): backend, cuentas, sincronización entre dispositivos, mensajes de usuarios y Notificapp, por fases. Fases 0 a 6 completadas el 2026-10-04 (API publicada y supervisada, cuenta y sincronización en el front, probadas de extremo a extremo). Las fases 3 y 7 (mensajes y plugin de Notificapp) se aplazaron y el 2026-10-07 las sustituyó `ROADMAP_PETICIONES.md`. La Fase 8 solo espera que el propietario migre su proyecto real iniciando sesión; después se retoma la renovación.
 
-`docs/roadmaps/ROADMAP_RENOVACION.md` (creado el 2026-10-03): renovación completa en fases (estabilidad, diseño, lienzo, fichas y navegación, modelo, vistas, análisis, persistencia, IA opcional). Quedan de la Fase 7 la PWA y guardar en disco (candidatos a descartar), la línea temporal y la Fase 8 opcional (detalle en `PENDIENTES.md`).
+`docs/roadmaps/ROADMAP_RENOVACION.md` (creado el 2026-10-03): renovación completa en fases (estabilidad, diseño, lienzo, fichas y navegación, modelo, vistas, análisis, persistencia, IA opcional). Quedan de la Fase 7 la PWA y guardar en disco (candidatos a descartar) y la Fase 8 opcional (detalle en `PENDIENTES.md`); la línea temporal es la vista «Cronología» (2026-10-17).
 
 ## Prioridades conocidas
 

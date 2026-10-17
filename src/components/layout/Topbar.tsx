@@ -35,6 +35,7 @@ import {
   History,
   FileArchive,
   Sheet,
+  CalendarRange,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { downloadBytes, downloadProject, downloadText } from '../../services/files';
@@ -350,6 +351,10 @@ export function Topbar({
         <button type="button" aria-pressed={view === 'table'} onClick={() => onView('table')}>
           <Table2 size={15} aria-hidden />
           <span className="label">Tabla</span>
+        </button>
+        <button type="button" aria-pressed={view === 'timeline'} onClick={() => onView('timeline')}>
+          <CalendarRange size={15} aria-hidden />
+          <span className="label">Cronología</span>
         </button>
         <button type="button" aria-pressed={view === 'health'} onClick={() => onView('health')}>
           <HeartPulse size={15} aria-hidden />

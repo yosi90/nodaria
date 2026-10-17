@@ -11,7 +11,7 @@ export interface MapViewportMemory {
   mapImage: Project['mapImage'];
 }
 
-export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health';
+export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health' | 'timeline';
 export type HelpTopic = 'start' | 'shortcuts' | 'formulas';
 
 interface NavigationState {

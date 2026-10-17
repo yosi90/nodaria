@@ -30,7 +30,7 @@ const STEPS: Step[] = [
   {
     target: 'views',
     title: 'Datos y esquema',
-    body: 'A la izquierda, las vistas de datos: Mapa, Tabla y Salud. A la derecha, el esquema: qué Tipos existen, qué Relaciones los unen y las Propiedades compartidas. Alt+1…6 salta entre ellas.',
+    body: 'A la izquierda, las vistas de datos: Mapa, Tabla, Cronología y Salud. A la derecha, el esquema: qué Tipos existen, qué Relaciones los unen y las Propiedades compartidas. Alt+1…7 salta entre ellas.',
     view: 'map',
   },
   {

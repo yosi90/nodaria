@@ -50,6 +50,7 @@ export function ContextMenu() {
   const views: [View, string][] = [
     ['map', 'Mapa'],
     ['table', 'Tabla'],
+    ['timeline', 'Cronología'],
     ['health', 'Salud'],
     ['schema', 'Tipos'],
     ['relations', 'Relaciones'],
