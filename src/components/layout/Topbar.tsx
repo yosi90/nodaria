@@ -28,6 +28,7 @@ import {
   Database,
   Tags,
   Users,
+  MessagesSquare,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { downloadProject, downloadText } from '../../services/files';
@@ -252,6 +253,15 @@ export function Topbar({
               </span>
             )}
           </button>
+        )}
+        {group && (
+          <IconButton
+            icon={MessagesSquare}
+            label={preferences.groupChatOpen ? 'Cerrar el chat del grupo' : 'Chat del grupo'}
+            active={preferences.groupChatOpen}
+            aria-pressed={preferences.groupChatOpen}
+            onClick={() => setPreference('groupChatOpen', !preferences.groupChatOpen)}
+          />
         )}
       </div>
       {menu && (

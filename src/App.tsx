@@ -17,6 +17,8 @@ import { TableView } from './components/table/TableView';
 import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
 import { AiPanel } from './components/ai/AiPanel';
+import { GroupChatPanel } from './components/groups/GroupChatPanel';
+import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
 import { useNavigation, type View } from './state/navigation';
 
@@ -45,13 +47,19 @@ export default function App() {
   const welcome = useWelcome();
   const { preferences, setPreference } = usePreferences();
   const aiOpen = preferences.aiPanelOpen;
+  // El chat del grupo solo con un proyecto compartido abierto.
+  const { groupOf } = useGroups();
+  const group = groupOf(project.id);
+  const chatOpen = preferences.groupChatOpen && group !== null;
+  const columns = [
+    'minmax(0, 1fr)',
+    ...(aiOpen ? [`${preferences.aiPanelWidth}px`] : []),
+    ...(chatOpen ? [`${preferences.groupChatWidth}px`] : []),
+  ];
   return (
     <div className="app">
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} onTemplates={openTemplates} />
-      <div
-        className="app-body"
-        style={{ gridTemplateColumns: aiOpen ? `minmax(0, 1fr) ${preferences.aiPanelWidth}px` : 'minmax(0, 1fr)' }}
-      >
+      <div className="app-body" style={{ gridTemplateColumns: columns.join(' ') }}>
         {/* Cada vista guarda estado local (tipo elegido, filtros, plegados) que solo vale para un proyecto. */}
         <Fragment key={project.id}>
           {view === 'map' ? (
@@ -70,6 +78,7 @@ export default function App() {
         </Fragment>
         {/* El asistente queda al lado de la vista para poder seguir trabajando; su conversación es del proyecto. */}
         {aiOpen && <AiPanel key={`ai:${project.id}`} onClose={() => setPreference('aiPanelOpen', false)} />}
+        {chatOpen && group && <GroupChatPanel group={group} onClose={() => setPreference('groupChatOpen', false)} />}
       </div>
       <div className="notice-stack">
         <StorageNotice />

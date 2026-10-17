@@ -145,6 +145,10 @@ export function fakeSpaces() {
       created.set(space.idExterno, value);
       return value;
     },
+    async conversation(externalId) {
+      calls.push(`conversation:${externalId}`);
+      return 500;
+    },
     async publish(externalId, idExterno, datos) {
       calls.push(`publish:${externalId}:${idExterno}`);
       published.push({ externalId, idExterno, datos });

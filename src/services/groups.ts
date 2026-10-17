@@ -83,6 +83,9 @@ export const putSharedProject = (token: string, group: string, id: string, docum
     token,
     { document, baseVersion },
   );
+/** La conversación del grupo en el chat de la plataforma (la crea la primera vez). */
+export const groupConversation = (token: string, group: string) =>
+  apiRequest<{ id: number }>('POST', `/api/grupos/${encodeURIComponent(group)}/conversacion`, token);
 export const deleteGroup = (token: string, group: string, recipient: string) =>
   apiRequest<{ id: string; state: string }>(
     'DELETE',

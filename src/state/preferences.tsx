@@ -27,6 +27,9 @@ export interface Preferences {
   /** Panel del asistente de IA abierto y su anchura. */
   aiPanelOpen: boolean;
   aiPanelWidth: number;
+  /** Panel del chat del grupo (proyectos compartidos) abierto y su anchura. */
+  groupChatOpen: boolean;
+  groupChatWidth: number;
 }
 
 /** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
@@ -67,6 +70,8 @@ const DEFAULTS: Preferences = {
   aiModel: null,
   aiPanelOpen: false,
   aiPanelWidth: 420,
+  groupChatOpen: false,
+  groupChatWidth: 360,
 };
 
 function loadPreferences(): Preferences {

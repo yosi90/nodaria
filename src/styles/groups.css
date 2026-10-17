@@ -96,6 +96,65 @@
   border-top: 1px solid var(--border);
 }
 
+/* Chat del grupo: la conversación del espacio, con el elemento del SDK y los colores de Nodaria. */
+.group-chat-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.group-chat-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  height: var(--panel-head-height);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.group-chat-head strong {
+  flex: 1;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.group-chat-message {
+  margin: var(--space-4) var(--space-3);
+}
+.group-chat-panel yosi-chat-conversacion {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  --yosi-color-principal: var(--accent);
+  --yosi-color-principal-texto: var(--accent-contrast);
+  --yosi-color-principal-suave: var(--accent-soft);
+  --yosi-color-fondo: var(--surface-1);
+  --yosi-color-fondo-suave: var(--surface-2);
+  --yosi-color-fondo-pagina: var(--bg);
+  --yosi-color-texto: var(--text);
+  --yosi-color-texto-suave: var(--text-muted);
+  --yosi-color-borde: var(--border);
+  --yosi-color-borde-fuerte: var(--border-strong);
+  --yosi-color-exito: var(--success);
+  --yosi-color-error: var(--danger);
+  --yosi-color-error-suave: var(--danger-soft);
+}
+
+/* En pantallas estrechas el chat ocupa el ancho de la vista, como el asistente. */
+@media (max-width: 760px) {
+  .app-body:has(.group-chat-panel) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .app-body > .group-chat-panel {
+    position: fixed;
+    inset: var(--topbar-height) 0 0 0;
+    z-index: 21;
+    background: var(--bg);
+  }
+  .group-chat-panel .splitter {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
   .group-invite {
     grid-template-columns: minmax(0, 1fr);

@@ -1,7 +1,7 @@
 # Roadmap por hitos: grupos de trabajo y colaboración
 
 Fecha: 2026-10-13.
-Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Hito 3 hecho el 2026-10-17 (ver «Tiempo real y combinación (hito 3)»), salvo un indicador de «sin conexión» propio de los compartidos. Siguiente: hito 4 (chat del grupo). La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
+Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Hito 3 hecho el 2026-10-17 (ver «Tiempo real y combinación (hito 3)»), salvo un indicador de «sin conexión» propio de los compartidos. Hito 4 hecho el 2026-10-17 (chat del grupo), salvo comprobar con cuentas reales el correo de las invitaciones. Siguiente: hito 5 (revisión y usos especializados), si el propietario lo decide. La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
 
 ## Puesta al día del 2026-10-17: los espacios de la plataforma
 
@@ -268,9 +268,9 @@ Responsable: Nodaria; transporte según respuesta de la plataforma. Depende del 
 
 Responsables: integración en Nodaria y servicios centrales. Depende del hito 2 y de los contratos correspondientes; puede adelantarse al hito 3 si estos ya están resueltos.
 
-- [ ] Pedir la conversación del espacio (`PUT /v1/servicio/espacios/{idExterno}/conversacion`) y guardar su id para incrustar el chat. Los participantes los pone la plataforma: ya no hay que mandar miembros ni reconciliar `ignoradas`.
-- [ ] Incrustar el chat común (`<yosi-chat-conversacion>`) y, si hacen falta, las notificaciones propias; no copiar mensajes a la base de Nodaria.
-- [ ] Comprobar de punta a punta el correo y el aviso de la invitación de la plataforma (en producción; en QA el correo no sale).
+- [x] Pedir la conversación del espacio (`PUT /v1/servicio/espacios/{idExterno}/conversacion`) para incrustar el chat: `POST /api/grupos/{grupo}/conversacion` (cualquier miembro activo; la plataforma la crea la primera vez y la devuelve después), sin guardar el id: se pide al abrir el chat. Los participantes los pone la plataforma.
+- [x] Incrustar el chat común (`<yosi-chat-conversacion>`): panel lateral `GroupChatPanel` (`src/components/groups/`), con el botón de chat junto a la insignia del grupo, anchura ajustable (`preferences.groupChatWidth`) y los colores de Nodaria; a pantalla completa en el móvil. Sin notificaciones propias por ahora (las de la invitación y del chat ya las da la plataforma). Los mensajes no pasan por Nodaria.
+- [ ] Comprobar de punta a punta el correo y el aviso de la invitación de la plataforma (en producción; en QA el correo no sale): queda para la prueba del propietario con su cuenta de empresa.
 
 **Termina cuando:** la invitación funciona para una cuenta usuaria de Nodaria, otra cuenta central que nunca entró y una persona que se registra; no hay entregas duplicadas; entrar/salir del grupo se refleja en el chat incluso después de un fallo temporal del servicio. Mostrar el estado pendiente de integración; no afirmar revocación inmediata del chat si todavía está por aplicarse en la plataforma.
 

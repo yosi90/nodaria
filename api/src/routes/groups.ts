@@ -199,6 +199,20 @@ export const groupRoutes: FastifyPluginAsync<
     return { id, version: result.version, serverUpdatedAt: result.serverUpdatedAt };
   });
 
+  // La conversación del grupo (hito 4), para incrustar el chat. Cualquier miembro activo la pide: la
+  // plataforma la crea la primera vez y decide quién escribe según su rol.
+  app.post('/grupos/:group/conversacion', async request => {
+    const user = authenticatedUser(request);
+    const { group } = groupParams.parse(request.params);
+    await access(user, group);
+    try {
+      return { id: await spaces.conversation(group) };
+    } catch (error) {
+      request.log.warn({ err: error, group }, 'No se pudo obtener la conversación del grupo');
+      throw new HttpError(424, 'plataforma_no_disponible', 'La plataforma no ha podido abrir el chat del grupo.');
+    }
+  });
+
   /** Un editor no cambia el esquema: se compara con la versión de la que parte. */
   async function assertSchemaUnchanged(
     group: string,

@@ -513,6 +513,17 @@ describe('group routes', () => {
     expect(spaces.published).toHaveLength(1);
   });
 
+  it('da la conversación del grupo solo a sus miembros activos', async () => {
+    const { call, create, join, spaces } = await setup();
+    await create();
+    const url = `/api/grupos/${EXTERNAL}/conversacion`;
+    expect((await call('POST', url, undefined, 'other')).statusCode).toBe(404);
+    await join(OTHER, 'lector');
+    const chat = await call('POST', url, undefined, 'other');
+    expect(chat.json()).toEqual({ id: 500 });
+    expect(spaces.calls).toContain(`conversation:${EXTERNAL}`);
+  });
+
   it('lee el feed a petición tras aceptar una invitación', async () => {
     const { call, create, feedReads } = await setup();
     await create();

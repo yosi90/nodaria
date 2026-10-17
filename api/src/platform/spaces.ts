@@ -38,6 +38,11 @@ export interface SpacesClient {
    * Repetirlo con el mismo `idExterno` no lo duplica.
    */
   publish(externalId: string, idExterno: string, datos: Record<string, unknown>): Promise<void>;
+  /**
+   * La conversación del espacio en el chat de la plataforma: la crea la primera vez y después la devuelve.
+   * Sus participantes los pone la plataforma según el permiso de chat de cada rol.
+   */
+  conversation(externalId: string): Promise<number>;
 }
 
 export function createPlatformSpacesClient(config: AppConfig['platform']): SpacesClient {
@@ -81,6 +86,10 @@ export function createPlatformSpacesClient(config: AppConfig['platform']): Space
         dosPasos: data?.dosPasos === true,
         propietario: typeof data?.propietario === 'string' ? data.propietario.toLowerCase() : globalId,
       };
+    },
+    async conversation(externalId) {
+      const data = await call('PUT', `/${encodeURIComponent(externalId)}/conversacion`);
+      return Number(data?.id);
     },
     async publish(externalId, idExterno, datos) {
       await call('POST', `/${encodeURIComponent(externalId)}/canal`, { body: { idExterno, datos } });

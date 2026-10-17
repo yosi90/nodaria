@@ -120,6 +120,7 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | POST   | `/api/grupos`        | Sí   | `{ id, name, document }`: crea el grupo y su espacio y hace del documento el proyecto del grupo. Ver «Grupos de trabajo». |
 | GET    | `/api/grupos/{grupo}/proyectos/{id}` | Sí | Documento del proyecto del grupo con su versión (miembro activo).                                         |
 | PUT    | `/api/grupos/{grupo}/proyectos/{id}` | Sí | `{ document, baseVersion }` (con `edit`). 409 `version_conflict` con la vigente; 403 `sin_permiso_en_el_grupo` o `cambio_de_esquema_no_permitido`. |
+| POST   | `/api/grupos/{grupo}/conversacion` | Sí | Miembro activo: `{ id }` de la conversación del grupo en el chat de la plataforma (la crea la primera vez). 424 si la plataforma falla. |
 | DELETE | `/api/grupos/{grupo}?recipient=` | Sí | Solo la propiedad: el proyecto pasa a la cuenta elegida y se borra el espacio. `{ id, state: borrado \| borrando }`. |
 
 El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista.
