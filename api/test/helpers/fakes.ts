@@ -182,7 +182,10 @@ export function testDependencies(overrides: Partial<AppDependencies> = {}): AppD
     db: fakeDb(),
     auth: { verify: async () => Promise.reject(new AuthTokenError('invalid_token')) },
     users: fakeUsers().store,
-    ai: { propose: async () => Promise.reject(new Error('IA no configurada en la prueba')) },
+    ai: {
+      propose: async () => Promise.reject(new Error('IA no configurada en la prueba')),
+      ask: async () => Promise.reject(new Error('IA no configurada en la prueba')),
+    },
     conversations: createMemoryConversationStore(),
     groups: memoryGroups(projects),
     comments: createMemoryCommentStore(),

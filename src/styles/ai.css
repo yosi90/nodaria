@@ -267,3 +267,33 @@
   color: var(--text-muted);
   font-size: var(--fs-xs);
 }
+
+/* Preguntas sobre el mundo: el modo del compositor y la respuesta con enlaces a los nodos citados. */
+.ai-mode {
+  justify-self: start;
+}
+.ai-answer p,
+.ai-answer ul {
+  margin: 0;
+  line-height: 1.5;
+}
+.ai-answer ul {
+  padding-left: 1.2em;
+}
+.ai-node-link {
+  display: inline;
+  padding: 0 3px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ai-node-link:hover {
+  text-decoration: underline;
+}
+.ai-node-missing {
+  color: var(--text-subtle);
+}

@@ -9,6 +9,14 @@ import type { AiModel } from './models.ts';
 import { DATABASE_SYSTEM_PROMPT, databaseUserMessage } from './prompt.ts';
 import { checkProposalLimits, proposalSchema, type AiDatabaseContext, type AiProposal } from './schema.ts';
 import { fromWire, wireProposalSchema } from './wire.ts';
+import {
+  checkAnswer,
+  WORLD_SYSTEM_PROMPT,
+  worldAnswerSchema,
+  worldUserMessage,
+  type AiWorldAnswer,
+  type AiWorldContext,
+} from './world.ts';
 
 /*
  * Llamadas a la IA a través de la pasarela de la plataforma (`ecosistema-kit/CLAVES_DE_IA.md`). Los
@@ -22,9 +30,18 @@ import { fromWire, wireProposalSchema } from './wire.ts';
  */
 
 export const AI_MAX_OUTPUT_TOKENS = 32_000;
+/** Una respuesta a una pregunta es texto: basta con menos (y acota el gasto). */
+export const AI_MAX_ANSWER_TOKENS = 12_000;
 // Solo el esquema: con el formato «auto-parseable» el SDK interpretaría la salida por su cuenta
 // antes de poder mirar si se cortó. Se valida aquí, igual para los dos proveedores.
-const ANTHROPIC_FORMAT = { type: 'json_schema' as const, schema: zodOutputFormat(wireProposalSchema).schema };
+const PROPOSAL_FORMAT = {
+  anthropic: { type: 'json_schema' as const, schema: zodOutputFormat(wireProposalSchema).schema },
+  openai: zodTextFormat(wireProposalSchema, 'propuesta'),
+};
+const ANSWER_FORMAT = {
+  anthropic: { type: 'json_schema' as const, schema: zodOutputFormat(worldAnswerSchema).schema },
+  openai: zodTextFormat(worldAnswerSchema, 'respuesta'),
+};
 /** La pasarela corta a los 10 minutos; Nodaria se rinde un poco antes. */
 export const AI_TIMEOUT_MS = 9 * 60 * 1000;
 /**
@@ -39,12 +56,11 @@ export const MANAGE_KEYS_URL: Record<AppConfig['platform']['env'], string> = {
   desarrollo: 'https://qa-social.yosiftware.es/?vista=claves-ia',
 };
 
-export interface AiRequest {
+/** Lo común a toda llamada: modelo, cuenta, clave del grupo, historial y cancelación. */
+export interface AiCall {
   model: AiModel;
   /** `sub` validado de la cuenta que actúa. */
   account: string;
-  instruction: string;
-  context: AiDatabaseContext;
   /** Turnos anteriores de la conversación, ya resumidos (`conversationTurns`), del más antiguo al último. */
   history?: AiTurn[];
   /**
@@ -53,6 +69,17 @@ export interface AiRequest {
    */
   space?: number;
   signal?: AbortSignal;
+}
+
+export interface AiRequest extends AiCall {
+  instruction: string;
+  context: AiDatabaseContext;
+}
+
+/** Una pregunta sobre el mundo del proyecto (`world.ts`). */
+export interface AiQuestion extends AiCall {
+  question: string;
+  context: AiWorldContext;
 }
 
 export interface AiTurn {
@@ -65,8 +92,14 @@ export interface AiResult {
   usage: { inputTokens: number; outputTokens: number };
 }
 
+export interface AiAnswerResult {
+  answer: AiWorldAnswer;
+  usage: { inputTokens: number; outputTokens: number };
+}
+
 export interface AiAssistant {
   propose(request: AiRequest): Promise<AiResult>;
+  ask(request: AiQuestion): Promise<AiAnswerResult>;
 }
 
 /** Error que se le explica a la persona. `code` es el de la plataforma o uno propio de Nodaria. */
@@ -162,7 +195,7 @@ const GROUP_ERRORS: Record<string, { status: number; code: string; message: stri
 /** Los errores que dependen de la persona (enlazan la gestión de sus claves). */
 export const KEY_ERRORS = new Set(['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto', 'clave_rechazada']);
 
-function gatewayHeaders(request: AiRequest): Record<string, string> {
+function gatewayHeaders(request: AiCall): Record<string, string> {
   return {
     'X-Yosi-Cuenta': request.account,
     ...(request.space ? { 'X-Yosi-Espacio': String(request.space) } : {}),
@@ -263,6 +296,25 @@ function parseProposal(raw: string): AiProposal {
   return parsed.data;
 }
 
+function parseAnswer(raw: string): AiWorldAnswer {
+  const invalid = new AiError(
+    UPSTREAM_FAILED,
+    'respuesta_no_valida',
+    'La IA no ha devuelto una respuesta válida. Inténtalo de nuevo.',
+  );
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    throw invalid;
+  }
+  const parsed = worldAnswerSchema.safeParse(json);
+  if (!parsed.success) throw invalid;
+  const checked = checkAnswer(parsed.data);
+  if ('problem' in checked) throw new AiError(UPSTREAM_FAILED, 'respuesta_no_valida', checked.problem);
+  return checked.answer;
+}
+
 const INCOMPLETE = new AiError(
   422,
   'propuesta_incompleta',
@@ -290,7 +342,19 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
         throw error;
       }));
 
-  async function anthropic(request: AiRequest, apiKey: string): Promise<AiResult> {
+  /** Lo que cambia entre propuestas y preguntas: instrucciones, mensaje, formato y tope de salida. */
+  interface Prompt {
+    system: string;
+    user: string;
+    format: typeof PROPOSAL_FORMAT | typeof ANSWER_FORMAT;
+    maxTokens: number;
+  }
+  interface Output {
+    text: string;
+    usage: { inputTokens: number; outputTokens: number };
+  }
+
+  async function anthropic(request: AiCall, prompt: Prompt, apiKey: string): Promise<Output> {
     const client = new Anthropic({
       apiKey,
       baseURL: `${base}/anthropic`,
@@ -303,27 +367,26 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
       .stream(
         {
           model: request.model.id,
-          max_tokens: AI_MAX_OUTPUT_TOKENS,
-          system: DATABASE_SYSTEM_PROMPT,
+          max_tokens: prompt.maxTokens,
+          system: prompt.system,
           messages: [
             ...(request.history ?? []).map(t => ({ role: t.role, content: t.text })),
-            { role: 'user' as const, content: databaseUserMessage(request.instruction, request.context) },
+            { role: 'user' as const, content: prompt.user },
           ],
-          output_config: { effort: request.model.effort, format: ANTHROPIC_FORMAT },
+          output_config: { effort: request.model.effort, format: prompt.format.anthropic },
         },
         { headers: gatewayHeaders(request), signal: request.signal },
       )
       .finalMessage();
     if (message.stop_reason === 'max_tokens') throw INCOMPLETE;
     if (message.stop_reason === 'refusal') throw REFUSED;
-    const text = message.content.flatMap(block => (block.type === 'text' ? [block.text] : [])).join('');
     return {
-      proposal: parseProposal(text),
+      text: message.content.flatMap(block => (block.type === 'text' ? [block.text] : [])).join(''),
       usage: { inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens },
     };
   }
 
-  async function openai(request: AiRequest, apiKey: string): Promise<AiResult> {
+  async function openai(request: AiCall, prompt: Prompt, apiKey: string): Promise<Output> {
     const client = new OpenAI({
       apiKey,
       baseURL: `${base}/openai/v1`,
@@ -335,14 +398,14 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
     const response = await client.responses.create(
       {
         model: request.model.id,
-        instructions: DATABASE_SYSTEM_PROMPT,
+        instructions: prompt.system,
         input: [
           ...(request.history ?? []).map(t => ({ role: t.role, content: t.text })),
-          { role: 'user' as const, content: databaseUserMessage(request.instruction, request.context) },
+          { role: 'user' as const, content: prompt.user },
         ],
-        max_output_tokens: AI_MAX_OUTPUT_TOKENS,
+        max_output_tokens: prompt.maxTokens,
         reasoning: { effort: request.model.effort },
-        text: { format: zodTextFormat(wireProposalSchema, 'propuesta') },
+        text: { format: prompt.format.openai },
         store: false,
       },
       { headers: gatewayHeaders(request), signal: request.signal },
@@ -353,21 +416,41 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
     );
     if (refused) throw REFUSED;
     return {
-      proposal: parseProposal(response.output_text),
+      text: response.output_text,
       usage: { inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 },
     };
   }
 
+  async function call(request: AiCall, prompt: Prompt): Promise<Output> {
+    try {
+      const apiKey = await credential();
+      return request.model.provider === 'anthropic'
+        ? await anthropic(request, prompt, apiKey)
+        : await openai(request, prompt, apiKey);
+    } catch (error) {
+      throw translate(error, request.signal, request.space);
+    }
+  }
+
   return {
     async propose(request) {
-      try {
-        const apiKey = await credential();
-        return request.model.provider === 'anthropic'
-          ? await anthropic(request, apiKey)
-          : await openai(request, apiKey);
-      } catch (error) {
-        throw translate(error, request.signal, request.space);
-      }
+      const output = await call(request, {
+        system: DATABASE_SYSTEM_PROMPT,
+        user: databaseUserMessage(request.instruction, request.context),
+        format: PROPOSAL_FORMAT,
+        maxTokens: AI_MAX_OUTPUT_TOKENS,
+      });
+      // Una respuesta que no cumple el formato no es un fallo del proveedor: se explica tal cual.
+      return { proposal: parseProposal(output.text), usage: output.usage };
+    },
+    async ask(request) {
+      const output = await call(request, {
+        system: WORLD_SYSTEM_PROMPT,
+        user: worldUserMessage(request.question, request.context),
+        format: ANSWER_FORMAT,
+        maxTokens: AI_MAX_ANSWER_TOKENS,
+      });
+      return { answer: parseAnswer(output.text), usage: output.usage };
     },
   };
 }

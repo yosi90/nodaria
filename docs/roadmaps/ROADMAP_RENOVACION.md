@@ -297,7 +297,7 @@ Criterio: se puede cerrar el navegador, cambiar de equipo y recuperar el mundo c
 Objetivo: un segundo lector del mundo, nunca imprescindible.
 
 - [ ] Configuración con clave de API propia guardada solo en local; aviso claro de qué datos se envían.
-- [ ] Preguntas en lenguaje natural sobre el mundo ("¿quién podría traicionar a X?", "¿qué personajes no tienen motivación clara?").
+- [x] Preguntas en lenguaje natural sobre el mundo ("¿quién podría traicionar a X?", "¿qué personajes no tienen motivación clara?"). Hecho el 2026-10-17 (detalle en `PENDIENTES.md`).
 - [ ] Sugerencias de relaciones o atributos que faltan, siempre como propuestas que el usuario acepta o descarta.
 - [ ] Detección de incoherencias entre notas y datos estructurados.
 - [ ] Generar resúmenes de un nodo, de un grupo o de una lente.

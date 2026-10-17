@@ -1,4 +1,5 @@
 import type { AiContextRefs, AiDatabaseContext } from '../domain/aiContext';
+import type { AiWorldContext, AiWorldRefs } from '../domain/aiWorld';
 import type { AiProposal } from '../domain/aiProposal';
 import { apiRequest } from './api';
 
@@ -41,9 +42,20 @@ export interface AiAnswer {
   appliedAt?: string;
 }
 
+/** Respuesta a una pregunta sobre el mundo: texto con menciones [[n12]] y los nodos que cita. */
+export interface AiWorldReply {
+  answer: { answer: string; cited: string[] };
+  model: AiAnswer['model'];
+  usage: AiAnswer['usage'];
+  /** Solo los nodos citados: n12 → id del nodo. */
+  refs: AiWorldRefs;
+}
+
+export const isWorldReply = (content: AiAnswer | AiWorldReply): content is AiWorldReply => 'answer' in content;
+
 export type AiMessage =
-  | { id: number; role: 'user'; content: { instruction: string }; createdAt: string }
-  | { id: number; role: 'assistant'; content: AiAnswer; createdAt: string }
+  | { id: number; role: 'user'; content: { instruction: string; kind?: 'pregunta' }; createdAt: string }
+  | { id: number; role: 'assistant'; content: AiAnswer | AiWorldReply; createdAt: string }
   | { id: number; role: 'error'; content: { code: string; message: string }; createdAt: string };
 
 export interface AiConversation extends AiConversationSummary {
@@ -108,4 +120,29 @@ export function requestDatabaseProposal(
     {},
     signal,
   );
+}
+
+export interface AiQuestionResponse extends AiWorldReply {
+  keySource?: 'grupo' | 'personal';
+  conversationId: number;
+  userMessageId: number | null;
+  messageId: number | null;
+}
+
+/** Pregunta sobre el mundo del proyecto: la IA responde con texto y no cambia nada. */
+export function requestWorldAnswer(
+  token: string,
+  request: {
+    provider: AiProvider;
+    model: string;
+    question: string;
+    context: AiWorldContext;
+    refs: AiWorldRefs;
+    projectId: string;
+    conversationId: number | null;
+    keySource?: 'grupo' | 'personal';
+  },
+  signal?: AbortSignal,
+) {
+  return apiRequest<AiQuestionResponse>('POST', '/api/ia/preguntas', token, request, {}, signal);
 }

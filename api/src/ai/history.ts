@@ -4,7 +4,7 @@ import type { AiProposal } from './schema.ts';
 
 /*
  * Lo que el modelo recuerda de la conversación: las peticiones anteriores y un resumen de lo que
- * propuso y de lo que la persona aplicó. No hace falta reenviar las propuestas enteras: el esquema
+ * propuso y de lo que la persona aplicó, o la respuesta que dio a una pregunta. No hace falta reenviar las propuestas enteras: el esquema
  * actual ya va en cada petición. Solo los últimos turnos completos (petición y respuesta) y con un
  * tope de texto, para acotar el coste.
  */
@@ -36,6 +36,9 @@ function describeOperation(o: AiProposal['operations'][number]) {
 }
 
 function assistantText(content: Record<string, unknown>) {
+  // Una respuesta a una pregunta se recuerda tal cual (recortada): no hay nada aplicado que contar.
+  const answer = content.answer as { answer?: unknown } | undefined;
+  if (answer && typeof answer.answer === 'string') return clip(answer.answer);
   const proposal = content.proposal as AiProposal | undefined;
   if (!proposal) return null;
   const applied = Array.isArray(content.applied) ? (content.applied as number[]) : null;

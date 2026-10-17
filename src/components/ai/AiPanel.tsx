@@ -1,8 +1,9 @@
 import { Download, ExternalLink, Plus, Send, Sparkles, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { databaseContext } from '../../domain/aiContext';
+import { answerParts, worldContext } from '../../domain/aiWorld';
 import { defaultSelection, reviewProposal } from '../../domain/aiProposal';
-import { isTableType } from '../../domain/database';
+import { isTableType, tableTypes } from '../../domain/database';
 import { getNode, nodeLabel } from '../../domain/selectors';
 import { ApiError, OfflineError } from '../../services/api';
 import {
@@ -11,10 +12,13 @@ import {
   deleteConversation,
   fetchAiModels,
   getConversation,
+  isWorldReply,
   listConversations,
   markApplied,
   requestDatabaseProposal,
+  requestWorldAnswer,
   type AiAnswer,
+  type AiWorldReply,
   type AiConversationSummary,
   type AiMessage,
   type AiModelInfo,
@@ -33,7 +37,9 @@ import { useToast } from '../common/toasts';
 
 /*
  * Panel del asistente de IA (`docs/roadmaps/ROADMAP_IA.md`): una conversación por proyecto, al lado
- * de la vista, para seguir trabajando mientras se habla con la IA. El historial se guarda en la
+ * de la vista, para seguir trabajando mientras se habla con la IA. Dos modos: preguntar sobre el
+ * mundo del proyecto (`aiWorld.ts`; la IA solo responde, con enlaces a los nodos que cita) y, en los
+ * proyectos con tablas, diseñar el esquema. El historial se guarda en la
  * cuenta (`api/src/ai/conversations.ts`). Cada propuesta se revisa dentro de la conversación contra
  * el proyecto actual, con las reglas del editor (`aiProposal.ts`), y se aplica en un solo paso
  * deshacible. Nada se aplica sin que la persona lo marque.
@@ -83,6 +89,10 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [instruction, setInstruction] = useState('');
   const [onlySelected, setOnlySelected] = useState(false);
+  // Diseñar tablas solo tiene sentido en proyectos de bases de datos; preguntar, en todos.
+  const hasTables = project.kind === 'database' || tableTypes(project).length > 0;
+  const [chosenMode, setMode] = useState<'question' | 'database'>(() => (hasTables ? 'database' : 'question'));
+  const mode = hasTables ? chosenMode : 'question';
   const [waiting, setWaiting] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   // En un proyecto de un grupo se usa la clave de IA del grupo; la de la persona, solo si ella lo elige.
@@ -156,6 +166,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
     [project, focusId],
   );
   const columnCount = context.tables.reduce((sum, t) => sum + t.columns.length, 0);
+  const world = useMemo(() => (mode === 'question' ? worldContext(project) : null), [mode, project]);
 
   const ask = async () => {
     const text = instruction.trim();
@@ -169,24 +180,37 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
     setMessages(current => [...current, temporary]);
     setInstruction('');
     try {
-      const response = await requestDatabaseProposal(
-        await withToken(),
-        {
-          provider: model.provider,
-          model: model.id,
-          instruction: text,
-          context,
-          refs,
-          projectId: project.id,
-          conversationId: activeId,
-          ...(sharedGroup ? { keySource: personalKey ? ('personal' as const) : ('grupo' as const) } : {}),
-        },
-        controller.signal,
-      );
+      const common = {
+        provider: model.provider,
+        model: model.id,
+        projectId: project.id,
+        conversationId: activeId,
+        ...(sharedGroup ? { keySource: personalKey ? ('personal' as const) : ('grupo' as const) } : {}),
+      };
+      const token = await withToken();
+      let response: { conversationId: number; userMessageId: number | null; messageId: number | null };
+      let content: AiAnswer | AiWorldReply;
+      if (mode === 'question' && world) {
+        const reply = await requestWorldAnswer(
+          token,
+          { ...common, question: text, context: world.context, refs: world.refs },
+          controller.signal,
+        );
+        response = reply;
+        content = { answer: reply.answer, model: reply.model, usage: reply.usage, refs: reply.refs };
+      } else {
+        const proposal = await requestDatabaseProposal(
+          token,
+          { ...common, instruction: text, context, refs },
+          controller.signal,
+        );
+        response = proposal;
+        content = { proposal: proposal.proposal, model: proposal.model, usage: proposal.usage, refs, applied: null };
+      }
       const answer: AiMessage = {
         id: response.messageId ?? -Date.now(),
         role: 'assistant',
-        content: { proposal: response.proposal, model: response.model, usage: response.usage, refs, applied: null },
+        content,
         createdAt: new Date().toISOString(),
       };
       setMessages(current => [
@@ -363,8 +387,9 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
             {!messages.length && !waiting && (
               <div className="ai-panel-empty">
                 <p className="muted-note">
-                  Describe qué quieres hacer con el esquema: crear tablas, añadir columnas o claves, corregir tipos… La
-                  IA propone cambios y tú decides cuáles aplicar. Puedes seguir trabajando mientras tanto.
+                  {mode === 'question'
+                    ? 'Pregunta lo que quieras sobre tu proyecto: quién no tiene motivación clara, qué relaciones faltan, quién podría traicionar a quién… La IA responde con los datos del proyecto y enlaza los nodos que nombra. No cambia nada.'
+                    : 'Describe qué quieres hacer con el esquema: crear tablas, añadir columnas o claves, corregir tipos… La IA propone cambios y tú decides cuáles aplicar. Puedes seguir trabajando mientras tanto.'}
                 </p>
               </div>
             )}
@@ -374,7 +399,11 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                   {m.content.instruction}
                 </p>
               ) : m.role === 'assistant' ? (
-                <ProposalCard key={m.id} messageId={m.id} answer={m.content} onApplied={onApplied} />
+                isWorldReply(m.content) ? (
+                  <AnswerCard key={m.id} reply={m.content} />
+                ) : (
+                  <ProposalCard key={m.id} messageId={m.id} answer={m.content} onApplied={onApplied} />
+                )
               ) : (
                 <p key={m.id} className="ai-error" role="alert">
                   {m.content.message}
@@ -433,6 +462,16 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
               void ask();
             }}
           >
+            {hasTables && (
+              <div className="segmented ai-mode" role="group" aria-label="Qué quieres hacer">
+                <button type="button" aria-pressed={mode === 'question'} onClick={() => setMode('question')}>
+                  Preguntar
+                </button>
+                <button type="button" aria-pressed={mode === 'database'} onClick={() => setMode('database')}>
+                  Diseñar tablas
+                </button>
+              </div>
+            )}
             <textarea
               rows={3}
               maxLength={MAX_INSTRUCTION}
@@ -440,9 +479,11 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
               disabled={!model}
               aria-label="Mensaje para la IA"
               placeholder={
-                context.tables.length
-                  ? 'Añade las líneas de pedido con su artículo, cantidad y precio.'
-                  : 'Una tienda con clientes, productos, pedidos y sus líneas.'
+                mode === 'question'
+                  ? '¿Qué personajes no tienen una motivación clara?'
+                  : context.tables.length
+                    ? 'Añade las líneas de pedido con su artículo, cantidad y precio.'
+                    : 'Una tienda con clientes, productos, pedidos y sus líneas.'
               }
               onChange={event => setInstruction(event.target.value)}
               onKeyDown={onKeyDown}
@@ -475,7 +516,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 <Send size={14} aria-hidden /> Enviar
               </Button>
             </div>
-            {selectedTable && (
+            {mode === 'database' && selectedTable && (
               <label className="field-inline ai-scope">
                 <input
                   type="checkbox"
@@ -485,15 +526,76 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 Solo «{nodeLabel(project, selectedTable)}» (del resto, sus claves)
               </label>
             )}
-            <p className="ai-privacy-line">
-              Se envía {model ? `a ${PROVIDERS[model.provider]}` : 'al proveedor'}, con tu clave:{' '}
-              {plural(context.tables.length, 'tabla', 'tablas')} y {plural(columnCount, 'columna', 'columnas')}, bases y
-              preformas (sin notas ni datos de fichas). La conversación se guarda en tu cuenta. {manageLink}
-            </p>
+            {mode === 'question' && world ? (
+              <p className="ai-privacy-line">
+                Se envía {model ? `a ${PROVIDERS[model.provider]}` : 'al proveedor'}, con tu clave, el proyecto:{' '}
+                {plural(world.context.nodes.length, 'nodo', 'nodos')} con sus atributos y notas y{' '}
+                {plural(world.context.relations.length, 'relación', 'relaciones')}
+                {world.context.partial
+                  ? world.context.nodes.length < project.nodes.length
+                    ? ` (es muy grande: van sin notas y solo los ${world.context.nodes.length} nodos más conectados)`
+                    : ' (es muy grande: con las notas recortadas)'
+                  : ''}
+                . Las imágenes no. La conversación se guarda en tu cuenta. {manageLink}
+              </p>
+            ) : (
+              <p className="ai-privacy-line">
+                Se envía {model ? `a ${PROVIDERS[model.provider]}` : 'al proveedor'}, con tu clave:{' '}
+                {plural(context.tables.length, 'tabla', 'tablas')} y {plural(columnCount, 'columna', 'columnas')}, bases
+                y preformas (sin notas ni datos de fichas). La conversación se guarda en tu cuenta. {manageLink}
+              </p>
+            )}
           </form>
         </>
       )}
     </aside>
+  );
+}
+
+/**
+ * Respuesta a una pregunta: párrafos y listas con guiones, con los nodos citados ([[n12]]) como enlaces
+ * que llevan al nodo en el mapa. Un nodo borrado después se muestra tachado.
+ */
+function AnswerCard({ reply }: { reply: AiWorldReply }) {
+  const { project } = useApp();
+  const { select } = useNavigation();
+  const inline = (text: string) =>
+    answerParts(text).map((part, i) => {
+      if (part.kind === 'text') return <Fragment key={i}>{part.text}</Fragment>;
+      const node = getNode(project, reply.refs.nodes[part.ref] ?? '');
+      return node ? (
+        <button
+          key={i}
+          type="button"
+          className="ai-node-link"
+          onClick={() => select({ kind: 'node', id: node.id }, { reveal: true })}
+        >
+          {nodeLabel(project, node)}
+        </button>
+      ) : (
+        <s key={i} className="ai-node-missing" title="Este nodo ya no está en el proyecto">
+          nodo borrado
+        </s>
+      );
+    });
+  // Bloques separados por líneas en blanco; los que empiezan por guion son listas.
+  const blocks = reply.answer.answer.split(/\n\s*\n/).map(block => block.split('\n'));
+  return (
+    <article className="ai-card ai-answer">
+      {blocks.map((lines, b) => {
+        const items = lines.filter(line => /^\s*[-*•]\s/.test(line));
+        if (items.length === lines.length)
+          return (
+            <ul key={b}>
+              {items.map((line, i) => (
+                <li key={i}>{inline(line.replace(/^\s*[-*•]\s/, ''))}</li>
+              ))}
+            </ul>
+          );
+        return <p key={b}>{lines.map((line, i) => [i > 0 && <br key={`br${i}`} />, ...inline(line)])}</p>;
+      })}
+      <p className="ai-meta">{reply.model.label}</p>
+    </article>
   );
 }
 

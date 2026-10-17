@@ -111,7 +111,6 @@ export function Topbar({
     else setCsv({ name: f.name, table });
   };
   // El asistente de IA trabaja de momento sobre esquemas de base de datos.
-  const aiAvailable = project.kind === 'database' || tableTypes(project).length > 0;
   const toggleAi = () => setPreference('aiPanelOpen', !preferences.aiPanelOpen);
   const [kindOpen, setKindOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
@@ -210,10 +209,8 @@ export function Topbar({
           icon: Users,
           onSelect: openSharing,
         },
-    // El asistente de IA trabaja de momento sobre esquemas de base de datos.
-    ...(aiAvailable
-      ? [{ label: 'Asistente de IA', icon: Sparkles, checked: preferences.aiPanelOpen, onSelect: toggleAi }]
-      : []),
+    // El asistente de IA responde preguntas en cualquier proyecto y, con tablas, diseña el esquema.
+    { label: 'Asistente de IA', icon: Sparkles, checked: preferences.aiPanelOpen, onSelect: toggleAi },
     'separator',
     { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
     {
@@ -386,15 +383,13 @@ export function Topbar({
       <div className="topbar-actions">
         <IconButton icon={Undo2} label="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={undo} />
         <IconButton icon={Redo2} label="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo} />
-        {aiAvailable && (
-          <IconButton
-            icon={Sparkles}
-            label={preferences.aiPanelOpen ? 'Cerrar el asistente de IA' : 'Asistente de IA'}
-            active={preferences.aiPanelOpen}
-            aria-pressed={preferences.aiPanelOpen}
-            onClick={toggleAi}
-          />
-        )}
+        <IconButton
+          icon={Sparkles}
+          label={preferences.aiPanelOpen ? 'Cerrar el asistente de IA' : 'Asistente de IA'}
+          active={preferences.aiPanelOpen}
+          aria-pressed={preferences.aiPanelOpen}
+          onClick={toggleAi}
+        />
         <span className="divider" aria-hidden />
         <IconButton
           icon={theme.icon}

@@ -2,11 +2,18 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AiError, createGatewayAssistant, type AiAssistant, type AiRequest } from '../src/ai/assistant.ts';
+import {
+  AiError,
+  createGatewayAssistant,
+  type AiAssistant,
+  type AiQuestion,
+  type AiRequest,
+} from '../src/ai/assistant.ts';
 import { createMemoryConversationStore } from '../src/ai/conversations.ts';
 import { conversationTurns } from '../src/ai/history.ts';
 import { findModel } from '../src/ai/models.ts';
 import type { AiDatabaseContext, AiProposal } from '../src/ai/schema.ts';
+import type { AiWorldContext } from '../src/ai/world.ts';
 import { fromWire, parseSqlType, wireProposalSchema, type WireProposal } from '../src/ai/wire.ts';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { zodTextFormat } from 'openai/helpers/zod';
@@ -141,9 +148,11 @@ const body = (patch: Record<string, unknown> = {}) => ({
   ...patch,
 });
 
-async function appWith(ai: AiAssistant) {
+async function appWith(fake: Partial<AiAssistant>) {
   const tokens = await platformTokens();
   const conversations = createMemoryConversationStore();
+  const unused = async () => Promise.reject(new Error('No se esperaba esta llamada a la IA'));
+  const ai: AiAssistant = { propose: unused, ask: unused, ...fake };
   const deps = testDependencies({ auth: tokens.provider, ai, conversations });
   const app = await buildApp(deps);
   return { app, tokens, conversations, groups: deps.groups };
@@ -684,5 +693,117 @@ describe('historial de conversaciones', () => {
     ).toBe(200);
     expect((await t.inject('DELETE', '/api/projects/project_tienda')).statusCode).toBe(200);
     expect(await t.conversations.list(1, 'project_tienda')).toEqual([]);
+  });
+});
+
+/* ---------------- Preguntas sobre el mundo ---------------- */
+
+const world: AiWorldContext = {
+  projectName: 'Novela',
+  today: '17 de octubre de 2026',
+  partial: false,
+  types: [{ name: 'Persona', kind: 'entidad', description: '', attributes: ['Nombre', 'Motivación'] }],
+  nodes: [
+    { id: 'n1', type: 'Persona', title: 'Ana', parent: null, values: { Motivación: 'Venganza' }, notes: '' },
+    { id: 'n2', type: 'Persona', title: 'Luis', parent: null, values: {}, notes: 'Debe dinero a [[Ana]].' },
+  ],
+  relations: [{ type: 'Rival de', from: 'n1', to: 'n2', fromRole: '', toRole: '', values: {} }],
+};
+const answer = { answer: '[[n2]] no tiene motivación clara; [[n1]] sí.', cited: ['n2', 'n1'] };
+const questionBody = (patch: Record<string, unknown> = {}) => ({
+  provider: 'openai',
+  model: 'gpt-5.6-terra',
+  question: '¿Quién no tiene motivación clara?',
+  context: world,
+  projectId: 'project_novela',
+  refs: { nodes: { n1: 'node_ana', n2: 'node_luis', n3: 'node_otro' } },
+  ...patch,
+});
+
+describe('preguntas sobre el mundo', () => {
+  it('responde, guarda la respuesta con los nodos citados y la recuerda en la conversación', async () => {
+    const seen: AiQuestion[] = [];
+    const t = await appWith({
+      ask: async request => {
+        seen.push(request);
+        return { answer, usage: { inputTokens: 300, outputTokens: 40 } };
+      },
+    });
+    const headers = { authorization: `Bearer ${await t.tokens.sign()}` };
+    const first = await t.app.inject({ method: 'POST', url: '/api/ia/preguntas', headers, payload: questionBody() });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toEqual({
+      keySource: 'personal',
+      conversationId: 1,
+      userMessageId: 1,
+      messageId: 2,
+      answer,
+      model: { provider: 'openai', id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra' },
+      usage: { inputTokens: 300, outputTokens: 40 },
+      refs: { nodes: { n2: 'node_luis', n1: 'node_ana' } },
+    });
+    expect(seen[0]).toMatchObject({ account: OWNER, question: '¿Quién no tiene motivación clara?', history: [] });
+    await t.app.inject({
+      method: 'POST',
+      url: '/api/ia/preguntas',
+      headers,
+      payload: questionBody({ conversationId: 1, question: '¿Y por qué?' }),
+    });
+    expect(seen[1].history).toEqual([
+      { role: 'user', text: '¿Quién no tiene motivación clara?' },
+      { role: 'assistant', text: answer.answer },
+    ]);
+    const full = (await t.app.inject({ method: 'GET', url: '/api/ia/conversaciones/1', headers })).json();
+    expect(full.messages[0].content).toEqual({ instruction: '¿Quién no tiene motivación clara?', kind: 'pregunta' });
+  });
+
+  it('valida el contexto y la pregunta', async () => {
+    const t = await appWith({ ask: async () => ({ answer, usage: { inputTokens: 0, outputTokens: 0 } }) });
+    const headers = { authorization: `Bearer ${await t.tokens.sign()}` };
+    const post = (payload: object) => t.app.inject({ method: 'POST', url: '/api/ia/preguntas', headers, payload });
+    expect((await post(questionBody({ question: ' ' }))).statusCode).toBe(400);
+    expect(
+      (await post(questionBody({ context: { ...world, nodes: [{ ...world.nodes[0], id: 'Ana' }] } }))).statusCode,
+    ).toBe(400);
+    expect((await post(questionBody({ model: 'gpt-4o' }))).json()).toMatchObject({ error: 'modelo_no_admitido' });
+  });
+
+  it('pide a la pasarela la respuesta con salida estructurada y descarta citas mal formadas', async () => {
+    const platformApi = 'https://qa-cuentas-api.yosiftware.es';
+    const raw = JSON.stringify({ answer: ' Ana. ', cited: ['n1', 'n1', 'Ana'] });
+    const base = {
+      model: findModel('anthropic', 'claude-haiku-5-5')!,
+      account: OWNER,
+      question: '¿Quién?',
+      context: world,
+    };
+    const anthropicCall = fakeFetch(() => anthropicStream(raw));
+    const fromAnthropic = await createGatewayAssistant({
+      platformApi,
+      serviceTokenFile: tokenFile(),
+      fetch: anthropicCall.impl,
+    }).ask(base);
+    expect(fromAnthropic.answer).toEqual({ answer: 'Ana.', cited: ['n1'] });
+    expect(anthropicCall.calls[0].body).toMatchObject({
+      max_tokens: 12000,
+      output_config: { format: { type: 'json_schema' } },
+    });
+    expect(JSON.stringify(anthropicCall.calls[0].body.messages)).toContain('Debe dinero');
+    const openaiCall = fakeFetch(() => openaiResponse(raw));
+    await createGatewayAssistant({ platformApi, serviceTokenFile: tokenFile(), fetch: openaiCall.impl }).ask({
+      ...base,
+      model: findModel('openai', 'gpt-5.6-luna')!,
+    });
+    expect(openaiCall.calls[0].body).toMatchObject({
+      store: false,
+      text: { format: { name: 'respuesta', strict: true } },
+    });
+    const empty = fakeFetch(() => openaiResponse(JSON.stringify({ answer: '  ', cited: [] })));
+    await expect(
+      createGatewayAssistant({ platformApi, serviceTokenFile: tokenFile(), fetch: empty.impl }).ask({
+        ...base,
+        model: findModel('openai', 'gpt-5.6-luna')!,
+      }),
+    ).rejects.toMatchObject({ code: 'respuesta_no_valida' });
   });
 });
