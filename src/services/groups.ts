@@ -416,6 +416,7 @@ export const SCHEMA_ACTIONS = new Set([
   'set-column-sql',
   'apply-sql-annotations',
   'apply-ai-proposal',
+  'create-junction-tables',
 ]);
 
 /** Por qué el rol no deja hacer la acción en el compartido, o `null` si la deja. */

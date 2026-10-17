@@ -4,12 +4,13 @@ import type { Node, Project } from './types';
 
 /*
  * Script de SQL Server con el esquema de las tablas del proyecto: un CREATE TABLE por nodo tabla con
- * sus columnas, clave primaria y UNIQUE, y después las claves foráneas con ALTER TABLE (así valen los
+ * sus columnas, clave primaria, UNIQUE y CHECK de las listas de opciones, y después las claves foráneas con ALTER TABLE (así valen los
  * ciclos y las autorreferencias). Va dentro de una transacción con XACT_ABORT: o se crea todo o nada.
  * Lo que SQL Server rechazaría se deja comentado con el motivo en lugar de romper el script.
  */
 
 const MAX_NAME = 128;
+const TEXT_TYPES = ['char', 'varchar', 'nchar', 'nvarchar'];
 export const quoteName = (name: string) => `[${name.slice(0, MAX_NAME).replace(/]/g, ']]')}]`;
 const constraintName = (...parts: string[]) => quoteName(parts.join('_').replace(/\s+/g, '_'));
 
@@ -75,6 +76,16 @@ export function sqlScript(p: Project, generatedAt = new Date()): string {
     t.columns
       .filter(c => c.sql.unique && !(c.sql.primaryKey && keys.length === 1))
       .forEach(c => lines.push(`    CONSTRAINT ${constraintName('UQ', t.name, c.name)} UNIQUE (${quoteName(c.name)})`));
+    // Una lista de opciones en una columna de texto limita sus valores: CHECK (columna IN (...)).
+    t.columns
+      .filter(c => c.field.type === 'select' && c.field.options.length && TEXT_TYPES.includes(c.type.name))
+      .forEach(c =>
+        lines.push(
+          `    CONSTRAINT ${constraintName('CK', t.name, c.name)} CHECK (${quoteName(c.name)} IN (${c.field.options
+            .map(option => `N'${option.replace(/'/g, "''")}'`)
+            .join(', ')}))`,
+        ),
+      );
     out.push(`CREATE TABLE ${table} (`, lines.join(',\n'), ');', '');
   });
 

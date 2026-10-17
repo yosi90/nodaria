@@ -18,6 +18,7 @@ import { applySqlAnnotations, setColumnSql, setFieldSql, type SqlColumn } from '
 import { applyProposal, type AiProposal } from '../domain/aiProposal';
 import { withRenamedFields } from '../domain/formulaRenames';
 import { withConvertedValues } from '../domain/valueConversion';
+import { createJunctionTables, type JunctionProposal } from '../domain/junctionTables';
 import type { AiContextRefs } from '../domain/aiContext';
 import type {
   AppState,
@@ -108,6 +109,8 @@ export type Action =
   | { type: 'set-column-sql'; typeId: string; fieldId: string; sql: SqlColumn | null }
   /** Usa como tipo SQL las anotaciones escritas como valor inicial en las tablas (de un tipo o de todas). */
   | { type: 'apply-sql-annotations'; typeId?: string }
+  /** Crea las tablas intermedias aceptadas de referencias múltiples entre tablas (`junctionTables.ts`). */
+  | { type: 'create-junction-tables'; proposals: JunctionProposal[]; removeReference: boolean }
   /** Aplica las operaciones marcadas de una propuesta de la IA, en un solo paso (`aiProposal.ts`). */
   | { type: 'apply-ai-proposal'; proposal: AiProposal; refs: AiContextRefs; selected: number[]; seed: string }
   | { type: 'duplicate-node'; id: string; withRelations?: boolean; newId?: string }
@@ -299,6 +302,8 @@ function projectReducer(p: Project, action: Action): Project {
       return setColumnSql(p, action.typeId, action.fieldId, action.sql);
     case 'apply-sql-annotations':
       return applySqlAnnotations(p, action.typeId);
+    case 'create-junction-tables':
+      return createJunctionTables(p, action.proposals, action.removeReference);
     case 'apply-ai-proposal':
       return applyProposal(p, action.proposal, action.refs, action.selected, action.seed);
     case 'fill-defaults':

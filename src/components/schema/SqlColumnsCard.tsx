@@ -1,4 +1,7 @@
-import { CircleAlert, Database, KeyRound, RotateCcw, TriangleAlert, Wand2 } from 'lucide-react';
+import { CircleAlert, Database, KeyRound, Network, RotateCcw, TriangleAlert, Wand2 } from 'lucide-react';
+import { useState } from 'react';
+import { junctionProposals } from '../../domain/junctionTables';
+import { JunctionTablesDialog } from './JunctionTablesDialog';
 import {
   allowsIdentity,
   allowsMax,
@@ -34,6 +37,9 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
   const toast = useToast();
   const fields = tableFields(project, schema.id);
   const issues = tableIssues(project, schema.id);
+  // Referencias múltiples hacia otras tablas: se ofrecen como tablas intermedias (hito 4).
+  const junctions = junctionProposals(project, { typeId: schema.id }).length;
+  const [junctionOpen, setJunctionOpen] = useState(false);
   // Las anotaciones se convierten en todas las tablas a la vez: suelen repetirse en preformas y herencia.
   const annotations = sqlAnnotations(project);
   const set = (column: TableColumn, patch: Partial<SqlColumn>) =>
@@ -73,6 +79,17 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
         atributo, y una referencia a otra tabla toma el de su clave primaria y se dibuja como clave foránea. Cambiar
         aquí una preforma o un atributo heredado solo afecta a este tipo y a sus subtipos.
       </p>
+      {junctions > 0 && (
+        <p className="sql-junctions">
+          <Button size="sm" icon={Network} onClick={() => setJunctionOpen(true)}>
+            Proponer {junctions === 1 ? 'una tabla intermedia' : `${junctions} tablas intermedias`}
+          </Button>
+          <span className="field-hint">
+            para las referencias múltiples a otras tablas (relaciones muchos a muchos).
+          </span>
+        </p>
+      )}
+      {junctionOpen && <JunctionTablesDialog typeId={schema.id} onClose={() => setJunctionOpen(false)} />}
       {issues.length > 0 && (
         <ul className="sql-issues">
           {issues.map(issue => (
