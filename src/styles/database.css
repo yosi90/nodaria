@@ -267,3 +267,27 @@
   align-items: center;
   font-size: var(--fs-sm);
 }
+
+/* Valor por defecto, índice y reglas de las claves foráneas (ampliaciones SQL). */
+.sql-grid input.sql-default {
+  width: 9em;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-xs);
+}
+.sql-fk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-2);
+  margin-top: 4px;
+  font-size: var(--fs-2xs);
+}
+.sql-fk-actions label {
+  display: inline-flex;
+  white-space: nowrap;
+  gap: 4px;
+  align-items: center;
+  color: var(--text-muted);
+}
+.sql-fk-actions select {
+  font-size: var(--fs-2xs);
+}

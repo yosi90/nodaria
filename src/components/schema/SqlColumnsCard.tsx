@@ -4,6 +4,8 @@ import { junctionProposals } from '../../domain/junctionTables';
 import { JunctionTablesDialog } from './JunctionTablesDialog';
 import {
   allowsIdentity,
+  FK_ACTIONS,
+  type FkAction,
   allowsMax,
   hasLength,
   hasPrecision,
@@ -115,6 +117,10 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                 <th title="Admite nulos">Nulos</th>
                 <th title="Valor único (UNIQUE)">Único</th>
                 <th title="Numeración automática IDENTITY(1,1)">Identity</th>
+                <th title="Valor por defecto: una expresión de SQL Server, como 0, N'texto' o GETDATE()">
+                  Por defecto
+                </th>
+                <th title="Índice sobre la columna (CREATE INDEX)">Índice</th>
                 <th title="Forma parte de la tabla">En la tabla</th>
               </tr>
             </thead>
@@ -162,6 +168,31 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                             : 'Referencia: es clave foránea si apunta a una tabla'}
                         </small>
                       )}
+                      {field.type === 'nodeRef' && target && !off && (
+                        <div className="sql-fk-actions">
+                          {(
+                            [
+                              ['onDelete', 'Al borrar'],
+                              ['onUpdate', 'Al actualizar'],
+                            ] as const
+                          ).map(([key, label]) => (
+                            <label key={key}>
+                              {label}
+                              <select
+                                aria-label={`${field.label}: ${label.toLowerCase()} la fila referenciada`}
+                                value={sql[key] ?? 'NO ACTION'}
+                                onChange={event => set(column, { [key]: event.target.value as FkAction })}
+                              >
+                                {FK_ACTIONS.map(action => (
+                                  <option key={action} value={action}>
+                                    {action}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ))}
+                        </div>
+                      )}
                       {field.type === 'nodeRefs' && <small>Referencia múltiple: necesita una tabla intermedia</small>}
                     </td>
                     <td>
@@ -206,6 +237,25 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                         checked={sql.identity}
                         disabled={off || (!sql.identity && !allowsIdentity(column.type.name))}
                         onChange={event => set(column, { identity: event.target.checked })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="sql-default"
+                        aria-label={`${field.label}: valor por defecto`}
+                        value={sql.defaultValue ?? ''}
+                        placeholder="—"
+                        disabled={off || sql.identity}
+                        onChange={event => set(column, { defaultValue: event.target.value || null })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`${field.label}: índice`}
+                        checked={Boolean(sql.indexed)}
+                        disabled={off}
+                        onChange={event => set(column, { indexed: event.target.checked })}
                       />
                     </td>
                     <td>

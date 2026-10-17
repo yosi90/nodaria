@@ -1,11 +1,12 @@
-import { foreignKeyLinks, isTableType, sqlTypeText, tableColumns, type TableColumn } from './database';
+import { foreignKeyLinks, isTableType, sqlDefaultError, sqlTypeText, tableColumns, type TableColumn } from './database';
 import { nodeLabel } from './selectors';
 import type { Node, Project } from './types';
 
 /*
  * Script de SQL Server con el esquema de las tablas del proyecto: un CREATE TABLE por nodo tabla con
- * sus columnas, clave primaria, UNIQUE y CHECK de las listas de opciones, y después las claves foráneas con ALTER TABLE (así valen los
- * ciclos y las autorreferencias). Va dentro de una transacción con XACT_ABORT: o se crea todo o nada.
+ * sus columnas (con su DEFAULT), clave primaria, UNIQUE y CHECK de las listas de opciones; después las
+ * claves foráneas con ALTER TABLE y sus reglas ON DELETE/ON UPDATE (así valen los ciclos y las
+ * autorreferencias) y, al final, los índices. Va dentro de una transacción con XACT_ABORT: o se crea todo o nada.
  * Lo que SQL Server rechazaría se deja comentado con el motivo en lugar de romper el script.
  */
 
@@ -66,6 +67,10 @@ export function sqlScript(p: Project, generatedAt = new Date()): string {
       c =>
         `    ${quoteName(c.name)} ${sqlTypeText(c.type)}${c.sql.identity ? ' IDENTITY(1,1)' : ''} ${
           c.sql.nullable && !c.sql.primaryKey ? 'NULL' : 'NOT NULL'
+        }${
+          c.sql.defaultValue && !c.sql.identity && !sqlDefaultError(c.sql.defaultValue)
+            ? ` CONSTRAINT ${constraintName('DF', t.name, c.name)} DEFAULT (${c.sql.defaultValue})`
+            : ''
         }`,
     );
     const keys = t.columns.filter(c => c.sql.primaryKey);
@@ -112,12 +117,28 @@ export function sqlScript(p: Project, generatedAt = new Date()): string {
     let name = `FK_${source.name}_${column.name}`;
     for (let i = 2; used.has(name.toLowerCase()); i++) name = `FK_${source.name}_${column.name}_${i}`;
     used.add(name.toLowerCase());
+    const actions = [
+      column.sql.onDelete && column.sql.onDelete !== 'NO ACTION' ? ` ON DELETE ${column.sql.onDelete}` : '',
+      column.sql.onUpdate && column.sql.onUpdate !== 'NO ACTION' ? ` ON UPDATE ${column.sql.onUpdate}` : '',
+    ].join('');
     out.push(
       `ALTER TABLE [dbo].${quoteName(source.name)} ADD CONSTRAINT ${constraintName(name)} FOREIGN KEY (${quoteName(
         column.name,
-      )}) REFERENCES [dbo].${quoteName(target.name)} (${quoteName(targetKey.name)});`,
+      )}) REFERENCES [dbo].${quoteName(target.name)} (${quoteName(targetKey.name)})${actions};`,
     );
   });
+
+  // Índices de las columnas marcadas (las de una clave primaria de una columna o UNIQUE ya lo tienen).
+  const indexes = tables.flatMap(t => {
+    const singleKey = t.columns.filter(c => c.sql.primaryKey).length === 1;
+    return t.columns
+      .filter(c => c.sql.indexed && !c.sql.unique && !(c.sql.primaryKey && singleKey))
+      .map(
+        c =>
+          `CREATE INDEX ${constraintName('IX', t.name, c.name)} ON [dbo].${quoteName(t.name)} (${quoteName(c.name)});`,
+      );
+  });
+  if (indexes.length) out.push('', '-- Índices', ...indexes);
   out.push('', 'COMMIT TRANSACTION;', '');
   return out.join('\n');
 }

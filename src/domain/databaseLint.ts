@@ -56,6 +56,25 @@ export function foreignKeyCycles(p: Project): string[][] {
 
 export function databaseLint(p: Project): DatabaseLintIssue[] {
   const issues: DatabaseLintIssue[] = [];
+  // SQL Server rechaza las acciones en cascada (CASCADE, SET NULL, SET DEFAULT) en una autorreferencia o
+  // en un ciclo de claves foráneas: «may cause cycles or multiple cascade paths».
+  const cycles = foreignKeyCycles(p);
+  for (const link of foreignKeyLinks(p)) {
+    const source = p.nodes.find(n => n.id === link.sourceId);
+    if (!source) continue;
+    const column = tableColumns(p, source.typeId).find(c => c.field.id === link.fieldId);
+    const acts = [column?.sql.onDelete, column?.sql.onUpdate].some(a => a && a !== 'NO ACTION');
+    if (!column || !acts) continue;
+    const inCycle =
+      link.sourceId === link.targetId ||
+      cycles.some(cycle => cycle.includes(link.sourceId) && cycle.includes(link.targetId));
+    if (inCycle)
+      issues.push({
+        severity: 'error',
+        message: `${nodeLabel(p, source)}: «${column.field.label}» no puede borrar ni actualizar en cascada dentro de un ciclo o una autorreferencia; SQL Server lo rechaza. Deja «NO ACTION».`,
+        node: source,
+      });
+  }
   const tables = tableTypes(p).filter(s => !s.isAbstract);
   tables.forEach(schema =>
     tableIssues(p, schema.id).forEach(issue =>

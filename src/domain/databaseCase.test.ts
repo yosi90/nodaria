@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseProject, serializeProject } from '../services/storage';
 import { commercialCase } from '../test/commercialCase';
-import { foreignKeyLinks, tableColumns, tableIssues } from './database';
+import { foreignKeyLinks, tableColumns, tableIssues, type SqlColumn } from './database';
 import { databaseLint, foreignKeyCycles } from './databaseLint';
 import { createJunctionTables, junctionProposals } from './junctionTables';
 import { sqlScript } from './sqlScript';
@@ -46,6 +46,41 @@ describe('caso comercial (hito 5)', () => {
     // Los valores limitados de una lista, como CHECK.
     expect(script).toContain("CONSTRAINT [CK_Pedido_estado] CHECK ([estado] IN (N'Abierto', N'Enviado', N'Cerrado'))");
     expect(script.match(/FOREIGN KEY/g)).toHaveLength(6);
+    // Ampliaciones: DEFAULT, regla de la FK e índice.
+    expect(script).toContain('[fecha] date NOT NULL CONSTRAINT [DF_Pedido_fecha] DEFAULT (GETDATE())');
+    expect(script).toMatch(
+      /FOREIGN KEY \(\[linea_pedido\]\) REFERENCES \[dbo\]\.\[Pedido\] \(\[pedido_id\]\) ON DELETE CASCADE;/,
+    );
+    expect(script).toContain('CREATE INDEX [IX_Pedido_pedido_cliente] ON [dbo].[Pedido] ([pedido_cliente]);');
+  });
+
+  it('avisa de las reglas y los valores por defecto que SQL Server rechazaría', () => {
+    const p = commercialCase();
+    const withSql = (typeId: string, fieldId: string, patch: Partial<SqlColumn>) => ({
+      ...p,
+      schemas: p.schemas.map(s =>
+        s.id !== typeId
+          ? s
+          : {
+              ...s,
+              fields: s.fields.map(f => ('ref' in f || f.id !== fieldId ? f : { ...f, sql: { ...f.sql!, ...patch } })),
+            },
+      ),
+    });
+    // Cascada en una autorreferencia: error del lint.
+    expect(
+      databaseLint(withSql('empleado', 'jefe', { onDelete: 'CASCADE' })).filter(i => i.severity === 'error'),
+    ).toEqual([expect.objectContaining({ message: expect.stringContaining('ciclo o una autorreferencia') })]);
+    // SET NULL en una columna que no admite nulos, SET DEFAULT sin valor y un DEFAULT que rompería el script.
+    const messages = (patch: Partial<SqlColumn>) =>
+      tableIssues(withSql('pedido', 'pedido_cliente', patch), 'pedido').map(i => i.message);
+    expect(messages({ onDelete: 'SET NULL' })).toEqual([expect.stringContaining('admita nulos')]);
+    expect(messages({ onUpdate: 'SET DEFAULT' })).toEqual([expect.stringContaining('valor por defecto')]);
+    expect(messages({ defaultValue: '1; DROP TABLE x' })).toEqual([expect.stringContaining('«;»')]);
+    expect(messages({ defaultValue: "N'abierto" })).toEqual([expect.stringContaining('comillas')]);
+    // Los metadatos nuevos sobreviven a la ida y vuelta por JSON.
+    const back = parseProject(serializeProject(p)).project;
+    expect(sqlScript(back, DATE)).toContain('ON DELETE CASCADE');
   });
 
   it('sobrevive a exportar e importar el JSON sin cambiar el esquema ni el script', () => {

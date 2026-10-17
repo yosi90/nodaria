@@ -7,7 +7,8 @@ import { field, node, project, schema } from './fixtures';
  * líneas de pedido y productos, con una clave primaria compuesta (las líneas), una autorreferencia
  * (el jefe de un empleado), un ciclo de claves foráneas (empleado ↔ departamento), columnas UNIQUE y
  * que admiten nulos, una lista de valores limitados (el estado del pedido) y una referencia múltiple
- * (los proveedores de un producto) que pide una tabla intermedia. Cada nodo de un tipo tabla es una tabla.
+ * (los proveedores de un producto) que pide una tabla intermedia. Las líneas se borran con su pedido
+ * (ON DELETE CASCADE), el cliente del pedido tiene índice y la fecha, GETDATE() por defecto. Cada nodo de un tipo tabla es una tabla.
  */
 
 const column = (patch: Partial<SqlColumn>): SqlColumn => ({
@@ -63,8 +64,11 @@ export function commercialCase(): Project {
         fields: [
           title('t_pedido'),
           id('pedido_id'),
-          ref('pedido_cliente', 'cliente'),
-          field('fecha', { type: 'date', sql: column({ type: sqlType('date'), nullable: false }) }),
+          ref('pedido_cliente', 'cliente', { indexed: true }),
+          field('fecha', {
+            type: 'date',
+            sql: column({ type: sqlType('date'), nullable: false, defaultValue: 'GETDATE()' }),
+          }),
           field('estado', {
             type: 'select',
             options: ['Abierto', 'Enviado', 'Cerrado'],
@@ -76,7 +80,7 @@ export function commercialCase(): Project {
         table: true,
         fields: [
           title('t_linea'),
-          ref('linea_pedido', 'pedido', { primaryKey: true }),
+          ref('linea_pedido', 'pedido', { primaryKey: true, onDelete: 'CASCADE' }),
           field('numero', { type: 'number', sql: column({ type: sqlType('int'), primaryKey: true, nullable: false }) }),
           ref('linea_producto', 'producto'),
           field('cantidad', { type: 'number', sql: column({ type: sqlType('int'), nullable: false }) }),

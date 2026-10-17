@@ -44,6 +44,10 @@ export interface SqlDataType {
   scale: number | null;
 }
 
+/** Qué hace una clave foránea al borrar o actualizar la fila referenciada (`ON DELETE` / `ON UPDATE`). */
+export const FK_ACTIONS = ['NO ACTION', 'CASCADE', 'SET NULL', 'SET DEFAULT'] as const;
+export type FkAction = (typeof FK_ACTIONS)[number];
+
 /** Metadatos SQL de un atributo. Se guardan completos en cuanto el usuario cambia alguno. */
 export interface SqlColumn {
   /** `null` = se deduce del tipo del atributo (y, en una referencia, de la clave de la tabla destino). */
@@ -54,6 +58,13 @@ export interface SqlColumn {
   identity: boolean;
   /** No forma parte de la tabla: documenta el nodo (por defecto, el título, los calculados y las referencias múltiples). */
   excluded: boolean;
+  /** Valor por defecto: una expresión de SQL Server (`0`, `N'texto'`, `GETDATE()`); vacío = sin DEFAULT. */
+  defaultValue?: string | null;
+  /** Índice no único sobre la columna (`CREATE INDEX`). */
+  indexed?: boolean;
+  /** En una clave foránea: qué hacer al borrar o actualizar la fila referenciada. */
+  onDelete?: FkAction;
+  onUpdate?: FkAction;
 }
 
 export const hasLength = (name: SqlTypeName) => ['char', 'varchar', 'nchar', 'nvarchar', 'varbinary'].includes(name);
@@ -208,7 +219,7 @@ export function readSqlColumn(raw: unknown): SqlColumn | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   const flag = (key: string) => r[key] === true;
-  return {
+  const column: SqlColumn = {
     type: readSqlType(r.type),
     primaryKey: flag('primaryKey'),
     nullable: flag('primaryKey') ? false : r.nullable !== false,
@@ -216,6 +227,32 @@ export function readSqlColumn(raw: unknown): SqlColumn | null {
     identity: flag('identity'),
     excluded: flag('excluded'),
   };
+  // Las ampliaciones (2026-10-17) solo se guardan cuando tienen un valor: los datos de antes no cambian.
+  if (typeof r.defaultValue === 'string' && r.defaultValue.trim())
+    column.defaultValue = r.defaultValue.trim().slice(0, 200);
+  if (flag('indexed')) column.indexed = true;
+  const action = (value: unknown) =>
+    FK_ACTIONS.includes(value as FkAction) && value !== 'NO ACTION' ? (value as FkAction) : undefined;
+  if (action(r.onDelete)) column.onDelete = action(r.onDelete);
+  if (action(r.onUpdate)) column.onUpdate = action(r.onUpdate);
+  return column;
+}
+
+/**
+ * Problema de una expresión DEFAULT, o `null`. No se interpreta el SQL: solo se rechaza lo que rompería el
+ * script (punto y coma, comentarios, comillas o paréntesis sin cerrar).
+ */
+export function sqlDefaultError(expression: string): string | null {
+  const text = expression.trim();
+  if (!text) return null;
+  if (/;|--|\/\*/.test(text)) return 'el valor por defecto no admite «;» ni comentarios.';
+  if ((text.match(/'/g) ?? []).length % 2) return 'el valor por defecto tiene comillas sin cerrar.';
+  let depth = 0;
+  for (const char of text.replace(/'[^']*'/g, '')) {
+    depth += char === '(' ? 1 : char === ')' ? -1 : 0;
+    if (depth < 0) break;
+  }
+  return depth === 0 ? null : 'el valor por defecto tiene paréntesis sin cerrar.';
 }
 function readSqlType(raw: unknown): SqlDataType | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -445,6 +482,34 @@ export function tableIssues(p: Project, typeId: string): TableIssue[] {
         message: `${c.field.label}: IDENTITY solo vale en enteros o decimales sin escala.`,
         fieldId: c.field.id,
       });
+    const defaultError = c.sql.defaultValue ? sqlDefaultError(c.sql.defaultValue) : null;
+    if (defaultError)
+      issues.push({ severity: 'error', message: `${c.field.label}: ${defaultError}`, fieldId: c.field.id });
+    if (c.sql.defaultValue && c.sql.identity)
+      issues.push({
+        severity: 'error',
+        message: `${c.field.label}: una columna IDENTITY no admite valor por defecto.`,
+        fieldId: c.field.id,
+      });
+    if (c.field.type === 'nodeRef') {
+      for (const [rule, action] of [
+        ['Al borrar', c.sql.onDelete],
+        ['Al actualizar', c.sql.onUpdate],
+      ] as const) {
+        if (action === 'SET NULL' && (!c.sql.nullable || c.sql.primaryKey))
+          issues.push({
+            severity: 'error',
+            message: `${c.field.label}: «${rule}: SET NULL» necesita que la columna admita nulos.`,
+            fieldId: c.field.id,
+          });
+        if (action === 'SET DEFAULT' && !c.sql.defaultValue)
+          issues.push({
+            severity: 'error',
+            message: `${c.field.label}: «${rule}: SET DEFAULT» necesita un valor por defecto.`,
+            fieldId: c.field.id,
+          });
+      }
+    }
     if (c.field.type === 'nodeRefs')
       issues.push({
         severity: 'warning',

@@ -67,7 +67,9 @@ El editor distingue PK, claves candidatas unique, FK y obligatoriedad de formula
 
 Ampliado el 2026-10-15 (formato 7): ajustes SQL por tipo para heredados y preformas (`Schema.sqlOverrides`), atributos heredados ocultables por tipo, exportación del script de SQL Server (`sqlScript.ts`) y linter del esquema en Salud (`databaseLint.ts`). Detalle en `PROJECT_CONTEXT.md`.
 
-Pendientes: claves UNIQUE compuestas con nombre, FK compuestas, defaults SQL, índices, reglas ON DELETE/UPDATE, cardinalidades en las líneas y enrutado que esquive tablas. CHECK de las listas de opciones hecho el 2026-10-17.
+Ampliaciones del 2026-10-17: CHECK de las listas de opciones; **valor por defecto** de una columna (`SqlColumn.defaultValue`, una expresión de SQL Server; `DEFAULT` en el script; el lint rechaza «;», comentarios, comillas o paréntesis sin cerrar y DEFAULT en IDENTITY); **índices** (`indexed`; `CREATE INDEX` al final, salvo en PK de una columna y UNIQUE); **reglas de las FK** (`onDelete`/`onUpdate`: NO ACTION, CASCADE, SET NULL, SET DEFAULT; el lint exige nulos para SET NULL y un DEFAULT para SET DEFAULT, y marca como error la cascada en una autorreferencia o en un ciclo, que SQL Server rechaza). Las claves nuevas solo se guardan con valor, así que los datos de antes no cambian. Tarjeta «Columnas SQL» con «Por defecto», «Índice» y, en cada clave foránea, «Al borrar» y «Al actualizar». El caso comercial las usa y su script se ejecutó en SQL Server: la fecha toma `GETDATE()` y borrar un pedido borra sus líneas.
+
+Pendientes: claves UNIQUE compuestas con nombre, FK compuestas (una referencia es una columna), cardinalidades en las líneas y enrutado que esquive tablas.
 
 ## Hitos y criterios de cierre
 
