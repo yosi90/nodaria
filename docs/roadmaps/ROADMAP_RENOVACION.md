@@ -283,11 +283,11 @@ Objetivo: que los datos estén a salvo y se puedan llevar a otras herramientas.
 - [x] Protección de los datos locales (2026-10-06): un guardado fallido (almacenamiento lleno o bloqueado) se avisa con exportación y reintento; una carga con proyectos ilegibles conserva los demás, aparta el original y no deja que la sincronización borre en la cuenta lo que falta.
 - [x] Migrar a IndexedDB conservando la lectura de `nodaria_state_v1` (2026-10-06): un registro por proyecto, migración automática con copia del original y fusión de pestañas antiguas.
 - [x] Almacenamiento de imágenes (retratos, mapas) con redimensionado al subirlas: el redimensionado ya existía y con IndexedDB desaparece el límite de 5 MB (2026-10-06).
-- [ ] Copias automáticas periódicas y restauración desde una lista de instantáneas.
+- [x] Copias automáticas periódicas y restauración desde una lista de instantáneas (2026-10-17, detalle en `PENDIENTES.md`).
 - [ ] Guardar en un archivo o carpeta del disco con la File System Access API (permite usar Dropbox/Drive/Git como sincronización sin servidor).
-- [ ] Exportar a Markdown compatible con Obsidian (una nota por nodo, enlaces `[[ ]]`), a CSV por tipo y a un ZIP con imágenes.
-- [ ] Importar desde CSV (crear muchos personajes de golpe).
-- [ ] Importación con vista previa y opción de fusionar en el proyecto actual.
+- [x] Exportar a Markdown compatible con Obsidian (una nota por nodo, enlaces `[[ ]]`), a CSV por tipo y a un ZIP con imágenes (2026-10-17).
+- [x] Importar desde CSV (crear muchos personajes de golpe) (2026-10-17).
+- [x] Importación con vista previa y opción de fusionar en el proyecto actual (2026-10-17).
 - [ ] PWA instalable y con funcionamiento sin conexión.
 
 Criterio: se puede cerrar el navegador, cambiar de equipo y recuperar el mundo completo, imágenes incluidas.

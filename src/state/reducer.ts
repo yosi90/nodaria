@@ -19,6 +19,7 @@ import { applyProposal, type AiProposal } from '../domain/aiProposal';
 import { withRenamedFields } from '../domain/formulaRenames';
 import { withConvertedValues } from '../domain/valueConversion';
 import { createJunctionTables, type JunctionProposal } from '../domain/junctionTables';
+import { mergeProject } from '../domain/projectMerge';
 import { importCsvRows, type ColumnTarget, type CsvTable } from '../domain/csvImport';
 import type { AiContextRefs } from '../domain/aiContext';
 import type {
@@ -47,6 +48,8 @@ export type Action =
   | { type: 'duplicate-project' }
   | { type: 'import-project'; project: Project; replaceBlank?: boolean }
   | { type: 'merge-template'; template: Project }
+  /** Fusiona un proyecto importado: con sus tipos y atributos nuevos o solo sus datos (`projectMerge.ts`). */
+  | { type: 'merge-project' | 'merge-project-data'; source: Project }
   | { type: 'add-folder'; name: string; id?: string }
   | { type: 'rename-folder'; id: string; name: string }
   | { type: 'delete-folder'; id: string }
@@ -199,6 +202,9 @@ function projectReducer(p: Project, action: Action): Project {
       return { ...p, kind: action.kind };
     case 'merge-template':
       return mergeTemplate(p, action.template);
+    case 'merge-project':
+    case 'merge-project-data':
+      return mergeProject(p, action.source, { schema: action.type === 'merge-project' }).project;
     case 'add-folder':
       return addFolder(p, action.name, action.id);
     case 'rename-folder':

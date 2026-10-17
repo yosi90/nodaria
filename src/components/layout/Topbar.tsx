@@ -59,6 +59,8 @@ import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
 import { SnapshotsDialog } from './SnapshotsDialog';
 import { CsvImportDialog } from './CsvImportDialog';
+import { ImportProjectDialog } from './ImportProjectDialog';
+import type { Project } from '../../domain/types';
 import { parseCsv, type CsvTable } from '../../domain/csvImport';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
 import { GroupDialog } from '../groups/GroupDialog';
@@ -88,7 +90,7 @@ export function Topbar({
   onSearch: () => void;
   onTemplates: () => void;
 }) {
-  const { state, project, dispatch, undo, redo, canUndo, canRedo, reportRepairs } = useApp();
+  const { state, project, dispatch, undo, redo, canUndo, canRedo } = useApp();
   const { preferences, setPreference } = usePreferences();
   const { prompt, confirm } = useDialogs();
   const toast = useToast();
@@ -97,6 +99,7 @@ export function Topbar({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const csvFile = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState<{ project: Project; issues: string[] } | null>(null);
   const [csv, setCsv] = useState<{ name: string; table: CsvTable } | null>(null);
   const uploadCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -160,10 +163,7 @@ export function Topbar({
       const parsed = parseProject(await f.text());
       // Importar crea siempre una copia propia: un JSON de un proyecto de grupo no hereda el grupo.
       const imported = isShared(parsed.project.id) ? { ...parsed.project, id: uid('project') } : parsed.project;
-      const { issues } = parsed;
-      dispatch({ type: 'import-project', project: imported });
-      toast({ message: `Proyecto «${imported.name}» importado` });
-      if (issues.length) reportRepairs({ projectName: imported.name, issues });
+      setImporting({ project: imported, issues: parsed.issues });
     } catch {
       toast({ message: 'El archivo no contiene un proyecto de Nodaria válido.' });
     }
@@ -329,6 +329,13 @@ export function Topbar({
       )}
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
       {snapshotsOpen && <SnapshotsDialog onClose={() => setSnapshotsOpen(false)} />}
+      {importing && (
+        <ImportProjectDialog
+          imported={importing.project}
+          issues={importing.issues}
+          onClose={() => setImporting(null)}
+        />
+      )}
       {csv && <CsvImportDialog fileName={csv.name} table={csv.table} onClose={() => setCsv(null)} />}
       {kindOpen && <ProjectKindDialog onClose={() => setKindOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />

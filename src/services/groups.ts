@@ -391,6 +391,7 @@ const FREE_ACTIONS = new Set([
 export const SCHEMA_ACTIONS = new Set([
   'set-project-kind',
   'merge-template',
+  'merge-project',
   'add-schema',
   'update-schema',
   'delete-schema',
