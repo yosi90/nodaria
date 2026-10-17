@@ -51,6 +51,8 @@ export interface AiConversation extends AiConversationSummary {
 }
 
 export interface AiProposalResponse {
+  /** Con qué clave se pidió: la del grupo del proyecto o la de la persona. */
+  keySource?: 'grupo' | 'personal';
   conversationId: number;
   userMessageId: number | null;
   messageId: number | null;
@@ -58,6 +60,9 @@ export interface AiProposalResponse {
   model: AiAnswer['model'];
   usage: AiAnswer['usage'];
 }
+
+/** Errores de la clave del grupo con los que se puede ofrecer la de la persona. */
+export const AI_GROUP_KEY_ERRORS = new Set(['sin_clave_del_grupo', 'tope_del_grupo']);
 
 /** Errores que dependen de las claves de la persona: se explican con el enlace a su gestión. */
 export const AI_KEY_ERRORS = new Set(['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto', 'clave_rechazada']);
@@ -90,6 +95,8 @@ export function requestDatabaseProposal(
     refs: AiContextRefs;
     projectId: string;
     conversationId: number | null;
+    /** En un proyecto de un grupo: su clave (por defecto) o la de la persona, si ella lo elige. */
+    keySource?: 'grupo' | 'personal';
   },
   signal?: AbortSignal,
 ) {

@@ -47,6 +47,11 @@ export interface AiRequest {
   context: AiDatabaseContext;
   /** Turnos anteriores de la conversación, ya resumidos (`conversationTurns`), del más antiguo al último. */
   history?: AiTurn[];
+  /**
+   * Espacio (grupo) cuya clave de IA se usa (`X-Yosi-Espacio`): solo en los proyectos de ese grupo. Sin él,
+   * la clave de la persona.
+   */
+  space?: number;
   signal?: AbortSignal;
 }
 
@@ -117,10 +122,56 @@ const PLATFORM_ERRORS: Record<string, { status: number; message: string }> = {
   },
 };
 
+/**
+ * Con la clave del grupo (`X-Yosi-Espacio`), los errores hablan del grupo. Sin clave del grupo para ese
+ * proveedor no se pasa a la de la persona a sus espaldas: se le ofrece (`sin_clave_del_grupo`).
+ */
+const GROUP_ERRORS: Record<string, { status: number; code: string; message: string }> = {
+  sin_clave_de_ia: {
+    status: 409,
+    code: 'sin_clave_del_grupo',
+    message: 'El grupo no tiene clave de IA de este proveedor. Puedes usar la tuya en este proyecto.',
+  },
+  tope_sin_fijar: {
+    status: 409,
+    code: 'tope_del_grupo',
+    message: 'La clave de IA del grupo no tiene tope de gasto. Quien tiene la propiedad del grupo debe fijarlo.',
+  },
+  tope_de_gasto: {
+    status: 429,
+    code: 'tope_del_grupo',
+    message: 'Las claves de IA del grupo han llegado a su tope del mes. Puedes usar la tuya en este proyecto.',
+  },
+  proveedor_no_permitido: {
+    status: 403,
+    code: 'proveedor_no_permitido',
+    message: 'El grupo no deja usar este proveedor de IA. Elige otro modelo.',
+  },
+  modelo_no_permitido: {
+    status: 403,
+    code: 'modelo_no_permitido',
+    message: 'El grupo no deja usar este modelo. Elige otro.',
+  },
+  espacio_no_disponible: {
+    status: 403,
+    code: 'espacio_no_disponible',
+    message: 'No puedes usar la clave de IA de este grupo.',
+  },
+};
+
 /** Los errores que dependen de la persona (enlazan la gestión de sus claves). */
 export const KEY_ERRORS = new Set(['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto', 'clave_rechazada']);
 
-function platformError(rejection: PlatformRejection): AiError {
+function gatewayHeaders(request: AiRequest): Record<string, string> {
+  return {
+    'X-Yosi-Cuenta': request.account,
+    ...(request.space ? { 'X-Yosi-Espacio': String(request.space) } : {}),
+  };
+}
+
+function platformError(rejection: PlatformRejection, space?: number): AiError {
+  const group = space ? GROUP_ERRORS[rejection.code] : undefined;
+  if (group) return new AiError(group.status, group.code, group.message);
   const known = PLATFORM_ERRORS[rejection.code];
   if (known) return new AiError(known.status, rejection.code, known.message);
   // credencial_no_valida, ruta_no_permitida, solicitud_invalida, claves_ia_*: problema de configuración.
@@ -159,10 +210,10 @@ function unwrap(error: unknown): unknown {
   return error;
 }
 
-function translate(error: unknown, signal?: AbortSignal): AiError {
+function translate(error: unknown, signal?: AbortSignal, space?: number): AiError {
   if (error instanceof AiError) return error;
   const cause = unwrap(error);
-  if (cause instanceof PlatformRejection) return platformError(cause);
+  if (cause instanceof PlatformRejection) return platformError(cause, space);
   if (signal?.aborted) return new AiError(499, 'ia_cancelada', 'Se canceló la petición.');
   if (error instanceof Anthropic.APIConnectionTimeoutError || error instanceof OpenAI.APIConnectionTimeoutError)
     return new AiError(
@@ -260,7 +311,7 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
           ],
           output_config: { effort: request.model.effort, format: ANTHROPIC_FORMAT },
         },
-        { headers: { 'X-Yosi-Cuenta': request.account }, signal: request.signal },
+        { headers: gatewayHeaders(request), signal: request.signal },
       )
       .finalMessage();
     if (message.stop_reason === 'max_tokens') throw INCOMPLETE;
@@ -294,7 +345,7 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
         text: { format: zodTextFormat(wireProposalSchema, 'propuesta') },
         store: false,
       },
-      { headers: { 'X-Yosi-Cuenta': request.account }, signal: request.signal },
+      { headers: gatewayHeaders(request), signal: request.signal },
     );
     if (response.status === 'incomplete') throw INCOMPLETE;
     const refused = response.output.some(
@@ -315,7 +366,7 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
           ? await anthropic(request, apiKey)
           : await openai(request, apiKey);
       } catch (error) {
-        throw translate(error, request.signal);
+        throw translate(error, request.signal, request.space);
       }
     },
   };

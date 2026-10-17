@@ -22,6 +22,7 @@ import { moveSchemaInList, schemaFolderMembers } from '../../domain/schemaFolder
 import type { Schema, SchemaFolder, SchemaKind } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { usePreferences } from '../../state/preferences';
+import { useProjectAccess } from '../../state/groups';
 import { Button, IconButton } from '../common/Button';
 import { useDialogs } from '../common/dialogs';
 import { EmptyState } from '../common/EmptyState';
@@ -42,6 +43,8 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
   const words = vocabulary(project.kind);
   const isEntity = kind === 'entity';
   const { preferences, setPreference } = usePreferences();
+  // Con un compartido, el editor y el lector ven el esquema sin poder cambiarlo.
+  const { canEditSchema } = useProjectAccess();
   const ofKind = project.schemas.filter(s => s.kind === kind);
   const [selected, setSelected] = useState<string | null>(ofKind[0]?.id || null);
   const [creating, setCreating] = useState<SchemaKind | null>(null);
@@ -397,7 +400,9 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
         />
       </aside>
       {schema ? (
-        <SchemaEditor key={schema.id} schema={schema} onDuplicated={setSelected} />
+        <fieldset className="access-lock" disabled={!canEditSchema}>
+          <SchemaEditor key={schema.id} schema={schema} onDuplicated={setSelected} />
+        </fieldset>
       ) : (
         <EmptyState
           icon={isEntity ? Shapes : GitFork}

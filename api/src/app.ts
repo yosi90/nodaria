@@ -161,7 +161,7 @@ export async function buildApp({
       await privateApp.register(meRoutes, { users });
       await privateApp.register(projectRoutes, { projects, config, conversations, groups });
       await privateApp.register(groupRoutes, { groups, spaces, users, config, feed });
-      await privateApp.register(aiRoutes, { ai, config, conversations });
+      await privateApp.register(aiRoutes, { ai, config, conversations, groups });
     },
     { prefix: '/api' },
   );

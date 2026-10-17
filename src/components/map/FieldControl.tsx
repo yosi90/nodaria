@@ -13,6 +13,7 @@ import { nonNegativeWarning } from '../../domain/valueConstraints';
 import { usePreferences } from '../../state/preferences';
 import { normalizeColor } from '../../state/colorPalette';
 import { ColorSwatches } from '../common/ColorSwatches';
+import { useProjectAccess } from '../../state/groups';
 
 interface FieldControlProps {
   field: FieldDefinition;
@@ -26,9 +27,17 @@ interface FieldControlProps {
 /** Control de edición de un atributo según su tipo. Lo usan la ficha, la tabla y los valores iniciales. */
 export function FieldControl(props: FieldControlProps) {
   const warning = nonNegativeWarning(props.field, props.value);
+  // En un compartido que el rol no deja editar, el valor se ve pero no se cambia.
+  const { canEdit } = useProjectAccess();
   return (
     <>
-      <FieldInput {...props} />
+      {canEdit ? (
+        <FieldInput {...props} />
+      ) : (
+        <fieldset className="access-lock" disabled>
+          <FieldInput {...props} />
+        </fieldset>
+      )}
       {warning && (
         <small className="validation-message" role="status">
           {warning}

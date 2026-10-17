@@ -259,3 +259,11 @@
     display: none;
   }
 }
+
+/* Qué clave de IA usa el asistente en un proyecto de un grupo. */
+.ai-key-source {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}

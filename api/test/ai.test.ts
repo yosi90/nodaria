@@ -144,8 +144,9 @@ const body = (patch: Record<string, unknown> = {}) => ({
 async function appWith(ai: AiAssistant) {
   const tokens = await platformTokens();
   const conversations = createMemoryConversationStore();
-  const app = await buildApp(testDependencies({ auth: tokens.provider, ai, conversations }));
-  return { app, tokens, conversations };
+  const deps = testDependencies({ auth: tokens.provider, ai, conversations });
+  const app = await buildApp(deps);
+  return { app, tokens, conversations, groups: deps.groups };
 }
 
 describe('rutas de la IA', () => {
@@ -186,6 +187,7 @@ describe('rutas de la IA', () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
+      keySource: 'personal',
       conversationId: 1,
       userMessageId: 1,
       messageId: 2,
@@ -326,6 +328,61 @@ const request = (provider: 'anthropic' | 'openai', id: string): AiRequest => ({
   account: OWNER,
   instruction: 'Añade pedidos',
   context,
+});
+
+describe('clave de IA del grupo', () => {
+  it('en un proyecto del grupo usa su clave, salvo que la persona pida la suya', async () => {
+    const seen: AiRequest[] = [];
+    const { app, tokens, groups } = await appWith({
+      propose: async request => {
+        seen.push(request);
+        return { proposal, usage: { inputTokens: 1, outputTokens: 1 } };
+      },
+    });
+    const external = 'grupo-a1b2c3d4-0000-4000-8000-000000000009';
+    await groups.beginCreate({ externalId: external, name: 'Equipo', createdBy: OWNER });
+    await groups.completeCreate(
+      external,
+      { id: 321, idExterno: external, nombre: 'Equipo', entrada: 'invitacion', dosPasos: false, propietario: OWNER },
+      'responsable',
+    );
+    const document = JSON.stringify({ id: 'p1', name: 'P', updatedAt: '2026-10-17T10:00:00.000Z' });
+    await groups.attachProject(external, 1, {
+      projectId: 'p1',
+      name: 'P',
+      document,
+      updatedAt: '2026-10-17T10:00:00.000Z',
+      by: OWNER,
+    });
+    const ask = async (patch: Record<string, unknown>, who = OWNER) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/ia/propuestas',
+        headers: { authorization: `Bearer ${await tokens.sign({ sub: who })}` },
+        payload: body({ projectId: 'p1', ...patch }),
+      });
+    expect((await ask({})).json()).toMatchObject({ keySource: 'grupo' });
+    expect(seen[0].space).toBe(321);
+    expect((await ask({ keySource: 'personal' })).json()).toMatchObject({ keySource: 'personal' });
+    expect(seen[1].space).toBeUndefined();
+    // Quien no es del grupo nunca usa su clave.
+    await ask({}, OTHER);
+    expect(seen[2].space).toBeUndefined();
+  });
+
+  it('llama con X-Yosi-Espacio y explica los errores del grupo', async () => {
+    const { impl, calls } = fakeFetch(() => platformError(409, 'sin_clave_de_ia'));
+    const ai = createGatewayAssistant({
+      platformApi: 'https://qa-cuentas-api.yosiftware.es',
+      serviceTokenFile: tokenFile(),
+      fetch: impl,
+    });
+    await expect(ai.propose({ ...request('anthropic', 'claude-sonnet-5-5'), space: 321 })).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'sin_clave_del_grupo',
+    });
+    expect(calls[0].headers.get('x-yosi-espacio')).toBe('321');
+  });
 });
 
 describe('cliente de la pasarela', () => {

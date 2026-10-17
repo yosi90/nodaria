@@ -6,6 +6,7 @@ import { isTableType } from '../../domain/database';
 import { getNode, nodeLabel } from '../../domain/selectors';
 import { ApiError, OfflineError } from '../../services/api';
 import {
+  AI_GROUP_KEY_ERRORS,
   AI_KEY_ERRORS,
   deleteConversation,
   fetchAiModels,
@@ -21,6 +22,7 @@ import {
 } from '../../services/ai';
 import { downloadText } from '../../services/files';
 import { useApp } from '../../state/AppContext';
+import { useProjectAccess } from '../../state/groups';
 import { useAuth } from '../../state/auth';
 import { useNavigation } from '../../state/navigation';
 import { usePreferences } from '../../state/preferences';
@@ -48,10 +50,18 @@ const MAX_INSTRUCTION = 4000;
 interface Failure {
   message: string;
   manage: boolean;
+  /** La clave del grupo no sirvió: se puede ofrecer la de la persona, con la petición que falló. */
+  groupKey?: boolean;
+  text?: string;
 }
 
 function failureOf(error: unknown): Failure {
-  if (error instanceof ApiError) return { message: error.message, manage: AI_KEY_ERRORS.has(error.code) };
+  if (error instanceof ApiError)
+    return {
+      message: error.message,
+      manage: AI_KEY_ERRORS.has(error.code),
+      groupKey: AI_GROUP_KEY_ERRORS.has(error.code),
+    };
   if (error instanceof OfflineError)
     return { message: 'No se ha podido conectar con Nodaria. Revisa tu conexión.', manage: false };
   return { message: 'No se ha podido completar la petición.', manage: false };
@@ -75,6 +85,9 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const [onlySelected, setOnlySelected] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
+  // En un proyecto de un grupo se usa la clave de IA del grupo; la de la persona, solo si ella lo elige.
+  const { group: sharedGroup } = useProjectAccess();
+  const [personalKey, setPersonalKey] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const { selection } = useNavigation();
@@ -166,6 +179,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
           refs,
           projectId: project.id,
           conversationId: activeId,
+          ...(sharedGroup ? { keySource: personalKey ? ('personal' as const) : ('grupo' as const) } : {}),
         },
         controller.signal,
       );
@@ -191,7 +205,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
         setMessages(current => current.filter(m => m !== temporary));
         setInstruction(text);
       } else {
-        const problem = failureOf(error);
+        const problem = { ...failureOf(error), text };
         setFailure(problem);
         const conversationId = error instanceof ApiError ? error.details.conversationId : undefined;
         if (typeof conversationId === 'number' && conversationId !== activeId) {
@@ -375,6 +389,22 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 </Button>
               </div>
             )}
+            {failure?.groupKey && !personalKey && (
+              <p className="ai-error">
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => {
+                    setPersonalKey(true);
+                    if (failure.text) setInstruction(failure.text);
+                    setFailure(null);
+                  }}
+                >
+                  Usar mi clave de IA en este proyecto
+                </button>{' '}
+                (el gasto será tuyo).
+              </p>
+            )}
             {failure?.manage && catalog && (
               <p className="ai-error">
                 <a href={catalog.manageUrl} target="_blank" rel="noreferrer">
@@ -384,6 +414,18 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
+          {sharedGroup && (
+            <p className="ai-key-source">
+              {personalKey
+                ? 'Usa tu clave de IA en este proyecto.'
+                : `Usa la clave de IA del grupo «${sharedGroup.name}».`}{' '}
+              {personalKey && (
+                <button type="button" className="link-button" onClick={() => setPersonalKey(false)}>
+                  Volver a la del grupo
+                </button>
+              )}
+            </p>
+          )}
           <form
             className="ai-composer"
             onSubmit={event => {

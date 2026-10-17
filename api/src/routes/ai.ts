@@ -38,6 +38,11 @@ const proposeSchema = z.object({
   conversationId: z.number().int().positive().nullable().optional(),
   /** Traducción de los identificadores del contexto, para revisar la propuesta más tarde. */
   refs: refsSchema,
+  /**
+   * En un proyecto de un grupo se usa la clave de IA del grupo; `personal` usa la de la persona (cuando
+   * ella lo elige, por ejemplo si el grupo no tiene clave de ese proveedor).
+   */
+  keySource: z.enum(['grupo', 'personal']).optional(),
 });
 
 const idParams = z.object({ id: z.coerce.number().int().positive() });
@@ -51,10 +56,22 @@ function titleOf(instruction: string) {
   return line.length > TITLE_LENGTH ? `${line.slice(0, TITLE_LENGTH - 1)}…` : line;
 }
 
-export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' | 'conversations'>> = async (
+export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' | 'conversations' | 'groups'>> = async (
   app,
-  { ai, config, conversations },
+  { ai, config, conversations, groups },
 ) => {
+  /**
+   * El espacio cuya clave de IA se usa: el del grupo del proyecto, si la cuenta es miembro activo y no ha
+   * pedido usar la suya (decisión del propietario, 2026-10-17: la clave del grupo, solo en sus proyectos).
+   */
+  async function groupSpace(projectId: string, globalId: string, keySource: 'grupo' | 'personal' | undefined) {
+    if (keySource === 'personal') return undefined;
+    const externalId = await groups.projectGroup(projectId);
+    if (!externalId) return undefined;
+    const [group, member] = await Promise.all([groups.find(externalId), groups.member(externalId, globalId)]);
+    return group?.state === 'activo' && group.spaceId && member?.state === 'activo' ? group.spaceId : undefined;
+  }
+
   const manageUrl = MANAGE_KEYS_URL[config.platform.env];
   const limiter = app.createRateLimit({
     max: AI_RATE_LIMIT,
@@ -130,8 +147,10 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
     });
 
     const started = Date.now();
+    const space = await groupSpace(body.projectId, user.globalId, body.keySource);
     try {
       const result = await ai.propose({
+        space,
         model,
         account: user.globalId,
         instruction: body.instruction,
@@ -152,6 +171,7 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
       };
       const saved = await conversations.addMessage(user.id, conversationId, 'assistant', answer);
       return {
+        keySource: space ? 'grupo' : 'personal',
         conversationId,
         userMessageId: asked?.id ?? null,
         messageId: saved?.id ?? null,

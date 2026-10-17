@@ -29,6 +29,8 @@ import {
   Tags,
   Users,
   MessagesSquare,
+  Lock,
+  CloudOff,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { downloadProject, downloadText } from '../../services/files';
@@ -90,7 +92,7 @@ export function Topbar({
   const [kindOpen, setKindOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const { status: authStatus, signIn } = useAuth();
-  const { groupOf, present } = useGroups();
+  const { groupOf, present, syncState } = useGroups();
   const group = groupOf(project.id);
   const [shareOpen, setShareOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState<GroupInfo | null>(null);
@@ -247,6 +249,18 @@ export function Topbar({
           >
             <Users size={13} aria-hidden />
             <span className="label">{group.isOwner ? 'Propiedad' : roleLabel(group.role)}</span>
+            {!group.capabilities.edit && <Lock size={12} aria-label="solo lectura" />}
+            {syncState !== 'ok' && (
+              <CloudOff
+                size={13}
+                className="group-offline"
+                aria-label={
+                  syncState === 'offline'
+                    ? 'Sin conexión: tus cambios se subirán al volver'
+                    : 'No se ha podido sincronizar el proyecto del grupo'
+                }
+              />
+            )}
             {present.length > 0 && (
               <span className="group-presence" aria-label={`${present.length} más conectadas`}>
                 +{present.length}

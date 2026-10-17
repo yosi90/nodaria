@@ -63,6 +63,8 @@ interface GroupsContextValue {
   leave: (group: GroupInfo) => Promise<void>;
   /** Otras cuentas con el proyecto abierto ahora (ids en minúsculas), según el canal de su grupo. */
   present: string[];
+  /** Cómo fue la última sincronización de los compartidos: `offline` si no se llegó al servidor. */
+  syncState: 'ok' | 'offline' | 'error';
 }
 
 const Context = createContext<GroupsContextValue | null>(null);
@@ -87,6 +89,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const toastRef = useRef(toast);
 
   const [groups, setGroups] = useState<GroupInfo[]>([]);
+  const [syncState, setSyncState] = useState<'ok' | 'offline' | 'error'>('ok');
   const groupsRef = useRef<GroupInfo[]>([]);
   const meta = useRef<SharedMeta>(emptySharedMeta());
   // Lo que recordaba el navegador vale desde el arranque, antes de leer los grupos.
@@ -275,7 +278,9 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     (fresh = false) =>
       enqueue(async () => {
         for (let pass = 0; pass < MAX_PASSES; pass++) if (!(await runOnce(fresh && pass === 0))) break;
+        setSyncState('ok');
       }).catch(error => {
+        setSyncState(error instanceof OfflineError ? 'offline' : 'error');
         if (!(error instanceof OfflineError))
           console.warn('No se pudieron sincronizar los proyectos compartidos', error);
       }),
@@ -441,10 +446,26 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const isShared = useCallback((projectId: string) => known.current.has(projectId), []);
 
   const value = useMemo(
-    () => ({ groups: visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present }),
-    [visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present],
+    () => ({ groups: visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present, syncState }),
+    [visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present, syncState],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
+}
+
+/**
+ * Lo que el rol en el grupo deja hacer con el proyecto abierto. Un proyecto propio lo permite todo. La
+ * interfaz lo usa para enseñar en solo lectura lo que no se puede cambiar; el filtro de acciones de
+ * `AppContext` y la API lo hacen cumplir igualmente.
+ */
+export function useProjectAccess() {
+  const { project } = useApp();
+  const { groupOf } = useGroups();
+  const group = groupOf(project.id);
+  return {
+    group,
+    canEdit: !group || group.capabilities.edit,
+    canEditSchema: !group || group.capabilities.editSchema,
+  };
 }
 
 export function useGroups() {
