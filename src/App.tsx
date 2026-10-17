@@ -17,7 +17,7 @@ import { TableView } from './components/table/TableView';
 import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
 import { AiPanel } from './components/ai/AiPanel';
-import { GroupChatPanel } from './components/groups/GroupChatPanel';
+import { GroupPanel } from './components/groups/GroupPanel';
 import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
 import { useNavigation, type View } from './state/navigation';
@@ -78,7 +78,7 @@ export default function App() {
         </Fragment>
         {/* El asistente queda al lado de la vista para poder seguir trabajando; su conversación es del proyecto. */}
         {aiOpen && <AiPanel key={`ai:${project.id}`} onClose={() => setPreference('aiPanelOpen', false)} />}
-        {chatOpen && group && <GroupChatPanel group={group} onClose={() => setPreference('groupChatOpen', false)} />}
+        {chatOpen && group && <GroupPanel group={group} onClose={() => setPreference('groupChatOpen', false)} />}
       </div>
       <div className="notice-stack">
         <StorageNotice />

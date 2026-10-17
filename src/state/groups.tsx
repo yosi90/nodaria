@@ -65,6 +65,8 @@ interface GroupsContextValue {
   present: string[];
   /** Cómo fue la última sincronización de los compartidos: `offline` si no se llegó al servidor. */
   syncState: 'ok' | 'offline' | 'error';
+  /** Sube cuando el canal avisa de cambios en los comentarios del proyecto abierto: hay que releerlos. */
+  commentsTick: number;
 }
 
 const Context = createContext<GroupsContextValue | null>(null);
@@ -355,6 +357,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const activeGroup = signedIn ? groups.find(g => g.projects.some(p => p.id === state.activeProjectId)) : undefined;
   const spaceId = activeGroup?.spaceId ?? null;
   const [presence, setPresence] = useState<{ space: number; ids: string[] } | null>(null);
+  const [commentsTick, setCommentsTick] = useState(0);
   useEffect(() => {
     const espacios = sdk()?.espacios;
     if (!spaceId || !espacios?.canal) return;
@@ -362,6 +365,10 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       switch (message.tipo) {
         case 'mensaje': {
           const { tipo, id, version } = message.datos as { tipo?: string; id?: string; version?: number };
+          if (tipo === 'comentarios') {
+            setCommentsTick(tick => tick + 1);
+            return;
+          }
           // Lo que guardó este navegador ya está aquí.
           if (tipo === 'proyecto' && id && (meta.current.projects[id]?.version ?? 0) >= (version ?? 0)) return;
           void syncShared();
@@ -446,8 +453,20 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const isShared = useCallback((projectId: string) => known.current.has(projectId), []);
 
   const value = useMemo(
-    () => ({ groups: visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present, syncState }),
-    [visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present, syncState],
+    () => ({
+      groups: visible,
+      groupOf,
+      isShared,
+      syncShared,
+      refresh,
+      share,
+      removeGroup,
+      leave,
+      present,
+      syncState,
+      commentsTick,
+    }),
+    [visible, groupOf, isShared, syncShared, refresh, share, removeGroup, leave, present, syncState, commentsTick],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

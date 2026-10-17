@@ -8,6 +8,7 @@ import { loadConfig } from './config.ts';
 import { connectDatabase } from './db/pool.ts';
 import { createGroupMaintenance } from './groups/maintenance.ts';
 import { createSqlGroupStore } from './groups/repository.ts';
+import { createSqlCommentStore } from './groups/comments.ts';
 import { createFeedClient, createFeedReader, createSqlFeedStore } from './platform/feed.ts';
 import { createPlatformSpacesClient } from './platform/spaces.ts';
 import { createSqlProjectStore } from './projects/repository.ts';
@@ -32,6 +33,7 @@ const app = await buildApp({
   }),
   conversations: createSqlConversationStore(db),
   groups,
+  comments: createSqlCommentStore(db),
   spaces,
   feed: { readOnce: () => feed?.readOnce() ?? Promise.resolve(0) },
 });

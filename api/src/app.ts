@@ -10,6 +10,7 @@ import { createAuthenticate, HttpError } from './auth/plugin.ts';
 import type { AppConfig } from './config.ts';
 import type { Database } from './db/pool.ts';
 import type { GroupStore } from './groups/repository.ts';
+import type { CommentStore } from './groups/comments.ts';
 import type { SpacesClient } from './platform/spaces.ts';
 import { aiRoutes } from './routes/ai.ts';
 import { groupRoutes } from './routes/groups.ts';
@@ -28,6 +29,7 @@ export interface AppDependencies {
   ai: AiAssistant;
   conversations: ConversationStore;
   groups: GroupStore;
+  comments: CommentStore;
   spaces: SpacesClient;
   /** Lector del feed de la plataforma, para ponerse al día a petición; `null` si no se lee. */
   feed: { readOnce(): Promise<unknown> } | null;
@@ -80,6 +82,7 @@ export async function buildApp({
   ai,
   conversations,
   groups,
+  comments,
   spaces,
   feed,
 }: AppDependencies) {
@@ -160,7 +163,7 @@ export async function buildApp({
       });
       await privateApp.register(meRoutes, { users });
       await privateApp.register(projectRoutes, { projects, config, conversations, groups });
-      await privateApp.register(groupRoutes, { groups, spaces, users, config, feed });
+      await privateApp.register(groupRoutes, { groups, spaces, users, config, feed, comments });
       await privateApp.register(aiRoutes, { ai, config, conversations, groups });
     },
     { prefix: '/api' },

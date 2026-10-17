@@ -31,6 +31,7 @@ import {
   MessagesSquare,
   Lock,
   CloudOff,
+  MessageSquareText,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { downloadProject, downloadText } from '../../services/files';
@@ -240,7 +241,7 @@ export function Topbar({
           <button
             type="button"
             className="group-chip"
-            title={`Proyecto del grupo «${group.name}». Tu rol: ${group.isOwner ? 'propiedad' : roleLabel(group.role)}.${
+            title={`Proyecto del grupo «${group.name}». Tu rol: ${group.isOwner ? 'propiedad' : roleLabel(group.role, project.kind)}.${
               present.length
                 ? ` ${present.length === 1 ? 'Otra persona lo tiene' : `${present.length} personas más lo tienen`} abierto ahora.`
                 : ''
@@ -248,7 +249,7 @@ export function Topbar({
             onClick={() => setGroupOpen(group)}
           >
             <Users size={13} aria-hidden />
-            <span className="label">{group.isOwner ? 'Propiedad' : roleLabel(group.role)}</span>
+            <span className="label">{group.isOwner ? 'Propiedad' : roleLabel(group.role, project.kind)}</span>
             {!group.capabilities.edit && <Lock size={12} aria-label="solo lectura" />}
             {syncState !== 'ok' && (
               <CloudOff
@@ -268,15 +269,24 @@ export function Topbar({
             )}
           </button>
         )}
-        {group && (
-          <IconButton
-            icon={MessagesSquare}
-            label={preferences.groupChatOpen ? 'Cerrar el chat del grupo' : 'Chat del grupo'}
-            active={preferences.groupChatOpen}
-            aria-pressed={preferences.groupChatOpen}
-            onClick={() => setPreference('groupChatOpen', !preferences.groupChatOpen)}
-          />
-        )}
+        {group &&
+          (['chat', 'comentarios'] as const).map(tab => {
+            const open = preferences.groupChatOpen && preferences.groupPanelTab === tab;
+            const name = tab === 'chat' ? 'el chat del grupo' : 'los comentarios del proyecto';
+            return (
+              <IconButton
+                key={tab}
+                icon={tab === 'chat' ? MessagesSquare : MessageSquareText}
+                label={open ? `Cerrar ${name}` : tab === 'chat' ? 'Chat del grupo' : 'Comentarios y sugerencias'}
+                active={open}
+                aria-pressed={open}
+                onClick={() => {
+                  setPreference('groupPanelTab', tab);
+                  setPreference('groupChatOpen', !open);
+                }}
+              />
+            );
+          })}
       </div>
       {menu && (
         <Menu

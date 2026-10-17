@@ -9,8 +9,10 @@
 export const ROLES = [
   { clave: 'responsable', nombre: 'Responsable', gestionar: true, invitar: true, chat: 'escribir', orden: 1 },
   { clave: 'editor', nombre: 'Editor', gestionar: false, invitar: false, chat: 'escribir', orden: 2 },
+  // Ve, comenta y sugiere cambios, sin cambiar el proyecto (hito 5).
+  { clave: 'revisor', nombre: 'Revisor', gestionar: false, invitar: false, chat: 'escribir', orden: 3 },
   // Leer el tablero no impide conversar. Es el rol de quien entra sin rol elegido (propietario, 2026-10-17).
-  { clave: 'lector', nombre: 'Lector', gestionar: false, invitar: false, chat: 'escribir', orden: 3, porDefecto: true },
+  { clave: 'lector', nombre: 'Lector', gestionar: false, invitar: false, chat: 'escribir', orden: 4, porDefecto: true },
 ] as const;
 
 export type RoleKey = (typeof ROLES)[number]['clave'];
@@ -28,11 +30,13 @@ export interface GroupCapabilities {
   edit: boolean;
   /** Tipos, atributos, preformas, parentesco, calendario y tipo de proyecto. */
   editSchema: boolean;
+  /** Comentar y sugerir cambios (hito 5). Aceptar una sugerencia es editar. */
+  comment: boolean;
   /** Borrar el grupo y elegir quién se queda el proyecto. */
   deleteGroup: boolean;
 }
 
-const NONE: GroupCapabilities = { read: false, edit: false, editSchema: false, deleteGroup: false };
+const NONE: GroupCapabilities = { read: false, edit: false, editSchema: false, comment: false, deleteGroup: false };
 
 /**
  * Solo los miembros `activo` tienen acceso (`sin_dos_pasos` es un miembro en pausa). La propiedad lo
@@ -40,14 +44,16 @@ const NONE: GroupCapabilities = { read: false, edit: false, editSchema: false, d
  */
 export function capabilitiesOf(member: { role: string; state: string; owner: boolean } | null): GroupCapabilities {
   if (!member || member.state !== 'activo') return NONE;
-  if (member.owner) return { read: true, edit: true, editSchema: true, deleteGroup: true };
+  if (member.owner) return { read: true, edit: true, editSchema: true, comment: true, deleteGroup: true };
   switch (member.role) {
     case 'responsable':
-      return { read: true, edit: true, editSchema: true, deleteGroup: false };
+      return { read: true, edit: true, editSchema: true, comment: true, deleteGroup: false };
     case 'editor':
-      return { read: true, edit: true, editSchema: false, deleteGroup: false };
+      return { read: true, edit: true, editSchema: false, comment: true, deleteGroup: false };
+    case 'revisor':
+      return { read: true, edit: false, editSchema: false, comment: true, deleteGroup: false };
     default:
-      return { read: true, edit: false, editSchema: false, deleteGroup: false };
+      return { read: true, edit: false, editSchema: false, comment: false, deleteGroup: false };
   }
 }
 

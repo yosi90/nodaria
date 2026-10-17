@@ -5,6 +5,7 @@ import { TokenCaducado, TokenNoValido, crearVerificador } from '../../src/auth/y
 import { loadConfig } from '../../src/config.ts';
 import { createMemoryConversationStore } from '../../src/ai/conversations.ts';
 import { createMemoryGroupStore } from '../../src/groups/repository.ts';
+import { createMemoryCommentStore } from '../../src/groups/comments.ts';
 import type { PlatformSpace } from '../../src/groups/model.ts';
 import { PlatformError, type SpacesClient } from '../../src/platform/spaces.ts';
 import { createMemoryProjectStore, type ProjectStore } from '../../src/projects/repository.ts';
@@ -184,6 +185,7 @@ export function testDependencies(overrides: Partial<AppDependencies> = {}): AppD
     ai: { propose: async () => Promise.reject(new Error('IA no configurada en la prueba')) },
     conversations: createMemoryConversationStore(),
     groups: memoryGroups(projects),
+    comments: createMemoryCommentStore(),
     spaces: fakeSpaces().client,
     feed: null,
     ...overrides,

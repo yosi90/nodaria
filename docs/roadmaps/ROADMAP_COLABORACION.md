@@ -1,7 +1,7 @@
 # Roadmap por hitos: grupos de trabajo y colaboración
 
 Fecha: 2026-10-13.
-Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Hito 3 hecho el 2026-10-17 (ver «Tiempo real y combinación (hito 3)»), salvo un indicador de «sin conexión» propio de los compartidos. Hito 4 hecho el 2026-10-17 (chat del grupo), salvo comprobar con cuentas reales el correo de las invitaciones. Siguiente: hito 5 (revisión y usos especializados), si el propietario lo decide. La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
+Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Hito 3 hecho el 2026-10-17 (ver «Tiempo real y combinación (hito 3)»), salvo un indicador de «sin conexión» propio de los compartidos. Hito 4 hecho el 2026-10-17 (chat del grupo), salvo comprobar con cuentas reales el correo de las invitaciones. Hito 5 hecho el 2026-10-17 (comentarios, sugerencias, rol revisor y nombres de rol por tipo de proyecto), salvo validar los nombres con usos reales. Siguiente: hito 6 (piloto, operación y lanzamiento). La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
 
 ## Puesta al día del 2026-10-17: los espacios de la plataforma
 
@@ -284,10 +284,18 @@ Responsables: integración en Nodaria y servicios centrales. Depende del hito 2 
 
 Responsable: Nodaria. Depende de los hitos 2 y 3.
 
-- [ ] Añadir comentarios y sugerencias ligados al proyecto/nodo, distintos del chat, con autoría e historial.
-- [ ] Incorporar el rol revisor con lectura y propuestas, y aceptar cambios mediante una acción autorizada del editor/responsable.
-- [ ] Validar vocabularios con escritura, empresa, rol y lectura; permitir etiquetas propias sin permisos arbitrarios.
-- [ ] Valorar varios proyectos por grupo y los permisos por proyecto antes de ampliar la primera interfaz.
+- [x] Añadir comentarios y sugerencias ligados al proyecto/nodo, distintos del chat, con autoría e historial (ver «Comentarios, sugerencias y revisor»).
+- [x] Incorporar el rol revisor con lectura y propuestas, y aceptar cambios mediante una acción autorizada del editor/responsable.
+- [ ] Validar vocabularios con escritura, empresa, rol y lectura; permitir etiquetas propias sin permisos arbitrarios. Hecho: los nombres de rol según el tipo de proyecto (los de la tabla de este documento). Falta validarlos con usos reales y, si hacen falta, etiquetas propias por grupo.
+- [x] Valorar varios proyectos por grupo y los permisos por proyecto antes de ampliar la primera interfaz. Valoración (2026-10-17): el modelo ya los admite (`group_projects` por proyecto, con su grupo), pero la presencia y el canal son por grupo y la interfaz supone uno. Se recomienda no ampliarlo hasta que un grupo real lo necesite; entonces, el proyecto en los datos del canal y en la presencia, y una lista de proyectos en el diálogo del grupo. Los permisos por proyecto, solo si aparecen grupos con información que no todos deben ver.
+
+### Comentarios, sugerencias y revisor (hito 5, 2026-10-17)
+
+- **Rol revisor:** la API declara `revisor` (sin gestionar ni invitar, chat escribir). Capacidad nueva `comment`: propiedad, responsable, editor y revisor; el lector solo lee. Aceptar una sugerencia es editar.
+- **API:** migración `0010_group_comments` (`group_comments`: proyecto, nodo opcional, autor, texto, sugerencia `{ fieldId, value }` opcional, estado `abierto`/`resuelto`/`aceptado`/`rechazado`, quién lo cerró; se borran con el proyecto del grupo). `api/src/groups/comments.ts` (SQL y memoria). Rutas `GET`/`POST /api/grupos/{grupo}/proyectos/{id}/comentarios`, `PATCH …/{comentario}` (`state`: resolver o reabrir, su autor o quien edita; aceptar o rechazar sugerencias, quien edita) y `DELETE …/{comentario}` (su autor o la propiedad). Cada cambio avisa por el canal (`{ tipo: 'comentarios', id }`).
+- **Web:** el panel del grupo tiene dos pestañas, «Chat» y «Comentarios» (`GroupPanel`), con un botón para cada una junto a la insignia. Comentarios del proyecto o del nodo seleccionado (filtro), abiertos o también cerrados, con el nombre del autor (miembros del SDK), enlace al nodo y acciones según el rol. Con un nodo seleccionado se puede sugerir el valor de un atributo de texto, número, enlace, fecha, lista o escala (`SUGGESTIBLE`, `suggestedValue`); la tarjeta enseña el valor actual tachado y el sugerido. Aceptar aplica el valor con `update-node` (se sube como cualquier edición) y marca la sugerencia.
+- **Nombres de rol** según el tipo de proyecto (`roleLabel(rol, kind)`): solo en Nodaria (insignia, diálogo del grupo, con el nombre general entre paréntesis en los selectores); en la plataforma se ve el general.
+- **Verificado:** 71 pruebas de la API (con los comentarios contra SQL Server) y 325 del front; Edge con la plataforma y la API simuladas: el revisor comenta, un comentario de otra persona llega por el canal con el nombre de su autor, el revisor solo resuelve lo suyo, y con el ejemplo «Coches» compartido se acepta una sugerencia y el valor se sube al grupo; sin errores de JavaScript.
 
 **Termina cuando:** un revisor puede proponer sin alterar el tablero, una persona autorizada acepta con un cambio trazable y cada denominación muestra sus capacidades reales. No introduce dependencia de Fichas o Libros para usar Nodaria.
 

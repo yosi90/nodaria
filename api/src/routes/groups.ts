@@ -11,6 +11,7 @@ import {
 } from '../groups/model.ts';
 import type { GroupRecord, GroupView } from '../groups/repository.ts';
 import { PlatformError } from '../platform/spaces.ts';
+import { MAX_COMMENTS, type CommentState } from '../groups/comments.ts';
 import { documentSchema, PROJECT_ID } from './projects.ts';
 
 /*
@@ -38,6 +39,26 @@ const putSchema = z.object({ document: documentSchema, baseVersion: z.number().i
 
 // Los identificadores de las cuentas son GUID de SQL Server, no UUID del RFC 4122.
 const GLOBAL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const commentParams = projectParams.extend({ comment: z.coerce.number().int().positive() });
+const suggestionValue = z.union([
+  z.string().max(4000),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.array(z.string().max(400)).max(100),
+]);
+const commentSchema = z
+  .object({
+    nodeId: z.string().regex(PROJECT_ID).nullable().optional(),
+    body: z.string().trim().min(1, 'Escribe el comentario.').max(4000),
+    suggestion: z
+      .object({ fieldId: z.string().min(1).max(100), value: suggestionValue })
+      .nullable()
+      .optional(),
+  })
+  .refine(c => !c.suggestion || c.nodeId, { message: 'Una sugerencia es sobre un nodo.', path: ['nodeId'] });
+const stateSchema = z.object({ state: z.enum(['abierto', 'resuelto', 'aceptado', 'rechazado']) });
+
 const deleteQuery = z.object({ recipient: z.string().regex(GLOBAL_ID, 'Cuenta no válida') });
 
 const NOT_FOUND = () => new HttpError(404, 'grupo_no_encontrado', 'El grupo no existe o no eres miembro.');
@@ -59,8 +80,8 @@ function serialize(view: GroupView, user: AuthenticatedUser) {
 }
 
 export const groupRoutes: FastifyPluginAsync<
-  Pick<AppDependencies, 'groups' | 'spaces' | 'users' | 'config' | 'feed'>
-> = async (app, { groups, spaces, users, config, feed }) => {
+  Pick<AppDependencies, 'groups' | 'spaces' | 'users' | 'config' | 'feed' | 'comments'>
+> = async (app, { groups, spaces, users, config, feed, comments }) => {
   async function access(user: AuthenticatedUser, externalId: string) {
     const group = await groups.find(externalId);
     if (!group || group.state !== 'activo') throw NOT_FOUND();
@@ -197,6 +218,88 @@ export const groupRoutes: FastifyPluginAsync<
       .publish(group, `${id}-v${result.version}`, { tipo: 'proyecto', id, version: result.version, por: user.globalId })
       .catch(error => request.log.warn({ err: error, group }, 'No se pudo publicar en el canal del grupo'));
     return { id, version: result.version, serverUpdatedAt: result.serverUpdatedAt };
+  });
+
+  // --- Comentarios y sugerencias (hito 5) ---
+
+  /** El proyecto tiene que ser de ese grupo; si no, no existe para esta ruta. */
+  async function commentAccess(user: AuthenticatedUser, group: string, id: string) {
+    const found = await access(user, group);
+    if ((await groups.projectGroup(id)) !== group)
+      throw new HttpError(404, 'project_not_found', 'El proyecto no existe en el grupo.');
+    return found;
+  }
+
+  /** Avisa por el canal de que los comentarios del proyecto cambiaron (solo la referencia). */
+  const announce = (
+    request: { log: { warn: (o: object, m: string) => void } },
+    group: string,
+    id: string,
+    key: string,
+  ) =>
+    void spaces
+      .publish(group, `comentarios-${id}-${key}`, { tipo: 'comentarios', id })
+      .catch(error => request.log.warn({ err: error, group }, 'No se pudo publicar en el canal del grupo'));
+
+  app.get('/grupos/:group/proyectos/:id/comentarios', async request => {
+    const user = authenticatedUser(request);
+    const { group, id } = projectParams.parse(request.params);
+    await commentAccess(user, group, id);
+    return { comments: await comments.list(id) };
+  });
+
+  app.post('/grupos/:group/proyectos/:id/comentarios', async request => {
+    const user = authenticatedUser(request);
+    const { group, id } = projectParams.parse(request.params);
+    const { capabilities } = await commentAccess(user, group, id);
+    if (!capabilities.comment) throw FORBIDDEN();
+    const body = commentSchema.parse(request.body);
+    if ((await comments.list(id)).length >= MAX_COMMENTS)
+      throw new HttpError(
+        409,
+        'demasiados_comentarios',
+        'Este proyecto tiene demasiados comentarios: borra los resueltos.',
+      );
+    const created = await comments.create(id, {
+      nodeId: body.nodeId ?? null,
+      author: user.globalId,
+      body: body.body,
+      suggestion: body.suggestion ?? null,
+    });
+    announce(request, group, id, `${created.id}-nuevo`);
+    return created;
+  });
+
+  // Resolver o reabrir un comentario: su autor o quien edita. Aceptar o rechazar una sugerencia: quien
+  // edita (aceptarla es aplicar el cambio, que hace su navegador como cualquier edición).
+  app.patch('/grupos/:group/proyectos/:id/comentarios/:comment', async request => {
+    const user = authenticatedUser(request);
+    const { group, id, comment } = commentParams.parse(request.params);
+    const { capabilities } = await commentAccess(user, group, id);
+    const { state } = stateSchema.parse(request.body);
+    const current = await comments.get(id, comment);
+    if (!current) throw new HttpError(404, 'comentario_no_encontrado', 'El comentario no existe.');
+    const decision = state === 'aceptado' || state === 'rechazado';
+    if (decision && !current.suggestion)
+      throw new HttpError(400, 'no_es_sugerencia', 'Solo se aceptan o rechazan sugerencias.');
+    const allowed = decision ? capabilities.edit : capabilities.edit || current.author === user.globalId;
+    if (!allowed) throw FORBIDDEN();
+    const updated = await comments.setState(id, comment, state as CommentState, user.globalId);
+    announce(request, group, id, `${comment}-${state}-${Date.now()}`);
+    return updated;
+  });
+
+  // Borrar: su autor, o quien tiene la propiedad.
+  app.delete('/grupos/:group/proyectos/:id/comentarios/:comment', async request => {
+    const user = authenticatedUser(request);
+    const { group, id, comment } = commentParams.parse(request.params);
+    const found = await commentAccess(user, group, id);
+    const current = await comments.get(id, comment);
+    if (!current) return { id: comment };
+    if (current.author !== user.globalId && !found.capabilities.deleteGroup) throw FORBIDDEN();
+    await comments.delete(id, comment);
+    announce(request, group, id, `${comment}-borrado`);
+    return { id: comment };
   });
 
   // La conversación del grupo (hito 4), para incrustar el chat. Cualquier miembro activo la pide: la

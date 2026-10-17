@@ -1,4 +1,4 @@
-import type { Project } from '../domain/types';
+import type { Project, ProjectKind } from '../domain/types';
 import { ApiError, apiRequest, OfflineError, type WriteResult } from './api';
 import { PLATFORM_API_URL, sdk } from './yosiftware';
 
@@ -18,6 +18,8 @@ export interface GroupCapabilities {
   read: boolean;
   edit: boolean;
   editSchema: boolean;
+  /** Comentar y sugerir (hito 5). */
+  comment: boolean;
   deleteGroup: boolean;
 }
 
@@ -46,20 +48,64 @@ export interface GroupInfo {
   projects: SharedProjectSummary[];
 }
 
-/** Roles que Nodaria declara en la plataforma (`api/src/groups/model.ts`). */
+/** Roles que Nodaria declara en la plataforma (`api/src/groups/model.ts`), con su nombre en ella. */
 export const ROLE_LABELS: Record<string, string> = {
   responsable: 'Responsable',
   editor: 'Editor',
+  revisor: 'Revisor',
   lector: 'Lector',
 };
 
 export const ROLE_DESCRIPTIONS: Record<string, string> = {
   responsable: 'Edita todo, también el esquema, e invita y gestiona a los miembros.',
   editor: 'Edita nodos, relaciones, notas y posiciones; no cambia tipos ni atributos.',
+  revisor: 'Ve el proyecto, comenta y sugiere cambios, que acepta quien edita.',
   lector: 'Ve el proyecto y lo exporta, sin cambiarlo. Puede conversar en el grupo.',
 };
 
-export const roleLabel = (role: string) => ROLE_LABELS[role] ?? role;
+/**
+ * Nombres de los roles según el tipo de proyecto (hito 5). Son solo etiquetas en Nodaria: los permisos
+ * son los del rol, y en la plataforma (invitaciones, web social) se ve el nombre general.
+ */
+const ROLE_NAMES_BY_KIND: Partial<Record<ProjectKind, Record<string, string>>> = {
+  general: { responsable: 'Coordinador', editor: 'Colaborador', revisor: 'Revisor', lector: 'Observador' },
+  marketing: {
+    responsable: 'Responsable de equipo',
+    editor: 'Colaborador',
+    revisor: 'Supervisor de revisión',
+    lector: 'Observador',
+  },
+  software: {
+    responsable: 'Líder técnico',
+    editor: 'Desarrollador',
+    revisor: 'Revisor de código',
+    lector: 'Observador',
+  },
+  database: {
+    responsable: 'Líder técnico',
+    editor: 'Desarrollador',
+    revisor: 'Revisor de código',
+    lector: 'Observador',
+  },
+  novel: { responsable: 'Coordinador editorial', editor: 'Escritor', revisor: 'Corrector', lector: 'Lector' },
+  rpg: {
+    responsable: 'Director de juego',
+    editor: 'Colaborador de campaña',
+    revisor: 'Revisor de ambientación',
+    lector: 'Espectador',
+  },
+  research: {
+    responsable: 'Coordinador de investigación',
+    editor: 'Investigador',
+    revisor: 'Revisor',
+    lector: 'Consultor',
+  },
+  events: { responsable: 'Coordinador', editor: 'Organizador', revisor: 'Revisor', lector: 'Invitado observador' },
+};
+
+/** El nombre del rol: el del tipo de proyecto si se da, o el general. */
+export const roleLabel = (role: string, kind?: ProjectKind) =>
+  (kind && ROLE_NAMES_BY_KIND[kind]?.[role]) ?? ROLE_LABELS[role] ?? role;
 
 // --- API de Nodaria ---
 

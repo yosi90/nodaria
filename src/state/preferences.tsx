@@ -30,6 +30,8 @@ export interface Preferences {
   /** Panel del chat del grupo (proyectos compartidos) abierto y su anchura. */
   groupChatOpen: boolean;
   groupChatWidth: number;
+  /** Pestaña del panel del grupo: su chat o los comentarios del proyecto. */
+  groupPanelTab: 'chat' | 'comentarios';
 }
 
 /** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
@@ -72,6 +74,7 @@ const DEFAULTS: Preferences = {
   aiPanelWidth: 420,
   groupChatOpen: false,
   groupChatWidth: 360,
+  groupPanelTab: 'chat',
 };
 
 function loadPreferences(): Preferences {

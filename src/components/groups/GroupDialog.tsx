@@ -16,6 +16,7 @@ import {
   type SpaceInvitation,
   type SpaceMember,
 } from '../../services/groups';
+import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
 import { useGroups } from '../../state/groups';
 import { Button } from '../common/Button';
@@ -24,8 +25,6 @@ import { Modal } from '../common/Modal';
 import { Select } from '../common/Select';
 import { useToast } from '../common/toasts';
 
-const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
-
 /**
  * El grupo del proyecto abierto: miembros, invitaciones, roles, salir y borrar. La pertenencia es de la
  * plataforma (ecosistema-kit/ESPACIOS.md): estas acciones van a su API con el token de la plataforma, y
@@ -33,6 +32,12 @@ const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ valu
  */
 export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () => void }) {
   const { user } = useAuth();
+  const { project } = useApp();
+  // Los nombres de rol del tipo de proyecto, con el general de la plataforma al lado.
+  const roleOptions = Object.keys(ROLE_LABELS).map(value => {
+    const label = roleLabel(value, project.kind);
+    return { value, label: label === ROLE_LABELS[value] ? label : `${label} (${ROLE_LABELS[value]})` };
+  });
   const { refresh, leave, removeGroup, present } = useGroups();
   const { confirm } = useDialogs();
   const toast = useToast();
@@ -124,7 +129,7 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
     <Modal title={`Grupo «${group.name}»`} informational wide onClose={onClose}>
       <div className="group-dialog">
         <p className="muted-note">
-          Tu rol: <strong>{group.isOwner ? 'propiedad del grupo' : roleLabel(group.role)}</strong>.{' '}
+          Tu rol: <strong>{group.isOwner ? 'propiedad del grupo' : roleLabel(group.role, project.kind)}</strong>.{' '}
           {group.isOwner ? 'Puedes hacerlo todo, también borrar el grupo.' : ROLE_DESCRIPTIONS[group.role]}
         </p>
         {error && (
@@ -166,7 +171,7 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
                       <Select
                         compact
                         aria-label={`Rol de ${member.alias}`}
-                        options={ROLE_OPTIONS}
+                        options={roleOptions}
                         value={member.rol ?? 'lector'}
                         disabled={busy}
                         onChange={next =>
@@ -174,12 +179,14 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
                           next !== member.rol &&
                           void act(
                             () => changeMemberRole(group.spaceId, member.cuenta, next),
-                            `${member.alias} ahora es ${roleLabel(next)}.`,
+                            `${member.alias} ahora es ${roleLabel(next, project.kind)}.`,
                           )
                         }
                       />
                     ) : (
-                      <span className="badge">{member.propietario ? 'Propiedad' : roleLabel(member.rol ?? '')}</span>
+                      <span className="badge">
+                        {member.propietario ? 'Propiedad' : roleLabel(member.rol ?? '', project.kind)}
+                      </span>
                     )}
                     <span className="group-member-actions">
                       {group.isOwner && !me && member.estado === 'activo' && (
@@ -245,7 +252,7 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
                 Rol
                 <Select
                   aria-label="Rol de la invitación"
-                  options={ROLE_OPTIONS}
+                  options={roleOptions}
                   value={role}
                   onChange={v => v && setRole(v)}
                 />
@@ -266,7 +273,7 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
                       <Mail size={13} aria-hidden /> {invitation.alias ?? invitation.correo ?? 'Invitación'}
                       <span className="badge">pendiente</span>
                     </span>
-                    <span className="badge">{roleLabel(invitation.rol ?? 'lector')}</span>
+                    <span className="badge">{roleLabel(invitation.rol ?? 'lector', project.kind)}</span>
                     <span className="group-member-actions">
                       <Button
                         size="sm"

@@ -12,6 +12,7 @@ import {
   type PlatformSpace,
 } from '../src/groups/model.ts';
 import { createSqlGroupStore, type GroupStore } from '../src/groups/repository.ts';
+import { createSqlCommentStore } from '../src/groups/comments.ts';
 import { createFeedReader, createSqlFeedStore } from '../src/platform/feed.ts';
 import { PlatformError } from '../src/platform/spaces.ts';
 import { createMemoryProjectStore, createSqlProjectStore, type ProjectStore } from '../src/projects/repository.ts';
@@ -54,8 +55,8 @@ const space = (patch: Partial<PlatformSpace> = {}): PlatformSpace => ({
 });
 
 describe('reglas de los grupos', () => {
-  it('declara tres roles con Lector por defecto y sin la clave reservada', () => {
-    expect(ROLES.map(role => role.clave)).toEqual(['responsable', 'editor', 'lector']);
+  it('declara cuatro roles con Lector por defecto y sin la clave reservada', () => {
+    expect(ROLES.map(role => role.clave)).toEqual(['responsable', 'editor', 'revisor', 'lector']);
     expect(ROLES.filter(role => 'porDefecto' in role && role.porDefecto).map(role => role.clave)).toEqual(['lector']);
     expect(ROLES.every(role => role.chat === 'escribir')).toBe(true);
   });
@@ -67,8 +68,14 @@ describe('reglas de los grupos', () => {
       read: true,
       edit: true,
       editSchema: true,
+      comment: true,
       deleteGroup: true,
     });
+    expect(capabilitiesOf({ role: 'revisor', state: 'activo', owner: false })).toMatchObject({
+      edit: false,
+      comment: true,
+    });
+    expect(capabilitiesOf({ role: 'lector', state: 'activo', owner: false }).comment).toBe(false);
     expect(capabilitiesOf({ role: 'responsable', state: 'activo', owner: false })).toMatchObject({
       editSchema: true,
       deleteGroup: false,
@@ -82,7 +89,10 @@ describe('reglas de los grupos', () => {
       edit: false,
     });
     // Un rol desconocido solo lee.
-    expect(capabilitiesOf({ role: 'revisor', state: 'activo', owner: false })).toMatchObject({ edit: false });
+    expect(capabilitiesOf({ role: 'auditor', state: 'activo', owner: false })).toMatchObject({
+      edit: false,
+      comment: false,
+    });
   });
 
   it('detecta cambios de esquema sin depender del orden de las claves', () => {
@@ -295,7 +305,7 @@ describe.runIf(dbTestsEnabled)('SQL Server', () => {
     db
       .request()
       .query(
-        'DELETE FROM dbo.group_projects; DELETE FROM dbo.group_members; DELETE FROM dbo.groups; DELETE FROM dbo.projects; DELETE FROM dbo.users;',
+        'DELETE FROM dbo.group_comments; DELETE FROM dbo.group_projects; DELETE FROM dbo.group_members; DELETE FROM dbo.groups; DELETE FROM dbo.projects; DELETE FROM dbo.users;',
       );
 
   storeContract('sql', async () => {
@@ -304,6 +314,43 @@ describe.runIf(dbTestsEnabled)('SQL Server', () => {
     const owner = await users.findOrCreate(OWNER);
     const other = await users.findOrCreate(OTHER);
     return { groups: createSqlGroupStore(db), projects: createSqlProjectStore(db), owner: owner.id, other: other.id };
+  });
+
+  it('guarda comentarios y sugerencias del proyecto del grupo y los borra con él', async () => {
+    await reset();
+    const users = createSqlUserStore(db);
+    const groups = createSqlGroupStore(db);
+    const store = createSqlCommentStore(db);
+    const owner = await users.findOrCreate(OWNER);
+    const other = await users.findOrCreate(OTHER);
+    await groups.beginCreate({ externalId: EXTERNAL, name: 'Novela', createdBy: OWNER });
+    await groups.completeCreate(EXTERNAL, space(), 'responsable');
+    await groups.attachProject(EXTERNAL, owner.id, {
+      projectId: 'p1',
+      name: 'Crónicas',
+      document: JSON.stringify(doc('p1')),
+      updatedAt: '2026-10-17T10:00:00.000Z',
+      by: OWNER,
+    });
+    const first = await store.create('p1', { nodeId: null, author: OTHER, body: 'Hola', suggestion: null });
+    const second = await store.create('p1', {
+      nodeId: 'n1',
+      author: OTHER,
+      body: 'Otro nombre',
+      suggestion: { fieldId: 'nombre', value: ['a', 'b'] },
+    });
+    expect(first).toMatchObject({ projectId: 'p1', author: OTHER, state: 'abierto', suggestion: null });
+    expect(second.suggestion).toEqual({ fieldId: 'nombre', value: ['a', 'b'] });
+    expect(await store.setState('p1', second.id, 'aceptado', OWNER)).toMatchObject({
+      state: 'aceptado',
+      resolvedBy: OWNER,
+    });
+    expect((await store.list('p1')).map(c => c.id)).toEqual([first.id, second.id]);
+    await store.delete('p1', first.id);
+    expect(await store.get('p1', first.id)).toBeNull();
+    // Al borrar el grupo, sus comentarios se van con el proyecto del grupo.
+    await groups.beginDelete(EXTERNAL, other.id);
+    expect(await store.list('p1')).toEqual([]);
   });
 
   it('aplica el feed de los espacios con su cursor y borrar una cuenta no borra el proyecto del grupo', async () => {
@@ -383,7 +430,7 @@ describe('group routes', () => {
       third: await tokens.sign({ sub: THIRD }),
     };
     const call = (
-      method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+      method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
       url: string,
       body?: unknown,
       who: keyof typeof sessions = 'owner',
@@ -522,6 +569,56 @@ describe('group routes', () => {
     const chat = await call('POST', url, undefined, 'other');
     expect(chat.json()).toEqual({ id: 500 });
     expect(spaces.calls).toContain(`conversation:${EXTERNAL}`);
+  });
+
+  it('comentarios y sugerencias: el revisor propone, quien edita decide, el lector solo lee', async () => {
+    const { call, create, join, spaces } = await setup();
+    await create();
+    await join(OTHER, 'revisor');
+    await join(THIRD, 'lector');
+    const url = `/api/grupos/${EXTERNAL}/proyectos/p1/comentarios`;
+
+    const note = await call('POST', url, { body: 'Revisar el capítulo 3' }, 'other');
+    expect(note.statusCode).toBe(200);
+    expect(note.json()).toMatchObject({ id: 1, author: OTHER, state: 'abierto', nodeId: null, suggestion: null });
+    const suggestion = await call(
+      'POST',
+      url,
+      { nodeId: 'n1', body: 'Mejor Ana María', suggestion: { fieldId: 'nombre', value: 'Ana María' } },
+      'other',
+    );
+    expect(suggestion.json()).toMatchObject({ id: 2, suggestion: { fieldId: 'nombre', value: 'Ana María' } });
+    // Una sugerencia es sobre un nodo; el lector no comenta.
+    expect((await call('POST', url, { body: 'x', suggestion: { fieldId: 'a', value: 1 } }, 'other')).statusCode).toBe(
+      400,
+    );
+    expect((await call('POST', url, { body: 'Hola' }, 'third')).json()).toMatchObject({
+      error: 'sin_permiso_en_el_grupo',
+    });
+    expect((await call('GET', url, undefined, 'third')).json().comments).toHaveLength(2);
+
+    // El revisor no acepta su propia sugerencia; quien edita, sí. El autor puede resolver su comentario.
+    expect((await call('PATCH', `${url}/2`, { state: 'aceptado' }, 'other')).statusCode).toBe(403);
+    expect((await call('PATCH', `${url}/2`, { state: 'aceptado' })).json()).toMatchObject({
+      state: 'aceptado',
+      resolvedBy: OWNER,
+    });
+    expect((await call('PATCH', `${url}/1`, { state: 'aceptado' })).json()).toMatchObject({
+      error: 'no_es_sugerencia',
+    });
+    expect((await call('PATCH', `${url}/1`, { state: 'resuelto' }, 'other')).json()).toMatchObject({
+      state: 'resuelto',
+    });
+    expect((await call('PATCH', `${url}/1`, { state: 'abierto' }, 'third')).statusCode).toBe(403);
+
+    // Borrar: su autor o la propiedad.
+    expect((await call('DELETE', `${url}/1`, undefined, 'third')).statusCode).toBe(403);
+    expect((await call('DELETE', `${url}/1`)).statusCode).toBe(200);
+    expect((await call('GET', url)).json().comments.map((c: { id: number }) => c.id)).toEqual([2]);
+    // Cada cambio avisa por el canal, solo con la referencia.
+    expect(spaces.published.filter(p => p.datos.tipo === 'comentarios')).toHaveLength(5);
+    // Un proyecto que no es del grupo no tiene comentarios.
+    expect((await call('GET', `/api/grupos/${EXTERNAL}/proyectos/otro/comentarios`)).statusCode).toBe(404);
   });
 
   it('lee el feed a petición tras aceptar una invitación', async () => {

@@ -3,7 +3,7 @@ import { createHistory, historyReducer } from '../state/history';
 import { project, schema } from '../test/fixtures';
 import { blockedReason, contentSignature, planShared, SCHEMA_ACTIONS, type GroupInfo, type SharedMeta } from './groups';
 
-const caps = { read: true, edit: true, editSchema: true, deleteGroup: false };
+const caps = { read: true, edit: true, editSchema: true, comment: true, deleteGroup: false };
 const group = (id: string, projects: [string, number][], patch: Partial<GroupInfo> = {}): GroupInfo => ({
   id,
   spaceId: 1,
