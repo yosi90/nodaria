@@ -17,6 +17,7 @@ import {
   Unplug,
   Users,
   type LucideIcon,
+  Sigma,
 } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { describeIssue } from '../../domain/cardinality';
@@ -302,6 +303,26 @@ export function HealthView() {
             <NodeButton key={`${m.node.id}-${i}`} node={m.node}>
               [[{m.name}]]
             </NodeButton>
+          ))}
+        </Section>
+        <Section
+          icon={Sigma}
+          title="Fórmulas con problemas"
+          count={report.formulas.length}
+          hint="Atributos calculados que citan un atributo que ya no existe o están mal escritos. Se arreglan en el tipo."
+        >
+          {report.formulas.map(issue => (
+            <button
+              key={`${issue.schema.id}-${issue.field.id}`}
+              type="button"
+              className="health-item"
+              onClick={() => openSchemaDefinition(issue.schema.id, issue.schema.kind, setView)}
+            >
+              <TypeIcon icon={issue.schema.icon} color={issue.schema.color} size="sm" />
+              <span className="health-detail">
+                {issue.schema.name} · {issue.field.label}: {issue.warnings[0]}
+              </span>
+            </button>
           ))}
         </Section>
         {hasTables && (

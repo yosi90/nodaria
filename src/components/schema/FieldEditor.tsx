@@ -16,6 +16,8 @@ import { MultiSelect } from '../common/Select';
 import { FormulaPreview } from './FormulaPreview';
 import { supportsNonNegative } from '../../domain/valueConstraints';
 import { vocabulary } from '../../domain/projectKinds';
+import { conversionPreview } from '../../domain/valueConversion';
+import { useDialogs } from '../common/dialogs';
 
 interface FieldEditorProps {
   field: FieldDefinition;
@@ -60,6 +62,7 @@ export function FieldEditor({
   const { openHelp } = useNavigation();
   const words = vocabulary(project.kind);
   const toast = useToast();
+  const { confirm } = useDialogs();
   const [expanded, setExpanded] = useState(field.key === 'nuevo_campo' || field.key.startsWith('nuevo_campo_'));
   const set = <K extends keyof FieldDefinition>(key: K, value: FieldDefinition[K]) =>
     onChange({ ...field, [key]: value });
@@ -174,9 +177,20 @@ export function FieldEditor({
               Tipo
               <select
                 value={field.type}
-                onChange={event => {
+                onChange={async event => {
                   const type = event.target.value as FieldDefinition['type'];
                   const changed = { ...field, type, nonNegative: supportsNonNegative(type) && field.nonNegative };
+                  // Los valores guardados se convierten al tipo nuevo; lo que no se pueda convertir se borra.
+                  const { converted, lost } = conversionPreview(project, field, changed);
+                  if (lost) {
+                    const ok = await confirm({
+                      title: 'Cambiar el tipo del atributo',
+                      message: `${converted ? `Se convertirán ${converted} valores. ` : ''}${lost === 1 ? '1 valor no se puede convertir y se borrará' : `${lost} valores no se pueden convertir y se borrarán`}. Puedes deshacerlo después.`,
+                      confirmLabel: 'Cambiar el tipo',
+                      danger: true,
+                    });
+                    if (!ok) return;
+                  } else if (converted) toast({ message: `Convertidos ${converted} valores al tipo nuevo.` });
                   if (type === 'gender')
                     onChange({
                       ...changed,

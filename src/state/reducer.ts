@@ -16,6 +16,8 @@ import type { Calendar } from '../domain/calendar';
 import type { SavedQuery } from '../domain/queries';
 import { applySqlAnnotations, setColumnSql, setFieldSql, type SqlColumn } from '../domain/database';
 import { applyProposal, type AiProposal } from '../domain/aiProposal';
+import { withRenamedFields } from '../domain/formulaRenames';
+import { withConvertedValues } from '../domain/valueConversion';
 import type { AiContextRefs } from '../domain/aiContext';
 import type {
   AppState,
@@ -202,7 +204,8 @@ function projectReducer(p: Project, action: Action): Project {
     case 'add-schema':
       return ops.addSchema(p, action.name, action.kind, action.id, action.parentTypeId);
     case 'update-schema':
-      return ops.updateSchema(p, action.schema);
+      // Renombrar un atributo reescribe las fórmulas que lo citan; cambiarle el tipo convierte sus valores.
+      return withConvertedValues(p, withRenamedFields(p, ops.updateSchema(p, action.schema)));
     case 'delete-schema':
       return ops.deleteSchema(p, action.id, action.strategy);
     case 'move-schema':
@@ -222,7 +225,7 @@ function projectReducer(p: Project, action: Action): Project {
     case 'add-library-field':
       return lib.addLibraryField(p, action.id);
     case 'update-library-field':
-      return lib.updateLibraryField(p, action.field);
+      return withConvertedValues(p, withRenamedFields(p, lib.updateLibraryField(p, action.field)));
     case 'delete-library-field':
       return lib.deleteLibraryField(p, action.id);
     case 'reorder-library':

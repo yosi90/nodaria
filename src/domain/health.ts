@@ -1,4 +1,5 @@
 import { cardinalityIssues, type CardinalityIssue } from './cardinality';
+import { formulaIssues, type FormulaIssue } from './formulaRenames';
 import { referenceLimitIssues, visibleFields, type ReferenceLimitIssue } from './conditions';
 import { nodeConnections } from './connections';
 import { extractMentions, mentionIndex, normalizeName } from './notes';
@@ -41,6 +42,8 @@ export interface HealthReport {
   referenceLimits: ReferenceLimitIssue[];
   brokenReferences: BrokenReference[];
   unresolvedMentions: UnresolvedMention[];
+  /** Atributos calculados con nombres que no existen o mal escritos (`formulaRenames.ts`). */
+  formulas: FormulaIssue[];
   /** Número total de avisos. */
   total: number;
 }
@@ -104,6 +107,7 @@ export function worldHealth(p: Project): HealthReport {
   const referenceLimits = referenceLimitIssues(p);
   const broken = brokenReferences(p);
   const mentions = unresolvedMentions(p);
+  const formulas = formulaIssues(p);
   return {
     isolated,
     incomplete,
@@ -112,6 +116,7 @@ export function worldHealth(p: Project): HealthReport {
     referenceLimits,
     brokenReferences: broken,
     unresolvedMentions: mentions,
+    formulas,
     total:
       isolated.length +
       incomplete.length +
@@ -119,6 +124,7 @@ export function worldHealth(p: Project): HealthReport {
       cardinality.length +
       referenceLimits.length +
       broken.length +
-      mentions.length,
+      mentions.length +
+      formulas.length,
   };
 }
