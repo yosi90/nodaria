@@ -28,6 +28,7 @@ describe('migration files', () => {
       '0008_ai_conversations',
       '0009_groups',
       '0010_group_comments',
+      '0011_group_role_labels',
     ]);
     for (const migration of migrations) {
       expect(migration.checksum).toMatch(/^[0-9a-f]{64}$/);

@@ -229,6 +229,21 @@ function storeContract(
       });
     });
 
+    it('guarda los nombres propios de los roles', async () => {
+      const { groups } = await make();
+      const external = groupExternalId('a1b2c3d4-0000-4000-8000-000000000004');
+      await groups.beginCreate({ externalId: external, name: 'Rol', createdBy: OWNER });
+      await groups.completeCreate(external, space({ id: 104, idExterno: external, nombre: 'Rol' }), 'responsable');
+      expect((await groups.find(external))!.roleLabels).toBeNull();
+      await groups.setRoleLabels(external, { responsable: 'Máster' });
+      expect((await groups.find(external))!.roleLabels).toEqual({ responsable: 'Máster' });
+      expect((await groups.listForMember(OWNER)).find(g => g.externalId === external)!.roleLabels).toEqual({
+        responsable: 'Máster',
+      });
+      await groups.setRoleLabels(external, null);
+      expect((await groups.find(external))!.roleLabels).toBeNull();
+    });
+
     it('sigue el feed: miembros que salen y espacios que borra la plataforma', async () => {
       const { groups, projects, owner } = await make();
       const external = groupExternalId('a1b2c3d4-0000-4000-8000-000000000002');
@@ -619,6 +634,23 @@ describe('group routes', () => {
     expect(spaces.published.filter(p => p.datos.tipo === 'comentarios')).toHaveLength(5);
     // Un proyecto que no es del grupo no tiene comentarios.
     expect((await call('GET', `/api/grupos/${EXTERNAL}/proyectos/otro/comentarios`)).statusCode).toBe(404);
+  });
+
+  it('nombres propios de los roles: los cambia quien gestiona y los ven todos', async () => {
+    const { call, create, join } = await setup();
+    await create();
+    await join(OTHER, 'editor');
+    await join(THIRD, 'responsable');
+    const url = `/api/grupos/${EXTERNAL}/nombres-de-rol`;
+    expect((await call('PUT', url, { labels: { editor: 'Guionista' } }, 'other')).statusCode).toBe(403);
+    expect((await call('PUT', url, { labels: { jefe: 'Jefe' } })).statusCode).toBe(400);
+    expect((await call('PUT', url, { labels: { editor: 'Guionista', lector: '' } }, 'third')).json()).toEqual({
+      roleLabels: { editor: 'Guionista' },
+    });
+    expect((await call('GET', '/api/grupos', undefined, 'other')).json().groups[0].roleLabels).toEqual({
+      editor: 'Guionista',
+    });
+    expect((await call('PUT', url, { labels: null })).json()).toEqual({ roleLabels: null });
   });
 
   it('lee el feed a petición tras aceptar una invitación', async () => {

@@ -45,6 +45,8 @@ export interface GroupInfo {
   memberState: string;
   isOwner: boolean;
   capabilities: GroupCapabilities;
+  /** Nombres propios de los roles en este grupo (solo etiquetas), o `null`. */
+  roleLabels?: Record<string, string> | null;
   projects: SharedProjectSummary[];
 }
 
@@ -103,9 +105,9 @@ const ROLE_NAMES_BY_KIND: Partial<Record<ProjectKind, Record<string, string>>> =
   events: { responsable: 'Coordinador', editor: 'Organizador', revisor: 'Revisor', lector: 'Invitado observador' },
 };
 
-/** El nombre del rol: el del tipo de proyecto si se da, o el general. */
-export const roleLabel = (role: string, kind?: ProjectKind) =>
-  (kind && ROLE_NAMES_BY_KIND[kind]?.[role]) ?? ROLE_LABELS[role] ?? role;
+/** El nombre del rol: el propio del grupo, el del tipo de proyecto o el general, por ese orden. */
+export const roleLabel = (role: string, kind?: ProjectKind, custom?: Record<string, string> | null) =>
+  custom?.[role] || ((kind && ROLE_NAMES_BY_KIND[kind]?.[role]) ?? ROLE_LABELS[role] ?? role);
 
 // --- API de Nodaria ---
 
@@ -132,6 +134,14 @@ export const putSharedProject = (token: string, group: string, id: string, docum
 /** La conversación del grupo en el chat de la plataforma (la crea la primera vez). */
 export const groupConversation = (token: string, group: string) =>
   apiRequest<{ id: number }>('POST', `/api/grupos/${encodeURIComponent(group)}/conversacion`, token);
+/** Cambia los nombres propios de los roles del grupo (`null` vuelve a los de Nodaria). */
+export const setGroupRoleLabels = (token: string, group: string, labels: Record<string, string> | null) =>
+  apiRequest<{ roleLabels: Record<string, string> | null }>(
+    'PUT',
+    `/api/grupos/${encodeURIComponent(group)}/nombres-de-rol`,
+    token,
+    { labels },
+  );
 export const deleteGroup = (token: string, group: string, recipient: string) =>
   apiRequest<{ id: string; state: string }>(
     'DELETE',
@@ -414,8 +424,8 @@ export function blockedReason(actionType: string, group: GroupInfo): string | nu
       : 'Este proyecto es del grupo. Para dejarlo, sal del grupo desde «Grupo…».';
   }
   if (!group.capabilities.edit)
-    return `Tu rol en el grupo (${roleLabel(group.role)}) solo te deja ver este proyecto. Duplícalo para tener tu propia copia.`;
+    return `Tu rol en el grupo (${roleLabel(group.role, undefined, group.roleLabels)}) solo te deja ver este proyecto. Duplícalo para tener tu propia copia.`;
   if (!group.capabilities.editSchema && SCHEMA_ACTIONS.has(actionType))
-    return `Tu rol en el grupo (${roleLabel(group.role)}) no te deja cambiar el esquema: tipos, atributos y preformas.`;
+    return `Tu rol en el grupo (${roleLabel(group.role, undefined, group.roleLabels)}) no te deja cambiar el esquema: tipos, atributos y preformas.`;
   return null;
 }

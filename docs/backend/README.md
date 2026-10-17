@@ -82,6 +82,7 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 - `dbo.schema_migrations` guarda id y SHA-256 de cada migración aplicada. Si se edita una ya aplicada, `migrate` falla: hay que crear una nueva.
 - `0006_platform_identity`: `id_global` (único filtrado), `firebase_uid` opcional (único filtrado), `closed_at`, lo limitado y `platform_feed`.
 - `0009_groups`: `groups`, `group_members` y `group_projects` (grupos de trabajo).
+- `0011_group_role_labels`: `groups.role_labels` (nombres propios de los roles, JSON).
 - `0010_group_comments`: `group_comments` (comentarios y sugerencias de los proyectos de grupo; se borran con el proyecto del grupo).
 
 ## Modelo de datos
@@ -122,6 +123,7 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | GET    | `/api/grupos/{grupo}/proyectos/{id}` | Sí | Documento del proyecto del grupo con su versión (miembro activo).                                         |
 | PUT    | `/api/grupos/{grupo}/proyectos/{id}` | Sí | `{ document, baseVersion }` (con `edit`). 409 `version_conflict` con la vigente; 403 `sin_permiso_en_el_grupo` o `cambio_de_esquema_no_permitido`. |
 | POST   | `/api/grupos/{grupo}/conversacion` | Sí | Miembro activo: `{ id }` de la conversación del grupo en el chat de la plataforma (la crea la primera vez). 424 si la plataforma falla. |
+| PUT    | `/api/grupos/{grupo}/nombres-de-rol` | Sí | `{ labels }` (`{ responsable?, editor?, revisor?, lector? }`, hasta 40 caracteres, o `null`): nombres propios de los roles del grupo. Propiedad o responsable. Solo etiquetas. |
 | GET/POST | `/api/grupos/{grupo}/proyectos/{id}/comentarios` | Sí | Comentarios del proyecto del grupo (leer: miembro activo; crear: capacidad `comment`). `{ nodeId?, body, suggestion?: { fieldId, value } }`; una sugerencia necesita `nodeId`. |
 | PATCH/DELETE | `/api/grupos/{grupo}/proyectos/{id}/comentarios/{comentario}` | Sí | `{ state }`: resolver o reabrir (autor o quien edita), aceptar o rechazar sugerencias (quien edita). Borrar: autor o propiedad. |
 | DELETE | `/api/grupos/{grupo}?recipient=` | Sí | Solo la propiedad: el proyecto pasa a la cuenta elegida y se borra el espacio. `{ id, state: borrado \| borrando }`. |

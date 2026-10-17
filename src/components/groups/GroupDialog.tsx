@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   changeMemberRole,
   groupErrorMessage,
+  setGroupRoleLabels,
   inviteToSpace,
   offerOwnership,
   removeMember,
@@ -35,7 +36,7 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
   const { project } = useApp();
   // Los nombres de rol del tipo de proyecto, con el general de la plataforma al lado.
   const roleOptions = Object.keys(ROLE_LABELS).map(value => {
-    const label = roleLabel(value, project.kind);
+    const label = roleLabel(value, project.kind, group.roleLabels);
     return { value, label: label === ROLE_LABELS[value] ? label : `${label} (${ROLE_LABELS[value]})` };
   });
   const { refresh, leave, removeGroup, present } = useGroups();
@@ -48,6 +49,9 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
   const [recipient, setRecipient] = useState<string>(user?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Nombres propios de los roles del grupo, editables por quien gestiona.
+  const [labels, setLabels] = useState<Record<string, string>>(group.roleLabels ?? {});
+  const { getToken } = useAuth();
   // Quien tiene la propiedad y el rol responsable gestionan e invitan (lo aplica la plataforma).
   const canManage = group.isOwner || group.role === 'responsable';
 
@@ -129,8 +133,11 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
     <Modal title={`Grupo «${group.name}»`} informational wide onClose={onClose}>
       <div className="group-dialog">
         <p className="muted-note">
-          Tu rol: <strong>{group.isOwner ? 'propiedad del grupo' : roleLabel(group.role, project.kind)}</strong>.{' '}
-          {group.isOwner ? 'Puedes hacerlo todo, también borrar el grupo.' : ROLE_DESCRIPTIONS[group.role]}
+          Tu rol:{' '}
+          <strong>
+            {group.isOwner ? 'propiedad del grupo' : roleLabel(group.role, project.kind, group.roleLabels)}
+          </strong>
+          . {group.isOwner ? 'Puedes hacerlo todo, también borrar el grupo.' : ROLE_DESCRIPTIONS[group.role]}
         </p>
         {error && (
           <p className="group-error" role="alert">
@@ -179,13 +186,13 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
                           next !== member.rol &&
                           void act(
                             () => changeMemberRole(group.spaceId, member.cuenta, next),
-                            `${member.alias} ahora es ${roleLabel(next, project.kind)}.`,
+                            `${member.alias} ahora es ${roleLabel(next, project.kind, group.roleLabels)}.`,
                           )
                         }
                       />
                     ) : (
                       <span className="badge">
-                        {member.propietario ? 'Propiedad' : roleLabel(member.rol ?? '', project.kind)}
+                        {member.propietario ? 'Propiedad' : roleLabel(member.rol ?? '', project.kind, group.roleLabels)}
                       </span>
                     )}
                     <span className="group-member-actions">
@@ -273,7 +280,9 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
                       <Mail size={13} aria-hidden /> {invitation.alias ?? invitation.correo ?? 'Invitación'}
                       <span className="badge">pendiente</span>
                     </span>
-                    <span className="badge">{roleLabel(invitation.rol ?? 'lector', project.kind)}</span>
+                    <span className="badge">
+                      {roleLabel(invitation.rol ?? 'lector', project.kind, group.roleLabels)}
+                    </span>
                     <span className="group-member-actions">
                       <Button
                         size="sm"
@@ -290,6 +299,49 @@ export function GroupDialog({ group, onClose }: { group: GroupInfo; onClose: () 
                 ))}
               </ul>
             )}
+          </section>
+        )}
+
+        {canManage && (
+          <section aria-label="Nombres de los roles">
+            <h3 className="group-section-title">Nombres de los roles</h3>
+            <div className="group-role-names">
+              {Object.keys(ROLE_LABELS).map(role => (
+                <label key={role} className="field">
+                  {ROLE_LABELS[role]}
+                  <input
+                    value={labels[role] ?? ''}
+                    maxLength={40}
+                    placeholder={roleLabel(role, project.kind)}
+                    onChange={e => setLabels(current => ({ ...current, [role]: e.target.value }))}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="group-role-names-actions">
+              <small className="field-hint">
+                Solo cambian cómo se llaman en Nodaria; lo que puede hacer cada rol sigue igual. Vacío: el nombre del
+                tipo de proyecto.
+              </small>
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() =>
+                  void act(async () => {
+                    const token = await getToken();
+                    if (!token) throw new Error('Entra con tu cuenta de Yosiftware.');
+                    const clean = Object.fromEntries(
+                      Object.entries(labels)
+                        .map(([role, name]) => [role, name.trim()])
+                        .filter(([, name]) => name),
+                    );
+                    await setGroupRoleLabels(token, group.id, Object.keys(clean).length ? clean : null);
+                  }, 'Nombres de los roles guardados.')
+                }
+              >
+                Guardar los nombres
+              </Button>
+            </div>
           </section>
         )}
 

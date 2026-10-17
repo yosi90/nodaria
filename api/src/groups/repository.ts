@@ -17,6 +17,8 @@ export interface GroupRecord {
   owner: string | null;
   state: GroupState;
   createdBy: string;
+  /** Nombres propios de los roles en este grupo (solo etiquetas), o `null`. */
+  roleLabels: Record<string, string> | null;
 }
 
 export interface MemberRecord {
@@ -93,6 +95,8 @@ export interface GroupStore {
   pendingDeletes(): Promise<string[]>;
   /** Aplica un cambio del feed de los espacios. */
   applyEffect(effect: SpaceEffect): Promise<void>;
+  /** Cambia los nombres propios de los roles del grupo (`null` vuelve a los de Nodaria). */
+  setRoleLabels(externalId: string, labels: Record<string, string> | null): Promise<void>;
 }
 
 interface GroupRow {
@@ -103,6 +107,7 @@ interface GroupRow {
   owner_global_id: string | null;
   state: GroupState;
   created_by: string;
+  role_labels: string | null;
 }
 
 interface SharedRow {
@@ -125,6 +130,7 @@ const toGroup = (row: GroupRow): GroupRecord => ({
   owner: guid(row.owner_global_id),
   state: row.state,
   createdBy: guid(row.created_by)!,
+  roleLabels: row.role_labels ? (JSON.parse(row.role_labels) as Record<string, string>) : null,
 });
 
 const toShared = (row: SharedRow): SharedProjectSummary => ({
@@ -137,7 +143,8 @@ const toShared = (row: SharedRow): SharedProjectSummary => ({
   updatedBy: guid(row.updated_by),
 });
 
-const GROUP_COLUMNS = 'g.id, g.external_id, g.space_id, g.name, g.owner_global_id, g.state, g.created_by';
+const GROUP_COLUMNS =
+  'g.id, g.external_id, g.space_id, g.name, g.owner_global_id, g.state, g.created_by, g.role_labels';
 const SHARED_COLUMNS = 'project_id, name, version, size_bytes, updated_at, server_updated_at, updated_by';
 
 /** Aplica un cambio del feed dentro de una transacción (la del lector del feed, con su cursor). */
@@ -279,7 +286,7 @@ export function createSqlGroupStore(db: Database): GroupStore {
           .input('createdBy', sql.UniqueIdentifier, createdBy).query<GroupRow>(`
             INSERT INTO dbo.groups (external_id, name, created_by)
             OUTPUT inserted.id, inserted.external_id, inserted.space_id, inserted.name, inserted.owner_global_id,
-                   inserted.state, inserted.created_by
+                   inserted.state, inserted.created_by, inserted.role_labels
             VALUES (@externalId, @name, @createdBy)`);
         return { status: 'created', group: toGroup(inserted.recordset[0]) };
       });
@@ -434,6 +441,16 @@ export function createSqlGroupStore(db: Database): GroupStore {
     async applyEffect(effect) {
       await withTransaction(db, transaction => applySpaceEffectSql(transaction, effect));
     },
+
+    async setRoleLabels(externalId, labels) {
+      await db
+        .request()
+        .input('externalId', sql.VarChar(120), externalId)
+        .input('labels', sql.NVarChar(2000), labels ? JSON.stringify(labels) : null)
+        .query(
+          'UPDATE dbo.groups SET role_labels = @labels, updated_at = SYSUTCDATETIME() WHERE external_id = @externalId',
+        );
+    },
   };
 }
 
@@ -470,6 +487,7 @@ export function createMemoryGroupStore(
     owner: group.owner,
     state: group.state,
     createdBy: group.createdBy,
+    roleLabels: group.roleLabels ? { ...group.roleLabels } : null,
   });
   const active = (externalId: string) => {
     const group = groups.get(externalId);
@@ -510,6 +528,7 @@ export function createMemoryGroupStore(
         owner: null,
         state: 'creando',
         createdBy: createdBy.toLowerCase(),
+        roleLabels: null,
         members: new Map(),
       };
       groups.set(externalId, group);
@@ -592,6 +611,10 @@ export function createMemoryGroupStore(
     async pendingDeletes() {
       return [...groups.values()].filter(group => group.state === 'borrando').map(group => group.externalId);
     },
+    async setRoleLabels(externalId, labels) {
+      const group = groups.get(externalId);
+      if (group) group.roleLabels = labels ? { ...labels } : null;
+    },
     async applyEffect(effect) {
       switch (effect.kind) {
         case 'space': {
@@ -603,6 +626,7 @@ export function createMemoryGroupStore(
             owner: null,
             state: 'activo' as GroupState,
             createdBy: space.propietario ?? '',
+            roleLabels: null,
             members: new Map<string, MemberRecord>(),
           };
           group.spaceId = space.id;

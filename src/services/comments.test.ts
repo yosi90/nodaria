@@ -23,5 +23,8 @@ describe('roleLabel', () => {
     expect(roleLabel('editor', 'database')).toBe('Desarrollador');
     expect(roleLabel('editor')).toBe('Editor');
     expect(roleLabel('desconocido', 'rpg')).toBe('desconocido');
+    // El nombre propio del grupo va primero; vacío, el del tipo de proyecto.
+    expect(roleLabel('responsable', 'rpg', { responsable: 'Máster' })).toBe('Máster');
+    expect(roleLabel('editor', 'rpg', { editor: '' })).toBe('Colaborador de campaña');
   });
 });

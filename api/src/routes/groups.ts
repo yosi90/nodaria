@@ -59,6 +59,11 @@ const commentSchema = z
   .refine(c => !c.suggestion || c.nodeId, { message: 'Una sugerencia es sobre un nodo.', path: ['nodeId'] });
 const stateSchema = z.object({ state: z.enum(['abierto', 'resuelto', 'aceptado', 'rechazado']) });
 
+/** Nombres propios de los roles: solo de los que declara Nodaria, hasta 40 caracteres. */
+const labelsSchema = z.object({
+  labels: z.partialRecord(z.enum(['responsable', 'editor', 'revisor', 'lector']), z.string().trim().max(40)).nullable(),
+});
+
 const deleteQuery = z.object({ recipient: z.string().regex(GLOBAL_ID, 'Cuenta no válida') });
 
 const NOT_FOUND = () => new HttpError(404, 'grupo_no_encontrado', 'El grupo no existe o no eres miembro.');
@@ -75,6 +80,7 @@ function serialize(view: GroupView, user: AuthenticatedUser) {
     memberState: view.member.state,
     isOwner,
     capabilities: capabilitiesOf({ ...view.member, owner: isOwner }),
+    roleLabels: view.roleLabels,
     projects: view.projects,
   };
 }
@@ -218,6 +224,23 @@ export const groupRoutes: FastifyPluginAsync<
       .publish(group, `${id}-v${result.version}`, { tipo: 'proyecto', id, version: result.version, por: user.globalId })
       .catch(error => request.log.warn({ err: error, group }, 'No se pudo publicar en el canal del grupo'));
     return { id, version: result.version, serverUpdatedAt: result.serverUpdatedAt };
+  });
+
+  // Nombres propios de los roles del grupo: quien tiene la propiedad o el rol responsable (los que
+  // gestionan el grupo en la plataforma). Solo etiquetas: los permisos no cambian.
+  app.put('/grupos/:group/nombres-de-rol', async request => {
+    const user = authenticatedUser(request);
+    const { group } = groupParams.parse(request.params);
+    const found = await access(user, group);
+    const member = await groups.member(group, user.globalId);
+    if (found.group.owner !== user.globalId && member?.role !== 'responsable') throw FORBIDDEN();
+    const { labels } = labelsSchema.parse(request.body);
+    const clean = labels ? Object.fromEntries(Object.entries(labels).filter(([, name]) => name)) : null;
+    await groups.setRoleLabels(group, clean && Object.keys(clean).length ? clean : null);
+    void spaces
+      .publish(group, `nombres-de-rol-${Date.now()}`, { tipo: 'grupo' })
+      .catch(error => request.log.warn({ err: error, group }, 'No se pudo avisar al canal del grupo'));
+    return { roleLabels: clean && Object.keys(clean).length ? clean : null };
   });
 
   // --- Comentarios y sugerencias (hito 5) ---

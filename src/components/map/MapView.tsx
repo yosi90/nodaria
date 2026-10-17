@@ -74,6 +74,14 @@ export function MapView() {
   const activeSelection = selectionExists ? selection : null;
   const treeCollapsed = preferences.treeCollapsed;
   const toggleTree = useCallback(() => setPreference('treeCollapsed', !treeCollapsed), [setPreference, treeCollapsed]);
+  // En el móvil la estructura se superpone al mapa (layout.css): se empieza con ella plegada. La
+  // preferencia es de este navegador, así que no cambia la del ordenador.
+  useEffect(() => {
+    if (window.matchMedia?.('(max-width: 760px)').matches && !preferences.treeCollapsed)
+      setPreference('treeCollapsed', true);
+    // Solo al abrir el mapa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const removeSelected = useCallback(async () => {
     if (await deleteSelection(activeSelection)) setSelection(null);

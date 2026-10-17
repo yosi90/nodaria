@@ -179,7 +179,7 @@ export function Topbar({
     group
       ? {
           label: `Grupo «${group.name}»…`,
-          hint: group.isOwner ? 'Propiedad' : roleLabel(group.role),
+          hint: group.isOwner ? 'Propiedad' : roleLabel(group.role, project.kind, group.roleLabels),
           icon: Users,
           onSelect: openSharing,
         }
@@ -245,7 +245,7 @@ export function Topbar({
           <button
             type="button"
             className="group-chip"
-            title={`Proyecto del grupo «${group.name}». Tu rol: ${group.isOwner ? 'propiedad' : roleLabel(group.role, project.kind)}.${
+            title={`Proyecto del grupo «${group.name}». Tu rol: ${group.isOwner ? 'propiedad' : roleLabel(group.role, project.kind, group.roleLabels)}.${
               present.length
                 ? ` ${present.length === 1 ? 'Otra persona lo tiene' : `${present.length} personas más lo tienen`} abierto ahora.`
                 : ''
@@ -253,7 +253,9 @@ export function Topbar({
             onClick={() => setGroupOpen(group)}
           >
             <Users size={13} aria-hidden />
-            <span className="label">{group.isOwner ? 'Propiedad' : roleLabel(group.role, project.kind)}</span>
+            <span className="label">
+              {group.isOwner ? 'Propiedad' : roleLabel(group.role, project.kind, group.roleLabels)}
+            </span>
             {!group.capabilities.edit && <Lock size={12} aria-label="solo lectura" />}
             {syncState !== 'ok' && (
               <CloudOff

@@ -319,6 +319,7 @@
 .workspace {
   display: grid;
   grid-template-rows: var(--panel-head-height) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   background: var(--canvas-bg);
@@ -1988,4 +1989,47 @@ button.type-twist:hover {
 .app-body > * {
   min-width: 0;
   min-height: 0;
+}
+
+/* Mapa en el móvil: la estructura y la ficha se superponen al lienzo en lugar de quitarle el ancho. */
+@media (max-width: 760px) {
+  .map-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .map-layout:has(> .panel-rail) {
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+  }
+  .map-layout > .side-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 15;
+    width: min(340px, 88vw);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-lg);
+  }
+  .map-layout > .side-panel.left {
+    left: 0;
+  }
+  .map-layout > .side-panel.right {
+    right: 0;
+    z-index: 16;
+  }
+  .map-layout > .side-panel .splitter {
+    display: none;
+  }
+  /* La barra del lienzo no ensancha la vista: sus grupos de botones se desplazan dentro de su hueco. */
+  .map-layout > .workspace {
+    min-width: 0;
+  }
+  .workspace-toolbar.flow-toolbar {
+    min-width: 0;
+  }
+  .workspace-toolbar.flow-toolbar > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .workspace-toolbar.flow-toolbar .segmented {
+    overflow-x: auto;
+  }
 }
