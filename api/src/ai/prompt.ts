@@ -22,7 +22,7 @@ Reutiliza lo que ya tiene el proyecto, como lo haría quien lo mantiene:
 - El nombre de la tabla es su título y no es una columna: no añadas una columna para el nombre de la tabla.
 - Sigue el estilo de nombres del proyecto (por ejemplo, id_pedido para la FK a Pedido) y los tipos de sus claves: una FK tiene el tipo de la clave primaria a la que apunta.
 
-Formato de cada operación: todas llevan los mismos campos. Rellena solo los que usa su "op" y deja los demás vacíos ("" en los textos, false en "nullable" y "primaryKey", [] en "columns" y todo "" en "changes"). En cada columna, "preform" vacío es una columna nueva.
+Formato de cada operación: todas llevan los mismos campos. Rellena solo los que usa su "op" y deja los demás vacíos ("" en los textos, false en "nullable" y "primaryKey", [] en "columns" y todo "" en "changes"). En cada columna, "preform" vacío es una columna nueva y lleva siempre su "type"; con "preform", "type" puede ir vacío (se usa el de la preforma).
 - create-table: "ref", "name", "description", "base" y "columns". Las claves foráneas no van en "columns": añádelas después con add-foreign-key.
 - rename-table: "table" y "name" (el nombre nuevo). delete-table: "table".
 - add-column: "table" y "columns" con exactamente una columna.

@@ -41,7 +41,8 @@ import type { FieldDefinition, FieldType, Node, Project, SchemaField } from './t
 
 export interface AiColumnSpec {
   name: string;
-  type: SqlDataType;
+  /** `null` solo con una preforma: la columna toma su tipo. */
+  type: SqlDataType | null;
   primaryKey: boolean;
   nullable: boolean;
   unique: boolean;
@@ -114,6 +115,8 @@ export interface AiOperationReview {
   selected: boolean;
   /** Se ha aplicado en el resultado (marcada y válida). */
   applied: boolean;
+  /** Ya se aplicó antes (al retomar la propuesta): no se vuelve a hacer. */
+  done?: boolean;
 }
 
 export interface AiProposalReview {
@@ -183,7 +186,7 @@ function columnSql(
   } satisfies SqlColumn;
 }
 
-function fieldFromSpec(spec: AiColumnSpec, id: string): FieldDefinition {
+function fieldFromSpec(spec: AiColumnSpec & { type: SqlDataType }, id: string): FieldDefinition {
   const name = checkName(spec.name, 'columna');
   const type = checkType(spec.type);
   return {
@@ -304,7 +307,11 @@ function planColumn(
       sql: differs ? { ...(theirs ?? columnSql(spec, null)), ...own, type: theirs?.type ?? null } : null,
     };
   }
-  const field = fieldFromSpec(spec, s.newId('field'));
+  if (!spec.type) {
+    messages.push(`«${name}» no tiene tipo ni preforma: no se crea.`);
+    return null;
+  }
+  const field = fieldFromSpec({ ...spec, type: spec.type }, s.newId('field'));
   return { entry: field, fieldId: field.id, sql: null };
 }
 
@@ -625,6 +632,8 @@ export function reviewProposal(
   refs: AiContextRefs,
   selected: readonly number[] = defaultSelection(proposal),
   seed = '0',
+  /** Operaciones ya aplicadas antes: al retomar la propuesta se saltan (ver `resumeRefs`). */
+  skip: readonly number[] = [],
 ): AiProposalReview {
   const s: RunState = {
     project: p,
@@ -635,6 +644,7 @@ export function reviewProposal(
     newId: seededIds(seed),
   };
   const marked = new Set(selected);
+  const skipped = new Set(skip);
   const created = new Map<string, string>();
   const operations = proposal.operations.map((operation, index): AiOperationReview => {
     const title = describe(s, operation, created);
@@ -651,6 +661,11 @@ export function reviewProposal(
     // Las operaciones siguientes nombran la tabla nueva por su nombre, aunque no llegue a crearse.
     if (operation.op === 'create-table' && operation.ref.trim() && !created.has(operation.ref.trim()))
       created.set(operation.ref.trim(), operation.name.trim());
+    if (skipped.has(index)) {
+      // Una tabla creada antes que ya no está deja sin destino a lo que dependa de ella.
+      if (operation.op === 'create-table' && !s.tables.has(operation.ref.trim())) s.missing.add(operation.ref.trim());
+      return { ...base, selected: false, status: 'ok', messages: [], applied: false, done: true };
+    }
     try {
       const messages = step(s, operation, apply);
       if (operation.op === 'create-table' && !apply) s.missing.add(operation.ref.trim());
@@ -678,6 +693,28 @@ export function applyProposal(
   refs: AiContextRefs,
   selected: readonly number[],
   seed: string,
+  skip: readonly number[] = [],
 ): Project {
-  return reviewProposal(p, proposal, refs, selected, seed).project;
+  return reviewProposal(p, proposal, refs, selected, seed, skip).project;
+}
+
+/**
+ * Referencias para retomar una propuesta ya aplicada en parte: las del contexto más las tablas que
+ * creó, buscadas por su nombre en el proyecto actual (sus ids no se guardan). Así las operaciones que
+ * quedaron sin aplicar (por ejemplo, claves foráneas hacia esas tablas) se pueden aplicar después.
+ */
+export function resumeRefs(
+  p: Project,
+  proposal: AiProposal,
+  refs: AiContextRefs,
+  applied: readonly number[],
+): AiContextRefs {
+  const tables = { ...refs.tables };
+  for (const index of applied) {
+    const op = proposal.operations[index];
+    if (op?.op !== 'create-table' || !op.ref.trim() || tables[op.ref.trim()]) continue;
+    const node = p.nodes.find(n => isTableType(p, n.typeId) && same(nodeLabel(p, n), op.name));
+    if (node) tables[op.ref.trim()] = node.id;
+  }
+  return { ...refs, tables };
 }

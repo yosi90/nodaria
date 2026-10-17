@@ -2,7 +2,7 @@ import { Download, ExternalLink, Plus, Send, Sparkles, Trash2, X } from 'lucide-
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { databaseContext } from '../../domain/aiContext';
 import { answerParts, worldContext } from '../../domain/aiWorld';
-import { defaultSelection, reviewProposal } from '../../domain/aiProposal';
+import { defaultSelection, resumeRefs, reviewProposal } from '../../domain/aiProposal';
 import { isTableType, tableTypes } from '../../domain/database';
 import { getNode, nodeLabel } from '../../domain/selectors';
 import { ApiError, OfflineError } from '../../services/api';
@@ -38,8 +38,8 @@ import { useToast } from '../common/toasts';
 /*
  * Panel del asistente de IA (`docs/roadmaps/ROADMAP_IA.md`): una conversación por proyecto, al lado
  * de la vista, para seguir trabajando mientras se habla con la IA. Dos modos: preguntar sobre el
- * mundo del proyecto (`aiWorld.ts`; la IA solo responde, con enlaces a los nodos que cita) y, en los
- * proyectos con tablas, diseñar el esquema. El historial se guarda en la
+ * mundo del proyecto (`aiWorld.ts`; la IA solo responde, con enlaces a los nodos que cita) y diseñar
+ * tablas, en cualquier proyecto. El historial se guarda en la
  * cuenta (`api/src/ai/conversations.ts`). Cada propuesta se revisa dentro de la conversación contra
  * el proyecto actual, con las reglas del editor (`aiProposal.ts`), y se aplica en un solo paso
  * deshacible. Nada se aplica sin que la persona lo marque.
@@ -89,10 +89,9 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [instruction, setInstruction] = useState('');
   const [onlySelected, setOnlySelected] = useState(false);
-  // Diseñar tablas solo tiene sentido en proyectos de bases de datos; preguntar, en todos.
+  // Los dos modos en cualquier proyecto; se empieza diseñando tablas si el proyecto ya las tiene.
   const hasTables = project.kind === 'database' || tableTypes(project).length > 0;
-  const [chosenMode, setMode] = useState<'question' | 'database'>(() => (hasTables ? 'database' : 'question'));
-  const mode = hasTables ? chosenMode : 'question';
+  const [mode, setMode] = useState<'question' | 'database'>(() => (hasTables ? 'database' : 'question'));
   const [waiting, setWaiting] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   // En un proyecto de un grupo se usa la clave de IA del grupo; la de la persona, solo si ella lo elige.
@@ -462,16 +461,14 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
               void ask();
             }}
           >
-            {hasTables && (
-              <div className="segmented ai-mode" role="group" aria-label="Qué quieres hacer">
-                <button type="button" aria-pressed={mode === 'question'} onClick={() => setMode('question')}>
-                  Preguntar
-                </button>
-                <button type="button" aria-pressed={mode === 'database'} onClick={() => setMode('database')}>
-                  Diseñar tablas
-                </button>
-              </div>
-            )}
+            <div className="segmented ai-mode" role="group" aria-label="Qué quieres hacer">
+              <button type="button" aria-pressed={mode === 'question'} onClick={() => setMode('question')}>
+                Preguntar
+              </button>
+              <button type="button" aria-pressed={mode === 'database'} onClick={() => setMode('database')}>
+                Diseñar tablas
+              </button>
+            </div>
             <textarea
               rows={3}
               maxLength={MAX_INSTRUCTION}
@@ -611,14 +608,27 @@ function ProposalCard({
 }) {
   const { project, dispatch } = useApp();
   const toast = useToast();
+  const newSeed = () => `${Math.abs(messageId).toString(36)}${Date.now().toString(36)}`;
+  // Semilla fija mientras se revisa: la vista previa y lo aplicado coinciden. Al retomar la propuesta
+  // se cambia, para que los ids nuevos no choquen con los de la primera vez.
+  const [seed, setSeed] = useState(newSeed);
   const [selected, setSelected] = useState(() => defaultSelection(answer.proposal));
-  // Semilla fija por mensaje: la vista previa y lo aplicado coinciden.
-  const [seed] = useState(() => `${Math.abs(messageId).toString(36)}${Date.now().toString(36)}`);
-  const done = answer.applied !== null;
+  // Retomar una propuesta ya aplicada en parte: lo aplicado se salta y las tablas que creó se buscan por
+  // su nombre, para que lo que quedó (claves foráneas hacia ellas, por ejemplo) se pueda aplicar.
+  const [reopened, setReopened] = useState(false);
+  const before = useMemo(() => answer.applied ?? [], [answer.applied]);
+  const done = answer.applied !== null && !reopened;
+  const pending =
+    answer.applied === null ? [] : answer.proposal.operations.map((_, i) => i).filter(i => !before.includes(i));
+  const refs = useMemo(
+    () => (before.length ? resumeRefs(project, answer.proposal, answer.refs, before) : answer.refs),
+    [project, answer, before],
+  );
+  const skip = useMemo(() => (reopened ? before : []), [reopened, before]);
   // Una propuesta ya resuelta solo se revisa para nombrar sus operaciones; no se vuelve a aplicar.
   const fullReview = useMemo(
-    () => reviewProposal(project, answer.proposal, answer.refs, done ? [] : selected, seed),
-    [done, project, answer, selected, seed],
+    () => reviewProposal(project, answer.proposal, refs, done ? [] : selected, seed, skip),
+    [done, project, answer, refs, selected, seed, skip],
   );
   const review = done ? null : fullReview;
   const applicable = review?.operations.filter(o => o.applied).length ?? 0;
@@ -631,9 +641,19 @@ function ProposalCard({
   const apply = () => {
     if (!review || !applicable) return;
     const applied = review.operations.filter(o => o.applied).map(o => o.index);
-    dispatch({ type: 'apply-ai-proposal', proposal: answer.proposal, refs: answer.refs, selected, seed });
+    dispatch({ type: 'apply-ai-proposal', proposal: answer.proposal, refs, selected, seed, skip });
     toast({ message: `Aplicados ${plural(applicable, 'cambio', 'cambios')} de la IA`, undoable: true });
-    onApplied(messageId, applied);
+    onApplied(
+      messageId,
+      [...new Set([...skip, ...applied])].sort((a, b) => a - b),
+    );
+    setReopened(false);
+  };
+
+  const reopen = () => {
+    setSeed(newSeed());
+    setSelected(defaultSelection(answer.proposal).filter(i => !before.includes(i)));
+    setReopened(true);
   };
 
   return (
@@ -643,6 +663,10 @@ function ProposalCard({
         {answer.model.label}
         {done &&
           ` · ${answer.applied!.length ? `aplicados ${plural(answer.applied!.length, 'cambio', 'cambios')}` : 'descartada'}`}
+        {done &&
+          answer.applied!.length > 0 &&
+          pending.length > 0 &&
+          ` · ${pending.length === 1 ? 'queda 1' : `quedan ${pending.length}`}`}
       </p>
       {done ? (
         <ul className="ai-ops compact">
@@ -657,28 +681,34 @@ function ProposalCard({
         </ul>
       ) : review && review.operations.length ? (
         <ul className="ai-ops">
-          {review.operations.map(o => (
-            <li key={o.index} className={`ai-op ${o.status}`}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={o.selected}
-                  disabled={o.status === 'invalid' && !o.selected}
-                  onChange={() => toggle(o.index)}
-                />
-                <span className="ai-op-title">{o.title}</span>
-                {o.destructive && <span className="badge danger">Borra</span>}
-                {o.status === 'warning' && <span className="badge warning">Revisar</span>}
-                {o.status === 'invalid' && <span className="badge danger">No se puede aplicar</span>}
-              </label>
-              {o.operation.reason && <p className="ai-op-reason">{o.operation.reason}</p>}
-              {o.messages.map(message => (
-                <p key={message} className="ai-op-message">
-                  {message}
-                </p>
-              ))}
-            </li>
-          ))}
+          {review.operations.map(o =>
+            o.done ? (
+              <li key={o.index} className="ai-op ok compact-done">
+                <span className="ai-op-title">✓ {o.title}</span>
+              </li>
+            ) : (
+              <li key={o.index} className={`ai-op ${o.status}`}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={o.selected}
+                    disabled={o.status === 'invalid' && !o.selected}
+                    onChange={() => toggle(o.index)}
+                  />
+                  <span className="ai-op-title">{o.title}</span>
+                  {o.destructive && <span className="badge danger">Borra</span>}
+                  {o.status === 'warning' && <span className="badge warning">Revisar</span>}
+                  {o.status === 'invalid' && <span className="badge danger">No se puede aplicar</span>}
+                </label>
+                {o.operation.reason && <p className="ai-op-reason">{o.operation.reason}</p>}
+                {o.messages.map(message => (
+                  <p key={message} className="ai-op-message">
+                    {message}
+                  </p>
+                ))}
+              </li>
+            ),
+          )}
         </ul>
       ) : (
         <p className="muted-note">La IA no propone cambios.</p>
@@ -703,11 +733,24 @@ function ProposalCard({
           </ul>
         </section>
       )}
+      {done && answer.applied!.length > 0 && pending.length > 0 && (
+        <div className="ai-card-actions">
+          <Button variant="ghost" size="sm" onClick={reopen}>
+            Revisar lo que falta
+          </Button>
+        </div>
+      )}
       {!done && (
         <div className="ai-card-actions">
-          <Button variant="ghost" size="sm" onClick={() => onApplied(messageId, [])}>
-            Descartar
-          </Button>
+          {reopened ? (
+            <Button variant="ghost" size="sm" onClick={() => setReopened(false)}>
+              Cancelar
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => onApplied(messageId, [])}>
+              Descartar
+            </Button>
+          )}
           <Button variant="primary" size="sm" disabled={!applicable} onClick={apply}>
             {applicable ? `Aplicar ${plural(applicable, 'cambio', 'cambios')}` : 'Nada que aplicar'}
           </Button>

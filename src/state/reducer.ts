@@ -118,7 +118,15 @@ export type Action =
   /** Crea las tablas intermedias aceptadas de referencias múltiples entre tablas (`junctionTables.ts`). */
   | { type: 'create-junction-tables'; proposals: JunctionProposal[]; removeReference: boolean }
   /** Aplica las operaciones marcadas de una propuesta de la IA, en un solo paso (`aiProposal.ts`). */
-  | { type: 'apply-ai-proposal'; proposal: AiProposal; refs: AiContextRefs; selected: number[]; seed: string }
+  | {
+      type: 'apply-ai-proposal';
+      proposal: AiProposal;
+      refs: AiContextRefs;
+      selected: number[];
+      seed: string;
+      /** Las ya aplicadas antes, al retomar la propuesta. */
+      skip?: number[];
+    }
   | { type: 'duplicate-node'; id: string; withRelations?: boolean; newId?: string }
   | { type: 'duplicate-schema'; id: string; newId?: string }
   | {
@@ -316,7 +324,7 @@ function projectReducer(p: Project, action: Action): Project {
     case 'create-junction-tables':
       return createJunctionTables(p, action.proposals, action.removeReference);
     case 'apply-ai-proposal':
-      return applyProposal(p, action.proposal, action.refs, action.selected, action.seed);
+      return applyProposal(p, action.proposal, action.refs, action.selected, action.seed, action.skip);
     case 'fill-defaults':
       return ops.fillDefaults(p, action.fieldId);
     case 'add-relation':

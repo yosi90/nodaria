@@ -98,7 +98,8 @@ const sqlDataType = z.object({
 
 const columnSpec = z.object({
   name: z.string(),
-  type: sqlDataType,
+  /** `null` solo con una preforma: la columna toma el tipo de la preforma. */
+  type: sqlDataType.nullable(),
   primaryKey: z.boolean(),
   nullable: z.boolean(),
   unique: z.boolean(),

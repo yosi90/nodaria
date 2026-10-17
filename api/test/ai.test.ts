@@ -807,3 +807,56 @@ describe('preguntas sobre el mundo', () => {
     ).rejects.toMatchObject({ code: 'respuesta_no_valida' });
   });
 });
+
+describe('columnas sin tipo en la respuesta del modelo', () => {
+  it('quitan solo la columna, no la tabla: sobra si una FK la crea y una preforma toma su tipo', () => {
+    const col = wire.operations[0].columns[0];
+    const result = fromWire({
+      summary: '',
+      operations: [
+        {
+          ...blank,
+          op: 'create-table',
+          ref: 'n1',
+          name: 'Marca',
+          columns: [col, { ...col, name: 'nombre', type: '', preform: 'nombre', primaryKey: false, identity: false }],
+          changes: noChanges,
+          reason: '',
+        },
+        {
+          ...blank,
+          op: 'create-table',
+          ref: 'n2',
+          name: 'Modelo',
+          columns: [
+            col,
+            { ...col, name: 'id_marca', type: '', primaryKey: false, identity: false },
+            { ...col, name: 'notas', type: 'texto', primaryKey: false, identity: false },
+          ],
+          changes: noChanges,
+          reason: '',
+        },
+        {
+          ...blank,
+          op: 'add-foreign-key',
+          table: 'n2',
+          column: 'id_marca',
+          references: 'n1',
+          changes: noChanges,
+          reason: '',
+        },
+      ],
+      advice: [],
+    });
+    expect(result.operations.map(o => o.op)).toEqual(['create-table', 'create-table', 'add-foreign-key']);
+    const [marca, modelo] = result.operations as Extract<AiProposal['operations'][number], { op: 'create-table' }>[];
+    expect(marca.columns.map(c => [c.name, c.type?.name ?? null, c.preform])).toEqual([
+      ['id', 'int', null],
+      ['nombre', null, 'nombre'],
+    ]);
+    expect(modelo.columns.map(c => c.name)).toEqual(['id']);
+    expect(result.advice).toEqual([
+      'Se ha quitado la columna «notas» de «Modelo»: el tipo «texto» no es de SQL Server.',
+    ]);
+  });
+});

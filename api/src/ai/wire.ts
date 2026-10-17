@@ -117,18 +117,44 @@ function flagValue(value: string): boolean | null {
   return null;
 }
 
-const column = (c: WireOperation['columns'][number]) => ({
-  name: c.name,
-  type: sqlType(c.type),
-  primaryKey: c.primaryKey,
-  nullable: c.nullable,
-  unique: c.unique,
-  identity: c.identity,
-  description: c.description,
-  preform: c.preform.trim() || null,
-});
+type WireColumn = WireOperation['columns'][number];
 
-function translate(o: WireOperation): Operation {
+const column = (c: WireColumn) => {
+  const preform = c.preform.trim() || null;
+  return {
+    name: c.name,
+    // Una columna de preforma toma el tipo de la preforma: el modelo suele dejarlo vacío.
+    type: preform && !c.type.trim() ? null : sqlType(c.type),
+    primaryKey: c.primaryKey,
+    nullable: c.nullable,
+    unique: c.unique,
+    identity: c.identity,
+    description: c.description,
+    preform,
+  };
+};
+
+/**
+ * Las columnas que se pueden traducir. Una que no (sin tipo o con un tipo que no es de SQL Server) se
+ * quita sola, sin perder la tabla: si una clave foránea posterior de la misma propuesta crea esa
+ * columna (`fks`), sobra sin más; si no, se avisa en `advice`.
+ */
+function columnsOf(o: WireOperation, fks: Set<string>, advice: string[]) {
+  return o.columns.flatMap(c => {
+    try {
+      return [column(c)];
+    } catch (error) {
+      if (!(error instanceof Untranslatable)) throw error;
+      if (!fks.has(fkKey(o.ref || o.table, c.name)))
+        advice.push(`Se ha quitado la columna «${c.name}» de «${o.name || o.table}»: ${error.message}.`);
+      return [];
+    }
+  });
+}
+
+const fkKey = (table: string, column: string) => `${table.trim()}|${column.trim().toLowerCase()}`;
+
+function translate(o: WireOperation, fks: Set<string>, advice: string[]): Operation {
   const { table, reason } = o;
   switch (o.op) {
     case 'create-table':
@@ -138,7 +164,7 @@ function translate(o: WireOperation): Operation {
         name: o.name,
         description: o.description,
         base: o.base.trim() || null,
-        columns: o.columns.map(column),
+        columns: columnsOf(o, fks, advice),
         reason,
       };
     case 'rename-table':
@@ -147,6 +173,7 @@ function translate(o: WireOperation): Operation {
       return { op: o.op, table, reason };
     case 'add-column':
       if (o.columns.length !== 1) throw new Untranslatable('añadir columna necesita exactamente una columna');
+      // Sin un tipo válido (y sin preforma) la columna no se puede añadir: se descarta la operación.
       return { op: o.op, table, column: column(o.columns[0]), reason };
     case 'update-column':
       return {
@@ -184,9 +211,10 @@ function translate(o: WireOperation): Operation {
 export function fromWire(wire: WireProposal): AiProposal {
   const advice = [...wire.advice];
   const operations: Operation[] = [];
+  const fks = new Set(wire.operations.filter(o => o.op === 'add-foreign-key').map(o => fkKey(o.table, o.column)));
   wire.operations.forEach((o, i) => {
     try {
-      operations.push(translate(o));
+      operations.push(translate(o, fks, advice));
     } catch (error) {
       if (!(error instanceof Untranslatable)) throw error;
       advice.push(`Se ha descartado la operación ${i + 1} (${o.op}): ${error.message}.`);

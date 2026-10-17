@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, schema } from '../test/fixtures';
 import { databaseContext } from './aiContext';
-import { applyProposal, defaultSelection, reviewProposal, type AiOperation, type AiProposal } from './aiProposal';
+import {
+  applyProposal,
+  defaultSelection,
+  resumeRefs,
+  reviewProposal,
+  type AiOperation,
+  type AiProposal,
+} from './aiProposal';
 import { foreignKeyLinks, sqlType, sqlTypeText, tableColumns, type SqlColumn } from './database';
 import { getSchema, nodeLabel } from './selectors';
 import type { Project } from './types';
@@ -447,5 +454,56 @@ describe('propuestas que reutilizan el proyecto', () => {
     expect(reviewProposal(p, plan, databaseContext(p).refs).operations[0].messages).toEqual([
       'No hay ninguna base «b9».',
     ]);
+  });
+});
+
+describe('retomar una propuesta aplicada en parte', () => {
+  it('salta lo aplicado y aplica después las FK hacia las tablas que creó, buscadas por su nombre', () => {
+    const p = shop();
+    const { refs } = databaseContext(p);
+    const plan = proposal([
+      {
+        op: 'create-table',
+        ref: 'n1',
+        name: 'Producto',
+        description: '',
+        columns: [column('id', { primaryKey: true, nullable: false, identity: true })],
+        reason: '',
+      },
+      { op: 'add-foreign-key', table: 't2', column: 'id_producto', references: 'n1', nullable: true, reason: '' },
+    ]);
+    // Primero solo la tabla.
+    const first = applyProposal(p, plan, refs, [0], 'a');
+    const resumed = resumeRefs(first, plan, refs, [0]);
+    const producto = first.nodes.find(n => nodeLabel(first, n) === 'Producto')!;
+    expect(resumed.tables.n1).toBe(producto.id);
+    // Después, la FK, con otra semilla y sin volver a crear la tabla.
+    const review = reviewProposal(first, plan, resumed, [1], 'b', [0]);
+    expect(review.operations.map(o => [o.done ?? false, o.status, o.applied])).toEqual([
+      [true, 'ok', false],
+      [false, 'ok', true],
+    ]);
+    expect(foreignKeyLinks(review.project).some(l => l.sourceId === 'n-pedido' && l.targetId === producto.id)).toBe(
+      true,
+    );
+    expect(review.project.nodes.filter(n => nodeLabel(review.project, n) === 'Producto')).toHaveLength(1);
+  });
+
+  it('una columna sin tipo usa su preforma; sin preforma no se crea', () => {
+    const p = shop();
+    const plan = proposal([
+      {
+        op: 'create-table',
+        ref: 'n1',
+        name: 'Marca',
+        description: '',
+        columns: [column('id', { type: null, preform: 'id' }), column('nombre', { type: null })],
+        reason: '',
+      },
+    ]);
+    const review = reviewProposal(p, plan, databaseContext(p).refs);
+    expect(review.operations[0].messages).toContain('«nombre» no tiene tipo ni preforma: no se crea.');
+    const marca = review.project.nodes.find(n => nodeLabel(review.project, n) === 'Marca')!;
+    expect(names(review.project, marca.typeId)).toEqual(['id']);
   });
 });
