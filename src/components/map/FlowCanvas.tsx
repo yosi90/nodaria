@@ -614,6 +614,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         const lane = lanes.get(k.targetId) ?? 0;
         lanes.set(k.targetId, lane + 1);
         const color = getSchema(project, getNode(project, k.targetId)?.typeId ?? '')?.color ?? '#888';
+        // Cardinalidad: una FK UNIQUE (o que es por sí sola la clave primaria) es uno a uno; con nulos, opcional.
+        const sourceColumns = tableColumns(project, getNode(project, k.sourceId)?.typeId ?? '');
+        const fk = sourceColumns.find(c => c.field.id === k.fieldId);
+        const soleKey = Boolean(fk?.sql.primaryKey) && sourceColumns.filter(c => c.sql.primaryKey).length === 1;
         result.push({
           id: refId(k),
           type: 'foreignKey',
@@ -624,6 +628,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             kind: 'foreignKey',
             label: refFields.get(k.fieldId)?.name ?? 'Clave foránea',
             color,
+            oneToOne: Boolean(fk?.sql.unique) || soleKey,
+            optional: Boolean(fk?.sql.nullable) && !fk?.sql.primaryKey,
             sourceRow: rowOf(k.sourceId, k.fieldId),
             targetRow: rowOf(k.targetId, k.targetFieldId),
             // Alterna a un lado y otro del centro: 0, 1, −1, 2, −2…

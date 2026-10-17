@@ -119,6 +119,7 @@
   stroke-width: 1.4;
   fill: none;
 }
+.react-flow__edge.dimmed .fk-optional,
 .react-flow__edge.dimmed .fk-many,
 .react-flow__edge.dimmed .fk-key {
   opacity: 0.25;
@@ -290,4 +291,9 @@
 }
 .sql-fk-actions select {
   font-size: var(--fs-2xs);
+}
+
+.fk-optional {
+  font-size: 9px;
+  font-weight: 600;
 }
