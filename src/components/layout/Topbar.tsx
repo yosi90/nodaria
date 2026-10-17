@@ -32,6 +32,7 @@ import {
   Lock,
   CloudOff,
   MessageSquareText,
+  History,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { downloadProject, downloadText } from '../../services/files';
@@ -53,6 +54,7 @@ import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
 import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
+import { SnapshotsDialog } from './SnapshotsDialog';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
 import { GroupDialog } from '../groups/GroupDialog';
 import { ShareDialog } from '../groups/ShareDialog';
@@ -88,6 +90,7 @@ export function Topbar({
   const file = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   // El asistente de IA trabaja de momento sobre esquemas de base de datos.
   const aiAvailable = project.kind === 'database' || tableTypes(project).length > 0;
   const toggleAi = () => setPreference('aiPanelOpen', !preferences.aiPanelOpen);
@@ -164,6 +167,7 @@ export function Topbar({
     { label: 'Nuevo proyecto', icon: Plus, onSelect: create },
     { label: 'Ejemplos y plantillas…', icon: Layers, onSelect: onTemplates },
     { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
+    { label: 'Copias de seguridad…', icon: History, onSelect: () => setSnapshotsOpen(true) },
   ];
   const settingsEntries: MenuEntry[] = [
     { section: project.name },
@@ -303,6 +307,7 @@ export function Topbar({
         />
       )}
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
+      {snapshotsOpen && <SnapshotsDialog onClose={() => setSnapshotsOpen(false)} />}
       {kindOpen && <ProjectKindDialog onClose={() => setKindOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">

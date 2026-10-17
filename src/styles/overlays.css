@@ -747,3 +747,40 @@
   max-width: 52ch;
   color: var(--text-muted);
 }
+
+/* Copias de seguridad del navegador (SnapshotsDialog). */
+.snapshot-groups {
+  display: grid;
+  gap: var(--space-4);
+}
+.snapshot-title {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-sm);
+}
+.snapshot-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.snapshot-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+}
+.snapshot-list li:hover {
+  background: var(--hover);
+}
+@media (max-width: 640px) {
+  .snapshot-list li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

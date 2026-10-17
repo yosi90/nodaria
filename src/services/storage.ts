@@ -328,6 +328,7 @@ export async function saveState(state: AppState) {
     return;
   }
   const changes = planWrite(state, written, stored);
+  await snapshotBefore(changes.put);
   for (const p of changes.put) stored.add(p.id);
   await database.writeDatabase(backend.db, changes);
   for (const p of changes.put) written.set(p.id, p);
@@ -387,6 +388,109 @@ export async function saveSharedBase(id: string, project: Project | null) {
 export async function loadSharedBase(id: string): Promise<Project | null> {
   if (backend.kind === 'indexeddb') return database.getSharedBase(backend.db, id).catch(() => null);
   return memoryBases.get(id) ?? null;
+}
+
+// --- Copias automáticas (PENDIENTES.md, Fase 7) ---
+
+/** Cada cuánto, como mucho, se aparta una copia de un proyecto mientras se edita. */
+export const SNAPSHOT_INTERVAL_MS = 30 * 60 * 1000;
+/** Copias que se conservan por proyecto, y edad máxima de cualquiera. */
+export const SNAPSHOTS_PER_PROJECT = 12;
+export const SNAPSHOT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Última copia de cada proyecto (por id), leída de la base la primera vez. */
+let lastSnapshot: Map<string, number> | null = null;
+
+const snapshotOf = (key: string) => {
+  const match = /^snapshot:(.+):([^:]+:[^:]+:[^:]+)$/.exec(key);
+  return match ? { projectId: match[1], at: Date.parse(match[2]) } : null;
+};
+
+/**
+ * Las copias que sobran: más de `SNAPSHOTS_PER_PROJECT` por proyecto (las más antiguas) o más viejas que
+ * `SNAPSHOT_MAX_AGE_MS`. Función pura (`now` en milisegundos).
+ */
+export function snapshotsToPrune(keys: string[], now: number): string[] {
+  const byProject = new Map<string, { key: string; at: number }[]>();
+  for (const key of keys) {
+    const parsed = snapshotOf(key);
+    if (!parsed) continue;
+    byProject.set(parsed.projectId, [...(byProject.get(parsed.projectId) ?? []), { key, at: parsed.at }]);
+  }
+  const prune: string[] = [];
+  for (const list of byProject.values()) {
+    list.sort((a, b) => b.at - a.at);
+    list.forEach((item, i) => {
+      if (i >= SNAPSHOTS_PER_PROJECT || now - item.at > SNAPSHOT_MAX_AGE_MS) prune.push(item.key);
+    });
+  }
+  return prune;
+}
+
+/**
+ * Aparta, si toca, la versión anterior de los proyectos que se van a guardar: la primera vez que cambian
+ * en la sesión y después, como mucho, cada `SNAPSHOT_INTERVAL_MS`. No bloquea ni rompe el guardado.
+ */
+async function snapshotBefore(projects: Project[]) {
+  if (backend.kind !== 'indexeddb' || !projects.length) return;
+  const db = backend.db;
+  try {
+    if (!lastSnapshot) {
+      lastSnapshot = new Map();
+      for (const key of await database.snapshotKeys(db)) {
+        const parsed = snapshotOf(key);
+        if (parsed) lastSnapshot.set(parsed.projectId, Math.max(lastSnapshot.get(parsed.projectId) ?? 0, parsed.at));
+      }
+    }
+    const now = Date.now();
+    let took = false;
+    for (const next of projects) {
+      const previous = written.get(next.id);
+      if (!previous || previous === next) continue;
+      if (now - (lastSnapshot.get(next.id) ?? 0) < SNAPSHOT_INTERVAL_MS) continue;
+      await database.putSnapshot(db, previous, new Date(now).toISOString());
+      lastSnapshot.set(next.id, now);
+      took = true;
+    }
+    if (took) {
+      const prune = snapshotsToPrune(await database.snapshotKeys(db), now);
+      if (prune.length) await database.deleteSnapshots(db, prune);
+    }
+  } catch {
+    // Una copia que no se pudo apartar no impide guardar.
+  }
+}
+
+export interface SnapshotSummary {
+  key: string;
+  projectId: string;
+  name: string;
+  savedAt: string;
+  nodes: number;
+  relations: number;
+}
+
+/** Las copias automáticas del navegador, de la más reciente a la más antigua. Sin IndexedDB, ninguna. */
+export async function listSnapshots(): Promise<SnapshotSummary[]> {
+  if (backend.kind !== 'indexeddb') return [];
+  const all = await database.readSnapshots(backend.db);
+  return all
+    .map(s => ({
+      key: `snapshot:${s.projectId}:${s.savedAt}`,
+      projectId: s.projectId,
+      name: s.name,
+      savedAt: s.savedAt,
+      nodes: s.nodes,
+      relations: s.relations,
+    }))
+    .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+}
+
+/** El proyecto de una copia, migrado y reparado como cualquier carga. */
+export async function loadSnapshot(key: string) {
+  if (backend.kind !== 'indexeddb') return null;
+  const found = (await database.readSnapshots(backend.db)).find(s => `snapshot:${s.projectId}:${s.savedAt}` === key);
+  return found ? prepareProject(found.project) : null;
 }
 
 export async function clearBackups() {

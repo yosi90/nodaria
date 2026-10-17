@@ -151,6 +151,56 @@ export async function getSharedBase(db: IDBDatabase, id: string): Promise<Projec
   return found?.project ?? null;
 }
 
+/** Copia automática de un proyecto (PENDIENTES.md, Fase 7): la versión anterior a un cambio. */
+export interface Snapshot {
+  kind: 'snapshot';
+  projectId: string;
+  name: string;
+  savedAt: string;
+  nodes: number;
+  relations: number;
+  project: Project;
+}
+
+const snapshotPrefix = (projectId: string) => `snapshot:${projectId}:`;
+/** Todas las copias automáticas (de todos los proyectos): la clave es `snapshot:<proyecto>:<fecha>`. */
+const allSnapshots = () => IDBKeyRange.bound('snapshot:', 'snapshot:\uffff');
+
+export function putSnapshot(db: IDBDatabase, project: Project, savedAt: string) {
+  const tx = db.transaction('backups', 'readwrite');
+  tx.objectStore('backups').put(
+    {
+      kind: 'snapshot',
+      projectId: project.id,
+      name: project.name,
+      savedAt,
+      nodes: project.nodes.length,
+      relations: project.relations.length,
+      project,
+    } satisfies Snapshot,
+    `${snapshotPrefix(project.id)}${savedAt}`,
+  );
+  return committed(tx);
+}
+
+/** Las claves de las copias (sin leerlas): sirven para saber la última de cada proyecto y para podar. */
+export async function snapshotKeys(db: IDBDatabase): Promise<string[]> {
+  const tx = db.transaction('backups', 'readonly');
+  return (await settled(tx.objectStore('backups').getAllKeys(allSnapshots()))).map(String);
+}
+
+export async function readSnapshots(db: IDBDatabase): Promise<Snapshot[]> {
+  const tx = db.transaction('backups', 'readonly');
+  return (await settled(tx.objectStore('backups').getAll(allSnapshots()))) as Snapshot[];
+}
+
+export function deleteSnapshots(db: IDBDatabase, keys: string[]) {
+  const tx = db.transaction('backups', 'readwrite');
+  const store = tx.objectStore('backups');
+  for (const key of keys) store.delete(key);
+  return committed(tx);
+}
+
 export function clearBackups(db: IDBDatabase) {
   const tx = db.transaction('backups', 'readwrite');
   tx.objectStore('backups').clear();
