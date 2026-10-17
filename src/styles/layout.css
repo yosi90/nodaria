@@ -3,6 +3,8 @@
   height: 100%;
   display: grid;
   grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+  /* Sin columna explícita, la implícita crecía hasta el ancho mínimo de la barra y en el móvil se recortaba la app. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .topbar {

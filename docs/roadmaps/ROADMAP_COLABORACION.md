@@ -1,7 +1,7 @@
 # Roadmap por hitos: grupos de trabajo y colaboración
 
 Fecha: 2026-10-13.
-Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Hito 3 hecho el 2026-10-17 (ver «Tiempo real y combinación (hito 3)»), salvo un indicador de «sin conexión» propio de los compartidos. Hito 4 hecho el 2026-10-17 (chat del grupo), salvo comprobar con cuentas reales el correo de las invitaciones. Hito 5 hecho el 2026-10-17 (comentarios, sugerencias, rol revisor y nombres de rol por tipo de proyecto), salvo validar los nombres con usos reales. Siguiente: hito 6 (piloto, operación y lanzamiento). La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
+Estado: **roadmap activo principal desde el 2026-10-17**: el propietario levanta para Nodaria la congelación del ecosistema y pide empezar a implementar. Hitos 1 y 2 hechos y publicados el 2026-10-17: API (`c0f8e01`) y frontend (ver «Contrato del hito 1» y «Frontend de los hitos 1 y 2»). El propietario decide saltarse las maquetas y el ensayo en QA: lo prueba en producción con su cuenta de empresa y los fallos se arreglan cuando salgan. Hito 3 hecho el 2026-10-17 (ver «Tiempo real y combinación (hito 3)»), salvo un indicador de «sin conexión» propio de los compartidos. Hito 4 hecho el 2026-10-17 (chat del grupo), salvo comprobar con cuentas reales el correo de las invitaciones. Hito 5 hecho el 2026-10-17 (comentarios, sugerencias, rol revisor y nombres de rol por tipo de proyecto), salvo validar los nombres con usos reales. Hito 6 (2026-10-17): hecho lo que depende de Nodaria (límites medidos, copias restauradas, política, importación, revisión); queda el piloto del propietario con varias cuentas, que es lo que da el roadmap por terminado. La migración de Nodaria a la plataforma terminó el 2026-10-15, y la plataforma respondió la petición de coordinación con los espacios el 2026-10-17 (ver «Puesta al día del 2026-10-17»).
 
 ## Puesta al día del 2026-10-17: los espacios de la plataforma
 
@@ -303,13 +303,22 @@ Responsable: Nodaria. Depende de los hitos 2 y 3.
 
 Responsables: Nodaria y propietario. Depende de las funciones que se decida incluir en la entrega; el hito 5 puede quedar para una entrega posterior.
 
-- [ ] Ensayar en QA los flujos de permisos, concurrencia, invitaciones, cuenta cerrada/borrada y fallos parciales.
-- [ ] Definir tamaño/número de proyectos, miembros simultáneos, retención de historial y límites de entrega; medir con proyectos reales grandes, incluidas imágenes.
-- [ ] Verificar copias/restauración de grupos, proyectos, membresías y tareas pendientes, además del rollback de la migración.
-- [ ] Documentar en la política de datos los nuevos grupos, destinatarios de invitaciones y registros de cambios, siguiendo las guías centrales vigentes.
-- [ ] Revisar interfaz en escritorio/móvil, uso local sin sesión y exportación/importación sin credenciales, miembros ni invitaciones.
-- [ ] Revisar CSP/SDK y, si afecta al script de medición, seguir las instrucciones de Yosiftadísticas. Operación propia mediante el plugin de Administración cuando corresponda.
-- [ ] Completar lint, build y pruebas aplicables; publicar según el flujo vigente y comprobar la revisión y comportamiento servidos.
+- [ ] Ensayar los flujos de permisos, concurrencia, invitaciones, cuenta cerrada/borrada y fallos parciales: sin QA por decisión del propietario (2026-10-17); se ensayan en el piloto en producción con su cuenta de empresa. Lo automatizable está en las pruebas (API contra SQL Server y front) y en las pruebas en Edge con la plataforma simulada.
+- [x] Definir tamaño/número de proyectos, miembros simultáneos, retención de historial y límites de entrega; medir con proyectos reales grandes, incluidas imágenes (ver «Límites y operación»).
+- [x] Verificar copias/restauración de grupos, proyectos, membresías y tareas pendientes, además del rollback de la migración (ver «Límites y operación»).
+- [x] Documentar en la política de datos los nuevos grupos, destinatarios de invitaciones y registros de cambios: «Grupos de trabajo» (grupos, miembros, invitaciones de la plataforma, comentarios y sugerencias) y la clave de IA del grupo, 17 de octubre de 2026.
+- [x] Revisar interfaz en escritorio/móvil, uso local sin sesión y exportación/importación sin credenciales, miembros ni invitaciones: sin sesión, el engranaje ofrece entrar para compartir y nada más cambia; exportar un compartido da su JSON sin miembros ni invitaciones; importar un JSON de un compartido crea siempre una copia propia (id nuevo). Corregida la rejilla de `.app` en el móvil. Limitación anterior que persiste: en el mapa, a menos de unos 450 px, el panel de estructura (300 px) deja poco al lienzo.
+- [x] Revisar CSP/SDK y, si afecta al script de medición, seguir las instrucciones de Yosiftadísticas: la CSP no cambia (el canal y el chat van por la API y el gateway de la plataforma, ya permitidos) y el script de medición no se toca. Sin plugin de Administración: no hay operaciones que lo pidan.
+- [x] Completar lint, build y pruebas aplicables; publicar según el flujo vigente y comprobar la revisión y comportamiento servidos: en cada entrega del 2026-10-17 (mismo bundle en los dos dominios, salud de la API, producción sin errores propios).
+
+### Límites y operación (hito 6, 2026-10-17)
+
+- **Tamaño:** el proyecto de un grupo tiene el mismo límite que uno propio (`PROJECT_MAX_BYTES`, 20 MB por defecto) y se sube entero en cada guardado (2,5 s después del último cambio). Medido con un proyecto de 3,6 MB (60 tipos, 3000 nodos, 4000 relaciones y una imagen de mapa de 1,5 MB): huella SHA-256 en 15 ms y combinación a tres bandas en 12 ms, sin conflictos al tocar nodos distintos. El coste real es la subida del documento: con imágenes grandes, conviene que las imágenes sean ligeras.
+- **Miembros y grupos:** los de la plataforma (2000 miembros por grupo, 300 grupos por cuenta, 500 invitaciones pendientes por grupo, 200 invitaciones al día por persona). El canal admite 20 espacios abiertos por conexión; Nodaria abre solo el del proyecto abierto.
+- **Comentarios:** 2000 por proyecto; se borran con el proyecto del grupo.
+- **Historial:** no hay historial de versiones en el servidor: solo la última del proyecto del grupo. Las copias diarias de la base (30 días) son la vuelta atrás; el deshacer es de cada navegador y se vacía al bajar una versión del grupo.
+- **Copias:** comprobado el 2026-10-17 que una copia de `Nodaria` se restaura en una base aparte con las 10 migraciones, las tablas de grupos y comentarios, los proyectos propios y el cursor del feed. La copia diaria «Nodaria DB Backup» las incluye sin cambios.
+- **Vuelta atrás:** la API publicada antes de los grupos (`a5224a7`) funciona con la base migrada (no usa las tablas nuevas); volver a ella deja los compartidos inaccesibles pero intactos. Restaurar `Nodaria-antes-de-0009-20261017.bak` o `Nodaria-antes-de-0010-20261017.bak` solo si hiciera falta deshacer las migraciones, perdiendo lo cambiado después.
 
 **Termina cuando:** el piloto funciona con varias cuentas, no quedan fallos de pérdida de datos o acceso indebido, las copias se restauran y están documentadas las limitaciones que persistan. No presentar como lanzada una funcionalidad solo porque compila.
 

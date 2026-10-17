@@ -40,6 +40,7 @@ import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
 import { ProjectKindDialog } from './ProjectKindDialog';
 import { parseProject } from '../../services/storage';
+import { uid } from '../../domain/factories';
 import { useApp } from '../../state/AppContext';
 import { usePreferences, type Preferences } from '../../state/preferences';
 import { IconButton } from '../common/Button';
@@ -93,7 +94,7 @@ export function Topbar({
   const [kindOpen, setKindOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const { status: authStatus, signIn } = useAuth();
-  const { groupOf, present, syncState } = useGroups();
+  const { groupOf, present, syncState, isShared } = useGroups();
   const group = groupOf(project.id);
   const [shareOpen, setShareOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState<GroupInfo | null>(null);
@@ -138,7 +139,10 @@ export function Topbar({
     e.target.value = '';
     if (!f) return;
     try {
-      const { project: imported, issues } = parseProject(await f.text());
+      const parsed = parseProject(await f.text());
+      // Importar crea siempre una copia propia: un JSON de un proyecto de grupo no hereda el grupo.
+      const imported = isShared(parsed.project.id) ? { ...parsed.project, id: uid('project') } : parsed.project;
+      const { issues } = parsed;
       dispatch({ type: 'import-project', project: imported });
       toast({ message: `Proyecto «${imported.name}» importado` });
       if (issues.length) reportRepairs({ projectName: imported.name, issues });
