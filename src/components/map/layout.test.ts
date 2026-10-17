@@ -66,6 +66,22 @@ describe('disposiciones', () => {
     );
   });
 
+  it('por fuerzas, un mapa grande (precisión rebajada) sigue sin tarjetas pisadas', () => {
+    const n = 220;
+    const p = project({
+      schemas: [schema('t')],
+      nodes: Array.from({ length: n }, (_, i) => node(`n${i}`, 't', i >= 20 ? `n${i % 20}` : null)),
+    });
+    const links = Array.from({ length: 3 * n }, (_, i) => ({ a: `n${(i * 13) % n}`, b: `n${(i * 7 + 3) % n}` }));
+    const list = [...forceLayout(p, links).values()];
+    let overlaps = 0;
+    for (let i = 0; i < list.length; i++)
+      for (let j = i + 1; j < list.length; j++)
+        if (Math.abs(list[i].x - list[j].x) < NODE_W && Math.abs(list[i].y - list[j].y) < NODE_H) overlaps++;
+    expect(list).toHaveLength(n);
+    expect(overlaps).toBe(0);
+  });
+
   it('la radial pone el foco en el centro y los no conectados debajo', () => {
     const p = world();
     const links = p.relations.map(r => ({ a: r.sourceId, b: r.targetId }));
