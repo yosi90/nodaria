@@ -33,9 +33,11 @@ import {
   CloudOff,
   MessageSquareText,
   History,
+  FileArchive,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
-import { downloadProject, downloadText } from '../../services/files';
+import { downloadBytes, downloadProject, downloadText } from '../../services/files';
+import { exportZip } from '../../services/exportBundle';
 import { sqlScript } from '../../domain/sqlScript';
 import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
@@ -199,6 +201,11 @@ export function Topbar({
       : []),
     'separator',
     { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
+    {
+      label: 'Exportar ZIP (notas Markdown, CSV e imágenes)',
+      icon: FileArchive,
+      onSelect: () => downloadBytes(`${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.zip`, exportZip(project)),
+    },
     ...(tableTypes(project).length
       ? [
           {
