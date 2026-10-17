@@ -51,7 +51,7 @@ Resuelto así: `parseState` prepara cada proyecto por separado; si alguno falla,
 
 No hace falta para cerrar el roadmap. Todo debe poder desactivarse y nada debe cambiar datos sin confirmación.
 
-- [ ] Configuración con clave de API propia guardada solo en local y aviso claro de qué datos se envían.
+- [x] Configuración con clave de API propia guardada solo en local y aviso claro de qué datos se envían. Sustituido (2026-10-16) por las claves de IA de la plataforma (`ROADMAP_IA.md`): la clave no llega nunca a Nodaria, la persona la gestiona en la web social con su tope de gasto, y la privacidad explica qué se envía. Estado al 2026-10-17: el asistente actual genera y corrige esquemas y diagramas mediante propuestas que se revisan antes de aplicarse; los cuatro puntos siguientes no están hechos y esperan a que el propietario decida si se emprenden.
 - [ ] Preguntas en lenguaje natural sobre el mundo.
 - [ ] Sugerencias de relaciones o atributos que faltan, como propuestas que se aceptan o descartan.
 - [ ] Detección de incoherencias entre las notas y los datos estructurados.
