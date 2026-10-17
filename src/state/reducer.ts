@@ -19,6 +19,7 @@ import { applyProposal, type AiProposal } from '../domain/aiProposal';
 import { withRenamedFields } from '../domain/formulaRenames';
 import { withConvertedValues } from '../domain/valueConversion';
 import { createJunctionTables, type JunctionProposal } from '../domain/junctionTables';
+import { importCsvRows, type ColumnTarget, type CsvTable } from '../domain/csvImport';
 import type { AiContextRefs } from '../domain/aiContext';
 import type {
   AppState,
@@ -109,6 +110,8 @@ export type Action =
   | { type: 'set-column-sql'; typeId: string; fieldId: string; sql: SqlColumn | null }
   /** Usa como tipo SQL las anotaciones escritas como valor inicial en las tablas (de un tipo o de todas). */
   | { type: 'apply-sql-annotations'; typeId?: string }
+  /** Crea un nodo por fila de un CSV, con la correspondencia de columnas elegida (`csvImport.ts`). */
+  | { type: 'import-csv-rows'; typeId: string; table: CsvTable; mapping: ColumnTarget[] }
   /** Crea las tablas intermedias aceptadas de referencias múltiples entre tablas (`junctionTables.ts`). */
   | { type: 'create-junction-tables'; proposals: JunctionProposal[]; removeReference: boolean }
   /** Aplica las operaciones marcadas de una propuesta de la IA, en un solo paso (`aiProposal.ts`). */
@@ -302,6 +305,8 @@ function projectReducer(p: Project, action: Action): Project {
       return setColumnSql(p, action.typeId, action.fieldId, action.sql);
     case 'apply-sql-annotations':
       return applySqlAnnotations(p, action.typeId);
+    case 'import-csv-rows':
+      return importCsvRows(p, action.typeId, action.table, action.mapping).project;
     case 'create-junction-tables':
       return createJunctionTables(p, action.proposals, action.removeReference);
     case 'apply-ai-proposal':

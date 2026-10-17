@@ -34,6 +34,7 @@ import {
   MessageSquareText,
   History,
   FileArchive,
+  Sheet,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { downloadBytes, downloadProject, downloadText } from '../../services/files';
@@ -57,6 +58,8 @@ import { AccountButton } from '../account/AccountButton';
 import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
 import { SnapshotsDialog } from './SnapshotsDialog';
+import { CsvImportDialog } from './CsvImportDialog';
+import { parseCsv, type CsvTable } from '../../domain/csvImport';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
 import { GroupDialog } from '../groups/GroupDialog';
 import { ShareDialog } from '../groups/ShareDialog';
@@ -93,6 +96,16 @@ export function Topbar({
   const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const csvFile = useRef<HTMLInputElement>(null);
+  const [csv, setCsv] = useState<{ name: string; table: CsvTable } | null>(null);
+  const uploadCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    const table = parseCsv(await f.text());
+    if (!table.header.length || !table.rows.length) toast({ message: 'El archivo no tiene filas que importar.' });
+    else setCsv({ name: f.name, table });
+  };
   // El asistente de IA trabaja de momento sobre esquemas de base de datos.
   const aiAvailable = project.kind === 'database' || tableTypes(project).length > 0;
   const toggleAi = () => setPreference('aiPanelOpen', !preferences.aiPanelOpen);
@@ -169,6 +182,7 @@ export function Topbar({
     { label: 'Nuevo proyecto', icon: Plus, onSelect: create },
     { label: 'Ejemplos y plantillas…', icon: Layers, onSelect: onTemplates },
     { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
+    { label: 'Importar nodos desde CSV…', icon: Sheet, onSelect: () => csvFile.current?.click() },
     { label: 'Copias de seguridad…', icon: History, onSelect: () => setSnapshotsOpen(true) },
   ];
   const settingsEntries: MenuEntry[] = [
@@ -315,6 +329,7 @@ export function Topbar({
       )}
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
       {snapshotsOpen && <SnapshotsDialog onClose={() => setSnapshotsOpen(false)} />}
+      {csv && <CsvImportDialog fileName={csv.name} table={csv.table} onClose={() => setCsv(null)} />}
       {kindOpen && <ProjectKindDialog onClose={() => setKindOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">
@@ -385,6 +400,7 @@ export function Topbar({
         <AccountButton />
       </div>
       <input ref={file} hidden type="file" accept="application/json,.json" onChange={upload} />
+      <input ref={csvFile} hidden type="file" accept="text/csv,.csv,text/plain,.txt" onChange={uploadCsv} />
       {newProjectOpen && <NewProjectDialog onClose={() => setNewProjectOpen(false)} />}
       {shareOpen && (
         <ShareDialog
