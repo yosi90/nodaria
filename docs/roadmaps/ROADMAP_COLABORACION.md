@@ -313,11 +313,20 @@ Responsables: Nodaria y propietario. Depende de las funciones que se decida incl
 
 ### Kit 1.39 (2026-10-17)
 
-Petición de la plataforma `docs/peticiones/limitar-el-nombre-de-los-grupos-y-copiar-el-kit-1-39.md`, resuelta el mismo día:
+Petición de la plataforma `docs/peticiones/respondidas/ACEPTADA_limitar-el-nombre-de-los-grupos-y-copiar-el-kit-1-39.md`, resuelta el mismo día:
 
 - **Nombre del grupo hasta 150 caracteres**, el límite del nombre de un espacio (antes, 80 en la plataforma y 200 en Nodaria, que daba `424 plataforma_no_disponible` con nombres largos). `GROUP_NAME_MAX` en la API (`api/src/groups/model.ts`, validación de `POST /api/grupos`, con prueba de 150 y 151) y en la web (`src/services/groups.ts`; `ShareDialog` propone el nombre del proyecto recortado y no deja escribir más). Renombrar el espacio lo hace la plataforma (quien gestiona), con su propio límite.
 - **Avisos de las solicitudes para entrar:** los da la plataforma (a quien puede aprobar, con «Aprobar» y «Rechazar», y a quien la pidió). Los grupos de Nodaria se crean solo por invitación, así que hoy no aplica; si algún día se abren a solicitudes, **no se montan avisos propios**.
 - Kit 1.39 copiado en `ecosistema-kit/` (ignorado por Git).
+
+### Kit 1.43: susurros en el chat (2026-10-18)
+
+Petición de la plataforma `docs/peticiones/respondidas/ACEPTADA_conocer-los-susurros-del-chat-y-copiar-el-kit-1-43.md`, resuelta el mismo día sin cambiar código:
+
+- **Susurros** (SDK 1.19, `ecosistema-kit/CHAT.md`, «Los susurros»): mensajes que se ven y cuentan como no leídos, pero no mandan push. Quien escribe lo elige en cada mensaje desde el menú de la flecha junto a «Enviar» (o al programarlo). El chat del grupo (`GroupChatPanel`, `<yosi-chat-conversacion>`) ya los tiene con el SDK; el menú y la insignia nuevos usan las variables `--yosi-color-*` que fija `src/styles/groups.css`.
+- Nodaria no restila la conversación con `::part()` ni usa `/v1/chat/…` desde un frontend propio. Si algún día lo hace: mandar `"susurro": true` y marcar los mensajes que lleguen con `susurro: true` (el push lo decide la plataforma); las piezas nuevas son `panel envio`, `fila susurrar`, `insignia susurro`, `fila susurro` e `interruptor susurro` (`ecosistema-kit/ESTILOS.md`).
+- Las versiones 1.40 a 1.42 (lista de acceso y librería de sesión de las apps Android) no piden nada a Nodaria.
+- Kit 1.43 copiado en `ecosistema-kit/` (ignorado por Git), sin los artefactos de compilación de Android.
 
 ### Límites y operación (hito 6, 2026-10-17)
 
