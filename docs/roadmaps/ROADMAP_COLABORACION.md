@@ -328,6 +328,15 @@ Petición de la plataforma `docs/peticiones/respondidas/ACEPTADA_conocer-los-sus
 - Las versiones 1.40 a 1.42 (lista de acceso y librería de sesión de las apps Android) no piden nada a Nodaria.
 - Kit 1.43 copiado en `ecosistema-kit/` (ignorado por Git), sin los artefactos de compilación de Android.
 
+### Diálogo del grupo por partes (piloto, 2026-10-19)
+
+Tras el primer piloto del propietario (grupo creado e invitación aceptada):
+
+- **Crear solo invita:** después de «Compartir con un grupo», `GroupDialog` se abre en modo `invite` (correo, rol y pendientes de aceptar). Lo demás va en modo `manage`, con pestañas «Miembros» (rol y sacar), «Invitaciones» (si gestiona) y «Ajustes» (nombres de los roles, «Ceder la propiedad» con selector, y borrar el grupo o salir). Antes un solo diálogo lo mezclaba todo, con «Ceder» en cada fila de miembro.
+- **Respuesta visible al invitar:** los avisos de cada acción salen dentro del diálogo (`.group-notice`), porque el toast quedaba debajo del `<dialog>` modal y no se veía. Al invitar se explica que llega por correo y como aviso, que pasa a Miembros al aceptarla, y la invitación nueva se destaca en «Pendientes de aceptar» con su fecha de caducidad. El mismo problema tiene cualquier toast lanzado con un modal abierto (`toasts.tsx`); queda pendiente si aparece en otro sitio.
+- **Barra:** la insignia del grupo abre siempre un menú («Invitar personas…», «Gestionar el grupo…» y, sin sitio, el chat y los comentarios); ver «Barra que se compacta» en `PROJECT_CONTEXT.md`.
+- Verificado: lint, build y 361 pruebas. La barra, en Edge sin interfaz; el diálogo del grupo no se ha probado en el navegador (necesita una cuenta y un grupo reales o simulados).
+
 ### Límites y operación (hito 6, 2026-10-17)
 
 - **Tamaño:** el proyecto de un grupo tiene el mismo límite que uno propio (`PROJECT_MAX_BYTES`, 20 MB por defecto) y se sube entero en cada guardado (2,5 s después del último cambio). Medido con un proyecto de 3,6 MB (60 tipos, 3000 nodos, 4000 relaciones y una imagen de mapa de 1,5 MB): huella SHA-256 en 15 ms y combinación a tres bandas en 12 ms, sin conflictos al tocar nodos distintos. El coste real es la subida del documento: con imágenes grandes, conviene que las imágenes sean ligeras.

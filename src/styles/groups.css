@@ -39,7 +39,11 @@
 
 .group-dialog {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
+}
+.group-tabs {
+  flex-wrap: wrap;
+  justify-self: start;
 }
 .group-section-title {
   margin: 0 0 var(--space-2);
@@ -52,6 +56,36 @@
   background: var(--danger-soft);
   color: var(--danger);
   font-size: var(--fs-sm);
+}
+
+/* Resultado de la última acción, dentro del diálogo: un toast quedaría debajo del <dialog> modal. */
+.group-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--success-soft);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  animation: toast-in 0.2s var(--ease);
+}
+.group-notice svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--success);
+}
+.group-section {
+  display: grid;
+  gap: var(--space-2);
+}
+.group-section .group-section-title {
+  margin: var(--space-2) 0 0;
+}
+.group-section .group-invite {
+  margin-bottom: 0;
 }
 
 .group-members {
@@ -71,6 +105,14 @@
 }
 .group-members li:hover {
   background: var(--hover);
+}
+.group-members li.fresh {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-ring);
+}
+.group-member-meta {
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
 }
 .group-member-name {
   display: flex;

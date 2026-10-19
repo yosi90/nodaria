@@ -745,10 +745,26 @@
 }
 
 /* ---------- Adaptación ---------- */
-@media (max-width: 1600px) {
-  .topbar {
-    overflow-x: auto;
-  }
+/* La barra se compacta por niveles cuando no cabe (Topbar, useTopbarDensity); solo si ni el último
+   nivel cabe se desplaza en horizontal. Sin eso, el desplazamiento recortaría los tooltips. */
+.topbar.overflowing {
+  overflow-x: auto;
+}
+.topbar.tight .project-switcher {
+  max-width: 150px;
+}
+.views-nav.no-group-labels .segmented-label,
+.views-nav.icon-only .label {
+  display: none;
+}
+.views-nav.icon-only button {
+  position: relative;
+  padding: 4px 8px;
+}
+.views-menus button {
+  position: relative;
+  gap: 5px;
+  padding: 4px 8px 4px 10px;
 }
 @media (max-width: 1100px) {
   .brand .brand-name {
@@ -756,9 +772,6 @@
   }
 }
 @media (max-width: 760px) {
-  .topbar {
-    overflow-x: auto;
-  }
   .topbar .hide-narrow {
     display: none;
   }

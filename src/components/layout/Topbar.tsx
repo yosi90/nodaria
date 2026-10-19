@@ -36,8 +36,11 @@ import {
   FileArchive,
   Sheet,
   CalendarRange,
+  UserPlus,
+  UserCog,
+  type LucideIcon,
 } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { Fragment, useCallback, useRef, useState } from 'react';
 import { downloadBytes, downloadProject, downloadText } from '../../services/files';
 import { exportZip } from '../../services/exportBundle';
 import { sqlScript } from '../../domain/sqlScript';
@@ -64,11 +67,12 @@ import { ImportProjectDialog } from './ImportProjectDialog';
 import type { Project } from '../../domain/types';
 import { parseCsv, type CsvTable } from '../../domain/csvImport';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
-import { GroupDialog } from '../groups/GroupDialog';
+import { GroupDialog, type GroupDialogMode } from '../groups/GroupDialog';
 import { ShareDialog } from '../groups/ShareDialog';
-import { roleLabel, type GroupInfo } from '../../services/groups';
+import { canManageGroup, roleLabel, type GroupInfo } from '../../services/groups';
 import { useAuth } from '../../state/auth';
 import { useGroups } from '../../state/groups';
+import { useTopbarDensity } from './useTopbarDensity';
 
 export type { View } from '../../state/navigation';
 
@@ -76,6 +80,67 @@ const THEME_CYCLE: Record<Preferences['theme'], { next: Preferences['theme']; la
   system: { next: 'light', label: 'Tema: sistema', icon: Monitor },
   light: { next: 'dark', label: 'Tema: claro', icon: Sun },
   dark: { next: 'system', label: 'Tema: oscuro', icon: Moon },
+};
+
+interface ViewEntry {
+  id: View;
+  label: string;
+  icon: LucideIcon;
+  /** Número del atajo Alt+N (App.tsx). */
+  key: number;
+}
+const VIEW_GROUPS: { id: 'data' | 'schema'; label: string; title: string; icon: LucideIcon; views: ViewEntry[] }[] = [
+  {
+    id: 'data',
+    label: 'Datos',
+    title: 'Ver y revisar los datos del proyecto',
+    icon: Network,
+    views: [
+      { id: 'map', label: 'Mapa', icon: Network, key: 1 },
+      { id: 'table', label: 'Tabla', icon: Table2, key: 2 },
+      { id: 'timeline', label: 'Cronología', icon: CalendarRange, key: 7 },
+      { id: 'health', label: 'Salud', icon: HeartPulse, key: 3 },
+    ],
+  },
+  {
+    id: 'schema',
+    label: 'Esquema',
+    title: 'Definir qué cosas existen y cómo se conectan',
+    icon: Shapes,
+    views: [
+      { id: 'schema', label: 'Tipos', icon: Shapes, key: 4 },
+      { id: 'relations', label: 'Relaciones', icon: GitFork, key: 5 },
+      { id: 'properties', label: 'Propiedades', icon: Library, key: 6 },
+    ],
+  },
+];
+
+/**
+ * Niveles de compactación de la barra, de menos a más: cuando el contenido no cabe se aplica el
+ * siguiente (useTopbarDensity).
+ */
+const DENSITY = {
+  /** El chat y los comentarios del grupo pasan al menú de la insignia del grupo. */
+  groupMenu: 1,
+  /** La búsqueda queda en un botón de icono. */
+  searchIcon: 2,
+  /** Sin los rótulos «Datos» y «Esquema»: el separador sigue dividiendo los dos grupos. */
+  viewGroupLabels: 3,
+  /** Las vistas, solo con iconos. */
+  viewIcons: 4,
+  /** «Datos» y «Esquema» pasan a ser dos menús. */
+  viewMenus: 5,
+  /** Nombre del proyecto más corto y menús de vistas solo con el icono. */
+  tight: 6,
+} as const;
+
+type MenuKind = 'projects' | 'settings' | 'group' | 'data' | 'schema';
+const MENU_LABELS: Record<MenuKind, string> = {
+  projects: 'Proyectos',
+  settings: 'Ajustes del proyecto',
+  group: 'Grupo',
+  data: 'Vistas de datos',
+  schema: 'Vistas del esquema',
 };
 
 export function Topbar({
@@ -96,7 +161,7 @@ export function Topbar({
   const { prompt, confirm } = useDialogs();
   const toast = useToast();
   const file = useRef<HTMLInputElement>(null);
-  const [menu, setMenu] = useState<{ kind: 'projects' | 'settings'; anchor: Anchor } | null>(null);
+  const [menu, setMenu] = useState<{ kind: MenuKind; anchor: Anchor } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const csvFile = useRef<HTMLInputElement>(null);
@@ -118,16 +183,88 @@ export function Topbar({
   const { groupOf, present, syncState, isShared } = useGroups();
   const group = groupOf(project.id);
   const [shareOpen, setShareOpen] = useState(false);
-  const [groupOpen, setGroupOpen] = useState<GroupInfo | null>(null);
+  const [groupOpen, setGroupOpen] = useState<{
+    group: GroupInfo;
+    mode: GroupDialogMode;
+    justCreated?: boolean;
+  } | null>(null);
   const openSharing = () => {
-    if (group) setGroupOpen(group);
+    if (group) setGroupOpen({ group, mode: 'manage' });
     else if (authStatus === 'signed-in') setShareOpen(true);
     else void signIn();
   };
   const closeMenu = useCallback(() => setMenu(null), []);
-  const toggleMenu = (kind: 'projects' | 'settings', target: HTMLElement) =>
+  const toggleMenu = (kind: MenuKind, target: HTMLElement) =>
     setMenu(menu?.kind === kind ? null : { kind, anchor: anchorOf(target) });
   const theme = THEME_CYCLE[preferences.theme];
+  const {
+    ref: barRef,
+    density,
+    overflowing,
+  } = useTopbarDensity<HTMLElement>(DENSITY.tight, `${project.name}|${group?.id ?? ''}|${authStatus}`);
+
+  // Paneles del grupo (chat y comentarios): botones propios en la barra o, sin sitio, en el menú del grupo.
+  const groupPanels = (['chat', 'comentarios'] as const).map(tab => {
+    const open = preferences.groupChatOpen && preferences.groupPanelTab === tab;
+    return {
+      tab,
+      open,
+      icon: tab === 'chat' ? MessagesSquare : MessageSquareText,
+      label: tab === 'chat' ? 'Chat del grupo' : 'Comentarios y sugerencias',
+      closeLabel: tab === 'chat' ? 'Cerrar el chat del grupo' : 'Cerrar los comentarios del proyecto',
+      toggle: () => {
+        setPreference('groupPanelTab', tab);
+        setPreference('groupChatOpen', !open);
+      },
+    };
+  });
+  const groupRole = group ? (group.isOwner ? 'Propiedad' : roleLabel(group.role, project.kind, group.roleLabels)) : '';
+  const groupEntries: MenuEntry[] = group
+    ? [
+        { section: `Grupo «${group.name}»` },
+        ...(density >= DENSITY.groupMenu
+          ? [
+              ...groupPanels.map(panel => ({
+                label: panel.label,
+                icon: panel.icon,
+                checked: panel.open,
+                onSelect: panel.toggle,
+              })),
+              'separator' as const,
+            ]
+          : []),
+        ...(canManageGroup(group)
+          ? [{ label: 'Invitar personas…', icon: UserPlus, onSelect: () => setGroupOpen({ group, mode: 'invite' }) }]
+          : []),
+        {
+          label: 'Gestionar el grupo…',
+          hint: groupRole,
+          icon: UserCog,
+          onSelect: () => setGroupOpen({ group, mode: 'manage' }),
+        },
+      ]
+    : [];
+  const viewEntries = (kind: 'data' | 'schema'): MenuEntry[] => {
+    const viewGroup = VIEW_GROUPS.find(g => g.id === kind)!;
+    return [
+      { section: viewGroup.label },
+      ...viewGroup.views.map(v => ({
+        label: v.label,
+        icon: v.icon,
+        hint: `Alt+${v.key}`,
+        checked: view === v.id,
+        onSelect: () => onView(v.id),
+      })),
+    ];
+  };
+  const menuEntries = (kind: MenuKind) =>
+    kind === 'projects'
+      ? projectEntries
+      : kind === 'settings'
+        ? settingsEntries
+        : kind === 'group'
+          ? groupEntries
+          : viewEntries(kind);
 
   const create = () => setNewProjectOpen(true);
   const rename = async () => {
@@ -199,7 +336,7 @@ export function Topbar({
     group
       ? {
           label: `Grupo «${group.name}»…`,
-          hint: group.isOwner ? 'Propiedad' : roleLabel(group.role, project.kind, group.roleLabels),
+          hint: groupRole,
           icon: Users,
           onSelect: openSharing,
         }
@@ -209,8 +346,6 @@ export function Topbar({
           icon: Users,
           onSelect: openSharing,
         },
-    // El asistente de IA responde preguntas en cualquier proyecto y, con tablas, diseña el esquema.
-    { label: 'Asistente de IA', icon: Sparkles, checked: preferences.aiPanelOpen, onSelect: toggleAi },
     'separator',
     { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
     {
@@ -237,7 +372,10 @@ export function Topbar({
   ];
 
   return (
-    <header className="topbar">
+    <header
+      ref={barRef}
+      className={`topbar ${overflowing ? 'overflowing' : ''} ${density >= DENSITY.tight ? 'tight' : ''}`}
+    >
       <div className="brand">
         <span className="brand-mark" aria-hidden>
           <Logo size={18} />
@@ -268,17 +406,17 @@ export function Topbar({
           <button
             type="button"
             className="group-chip"
-            title={`Proyecto del grupo «${group.name}». Tu rol: ${group.isOwner ? 'propiedad' : roleLabel(group.role, project.kind, group.roleLabels)}.${
+            aria-haspopup="menu"
+            aria-expanded={menu?.kind === 'group'}
+            title={`Proyecto del grupo «${group.name}». Tu rol: ${groupRole.toLowerCase()}.${
               present.length
                 ? ` ${present.length === 1 ? 'Otra persona lo tiene' : `${present.length} personas más lo tienen`} abierto ahora.`
                 : ''
             }`}
-            onClick={() => setGroupOpen(group)}
+            onClick={event => toggleMenu('group', event.currentTarget)}
           >
             <Users size={13} aria-hidden />
-            <span className="label">
-              {group.isOwner ? 'Propiedad' : roleLabel(group.role, project.kind, group.roleLabels)}
-            </span>
+            {density < DENSITY.tight && <span className="label">{groupRole}</span>}
             {!group.capabilities.edit && <Lock size={12} aria-label="solo lectura" />}
             {syncState !== 'ok' && (
               <CloudOff
@@ -296,33 +434,28 @@ export function Topbar({
                 +{present.length}
               </span>
             )}
+            <ChevronDown size={12} className="menu-caret" aria-hidden />
           </button>
         )}
         {group &&
-          (['chat', 'comentarios'] as const).map(tab => {
-            const open = preferences.groupChatOpen && preferences.groupPanelTab === tab;
-            const name = tab === 'chat' ? 'el chat del grupo' : 'los comentarios del proyecto';
-            return (
-              <IconButton
-                key={tab}
-                icon={tab === 'chat' ? MessagesSquare : MessageSquareText}
-                label={open ? `Cerrar ${name}` : tab === 'chat' ? 'Chat del grupo' : 'Comentarios y sugerencias'}
-                active={open}
-                aria-pressed={open}
-                onClick={() => {
-                  setPreference('groupPanelTab', tab);
-                  setPreference('groupChatOpen', !open);
-                }}
-              />
-            );
-          })}
+          density < DENSITY.groupMenu &&
+          groupPanels.map(panel => (
+            <IconButton
+              key={panel.tab}
+              icon={panel.icon}
+              label={panel.open ? panel.closeLabel : panel.label}
+              active={panel.open}
+              aria-pressed={panel.open}
+              onClick={panel.toggle}
+            />
+          ))}
       </div>
       {menu && (
         <Menu
           anchor={menu.anchor}
-          entries={menu.kind === 'projects' ? projectEntries : settingsEntries}
+          entries={menuEntries(menu.kind)}
           onClose={closeMenu}
-          label={menu.kind === 'projects' ? 'Proyectos' : 'Ajustes del proyecto'}
+          label={MENU_LABELS[menu.kind]}
         />
       )}
       {calendarOpen && <CalendarDialog onClose={() => setCalendarOpen(false)} />}
@@ -337,49 +470,72 @@ export function Topbar({
       {csv && <CsvImportDialog fileName={csv.name} table={csv.table} onClose={() => setCsv(null)} />}
       {kindOpen && <ProjectKindDialog onClose={() => setKindOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
-      <nav className="segmented labeled views-nav" aria-label="Vistas" data-tour="views">
-        <span className="segmented-label" title="Ver y revisar los datos del proyecto">
-          Datos
-        </span>
-        <button type="button" aria-pressed={view === 'map'} onClick={() => onView('map')}>
-          <Network size={15} aria-hidden />
-          <span className="label">Mapa</span>
-        </button>
-        <button type="button" aria-pressed={view === 'table'} onClick={() => onView('table')}>
-          <Table2 size={15} aria-hidden />
-          <span className="label">Tabla</span>
-        </button>
-        <button type="button" aria-pressed={view === 'timeline'} onClick={() => onView('timeline')}>
-          <CalendarRange size={15} aria-hidden />
-          <span className="label">Cronología</span>
-        </button>
-        <button type="button" aria-pressed={view === 'health'} onClick={() => onView('health')}>
-          <HeartPulse size={15} aria-hidden />
-          <span className="label">Salud</span>
-        </button>
-        <span className="views-divider" aria-hidden />
-        <span className="segmented-label" title="Definir qué cosas existen y cómo se conectan">
-          Esquema
-        </span>
-        <button type="button" aria-pressed={view === 'schema'} onClick={() => onView('schema')}>
-          <Shapes size={15} aria-hidden />
-          <span className="label">Tipos</span>
-        </button>
-        <button type="button" aria-pressed={view === 'relations'} onClick={() => onView('relations')}>
-          <GitFork size={15} aria-hidden />
-          <span className="label">Relaciones</span>
-        </button>
-        <button type="button" aria-pressed={view === 'properties'} onClick={() => onView('properties')}>
-          <Library size={15} aria-hidden />
-          <span className="label">Propiedades</span>
-        </button>
-      </nav>
+      {density >= DENSITY.viewMenus ? (
+        // Sin sitio, cada grupo de vistas es un menú que enseña la vista abierta.
+        <nav className="segmented views-nav views-menus" aria-label="Vistas" data-tour="views">
+          {VIEW_GROUPS.map(viewGroup => {
+            const current = viewGroup.views.find(v => v.id === view);
+            const Icon = current?.icon ?? viewGroup.icon;
+            const text = current ? current.label : viewGroup.label;
+            return (
+              <button
+                key={viewGroup.id}
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={menu?.kind === viewGroup.id}
+                aria-pressed={Boolean(current)}
+                aria-label={`${viewGroup.label}: ${current ? current.label : 'elegir vista'}`}
+                data-tooltip={density >= DENSITY.tight ? `${viewGroup.label}: ${text}` : undefined}
+                onClick={event => toggleMenu(viewGroup.id, event.currentTarget)}
+              >
+                <Icon size={15} aria-hidden />
+                {density < DENSITY.tight && <span className="label">{text}</span>}
+                <ChevronDown size={12} className="menu-caret" aria-hidden />
+              </button>
+            );
+          })}
+        </nav>
+      ) : (
+        <nav
+          className={`segmented labeled views-nav ${density >= DENSITY.viewGroupLabels ? 'no-group-labels' : ''} ${
+            density >= DENSITY.viewIcons ? 'icon-only' : ''
+          }`}
+          aria-label="Vistas"
+          data-tour="views"
+        >
+          {VIEW_GROUPS.map((viewGroup, index) => (
+            <Fragment key={viewGroup.id}>
+              {index > 0 && <span className="views-divider" aria-hidden />}
+              <span className="segmented-label" title={viewGroup.title}>
+                {viewGroup.label}
+              </span>
+              {viewGroup.views.map(v => (
+                <button
+                  key={v.id}
+                  type="button"
+                  aria-pressed={view === v.id}
+                  aria-label={density >= DENSITY.viewIcons ? v.label : undefined}
+                  data-tooltip={density >= DENSITY.viewIcons ? `${v.label} (Alt+${v.key})` : undefined}
+                  onClick={() => onView(v.id)}
+                >
+                  <v.icon size={15} aria-hidden />
+                  <span className="label">{v.label}</span>
+                </button>
+              ))}
+            </Fragment>
+          ))}
+        </nav>
+      )}
       <div className="spacer" />
-      <button type="button" className="search-button hide-narrow" onClick={onSearch}>
-        <Search size={14} aria-hidden />
-        <span>Buscar…</span>
-        <kbd>Ctrl K</kbd>
-      </button>
+      {density >= DENSITY.searchIcon ? (
+        <IconButton icon={Search} label="Buscar (Ctrl+K)" className="hide-narrow" onClick={onSearch} />
+      ) : (
+        <button type="button" className="search-button hide-narrow" onClick={onSearch}>
+          <Search size={14} aria-hidden />
+          <span>Buscar…</span>
+          <kbd>Ctrl K</kbd>
+        </button>
+      )}
       <div className="topbar-actions">
         <IconButton icon={Undo2} label="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={undo} />
         <IconButton icon={Redo2} label="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo} />
@@ -414,12 +570,19 @@ export function Topbar({
           onClose={() => setShareOpen(false)}
           onShared={created => {
             setShareOpen(false);
-            toast({ message: `«${project.name}» ya es del grupo «${created.name}». Invita a quien quieras.` });
-            setGroupOpen(created);
+            // Al crear el grupo solo se invita; el resto se gestiona después desde su menú.
+            setGroupOpen({ group: created, mode: 'invite', justCreated: true });
           }}
         />
       )}
-      {groupOpen && <GroupDialog group={groupOf(project.id) ?? groupOpen} onClose={() => setGroupOpen(null)} />}
+      {groupOpen && (
+        <GroupDialog
+          group={groupOf(project.id) ?? groupOpen.group}
+          mode={groupOpen.mode}
+          justCreated={groupOpen.justCreated}
+          onClose={() => setGroupOpen(null)}
+        />
+      )}
     </header>
   );
 }

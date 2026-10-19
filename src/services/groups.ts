@@ -112,6 +112,10 @@ export const GROUP_NAME_MAX = 150;
 export const roleLabel = (role: string, kind?: ProjectKind, custom?: Record<string, string> | null) =>
   custom?.[role] || ((kind && ROLE_NAMES_BY_KIND[kind]?.[role]) ?? ROLE_LABELS[role] ?? role);
 
+/** Quien tiene la propiedad y el rol responsable gestionan e invitan (lo aplica la plataforma). */
+export const canManageGroup = (group: Pick<GroupInfo, 'isOwner' | 'role'>) =>
+  group.isOwner || group.role === 'responsable';
+
 // --- API de Nodaria ---
 
 export const listGroups = (token: string) =>
