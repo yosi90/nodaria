@@ -15,7 +15,19 @@ import { DeleteSchemaModal } from './DeleteSchemaModal';
 import { KinshipEditor } from './KinshipEditor';
 import { AttributesCard } from './AttributesCard';
 import { SqlColumnsCard } from './SqlColumnsCard';
-import { isTableType, tableOrigin } from '../../domain/database';
+import {
+  DB_ENGINES,
+  engineLabel,
+  engineOf,
+  engineOrigin,
+  isDatabaseType,
+  isDocumentEngine,
+  isEmbeddedType,
+  isTableType,
+  tableOrigin,
+} from '../../domain/database';
+import type { DbEngine } from '../../domain/types';
+import { DocumentFieldsCard } from './DocumentFieldsCard';
 import { vocabulary } from '../../domain/projectKinds';
 
 export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDuplicated?: (id: string) => void }) {
@@ -32,8 +44,20 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
   const isEntity = schema.kind === 'entity';
   const words = vocabulary(project.kind);
   const isTable = isEntity && isTableType(project, schema.id);
+  const isDatabase = isEntity && isDatabaseType(project, schema.id);
+  const engine = isEntity ? engineOf(project, schema.id) : null;
   const tableFrom = isEntity ? tableOrigin(project, schema.id) : undefined;
   const inheritsTable = Boolean(tableFrom && tableFrom.id !== schema.id && !schema.table);
+  const engineFrom = isEntity ? engineOrigin(project, schema.id) : undefined;
+  const inheritedEngine = engineFrom && engineFrom.id !== schema.id ? engineFrom : undefined;
+  const embedded = isEntity && isEmbeddedType(project, schema.id);
+  const inheritsEmbedded = embedded && !schema.embedded;
+  // «Ninguna» quita la marca de base de datos; un motor la pone (o, si se hereda, cambia el motor de este tipo).
+  const chooseEngine = (value: string) => {
+    if (value === 'none') update({ table: false, dbEngine: null, embedded: false });
+    else if (value === 'inherit') update({ dbEngine: null });
+    else update({ table: inheritsTable ? schema.table : true, dbEngine: value as DbEngine });
+  };
 
   return (
     <section className="schema-editor">
@@ -101,19 +125,56 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                 </label>
               )}
               {isEntity && (
+                <label className="field">
+                  Base de datos
+                  <select
+                    value={!isDatabase ? 'none' : (schema.dbEngine ?? (inheritedEngine ? 'inherit' : 'sqlserver'))}
+                    disabled={inheritsTable && !isDatabase}
+                    onChange={event => chooseEngine(event.target.value)}
+                  >
+                    <option value="none" disabled={inheritsTable}>
+                      Ninguna
+                    </option>
+                    {inheritedEngine && (
+                      <option value="inherit">
+                        {engineLabel(inheritedEngine.dbEngine!)} (de «{inheritedEngine.name}»)
+                      </option>
+                    )}
+                    {DB_ENGINES.map(e => (
+                      <option key={e.id} value={e.id}>
+                        {e.label}
+                      </option>
+                    ))}
+                  </select>
+                  <small>
+                    {!isDatabase
+                      ? 'Si es una tabla, una colección o una etiqueta de una base: sus atributos son sus campos y sus nodos se ven en la disposición «Base de datos».'
+                      : inheritsTable
+                        ? `De base de datos por herencia de «${tableFrom!.name}». `
+                        : ''}
+                    {isDatabase &&
+                      (engine === 'sqlserver'
+                        ? 'Tabla de SQL Server: sus atributos son columnas.'
+                        : engine === 'neo4j'
+                          ? 'Etiqueta de Neo4j: sus atributos son propiedades y sus referencias, relaciones.'
+                          : `Colección de ${engineLabel(engine!)}: sus atributos son los campos del documento.`)}
+                  </small>
+                </label>
+              )}
+              {isDatabase && isDocumentEngine(engine) && (
                 <label className="check">
                   <input
                     type="checkbox"
-                    checked={isTable}
-                    disabled={inheritsTable}
-                    onChange={event => update({ table: event.target.checked })}
+                    checked={embedded}
+                    disabled={inheritsEmbedded}
+                    onChange={event => update({ embedded: event.target.checked })}
                   />
                   <span>
-                    Tabla de base de datos{' '}
+                    Subdocumento{' '}
                     <span className="field-hint">
-                      {inheritsTable
-                        ? `(heredado de «${tableFrom!.name}»)`
-                        : '(sus atributos son columnas; sus nodos se ven como tablas en la disposición «Base de datos»)'}
+                      {inheritsEmbedded
+                        ? '(heredado)'
+                        : '(sin colección propia: una referencia hacia él lo incrusta en el documento; una múltiple, como lista)'}
                     </span>
                   </span>
                 </label>
@@ -324,6 +385,11 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
         {isTable && (
           <div style={{ gridColumn: '1 / -1' }}>
             <SqlColumnsCard schema={schema} />
+          </div>
+        )}
+        {isDatabase && !isTable && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <DocumentFieldsCard schema={schema} />
           </div>
         )}
         {schema.kind === 'relationship' && schema.genealogical && (

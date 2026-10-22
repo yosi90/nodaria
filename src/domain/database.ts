@@ -1,6 +1,9 @@
 import { isFieldLink } from './library';
 import { allFields, getSchema, inheritedSchemas } from './selectors';
-import type { FieldDefinition, Node, Project, Schema } from './types';
+import type { DbEngine, FieldDefinition, Node, Project, Schema } from './types';
+import { deduceDocType, isDocType, isDocumentEngine, referenceTypeText, type ReferenceKind } from './dbEngines';
+
+export { DB_ENGINES, engineLabel, isDocumentEngine } from './dbEngines';
 
 /*
  * Bases de datos. Un tipo de entidad marcado como tabla (`Schema.table`, heredable) dibuja sus nodos
@@ -72,6 +75,11 @@ export interface SqlColumn {
    * del atributo; en una preforma o un atributo heredado se cambia solo en este tipo, como lo demás.
    */
   description?: string;
+  /**
+   * En MongoDB, Firestore y Neo4j: el tipo del campo en ese motor (`dbEngines.ts`, `DOC_TYPES`); sin él,
+   * o si no vale en el motor del tipo, se deduce del atributo. En SQL Server no se usa.
+   */
+  docType?: string;
 }
 
 /** Hasta dónde se guarda la descripción de una columna. */
@@ -190,25 +198,59 @@ export function parseSqlAnnotation(text: unknown): SqlDataType | null {
   return first ? null : sqlType(name);
 }
 
-/** Si el tipo (o alguno de sus ancestros) es una tabla. */
-export function isTableType(p: Project, typeId: string) {
+/**
+ * Si el tipo (o alguno de sus ancestros) es de base de datos, de cualquier motor: el check de siempre
+ * (`Schema.table`). Sus nodos se dibujan en la disposición «Base de datos».
+ */
+export function isDatabaseType(p: Project, typeId: string) {
   return inheritedSchemas(p, typeId).some(s => s.kind === 'entity' && s.table);
 }
-/** Ancestro (o el propio tipo) que lo marca como tabla. */
+/** Motor de un tipo de base de datos: el del tipo o el ancestro más cercano que lo fije; si ninguno, SQL Server. */
+export function engineOf(p: Project, typeId: string): DbEngine | null {
+  if (!isDatabaseType(p, typeId)) return null;
+  const chain = inheritedSchemas(p, typeId);
+  for (let i = chain.length - 1; i >= 0; i--) if (chain[i].dbEngine) return chain[i].dbEngine;
+  return 'sqlserver';
+}
+/** Tipo (él mismo o un ancestro) que fija el motor, si alguno lo fija. */
+export const engineOrigin = (p: Project, typeId: string): Schema | undefined =>
+  [...inheritedSchemas(p, typeId)].reverse().find(s => s.dbEngine);
+/** Si el tipo es una tabla de SQL Server (todo lo de SQL: columnas, claves, script, la IA de tablas). */
+export function isTableType(p: Project, typeId: string) {
+  return engineOf(p, typeId) === 'sqlserver';
+}
+/** Subdocumento de MongoDB o Firestore: se incrusta en otros, sin colección propia. */
+export function isEmbeddedType(p: Project, typeId: string) {
+  return isDocumentEngine(engineOf(p, typeId)) && inheritedSchemas(p, typeId).some(s => s.embedded);
+}
+/** Ancestro (o el propio tipo) que lo marca como de base de datos. */
 export const tableOrigin = (p: Project, typeId: string): Schema | undefined =>
   inheritedSchemas(p, typeId).find(s => s.kind === 'entity' && s.table);
+/** Tablas de SQL Server. */
 export const tableTypes = (p: Project) => p.schemas.filter(s => s.kind === 'entity' && isTableType(p, s.id));
+/** Tipos de base de datos de cualquier motor. */
+export const databaseTypes = (p: Project) => p.schemas.filter(s => s.kind === 'entity' && isDatabaseType(p, s.id));
+/** Los motores que usa el proyecto. */
+export const projectEngines = (p: Project) =>
+  new Set(
+    databaseTypes(p)
+      .map(s => engineOf(p, s.id)!)
+      .filter(Boolean),
+  );
 export const isTableNode = (p: Project, node: Node) => isTableType(p, node.typeId);
 
-/** Metadatos por defecto de un atributo que aún no los tiene. */
-export function defaultSqlColumn(field: FieldDefinition): SqlColumn {
+/**
+ * Metadatos por defecto de un atributo que aún no los tiene. En SQL una referencia múltiple no es una
+ * columna (necesita una tabla intermedia); en un documento es una lista y sí cuenta.
+ */
+export function defaultSqlColumn(field: FieldDefinition, engine: DbEngine = 'sqlserver'): SqlColumn {
   return {
     type: null,
     primaryKey: false,
     nullable: !field.required,
     unique: false,
     identity: false,
-    excluded: field.isTitle || field.type === 'computed' || field.type === 'nodeRefs',
+    excluded: field.isTitle || field.type === 'computed' || (field.type === 'nodeRefs' && engine === 'sqlserver'),
   };
 }
 export const sqlColumnOf = (field: FieldDefinition): SqlColumn => field.sql ?? defaultSqlColumn(field);
@@ -248,6 +290,7 @@ export function readSqlColumn(raw: unknown): SqlColumn | null {
   if (action(r.onUpdate)) column.onUpdate = action(r.onUpdate);
   if (typeof r.description === 'string' && r.description.trim())
     column.description = r.description.trim().slice(0, COLUMN_DESCRIPTION_MAX);
+  if (typeof r.docType === 'string' && r.docType.trim()) column.docType = r.docType.trim().slice(0, 40);
   return column;
 }
 
@@ -316,6 +359,16 @@ export interface TableColumn {
   /** Es una referencia a un nodo: clave foránea cuando el destino es una tabla. */
   reference: boolean;
   origin: ColumnOrigin;
+  /** Motores que no son SQL: tipo del campo en ese motor y si se deduce. */
+  docType?: string;
+  docDeduced?: boolean;
+  /** Referencias en motores que no son SQL: el tipo destino y si se incrusta o guarda su id. */
+  target?: Schema;
+  refKind?: ReferenceKind | null;
+  /** La referencia apunta a otro motor: guarda el id como texto y la mantiene la aplicación. */
+  crossEngine?: boolean;
+  /** Texto del tipo en la tarjeta («string», «objectId → Cliente», «[Dirección]»). */
+  typeText?: string;
 }
 
 /** Tipo tabla al que apuntaría una referencia: el primero admitido que sea tabla, o el del nodo del valor inicial. */
@@ -358,7 +411,15 @@ export function columnSqlIn(p: Project, typeId: string, field: FieldDefinition):
     const override = chain[i].sqlOverrides?.[field.id];
     if (override) return override;
   }
-  return sqlColumnOf(field);
+  return field.sql ?? defaultSqlColumn(field, engineOf(p, typeId) ?? 'sqlserver');
+}
+
+/** El tipo de base de datos al que apunta una referencia (el primero admitido que lo sea, o el del valor inicial). */
+export function referencedDatabaseType(p: Project, field: FieldDefinition): Schema | undefined {
+  const admitted = field.referenceTypeIds.map(id => getSchema(p, id)).find(s => s && isDatabaseType(p, s.id));
+  if (admitted) return admitted;
+  const node = typeof field.defaultValue === 'string' ? p.nodes.find(n => n.id === field.defaultValue) : undefined;
+  return node && isDatabaseType(p, node.typeId) ? getSchema(p, node.typeId) : undefined;
 }
 /** Tipo que fija los metadatos SQL de un atributo en `typeId` (él mismo o un ancestro), si lo hay. */
 export function sqlOverrideOwner(p: Project, typeId: string, fieldId: string): Schema | undefined {
@@ -366,16 +427,47 @@ export function sqlOverrideOwner(p: Project, typeId: string, fieldId: string): S
 }
 
 function columnsOf(p: Project, typeId: string, seen: Set<string>): TableColumn[] {
+  const engine = engineOf(p, typeId);
   return allFields(p, typeId).map(field => {
     const sql = columnSqlIn(p, typeId, field);
-    return {
+    const reference = field.type === 'nodeRef' || field.type === 'nodeRefs';
+    const column: TableColumn = {
       field,
       sql,
       type: columnType(p, field, sql, seen),
       deduced: !sql.type,
-      reference: field.type === 'nodeRef' || field.type === 'nodeRefs',
+      reference,
       origin: originOf(p, typeId, field),
     };
+    // En los motores que no son SQL, el tipo del campo en ese motor y, en las referencias, a qué apuntan.
+    if (engine && engine !== 'sqlserver') {
+      const target = reference ? referencedDatabaseType(p, field) : undefined;
+      const kind: ReferenceKind | null = !target ? null : isEmbeddedType(p, target.id) ? 'embedded' : 'reference';
+      // Una referencia a otra base guarda su id como texto: ni objectId ni referencia de Firestore la entienden.
+      const cross = kind === 'reference' && engineOf(p, target!.id) !== engine;
+      const many = field.type === 'nodeRefs';
+      column.docType = isDocType(engine, sql.docType)
+        ? sql.docType
+        : cross
+          ? engine === 'neo4j'
+            ? many
+              ? 'List<String>'
+              : 'String'
+            : many
+              ? 'array'
+              : 'string'
+          : deduceDocType(engine, field, kind);
+      column.docDeduced = !isDocType(engine, sql.docType);
+      column.target = target;
+      column.refKind = kind;
+      column.crossEngine = cross;
+      column.typeText = !reference
+        ? column.docType
+        : cross
+          ? `${many ? `[${engine === 'neo4j' ? 'String' : 'string'}]` : engine === 'neo4j' ? 'String' : 'string'} → ${target!.name} (otra base)`
+          : referenceTypeText(engine, kind, target?.name, many);
+    }
+    return column;
   });
 }
 function primaryKey(p: Project, typeId: string, seen: Set<string>) {
@@ -394,8 +486,9 @@ export const columnDescription = (c: TableColumn) => (c.sql.description ?? c.fie
 export const tableHasDescriptions = (p: Project, typeId: string) =>
   tableColumns(p, typeId).some(c => columnDescription(c) !== '');
 
-/** Texto de una columna: «int IDENTITY · PK», «nvarchar(50) · NOT NULL», «date». */
+/** Texto de una columna: «int IDENTITY · PK», «nvarchar(50) · NOT NULL», «date»; en documentos, «string · obligatorio». */
 export function columnText(c: TableColumn) {
+  if (c.typeText !== undefined) return c.sql.nullable ? c.typeText : `${c.typeText} · obligatorio`;
   const type = sqlTypeText(c.type) + (c.sql.identity ? ' IDENTITY' : '');
   return c.sql.primaryKey ? `${type} · PK` : c.sql.nullable ? type : `${type} · NOT NULL`;
 }
@@ -412,10 +505,11 @@ export function columnDefinitions(p: Project, typeId: string): Map<string, strin
   if (!byType) definitionCache.set(p, (byType = new Map()));
   let result = byType.get(typeId);
   if (!result) {
+    // Las referencias a otra tabla o colección son valores (a cuál apunta); un subdocumento incrustado, no.
     result = new Map(
-      isTableType(p, typeId)
+      isDatabaseType(p, typeId)
         ? tableColumns(p, typeId)
-            .filter(c => !c.reference)
+            .filter(c => !c.reference || c.refKind === 'embedded')
             .map(c => [c.field.id, columnText(c)])
         : [],
     );
@@ -457,6 +551,49 @@ export function foreignKeyLinks(p: Project): ForeignKeyLink[] {
             fieldId: c.field.id,
             targetId,
             targetFieldId: keys.length === 1 ? keys[0].field.id : null,
+          });
+        });
+      });
+  });
+  return result;
+}
+
+/** Una referencia dibujada entre nodos de base de datos de cualquier motor (también entre motores distintos). */
+export interface DatabaseLink extends ForeignKeyLink {
+  /** Los dos nodos son de motores distintos: la referencia la mantiene la aplicación, no una base. */
+  crossEngine: boolean;
+}
+
+/**
+ * Las referencias que se dibujan en la disposición «Base de datos», de cualquier motor: las claves foráneas
+ * de SQL y las referencias por id de los documentos y de Neo4j, a partir de los valores de cada nodo. Un
+ * subdocumento incrustado no es una línea: va dentro de la tarjeta.
+ */
+export function databaseLinks(p: Project): DatabaseLink[] {
+  const columns = new Map<string, TableColumn[]>();
+  const columnsFor = (typeId: string) => {
+    if (!columns.has(typeId)) columns.set(typeId, isDatabaseType(p, typeId) ? tableColumns(p, typeId) : []);
+    return columns.get(typeId)!;
+  };
+  const nodes = new Map(p.nodes.map(n => [n.id, n]));
+  const result: DatabaseLink[] = [];
+  p.nodes.forEach(node => {
+    const engine = engineOf(p, node.typeId);
+    columnsFor(node.typeId)
+      .filter(c => c.reference && c.refKind !== 'embedded')
+      .forEach(c => {
+        const raw = node.values[c.field.id];
+        const ids = typeof raw === 'string' ? [raw] : Array.isArray(raw) ? raw : [];
+        ids.forEach(targetId => {
+          const target = nodes.get(targetId);
+          if (!target || !isDatabaseType(p, target.typeId) || isEmbeddedType(p, target.typeId)) return;
+          const keys = isTableType(p, target.typeId) ? columnsFor(target.typeId).filter(k => k.sql.primaryKey) : [];
+          result.push({
+            sourceId: node.id,
+            fieldId: c.field.id,
+            targetId,
+            targetFieldId: keys.length === 1 ? keys[0].field.id : null,
+            crossEngine: engineOf(p, target.typeId) !== engine,
           });
         });
       });

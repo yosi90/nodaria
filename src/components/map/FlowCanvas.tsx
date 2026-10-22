@@ -76,7 +76,21 @@ import { LensMenu } from './LensMenu';
 import { imageClasses, nodePortrait } from '../../domain/portrait';
 import { NodeCard, type CardNode } from './NodeCard';
 import { forceFrameAfterMove, forceFrameKey } from './forceFrame';
-import { foreignKeyLinks, isTableType, tableColumns, tableTypes } from '../../domain/database';
+import {
+  databaseLinks,
+  databaseTypes,
+  engineLabel,
+  engineOf,
+  isDatabaseType,
+  isEmbeddedType,
+  projectEngines,
+} from '../../domain/database';
+
+/** Qué es el nodo en su base, para la cabecera de la tarjeta (solo si no es una tabla corriente). */
+function containerOf(p: Project, typeId: string): string | undefined {
+  if (isEmbeddedType(p, typeId)) return 'subdocumento';
+  return undefined;
+}
 import { ForeignKeyEdge, type ForeignKeyEdgeType } from './ForeignKeyEdge';
 import { tableCardColumns, tableHeight, tableWidth } from './tableCard';
 import { sqlScript } from '../../domain/sqlScript';
@@ -121,7 +135,7 @@ const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: st
     mode: 'database',
     label: 'Base de datos',
     icon: Database,
-    hint: 'Los nodos de tipos tabla, con sus columnas y claves foráneas, como un diagrama de SQL Server; los demás, debajo',
+    hint: 'Las tablas, colecciones y etiquetas de tus bases (SQL Server, MongoDB, Firestore, Neo4j) con sus campos y referencias, en un solo diagrama; los demás nodos, debajo',
   },
 ];
 
@@ -322,9 +336,12 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   }, []);
   // Disposición «Base de datos»: los nodos de tipos tabla se dibujan como tablas y sus referencias a
   // otras tablas como claves foráneas (`src/domain/database.ts`).
-  const hasTables = useMemo(() => tableTypes(project).length > 0, [project]);
+  // La disposición «Base de datos» es común a todos los motores (SQL Server, MongoDB, Firestore, Neo4j).
+  const hasTables = useMemo(() => databaseTypes(project).length > 0, [project]);
   const databaseMode = view.layout === 'database';
-  const keyLinks = useMemo(() => (databaseMode ? foreignKeyLinks(project) : []), [databaseMode, project]);
+  const keyLinks = useMemo(() => (databaseMode ? databaseLinks(project) : []), [databaseMode, project]);
+  // Con más de un motor, cada tarjeta dice el suyo.
+  const mixedEngines = useMemo(() => projectEngines(project).size > 1, [project]);
   const keyFields = useMemo(() => {
     const result = new Map<string, Set<string>>();
     keyLinks.forEach(l => result.set(l.sourceId, (result.get(l.sourceId) ?? new Set()).add(l.fieldId)));
@@ -531,9 +548,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         const portrait = nodePortrait(project, n);
         const position = overrides[n.id] ?? n.positions[view.layout] ?? autoPositions.get(n.id) ?? { x: 0, y: 0 };
         const table =
-          databaseMode && isTableType(project, n.typeId)
+          databaseMode && isDatabaseType(project, n.typeId)
             ? tableCardColumns(project, n, keyFields.get(n.id))
             : undefined;
+        const engine = table ? engineOf(project, n.typeId) : null;
         const compact = compactIds.has(n.id);
         const expanded = compact && n.id === hoverOnMap;
         const fullHeight = cardHeight(content.lines.length);
@@ -564,6 +582,9 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             badges: content.badges,
             lines: content.lines,
             table,
+            // El motor en la cabecera: siempre si no es SQL Server, y en todas si el proyecto mezcla motores.
+            engineTag: engine && (mixedEngines || engine !== 'sqlserver') ? engineLabel(engine) : undefined,
+            container: engine ? containerOf(project, n.typeId) : undefined,
           },
         };
       });
@@ -575,6 +596,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     autoPositions,
     databaseMode,
     keyFields,
+    mixedEngines,
     selectedNodeId,
     pickedSet,
     unpin,
@@ -621,14 +643,13 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
     const visibleRefs = refLinks.filter(l => visibleIds.has(l.sourceId) && visibleIds.has(l.targetId));
     const shownRefs = visibleRefs.filter(l => !keyIds.has(refId(l)));
     const rows = new Map<string, string[]>();
+    // La fila de un campo en su tarjeta; sin campo, la clave: la PK simple en SQL, el `_id` en MongoDB, o la cabecera.
     const rowOf = (nodeId: string, fieldId: string | null) => {
-      const typeId = getNode(project, nodeId)?.typeId ?? '';
-      if (!rows.has(typeId))
-        rows.set(
-          typeId,
-          tableColumns(project, typeId).map(c => c.field.id),
-        );
-      return fieldId ? rows.get(typeId)!.indexOf(fieldId) : -1;
+      const node = getNode(project, nodeId);
+      const typeId = node?.typeId ?? '';
+      if (!rows.has(typeId)) rows.set(typeId, node ? tableCardColumns(project, node).map(c => c.id) : []);
+      const ids = rows.get(typeId)!;
+      return fieldId ? ids.indexOf(fieldId) : ids[0] === '_id' ? 0 : -1;
     };
     const lanes = new Map<string, number>();
     const visibleRefIds = new Set(visibleRefs.map(refId));
@@ -639,9 +660,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
         lanes.set(k.targetId, lane + 1);
         const color = getSchema(project, getNode(project, k.targetId)?.typeId ?? '')?.color ?? '#888';
         // Cardinalidad: una FK UNIQUE (o que es por sí sola la clave primaria) es uno a uno; con nulos, opcional.
-        const sourceColumns = tableColumns(project, getNode(project, k.sourceId)?.typeId ?? '');
-        const fk = sourceColumns.find(c => c.field.id === k.fieldId);
-        const soleKey = Boolean(fk?.sql.primaryKey) && sourceColumns.filter(c => c.sql.primaryKey).length === 1;
+        const sourceNode = getNode(project, k.sourceId);
+        const sourceColumns = sourceNode ? tableCardColumns(project, sourceNode) : [];
+        const fk = sourceColumns.find(c => c.id === k.fieldId);
+        const soleKey = Boolean(fk?.primaryKey) && sourceColumns.filter(c => c.primaryKey).length === 1;
         result.push({
           id: refId(k),
           type: 'foreignKey',
@@ -652,8 +674,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
             kind: 'foreignKey',
             label: refFields.get(k.fieldId)?.name ?? 'Clave foránea',
             color,
-            oneToOne: Boolean(fk?.sql.unique) || soleKey,
-            optional: Boolean(fk?.sql.nullable) && !fk?.sql.primaryKey,
+            oneToOne: Boolean(fk?.unique) || soleKey,
+            optional: Boolean(fk?.nullable) && !fk?.primaryKey,
+            // Entre bases distintas la referencia la guarda la aplicación: se dibuja discontinua.
+            crossEngine: k.crossEngine,
             sourceRow: rowOf(k.sourceId, k.fieldId),
             targetRow: rowOf(k.targetId, k.targetFieldId),
             // Alterna a un lado y otro del centro: 0, 1, −1, 2, −2…
@@ -1064,7 +1088,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                     : mode === 'genealogy' && !genealogySchemas.length
                       ? 'Genealogía: generaciones en filas según el parentesco. Define primero un tipo de relación marcado como «Genealógica» en «Relaciones».'
                       : mode === 'database' && !hasTables
-                        ? 'Base de datos: dibuja como tablas los nodos de los tipos marcados como «Tabla de base de datos». Marca primero un tipo en «Tipos».'
+                        ? 'Base de datos: dibuja las tablas, colecciones y etiquetas de los tipos que tienen una base de datos. Elige primero la base de un tipo en «Tipos».'
                         : hint
                 }
                 data-tooltip-wide
@@ -1078,7 +1102,10 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                     return;
                   }
                   if (mode === 'database' && !hasTables) {
-                    toast({ message: 'Marca primero un tipo como «Tabla de base de datos» en «Tipos».' });
+                    toast({
+                      message:
+                        'Elige primero en «Tipos» la base de datos de algún tipo (SQL Server, MongoDB, Firestore o Neo4j).',
+                    });
                     return;
                   }
                   switchLayout(mode);

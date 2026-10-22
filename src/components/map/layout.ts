@@ -3,8 +3,8 @@ import { hierarchy, tree, type HierarchyNode } from 'd3-hierarchy';
 import { kinshipGraph, kinshipStructureLink } from '../../domain/kinship';
 import { structureChildren, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Node, Position, Project } from '../../domain/types';
-import { foreignKeyLinks, isTableType, tableColumns, tableHasDescriptions } from '../../domain/database';
-import { TABLE_W, tableHeight, tableWidth } from './tableCard';
+import { databaseLinks, isDatabaseType } from '../../domain/database';
+import { TABLE_W, tableCardColumns, tableHeight, tableWidth } from './tableCard';
 
 /*
  * Disposiciones automáticas del lienzo. Devuelven la esquina superior izquierda de cada nodo.
@@ -772,22 +772,20 @@ export function databaseLayout(
   h = NODE_H,
 ): Map<string, Position> {
   const result = new Map<string, Position>();
-  const tables = p.nodes.filter(n => isTableType(p, n.typeId));
+  // Todos los nodos de base de datos, de cualquier motor, en el mismo diagrama.
+  const tables = p.nodes.filter(n => isDatabaseType(p, n.typeId));
   const ids = new Set(tables.map(n => n.id));
   const heights = new Map<string, number>();
   const widths = new Map<string, number>();
-  const columnCount = new Map<string, number>();
-  const described = new Map<string, boolean>();
+  const rows = new Map<string, ReturnType<typeof tableCardColumns>>();
   tables.forEach(n => {
-    if (!columnCount.has(n.typeId)) {
-      columnCount.set(n.typeId, tableColumns(p, n.typeId).length);
-      described.set(n.typeId, tableHasDescriptions(p, n.typeId));
-    }
-    heights.set(n.id, tableHeight(columnCount.get(n.typeId)!));
-    widths.set(n.id, tableWidth(described.get(n.typeId)!));
+    if (!rows.has(n.typeId)) rows.set(n.typeId, tableCardColumns(p, n));
+    const card = rows.get(n.typeId)!;
+    heights.set(n.id, tableHeight(card.length));
+    widths.set(n.id, tableWidth(card.some(c => c.description)));
   });
   const pairs = new Map<string, { a: string; b: string }>();
-  foreignKeyLinks(p).forEach(l => {
+  databaseLinks(p).forEach(l => {
     if (!ids.has(l.sourceId) || !ids.has(l.targetId) || l.sourceId === l.targetId) return;
     pairs.set([l.sourceId, l.targetId].sort().join('|'), { a: l.sourceId, b: l.targetId });
   });
@@ -795,7 +793,7 @@ export function databaseLayout(
 
   // Semilla: columnas según la profundidad de las claves (las referenciadas a la izquierda).
   const rank = new Map(tables.map(n => [n.id, 0]));
-  const directed = foreignKeyLinks(p).filter(
+  const directed = databaseLinks(p).filter(
     l => ids.has(l.sourceId) && ids.has(l.targetId) && l.sourceId !== l.targetId,
   );
   for (let pass = 0; pass < tables.length; pass++) {

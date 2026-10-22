@@ -110,7 +110,16 @@ export interface Schema {
   fieldOrder: string[];
   /** Metadatos SQL de atributos heredados o preformas solo para este tipo y sus subtipos. */
   sqlOverrides: Record<string, SqlColumn>;
+  /**
+   * Motor de la base de datos cuando el tipo es de base de datos (`table`): `null` = el del ancestro que lo
+   * fije o, si ninguno, SQL Server (`src/domain/database.ts`, `engineOf`).
+   */
+  dbEngine: DbEngine | null;
+  /** En MongoDB y Firestore: subdocumento que se incrusta en otros, sin colección propia (lo heredan sus subtipos). */
+  embedded: boolean;
 }
+/** Motores de base de datos que Nodaria sabe dibujar y exportar. */
+export type DbEngine = 'sqlserver' | 'mongodb' | 'firestore' | 'neo4j';
 /** Género de un nodo: masculino, femenino, neutro u otro, o sin definir. */
 export type Gender = 'm' | 'f' | 'n' | '';
 /** Término del vocabulario de parentesco de un proyecto. */

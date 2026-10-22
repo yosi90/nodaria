@@ -41,7 +41,7 @@ export const PROJECT_KINDS: {
   worldCalendar?: boolean;
 }[] = [
   { id: 'general', label: 'General', description: 'Ejemplos neutros: personas, productos y actividades.' },
-  { id: 'database', label: 'Base de datos', description: 'Tablas, columnas y claves foráneas.' },
+  { id: 'database', label: 'Base de datos', description: 'Tablas, colecciones, campos y referencias.' },
   { id: 'novel', label: 'Novela o guion', description: 'Personajes, capítulos y escenas.', worldCalendar: true },
   {
     id: 'rpg',

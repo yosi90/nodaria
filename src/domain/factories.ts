@@ -68,6 +68,8 @@ export function createSchema(name: string, kind: SchemaKind): Schema {
     hiddenFieldIds: [],
     fieldOrder: [],
     sqlOverrides: {},
+    dbEngine: null,
+    embedded: false,
   };
 }
 export function createField(): FieldDefinition {

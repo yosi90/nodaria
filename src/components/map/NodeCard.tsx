@@ -46,6 +46,10 @@ export interface NodeCardData extends Record<string, unknown> {
   scale?: number;
   /** En la disposición «Base de datos», las columnas de un nodo cuyo tipo es una tabla. */
   table?: TableCardColumn[];
+  /** Motor de la base (MongoDB, Firestore, Neo4j…), en la cabecera de la tarjeta de base de datos. */
+  engineTag?: string;
+  /** Qué es en su base cuando no es lo de siempre («subdocumento»). */
+  container?: string;
 }
 
 export type CardNode = FlowNode<NodeCardData, 'card'>;
@@ -210,6 +214,9 @@ function TableCard({
         </span>
         <strong title={data.label}>{data.label}</strong>
         {data.typeName !== data.label && <small>{data.typeName}</small>}
+        {(data.engineTag || data.container) && (
+          <span className="node-table-engine">{[data.engineTag, data.container].filter(Boolean).join(' · ')}</span>
+        )}
         {data.incomplete && (
           <span className="node-mark warning" title="Faltan atributos obligatorios">
             <TriangleAlert size={12} />
@@ -221,7 +228,8 @@ function TableCard({
           columns.map(c => (
             <div
               key={c.id}
-              className={`node-table-row ${c.primaryKey ? 'pk' : ''}`}
+              className={`node-table-row ${c.primaryKey ? 'pk' : ''} ${c.depth ? 'nested' : ''}`}
+              style={c.depth ? ({ '--depth': c.depth } as CSSProperties) : undefined}
               title={`${c.label}: ${c.type}${c.nullable ? ' NULL' : ' NOT NULL'}${c.unique ? ' UNIQUE' : ''}${c.description ? `\n${c.description}` : ''}`}
             >
               <span className="col-key" aria-hidden>

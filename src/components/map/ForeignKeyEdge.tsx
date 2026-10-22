@@ -18,6 +18,8 @@ export interface ForeignKeyEdgeData extends Record<string, unknown> {
   targetRow: number;
   /** Separación respecto a otras claves que llegan a la misma tabla. */
   lane: number;
+  /** Entre nodos de motores distintos: la referencia la guarda la aplicación (línea discontinua). */
+  crossEngine?: boolean;
 }
 
 export type ForeignKeyEdgeType = Edge<ForeignKeyEdgeData, 'foreignKey'>;
@@ -49,7 +51,7 @@ export const ForeignKeyEdge = memo(function ForeignKeyEdge({
       <BaseEdge
         id={id}
         path={route.d}
-        className="edge-flow foreign-key"
+        className={`edge-flow foreign-key ${data.crossEngine ? 'cross-engine' : ''}`}
         style={{ stroke: data.color }}
         interactionWidth={12}
       />

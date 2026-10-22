@@ -1,4 +1,4 @@
-import { columnDescription, tableColumns, sqlTypeText } from '../../domain/database';
+import { columnDescription, engineOf, tableColumns, sqlTypeText, type TableColumn } from '../../domain/database';
 import type { Node, Project } from '../../domain/types';
 import type { Box } from './edgeGeometry';
 
@@ -33,9 +33,59 @@ export interface TableCardColumn {
   identity: boolean;
   /** Qué guarda la columna (la suya o la del atributo); vacía si no tiene. */
   description: string;
+  /** Nivel dentro de un subdocumento incrustado (0 = campo del documento). */
+  depth: number;
 }
 
+/** Hasta qué nivel se despliegan los subdocumentos incrustados en la tarjeta. */
+const MAX_DEPTH = 4;
+
+/**
+ * Las filas de la tarjeta de un nodo de base de datos. En SQL, sus columnas. En MongoDB, el `_id` y sus
+ * campos; en Firestore, sus campos; en Neo4j, sus propiedades y relaciones. Un subdocumento incrustado se
+ * despliega debajo de su campo, sangrado, con sus propios campos (sin repetir un tipo ya abierto).
+ */
 export function tableCardColumns(p: Project, node: Node, foreignKeys: Set<string> = new Set()): TableCardColumn[] {
+  const engine = engineOf(p, node.typeId);
+  if (engine && engine !== 'sqlserver') {
+    const rows: TableCardColumn[] = [];
+    if (engine === 'mongodb')
+      rows.push({
+        id: '_id',
+        name: '_id',
+        label: '_id',
+        type: 'objectId',
+        primaryKey: true,
+        foreignKey: false,
+        unique: true,
+        nullable: false,
+        identity: false,
+        description: '',
+        depth: 0,
+      });
+    const add = (columns: TableColumn[], depth: number, open: Set<string>, prefix: string) =>
+      columns.forEach(c => {
+        const id = prefix ? `${prefix}/${c.field.id}` : c.field.id;
+        rows.push({
+          id,
+          name: c.field.key || c.field.label,
+          label: c.field.label,
+          type: c.typeText ?? c.docType ?? '',
+          primaryKey: false,
+          foreignKey: depth === 0 && c.refKind === 'reference' && foreignKeys.has(c.field.id),
+          unique: c.sql.unique,
+          nullable: c.sql.nullable,
+          identity: false,
+          description: columnDescription(c),
+          depth,
+        });
+        const target = c.refKind === 'embedded' ? c.target : undefined;
+        if (target && depth < MAX_DEPTH && !open.has(target.id))
+          add(tableColumns(p, target.id), depth + 1, new Set([...open, target.id]), id);
+      });
+    add(tableColumns(p, node.typeId), 0, new Set([node.typeId]), '');
+    return rows;
+  }
   return tableColumns(p, node.typeId).map(c => ({
     id: c.field.id,
     name: c.field.key || c.field.label,
@@ -47,6 +97,7 @@ export function tableCardColumns(p: Project, node: Node, foreignKeys: Set<string
     nullable: c.sql.nullable,
     identity: c.sql.identity,
     description: columnDescription(c),
+    depth: 0,
   }));
 }
 

@@ -5,7 +5,7 @@ import { normalizeAgenda } from '../domain/agenda';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
 import { supportsNonNegative } from '../domain/valueConstraints';
-import { readSqlColumn, readSqlOverrides } from '../domain/database';
+import { DB_ENGINES, readSqlColumn, readSqlOverrides } from '../domain/database';
 import { PROJECT_KINDS } from '../domain/projectKinds';
 import type {
   FieldDefinition,
@@ -32,6 +32,9 @@ import type {
  *   ocultos, orden de atributos y metadatos SQL propios (`hiddenFieldIds`, `fieldOrder`, `sqlOverrides`).
  * - v8: agenda del proyecto (`agenda`, vacía por defecto) y ajustes de la vista «Calendario»
  *   (`calendar.settings`). No cambia ningún dato existente.
+ * - v9: bases no relacionales: motor por tipo (`Schema.dbEngine`, `null` = SQL Server como hasta ahora),
+ *   subdocumentos (`Schema.embedded`) y tipo de campo de documento (`SqlColumn.docType`). Las tablas de
+ *   antes siguen siendo de SQL Server.
  */
 
 type RawNode = Omit<Node, 'positions'> & { positions?: Node['positions']; position?: Position | null };
@@ -146,6 +149,8 @@ function normalizeProject(project: RawProject): Project {
       hiddenFieldIds: Array.isArray(s.hiddenFieldIds) ? s.hiddenFieldIds : [],
       fieldOrder: Array.isArray(s.fieldOrder) ? s.fieldOrder : [],
       sqlOverrides: readSqlOverrides(s.sqlOverrides),
+      dbEngine: DB_ENGINES.some(e => e.id === s.dbEngine) ? s.dbEngine! : null,
+      embedded: s.kind === 'entity' && s.embedded === true,
     })),
     fieldLibrary: (project.fieldLibrary || []).map(f => ({
       ...f,

@@ -314,3 +314,40 @@
   font-size: 9px;
   font-weight: 600;
 }
+
+/* Bases no relacionales (ROADMAP_NOSQL.md): el motor en la cabecera, subdocumentos sangrados y
+ * referencias entre motores distintos en discontinua (las guarda la aplicación, no una base). */
+.node-table-engine {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--type-color) 18%, var(--node-bg));
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.node-table-head small + .node-table-engine {
+  margin-left: 6px;
+}
+.node-table-row.nested .col-name {
+  padding-left: calc(var(--depth, 1) * 12px);
+  color: var(--text-muted);
+}
+.node-table-row.nested .col-name::before {
+  content: '└ ';
+  color: var(--text-subtle);
+}
+.react-flow__edge-path.foreign-key.cross-engine {
+  stroke-dasharray: 6 5;
+}
+/* Campos de un documento o de Neo4j (DocumentFieldsCard). */
+.sql-grid select.sql-type-select {
+  min-width: 10em;
+  font-size: var(--fs-xs);
+}
+.sql-grid code.doc-type {
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}

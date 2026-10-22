@@ -29,7 +29,7 @@ import { COLORS } from '../../domain/constants';
 import { worldHealth } from '../../domain/health';
 import { isCheckable, kindLabel, longDate, overdueEntries, todayText } from '../../domain/agenda';
 import { databaseLint } from '../../domain/databaseLint';
-import { tableTypes } from '../../domain/database';
+import { databaseTypes } from '../../domain/database';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
 import { redundancyPairs } from '../../domain/redundancy';
 import { typeStats } from '../../domain/stats';
@@ -53,7 +53,7 @@ export function HealthView() {
   const [editing, setEditing] = useState<SavedQuery | null | 'new'>(null);
   const report = useMemo(() => worldHealth(project), [project]);
   const overdue = useMemo(() => overdueEntries(project.agenda, todayText()), [project.agenda]);
-  const hasTables = tableTypes(project).length > 0;
+  const hasTables = databaseTypes(project).length > 0;
   const database = useMemo(() => (hasTables ? databaseLint(project) : []), [hasTables, project]);
   const graph = useMemo(() => {
     const links = analysisLinks(project);
@@ -350,7 +350,7 @@ export function HealthView() {
             icon={Database}
             title="Esquema de base de datos"
             count={database.length}
-            hint="Tablas sin clave primaria, tipos SQL no válidos, claves foráneas que no encajan, nombres repetidos y referencias cíclicas."
+            hint="Tablas sin clave primaria, tipos SQL no válidos, claves foráneas que no encajan, nombres repetidos, referencias cíclicas y, en documentos, subdocumentos que no acaban, listas incrustadas sin límite y referencias entre bases."
           >
             {database.map((issue, i) => {
               const Icon = issue.severity === 'error' ? CircleAlert : TriangleAlert;

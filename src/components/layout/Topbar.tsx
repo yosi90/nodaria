@@ -1,6 +1,7 @@
 import {
   CalendarCog,
   CalendarDays,
+  Share2,
   ChevronDown,
   CircleHelp,
   Lightbulb,
@@ -62,6 +63,10 @@ import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
 import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
+import { projectEngines } from '../../domain/database';
+import { mongoScript } from '../../domain/mongoScript';
+import { firestoreRules } from '../../domain/firestoreRules';
+import { neo4jSchema, projectCypher } from '../../domain/neo4j';
 import { EcosystemWebs } from './EcosystemWebs';
 import { SnapshotsDialog } from './SnapshotsDialog';
 import { CsvImportDialog } from './CsvImportDialog';
@@ -325,6 +330,8 @@ export function Topbar({
     { label: 'Importar nodos desde CSV…', icon: Sheet, onSelect: () => csvFile.current?.click() },
     { label: 'Copias de seguridad…', icon: History, onSelect: () => setSnapshotsOpen(true) },
   ];
+  const engines = projectEngines(project);
+  const fileBase = project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_') || 'proyecto';
   const settingsEntries: MenuEntry[] = [
     { section: project.name },
     { label: 'Renombrar', icon: Pencil, onSelect: rename },
@@ -370,6 +377,39 @@ export function Topbar({
           },
         ]
       : []),
+    // Bases no relacionales (ROADMAP_NOSQL.md): cada exportación, si el proyecto usa ese motor.
+    ...(engines.has('mongodb')
+      ? [
+          {
+            label: 'Exportar MongoDB (.js para mongosh)',
+            icon: Database,
+            onSelect: () => downloadText(`${fileBase}.mongodb.js`, mongoScript(project), 'text/javascript'),
+          },
+        ]
+      : []),
+    ...(engines.has('firestore')
+      ? [
+          {
+            label: 'Exportar reglas de Firestore',
+            icon: Database,
+            onSelect: () => downloadText('firestore.rules', firestoreRules(project), 'text/plain'),
+          },
+        ]
+      : []),
+    ...(engines.has('neo4j')
+      ? [
+          {
+            label: 'Exportar esquema de Neo4j (.cypher)',
+            icon: Database,
+            onSelect: () => downloadText(`${fileBase}.esquema.cypher`, neo4jSchema(project), 'text/plain'),
+          },
+        ]
+      : []),
+    {
+      label: 'Exportar el grafo a Neo4j (.cypher)',
+      icon: Share2,
+      onSelect: () => downloadText(`${fileBase}.grafo.cypher`, projectCypher(project), 'text/plain'),
+    },
     'separator',
     { label: 'Eliminar proyecto', icon: Trash2, danger: true, onSelect: remove },
   ];

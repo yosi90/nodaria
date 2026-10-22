@@ -24,6 +24,7 @@ import {
   type AgendaEntry,
 } from './agenda';
 import { defaultCalendar } from './calendar';
+import { PROJECT_FORMAT_VERSION } from './constants';
 import { deleteNode } from './operations';
 import { repairProject } from './integrity';
 import { migrateProject } from '../services/migrations';
@@ -148,7 +149,7 @@ describe('migración y reparación', () => {
     delete calendar.settings;
     old.calendar = calendar;
     const migrated = migrateProject(old);
-    expect(migrated.formatVersion).toBe(8);
+    expect(migrated.formatVersion).toBe(PROJECT_FORMAT_VERSION);
     expect(migrated.agenda).toEqual([]);
     expect(migrated.calendar.settings).toEqual(defaultCalendar().settings);
   });

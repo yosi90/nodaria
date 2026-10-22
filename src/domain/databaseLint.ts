@@ -1,4 +1,15 @@
-import { foreignKeyLinks, isTableType, sqlTypeText, tableColumns, tableIssues, tableTypes } from './database';
+import {
+  engineLabel,
+  engineOf,
+  foreignKeyLinks,
+  isDatabaseType,
+  isTableType,
+  sqlTypeText,
+  tableColumns,
+  tableIssues,
+  tableTypes,
+} from './database';
+import { documentLint } from './documentLint';
 import { getSchema, nodeLabel } from './selectors';
 import type { Node, Project, Schema } from './types';
 
@@ -113,7 +124,9 @@ export function databaseLint(p: Project): DatabaseLintIssue[] {
         else if (!isTableType(p, target.typeId))
           issues.push({
             severity: 'warning',
-            message: `${nodeLabel(p, node)}.${c.field.key}: apunta a «${nodeLabel(p, target)}», que no es una tabla.`,
+            message: isDatabaseType(p, target.typeId)
+              ? `${nodeLabel(p, node)}.${c.field.key}: apunta a «${nodeLabel(p, target)}», de ${engineLabel(engineOf(p, target.typeId)!)}; entre bases distintas no hay clave foránea: la referencia la mantiene tu aplicación.`
+              : `${nodeLabel(p, node)}.${c.field.key}: apunta a «${nodeLabel(p, target)}», que no es una tabla.`,
             node,
           });
       });
@@ -158,5 +171,7 @@ export function databaseLint(p: Project): DatabaseLintIssue[] {
       schema: getSchema(p, nodes.get(cycle[0])!.typeId),
     });
   });
+  // Las bases de documentos y de grafos (ROADMAP_NOSQL.md).
+  issues.push(...documentLint(p));
   return issues;
 }
