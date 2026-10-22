@@ -165,7 +165,19 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
     [project, focusId],
   );
   const columnCount = context.tables.reduce((sum, t) => sum + t.columns.length, 0);
-  const world = useMemo(() => (mode === 'question' ? worldContext(project) : null), [mode, project]);
+  // La agenda solo va al modelo si la persona lo permite en este proyecto (por defecto, no).
+  const agendaAllowed = preferences.aiAgendaProjects.includes(project.id);
+  const setAgendaAllowed = (allowed: boolean) =>
+    setPreference(
+      'aiAgendaProjects',
+      allowed
+        ? [...preferences.aiAgendaProjects.filter(id => id !== project.id), project.id]
+        : preferences.aiAgendaProjects.filter(id => id !== project.id),
+    );
+  const world = useMemo(
+    () => (mode === 'question' ? worldContext(project, undefined, { includeAgenda: agendaAllowed }) : null),
+    [mode, project, agendaAllowed],
+  );
 
   const ask = async () => {
     const text = instruction.trim();
@@ -523,11 +535,24 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 Solo «{nodeLabel(project, selectedTable)}» (del resto, sus claves)
               </label>
             )}
+            {mode === 'question' && project.agenda.length > 0 && (
+              <label className="field-inline ai-scope">
+                <input
+                  type="checkbox"
+                  checked={agendaAllowed}
+                  onChange={event => setAgendaAllowed(event.target.checked)}
+                />
+                Incluir la agenda (notas, tareas, entregas y eventos de la vista «Calendario»)
+              </label>
+            )}
             {mode === 'question' && world ? (
               <p className="ai-privacy-line">
                 Se envía {model ? `a ${PROVIDERS[model.provider]}` : 'al proveedor'}, con tu clave, el proyecto:{' '}
                 {plural(world.context.nodes.length, 'nodo', 'nodos')} con sus atributos y notas y{' '}
                 {plural(world.context.relations.length, 'relación', 'relaciones')}
+                {world.context.agenda
+                  ? `, y ${plural(world.context.agenda.entries.length, 'entrada', 'entradas')} de la agenda`
+                  : ''}
                 {world.context.partial
                   ? world.context.nodes.length < project.nodes.length
                     ? ` (es muy grande: van sin notas y solo los ${world.context.nodes.length} nodos más conectados)`

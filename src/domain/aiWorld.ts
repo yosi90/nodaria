@@ -1,4 +1,6 @@
+import { compareEntries, kindLabel, mentionedInEntry, todayText } from './agenda';
 import { formatDate, formatDateValue, todayOf } from './calendar';
+import { mentionIndex } from './notes';
 import { GENDERS } from './constants';
 import { allFields, fieldValue, getSchema, nodeLabel, relationRole } from './selectors';
 import type { FieldDefinition, FieldValue, Node, Project } from './types';
@@ -11,6 +13,9 @@ import type { FieldDefinition, FieldValue, Node, Project } from './types';
  * y relaciones. Los nodos se nombran n1, n2… (más corto que sus ids, y el modelo los cita así); `refs`
  * los traduce de vuelta. Si el proyecto pasa del tamaño máximo, se recortan primero las notas y, si no
  * basta, se quedan los nodos más conectados; `partial` lo dice.
+ *
+ * La agenda (notas, tareas, entregas y eventos en días reales) solo va si la persona lo permite en el
+ * asistente para ese proyecto (`includeAgenda`); por defecto, no sale del navegador.
  */
 
 export interface AiWorldContext {
@@ -34,7 +39,30 @@ export interface AiWorldContext {
     toRole: string;
     values: Record<string, string>;
   }[];
+  /** Solo con permiso: la agenda del proyecto, en fechas reales. */
+  agenda?: {
+    /** Hoy en el calendario real (la agenda no usa el del mundo). */
+    today: string;
+    entries: AiAgendaEntry[];
+  };
 }
+
+export interface AiAgendaEntry {
+  kind: string;
+  title: string;
+  date: string;
+  endDate: string | null;
+  time: string | null;
+  /** Tareas y entregas: si está hecha; `null` en notas y eventos. */
+  done: boolean | null;
+  description: string;
+  /** Nodos enlazados o mencionados (n1, n2…). */
+  nodes: string[];
+}
+
+/** Máximo de entradas de la agenda en el contexto: las más cercanas a hoy. */
+export const AGENDA_LIMIT = 500;
+const AGENDA_DESCRIPTION = 1000;
 
 export interface AiWorldRefs {
   nodes: Record<string, string>;
@@ -91,7 +119,11 @@ function valuesOf(
   return values;
 }
 
-export function worldContext(p: Project, budget = WORLD_BUDGET): { context: AiWorldContext; refs: AiWorldRefs } {
+export function worldContext(
+  p: Project,
+  budget = WORLD_BUDGET,
+  options: { includeAgenda?: boolean } = {},
+): { context: AiWorldContext; refs: AiWorldRefs } {
   // Los más conectados primero: si hay que dejar nodos fuera, se quedan los centrales.
   const degree = new Map<string, number>();
   for (const r of p.relations) {
@@ -133,6 +165,8 @@ export function worldContext(p: Project, budget = WORLD_BUDGET): { context: AiWo
     ];
   });
 
+  const agenda = options.includeAgenda ? agendaContext(p, ids) : null;
+
   const build = (noteLimit: number, nodeCount: number): AiWorldContext => {
     const nodes = allNodes.slice(0, nodeCount).map(n => ({ ...n, notes: noteLimit ? clip(n.notes, noteLimit) : '' }));
     const kept = new Set(nodes.map(n => n.id));
@@ -143,6 +177,14 @@ export function worldContext(p: Project, budget = WORLD_BUDGET): { context: AiWo
       types,
       nodes: nodes.map(n => ({ ...n, parent: n.parent && kept.has(n.parent) ? n.parent : null })),
       relations: allRelations.filter(r => kept.has(r.from) && kept.has(r.to)),
+      ...(agenda
+        ? {
+            agenda: {
+              today: agenda.today,
+              entries: agenda.entries.map(e => ({ ...e, nodes: e.nodes.filter(id => kept.has(id)) })),
+            },
+          }
+        : {}),
     };
   };
   const fits = (c: AiWorldContext) => JSON.stringify(c).length <= budget;
@@ -158,6 +200,33 @@ export function worldContext(p: Project, budget = WORLD_BUDGET): { context: AiWo
     context = build(0, count);
   }
   return { context, refs };
+}
+
+/**
+ * La agenda para el contexto: las `AGENDA_LIMIT` entradas más cercanas a hoy, en orden de fecha, con la
+ * descripción recortada y los nodos (enlazados o mencionados) con su identificador corto.
+ */
+function agendaContext(p: Project, ids: Map<string, string>) {
+  const today = todayText();
+  const index = mentionIndex(p);
+  const distance = (date: string) => Math.abs(Date.parse(date) - Date.parse(today));
+  const chosen = [...p.agenda]
+    .sort((a, b) => distance(a.date) - distance(b.date))
+    .slice(0, AGENDA_LIMIT)
+    .sort(compareEntries);
+  const entries: AiAgendaEntry[] = chosen.map(e => ({
+    kind: kindLabel(e.kind),
+    title: clip(e.title.trim() || 'Sin título', 500),
+    date: e.date,
+    endDate: e.endDate,
+    time: e.time,
+    done: e.kind === 'task' || e.kind === 'deadline' ? e.done : null,
+    description: clip(e.description.trim(), AGENDA_DESCRIPTION),
+    nodes: [...new Set([...e.nodeIds, ...mentionedInEntry(p, e, index).map(n => n.id)])]
+      .map(id => ids.get(id))
+      .filter((id): id is string => Boolean(id)),
+  }));
+  return { today, entries };
 }
 
 /** Partes de una respuesta: texto y menciones [[n12]] a nodos (para enlazarlos). */

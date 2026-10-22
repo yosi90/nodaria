@@ -1,6 +1,6 @@
 # Calendario del proyecto y configuración del calendario
 
-Fecha: 2026-10-19. Estado: **roadmap activo principal desde el 2026-10-19. Fases 1 a 5 implementadas y publicadas el 2026-10-22**; quedan la decisión sobre la IA (fase 4) y el piloto del propietario con dos cuentas (fase 5). El propietario lo activó al cerrarse [`ROADMAP_COLABORACION.md`](ROADMAP_COLABORACION.md). El 2026-10-22 pidió empezarlo e implementarlo entero sin esperar: las preguntas abiertas se resolvieron con la opción recomendada y se revisan con él sobre la marcha (ver «Preguntas abiertas»).
+Fecha: 2026-10-19. Estado: **roadmap activo principal desde el 2026-10-19. Fases 1 a 5 implementadas y publicadas el 2026-10-22**; queda el piloto del propietario con su cuenta y dos cuentas en un grupo (fase 5), que hace la tarde del 2026-10-22. El propietario lo activó al cerrarse [`ROADMAP_COLABORACION.md`](ROADMAP_COLABORACION.md). El 2026-10-22 pidió empezarlo e implementarlo entero sin esperar: las preguntas abiertas se resolvieron con la opción recomendada y se revisan con él sobre la marcha (ver «Preguntas abiertas»).
 
 ## Objetivo
 
@@ -69,13 +69,13 @@ Código en `src/components/calendar/` (`CalendarView`, `EntryPanel`, `agendaPart
 
 Verificado el 2026-10-22 en Edge sin interfaz (perfil temporal, ejemplo «Caso Puerto Norte»): Alt+8, crear con el título enfocado, cambiar el tipo, mencionar, arrastrar al día siguiente, marcar como hecha, deshacer y rehacer, entrada con hora en la semana, lista, recarga, días laborables en la configuración, exportar `.ics`, la entrada en la ficha del nodo mencionado y crear otra desde ella, tarjeta de Salud, 1024, 1440, 3440 y 390 px sin desplazamiento horizontal y Lista por defecto en el móvil; sin errores JavaScript. Exportar e importar JSON, con prueba automática.
 
-### Fase 4 — Integración con el resto del proyecto (hecha el 2026-10-22, salvo la IA)
+### Fase 4 — Integración con el resto del proyecto (hecha el 2026-10-22)
 
 - [x] Fechas de las fichas en la agenda cuando el calendario es el real (`fieldDatesInRange`: gregoriano estándar y hoy real), de solo lectura, con enlace al nodo y el filtro «Fechas de las fichas» para ocultarlas.
 - [x] La ficha del nodo enseña sus entradas (sección «Agenda» al final de «Conexiones», también si el nodo no tiene otras conexiones) y «Nueva entrada en la agenda» crea una ya enlazada y la abre.
 - [x] Salud: tarjeta «Tareas y entregas vencidas» (solo si la agenda tiene tareas o entregas; no suma al recuento de avisos porque depende del día). Las menciones de la agenda cuentan como conexiones **en la ficha del nodo**; no entran en el grafo de los análisis (aislados, centralidad, comunidades), porque una entrada no es un nodo: un nodo solo mencionado en la agenda sigue saliendo como aislado.
 - [x] Exportar: la agenda en el ZIP (`agenda/agenda.ics` y `agenda/agenda.csv`) y un `.ics` desde la cabecera de la vista, con o sin las fechas de las fichas (`src/services/agendaExport.ts`: VEVENT para todo, porque Google Calendar no lee VTODO; horas locales sin zona; líneas partidas a 75 octetos).
-- [ ] La IA (preguntas sobre el mundo) puede leer la agenda si el propietario lo quiere: **pendiente de su decisión**, porque cambia lo que sale del navegador y la política de privacidad. Hoy no la lee.
+- [x] La IA (preguntas sobre el mundo) puede leer la agenda **solo con permiso, desactivado por defecto** (decisión del propietario del 2026-10-22). En el asistente, en modo pregunta y si el proyecto tiene agenda, «Incluir la agenda» se marca por proyecto y se guarda en este navegador (`preferences.aiAgendaProjects`). Con permiso, el contexto lleva `agenda: { today, entries }` (`worldContext(…, { includeAgenda })`): como mucho las 500 entradas más cercanas a hoy, en fechas reales, con la descripción recortada a 1000 caracteres y los nodos como n1, n2…. La API acepta el bloque opcional (`worldContextSchema`) y las instrucciones del modelo lo explican. La línea de privacidad del asistente dice cuántas entradas van, y la política de privacidad lo cuenta (22 de octubre de 2026).
 
 ### Fase 5 — Agenda en un grupo (hecha el 2026-10-22, falta el piloto)
 
@@ -102,7 +102,7 @@ Resueltas el 2026-10-22 con la opción recomendada, porque el propietario pidió
 4. ¿Qué tipos de proyecto llevan el calendario del mundo arriba? **Novela o guion y Rol.** Investigación no; se añade con `worldCalendar: true` si hace falta.
 5. ¿Los recordatorios quedan fuera por ahora? **Sí**, hasta tener la agenda en uso.
 
-Sigue abierta la de la fase 4: ¿la IA puede leer la agenda?
+La de la fase 4 (¿la IA puede leer la agenda?) la decidió el propietario el 2026-10-22: sí, si se le da permiso; por defecto, no.
 
 ## Incidencias anotadas durante el roadmap
 

@@ -9,6 +9,9 @@ import { z } from 'zod';
  * relaciones, con identificadores cortos (n1, n2…) que la web traduce a sus nodos. El modelo responde
  * con texto y la lista de nodos que cita; en el texto los nombra como [[n12]] para que la web los
  * convierta en enlaces. Solo responde: no cambia nada del proyecto.
+ *
+ * La agenda del proyecto (`agenda`) solo llega si la persona lo permite en el asistente para ese
+ * proyecto; por defecto, no (decisión del propietario del 2026-10-22).
  */
 
 const text = (max: number) => z.string().max(max);
@@ -55,6 +58,27 @@ export const worldContextSchema = z.object({
       }),
     )
     .max(20000),
+  /** Solo con permiso de la persona: la agenda, en fechas reales. */
+  agenda: z
+    .object({
+      /** Hoy en el calendario real, `AAAA-MM-DD`. */
+      today: text(10),
+      entries: z
+        .array(
+          z.object({
+            kind: text(40),
+            title: text(510),
+            date: text(10),
+            endDate: text(10).nullable(),
+            time: text(5).nullable(),
+            done: z.boolean().nullable(),
+            description: text(1100),
+            nodes: z.array(nodeId).max(200),
+          }),
+        )
+        .max(500),
+    })
+    .optional(),
 });
 export type AiWorldContext = z.infer<typeof worldContextSchema>;
 
@@ -86,6 +110,7 @@ Recibes la pregunta y el proyecto en JSON:
 - "nodes": cada nodo con su identificador (n1, n2…), tipo, título, el nodo dentro del que está ("parent"), los valores de sus atributos y sus notas. En las notas, [[Nombre]] es una mención a otro nodo.
 - "relations": relaciones entre nodos ("from" y "to"), con el papel de cada extremo cuando lo hay ("fromRole", "toRole") y sus valores.
 - "today": la fecha actual del mundo. "partial": si es true, el proyecto era demasiado grande y faltan notas o nodos; dilo si afecta a la respuesta.
+- "agenda" (solo si la persona ha permitido enviarla): la agenda del proyecto, con "today" el día real de hoy y en "entries" (como mucho las 500 más cercanas a hoy) sus notas, tareas, entregas y eventos: tipo, título, fecha ("date" y, si dura varios días, "endDate", en AAAA-MM-DD), hora, si está hecha ("done", solo en tareas y entregas), descripción y los nodos con los que tiene que ver ("nodes"). Sus fechas son del calendario real, no del mundo. Si preguntan por la agenda y no viene, di que se puede permitir en el asistente con «Incluir la agenda».
 
 Cómo responder:
 - Responde a lo que se pregunta, en español, de forma directa y breve. Usa listas con guiones cuando enumeres.

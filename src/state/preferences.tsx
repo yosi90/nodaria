@@ -35,6 +35,8 @@ export interface Preferences {
   /** Vista «Calendario»: filtros de este navegador y anchura del panel de la entrada. */
   agenda: AgendaPreference;
   agendaPanelWidth: number;
+  /** Proyectos en los que la persona deja que el asistente de IA lea la agenda (por defecto, ninguno). */
+  aiAgendaProjects: string[];
 }
 
 /** Filtros de la vista «Calendario». Son de cada persona: no cambian el proyecto. */
@@ -91,6 +93,7 @@ const DEFAULTS: Preferences = {
   groupPanelTab: 'chat',
   agenda: { hiddenKinds: [], hideDone: false, fieldDates: true, onlyMine: false },
   agendaPanelWidth: 380,
+  aiAgendaProjects: [],
 };
 
 function loadPreferences(): Preferences {

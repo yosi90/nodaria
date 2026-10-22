@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, relation, schema } from '../test/fixtures';
 import { answerParts, worldContext } from './aiWorld';
+import { createAgendaEntry } from './agenda';
 
 const p = project({
   name: 'Novela',
@@ -67,5 +68,29 @@ describe('answerParts', () => {
       { kind: 'node', ref: 'n10' },
       { kind: 'text', text: '.' },
     ]);
+  });
+});
+
+describe('worldContext con la agenda', () => {
+  const withAgenda = {
+    ...p,
+    agenda: [
+      createAgendaEntry('e1', { kind: 'deadline', title: 'Capítulo 3', date: '2026-11-15', nodeIds: ['luis'] }, 'x'),
+      createAgendaEntry('e2', { kind: 'note', title: 'Idea', date: '2026-11-01', description: 'Con [[Ana]]' }, 'x'),
+    ],
+  };
+
+  it('por defecto no sale la agenda', () => {
+    expect(worldContext(withAgenda).context.agenda).toBeUndefined();
+  });
+
+  it('con permiso va en fechas reales y con los nodos como n1, n2…', () => {
+    const { context, refs } = worldContext(withAgenda, undefined, { includeAgenda: true });
+    expect(context.agenda!.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const [idea, cap] = context.agenda!.entries;
+    expect(idea).toMatchObject({ kind: 'Nota', title: 'Idea', date: '2026-11-01', done: null });
+    expect(refs.nodes[idea.nodes[0]]).toBe('ana');
+    expect(cap).toMatchObject({ kind: 'Entrega', done: false });
+    expect(refs.nodes[cap.nodes[0]]).toBe('luis');
   });
 });

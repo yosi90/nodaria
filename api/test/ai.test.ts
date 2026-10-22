@@ -13,7 +13,7 @@ import { createMemoryConversationStore } from '../src/ai/conversations.ts';
 import { conversationTurns } from '../src/ai/history.ts';
 import { findModel } from '../src/ai/models.ts';
 import type { AiDatabaseContext, AiProposal } from '../src/ai/schema.ts';
-import type { AiWorldContext } from '../src/ai/world.ts';
+import { worldUserMessage, type AiWorldContext } from '../src/ai/world.ts';
 import { fromWire, parseSqlType, wireProposalSchema, type WireProposal } from '../src/ai/wire.ts';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { zodTextFormat } from 'openai/helpers/zod';
@@ -766,6 +766,34 @@ describe('preguntas sobre el mundo', () => {
       (await post(questionBody({ context: { ...world, nodes: [{ ...world.nodes[0], id: 'Ana' }] } }))).statusCode,
     ).toBe(400);
     expect((await post(questionBody({ model: 'gpt-4o' }))).json()).toMatchObject({ error: 'modelo_no_admitido' });
+  });
+
+  it('acepta la agenda cuando la persona la permite y la pasa al modelo', async () => {
+    const seen: AiQuestion[] = [];
+    const t = await appWith({
+      ask: async request => {
+        seen.push(request);
+        return { answer, usage: { inputTokens: 0, outputTokens: 0 } };
+      },
+    });
+    const headers = { authorization: `Bearer ${await t.tokens.sign()}` };
+    const post = (payload: object) => t.app.inject({ method: 'POST', url: '/api/ia/preguntas', headers, payload });
+    const entry = {
+      kind: 'Entrega',
+      title: 'Capítulo 3',
+      date: '2026-11-15',
+      endDate: null,
+      time: null,
+      done: false,
+      description: 'Revisar con [[Ana]]',
+      nodes: ['n1'],
+    };
+    const agenda = { today: '2026-10-22', entries: [entry] };
+    expect((await post(questionBody({ context: { ...world, agenda } }))).statusCode).toBe(200);
+    expect(seen[0].context.agenda).toEqual(agenda);
+    expect(worldUserMessage('¿Qué vence?', seen[0].context)).toContain('Capítulo 3');
+    const broken = { ...agenda, entries: [{ ...entry, nodes: ['Ana'] }] };
+    expect((await post(questionBody({ context: { ...world, agenda: broken } }))).statusCode).toBe(400);
   });
 
   it('pide a la pasarela la respuesta con salida estructurada y descarta citas mal formadas', async () => {
