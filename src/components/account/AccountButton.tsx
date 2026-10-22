@@ -140,7 +140,6 @@ export function AccountButton() {
     },
     {
       label: 'Invitaciones a grupos',
-      hint: 'Las que tienes pendientes en Nodaria',
       icon: MailOpen,
       onSelect: () => void sdk()?.espacios?.verInvitaciones(),
     },
@@ -149,7 +148,6 @@ export function AccountButton() {
     { label: 'Privacidad', icon: ShieldCheck, onSelect: () => void sdk()?.privacidad() },
     {
       label: 'Tu cuenta en Yosiftware',
-      hint: 'social.yosiftware.es',
       icon: ExternalLink,
       onSelect: () => window.open(SOCIAL_URL, '_blank', 'noopener'),
     },
