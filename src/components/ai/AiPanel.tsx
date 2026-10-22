@@ -1,4 +1,6 @@
 import { Download, ExternalLink, Plus, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { YosiSymbol } from '../common/YosiSymbol';
+import type { PlatformModels } from '../../services/yosiftware';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { databaseContext } from '../../domain/aiContext';
 import { answerParts, worldContext } from '../../domain/aiWorld';
@@ -11,6 +13,9 @@ import {
   AI_KEY_ERRORS,
   deleteConversation,
   fetchAiModels,
+  fetchPlatformModels,
+  PLATFORM_MODEL_ERRORS,
+  reachableModels,
   getConversation,
   isWorldReply,
   listConversations,
@@ -83,6 +88,8 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const { confirm } = useDialogs();
 
   const [catalog, setCatalog] = useState<AiModelsResponse | null>(null);
+  /** Lo que alcanza la clave según la plataforma (`GET /v1/ia/modelos`), o `null` si no respondió. */
+  const [reach, setReach] = useState<PlatformModels | null>(null);
   const [conversations, setConversations] = useState<AiConversationSummary[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [messages, setMessages] = useState<AiMessage[]>([]);
@@ -109,6 +116,17 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
     if (!token) throw new ApiError(401, 'no_autenticado', 'Tienes que iniciar sesión con tu cuenta de Yosiftware.');
     return token;
   }, [getToken]);
+
+  // Qué modelos alcanza la clave que se va a usar: la de la organización del grupo o la de la persona.
+  const space = sharedGroup && !personalKey ? sharedGroup.spaceId : null;
+  useEffect(() => {
+    if (status !== 'signed-in') return;
+    let live = true;
+    void fetchPlatformModels(space).then(found => live && setReach(found));
+    return () => {
+      live = false;
+    };
+  }, [status, space]);
 
   // Modelos y conversaciones del proyecto; se abre la más reciente.
   useEffect(() => {
@@ -155,7 +173,10 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [messages.length, waiting]);
 
-  const models = catalog?.models ?? [];
+  const models = useMemo(() => reachableModels(catalog?.models ?? [], reach), [catalog, reach]);
+  const providerProblems = (reach?.proveedores ?? [])
+    .filter(p => p.error && p.proveedor in PROVIDERS)
+    .map(p => `${PROVIDERS[p.proveedor as AiModelInfo['provider']]}: ${PLATFORM_MODEL_ERRORS[p.error!] ?? p.error}`);
   const model = models.find(m => modelKey(m) === preferences.aiModel) ?? models[0];
   const selected = selection?.kind === 'node' ? getNode(project, selection.id) : undefined;
   const selectedTable = selected && isTableType(project, selected.typeId) ? selected : null;
@@ -318,7 +339,8 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   };
 
   const manageLink = catalog && (
-    <a className="ai-manage" href={catalog.manageUrl} target="_blank" rel="noreferrer">
+    <a className="ai-manage social-link" href={catalog.manageUrl} target="_blank" rel="noreferrer">
+      <YosiSymbol size={12} />
       Tus claves de IA y su tope <ExternalLink size={12} aria-hidden />
     </a>
   );
@@ -534,6 +556,9 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 />
                 Solo «{nodeLabel(project, selectedTable)}» (del resto, sus claves)
               </label>
+            )}
+            {providerProblems.length > 0 && (
+              <p className="ai-privacy-line">Sin modelos de {providerProblems.join(' · ')}.</p>
             )}
             {mode === 'question' && project.agenda.length > 0 && (
               <label className="field-inline ai-scope">

@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- provider y hook forman una única API de contexto */
+import { IdentityChangedError } from '../services/identity';
 import {
   createContext,
   useCallback,
@@ -86,7 +87,7 @@ const localCopy = (project: Project): Project => {
 
 export function GroupsProvider({ children }: { children: ReactNode }) {
   const { state, dispatch, setActionGuard, reportRepairs } = useApp();
-  const { status, user, getToken } = useAuth();
+  const { status, user, getToken, identity, isCurrent, tokenFor } = useAuth();
   const toast = useToast();
   const toastRef = useRef(toast);
 
@@ -129,12 +130,22 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     return next;
   }, []);
 
-  /** Una vuelta; devuelve si hace falta otra (otra persona guardó mientras se combinaba). */
+  /**
+   * Una vuelta; devuelve si hace falta otra (otra persona guardó mientras se combinaba). Va atada a la
+   * identidad con la que empieza: si la cuenta cambia por el camino, lo recibido se descarta
+   * (`ecosistema-kit/CAMBIO_DE_CUENTA.md`).
+   */
   const runOnce = useCallback(
     async (fresh: boolean): Promise<boolean> => {
-      const token = await getToken();
-      if (!token || !uidRef.current || meta.current.uid !== uidRef.current) return false;
+      const who = identity();
+      if (!who.account || meta.current.uid !== who.account) return false;
+      const token = await tokenFor(who);
+      if (!token || meta.current.uid !== who.account) return false;
+      const check = () => {
+        if (!isCurrent(who) || meta.current.uid !== who.account) throw new IdentityChangedError();
+      };
       const list = await (fresh ? refreshGroups(token) : listGroups(token));
+      check();
       publish(list);
 
       const local = projects.current;
@@ -261,6 +272,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         again = true;
       }
 
+      check();
       if (safeUpsert.length || safeCopies.length || remove.length) {
         dispatch({
           type: 'sync-apply',
@@ -270,10 +282,11 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         });
       }
       for (const [id, project] of bases) await saveSharedBase(id, project).catch(() => undefined);
+      check();
       saveMeta(next);
       return again;
     },
-    [getToken, publish, saveMeta, dispatch, reportRepairs],
+    [identity, isCurrent, tokenFor, publish, saveMeta, dispatch, reportRepairs],
   );
 
   const run = useCallback(
@@ -282,6 +295,8 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         for (let pass = 0; pass < MAX_PASSES; pass++) if (!(await runOnce(fresh && pass === 0))) break;
         setSyncState('ok');
       }).catch(error => {
+        // La cuenta cambió a mitad: lo de la anterior se descarta sin avisar.
+        if (error instanceof IdentityChangedError) return;
         setSyncState(error instanceof OfflineError ? 'offline' : 'error');
         if (!(error instanceof OfflineError))
           console.warn('No se pudieron sincronizar los proyectos compartidos', error);

@@ -10,6 +10,7 @@ import {
   OfflineError,
   putRemoteProject,
 } from '../services/api';
+import { IdentityChangedError } from '../services/identity';
 import { prepareProject, saveVault, takeVault } from '../services/storage';
 import {
   emptyMeta,
@@ -57,7 +58,7 @@ const MAX_PASSES = 3;
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { state, dispatch, reportRepairs, lostOnLoad } = useApp();
-  const { status: authStatus, user, restrictions, getToken } = useAuth();
+  const { status: authStatus, user, restrictions, getToken, identity, isCurrent, tokenFor } = useAuth();
   // Los proyectos de los grupos van por su propio motor (`groups.tsx`): aquí ni se suben ni se borran.
   const { isShared, syncShared } = useGroups();
   // La función de avisos cambia con cada edición del proyecto: se usa desde una referencia.
@@ -86,13 +87,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   /** Cerrar sesión desde Nodaria: no hace falta avisar de que se cerró. */
   const leaving = useRef(false);
 
-  // Una pasada completa: lista remota, plan, bajadas, subidas y borrados; repite si hubo 409.
+  // Una pasada completa: lista remota, plan, bajadas, subidas y borrados; repite si hubo 409. Va atada a
+  // la identidad con la que empieza: si la cuenta cambia por el camino (A → B, aunque luego vuelva A), lo
+  // que llegue se descarta sin aplicarlo ni guardarlo (`ecosistema-kit/CAMBIO_DE_CUENTA.md`).
   const runOnce = useCallback(async () => {
-    const token = await getToken();
-    if (!token || !ready.current) return;
+    const who = identity();
+    if (!ready.current || !who.account || meta.current.uid !== who.account) return;
+    const token = await tokenFor(who);
+    if (!token) return;
+    const check = () => {
+      if (!isCurrent(who) || meta.current.uid !== who.account) throw new IdentityChangedError();
+    };
     const found: SyncConflict[] = [];
     for (let pass = 0; pass < MAX_PASSES; pass++) {
       const remote = (await listRemoteProjects(token)).filter(r => !isShared(r.id));
+      check();
       const own = projects.current.filter(p => !isShared(p.id));
       for (const id of Object.keys(meta.current.projects)) if (isShared(id)) delete meta.current.projects[id];
       const plan = planSync(own, remote, meta.current, { recoverMissing: recoverMissing.current });
@@ -107,12 +116,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const upsert: Project[] = [];
       for (const item of plan.download) {
         const stored = await getRemoteProject(token, item.id);
+        check();
         const { project, issues } = prepareProject(stored.document);
         if (issues.length) reportRepairs({ projectName: project.name, issues });
         upsert.push({ ...project, id: item.id });
         next.projects[item.id] = { version: stored.version, updatedAt: project.updatedAt };
       }
       for (const id of plan.removeLocal) delete next.projects[id];
+      check();
       if (upsert.length || plan.removeLocal.length) {
         dispatch({ type: 'sync-apply', upsert, remove: plan.removeLocal });
       }
@@ -141,13 +152,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      check();
       meta.current = next;
       saveSyncMeta(next);
       if (!conflicted) break;
     }
     recoverMissing.current = false;
     if (found.length) setConflicts(current => [...current, ...found]);
-  }, [getToken, dispatch, reportRepairs, isShared, syncShared]);
+  }, [identity, isCurrent, tokenFor, dispatch, reportRepairs, isShared, syncShared]);
 
   const syncNow = useCallback(async () => {
     if (!signedIn) return;
@@ -164,6 +176,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         } while (rerun.current);
         setStatus({ state: 'idle', lastSyncAt: new Date().toISOString(), error: null });
       } catch (error) {
+        // La cuenta cambió a mitad: no es un error; la nueva identidad pone su propio estado.
+        if (error instanceof IdentityChangedError) return;
         if (error instanceof OfflineError) {
           setStatus(current => ({ ...current, state: 'offline', error: null }));
         } else {
@@ -198,8 +212,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   // Cambiar de cuenta carga su recuerdo (preguntando antes a la API por la cuenta de antes de migrar,
   // para adoptar su recuerdo); sin sesión, el motor se apaga y los proyectos de la cuenta se retiran.
   useEffect(() => {
+    // Hasta cargar el recuerdo de la cuenta nueva no se sincroniza nada (ni con el de la anterior).
+    ready.current = false;
     if (!signedIn || !uid) {
-      ready.current = false;
       setStatus({ state: 'off', lastSyncAt: null, error: null });
       // Mientras se comprueba la sesión, o si la plataforma no responde, no se decide nada.
       if (authStatus !== 'signed-out') return;

@@ -9,8 +9,8 @@ import { useToast } from '../common/toasts';
  * de sincronización retira del navegador los proyectos de la cuenta y aparta los cambios que no se
  * hayan podido subir hasta que vuelva a entrar (`state/sync.tsx`).
  */
-export function SignOutDialog({ onClose }: { onClose: () => void }) {
-  const { signOut } = useAuth();
+export function SignOutDialog({ onClose, all = false }: { onClose: () => void; all?: boolean }) {
+  const { signOut, signOutAll } = useAuth();
   const { markLeaving, syncNow, state } = useSync();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -20,7 +20,7 @@ export function SignOutDialog({ onClose }: { onClose: () => void }) {
     try {
       await syncNow().catch(() => undefined);
       markLeaving();
-      await signOut();
+      await (all ? signOutAll() : signOut());
       toast({ message: 'Sesión cerrada. Tus proyectos siguen en tu cuenta y se han quitado de este navegador.' });
       onClose();
     } finally {
@@ -30,7 +30,7 @@ export function SignOutDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal
-      title="Cerrar sesión"
+      title={all ? 'Cerrar sesión en todas las cuentas' : 'Cerrar sesión'}
       submitLabel="Cerrar sesión"
       submitDisabled={busy}
       onSubmit={() => void submit()}
@@ -38,7 +38,9 @@ export function SignOutDialog({ onClose }: { onClose: () => void }) {
     >
       <div className="auth-form">
         <p className="muted-note" style={{ color: 'var(--text)' }}>
-          Se cierra la sesión de Yosiftware en todas sus webs y los proyectos de tu cuenta se quitan de este navegador.
+          {all
+            ? 'Se cierran todas las cuentas guardadas en este navegador, en todas las webs de Yosiftware, y los proyectos de tu cuenta se quitan de aquí.'
+            : 'Se cierra la sesión de esta cuenta en todas las webs de Yosiftware (las demás cuentas guardadas siguen) y sus proyectos se quitan de este navegador.'}
           Siguen guardados en tu cuenta
           {state === 'idle'
             ? '.'

@@ -1,3 +1,5 @@
+import { YosiSymbol } from './YosiSymbol';
+
 /** Enlaces a las páginas estáticas de privacidad y condiciones de uso (se abren aparte). */
 export function LegalLinks({ prefix }: { prefix?: string }) {
   return (
@@ -11,7 +13,8 @@ export function LegalLinks({ prefix }: { prefix?: string }) {
         Política de privacidad
       </a>
       {' · '}
-      <a href="https://social.yosiftware.es/?vista=normas" target="_blank" rel="noopener">
+      <a className="social-link" href="https://social.yosiftware.es/?vista=normas" target="_blank" rel="noopener">
+        <YosiSymbol size={13} />
         Normas y privacidad de Yosiftware
       </a>
     </small>

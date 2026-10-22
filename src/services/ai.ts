@@ -2,6 +2,7 @@ import type { AiContextRefs, AiDatabaseContext } from '../domain/aiContext';
 import type { AiWorldContext, AiWorldRefs } from '../domain/aiWorld';
 import type { AiProposal } from '../domain/aiProposal';
 import { apiRequest } from './api';
+import { PLATFORM_API_URL, sdk, type PlatformModels } from './yosiftware';
 
 /*
  * Asistencia de IA de la API (`api/src/routes/ai.ts`). La API llama al proveedor a través de la
@@ -80,6 +81,44 @@ export const AI_GROUP_KEY_ERRORS = new Set(['sin_clave_del_grupo', 'tope_del_gru
 export const AI_KEY_ERRORS = new Set(['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto', 'clave_rechazada']);
 
 export const fetchAiModels = (token: string) => apiRequest<AiModelsResponse>('GET', '/api/ia/modelos', token);
+
+/**
+ * Los modelos que alcanza la clave de la persona (o, con `space`, los que permite la organización), de la
+ * plataforma: `GET /v1/ia/modelos` con su token (`ecosistema-kit/CLAVES_DE_IA.md`, «Elegir el modelo»).
+ * `null` si no se puede preguntar (sin SDK o sin conexión con la plataforma).
+ */
+export async function fetchPlatformModels(space: number | null): Promise<PlatformModels | null> {
+  const token = await sdk()?.tokenPlataforma?.();
+  if (!token) return null;
+  const query = space === null ? '' : `?espacio=${space}`;
+  try {
+    const response = await fetch(`${PLATFORM_API_URL}/v1/ia/modelos${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.ok ? ((await response.json()) as PlatformModels) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Por qué un proveedor no tiene modelos (el `error` de `GET /v1/ia/modelos`), para la persona. */
+export const PLATFORM_MODEL_ERRORS: Record<string, string> = {
+  sin_clave_de_ia: 'sin clave de IA',
+  clave_de_ia_rechazada: 'el proveedor rechaza la clave',
+  proveedor_sin_respuesta: 'el proveedor no responde ahora',
+  claves_ia_no_configuradas: 'las claves de IA no están disponibles',
+};
+
+/**
+ * Los modelos de Nodaria que la plataforma dice que alcanza la clave. Nunca se escribe un modelo a mano:
+ * solo se elige de esta lista. Sin respuesta de la plataforma, los de Nodaria (que la pasarela comprueba
+ * igualmente al pedir).
+ */
+export function reachableModels(own: AiModelInfo[], platform: PlatformModels | null): AiModelInfo[] {
+  if (!platform) return own;
+  const reachable = new Set(platform.proveedores.flatMap(p => p.modelos.map(m => `${p.proveedor}:${m.id}`)));
+  return own.filter(m => reachable.has(`${m.provider}:${m.id}`));
+}
 
 export const listConversations = (token: string, projectId: string) =>
   apiRequest<{ conversations: AiConversationSummary[] }>(

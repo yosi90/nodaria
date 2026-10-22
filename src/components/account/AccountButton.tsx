@@ -2,8 +2,6 @@ import {
   Cloud,
   CloudAlert,
   CloudOff,
-  ExternalLink,
-  LogIn,
   LogOut,
   MailOpen,
   RefreshCw,
@@ -11,10 +9,11 @@ import {
   Trash2,
   UserRound,
   UserRoundPen,
+  UserRoundPlus,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, deleteMe } from '../../services/api';
-import { SOCIAL_URL, sdk } from '../../services/yosiftware';
+import { SOCIAL_URL, sdk, type SavedAccount } from '../../services/yosiftware';
 import { useAuth } from '../../state/auth';
 import { useSync } from '../../state/sync';
 import { IconButton } from '../common/Button';
@@ -22,19 +21,24 @@ import { anchorOf, type Anchor } from '../common/anchor';
 import { useDialogs } from '../common/dialogs';
 import { Menu, type MenuEntry } from '../common/Menu';
 import { useToast } from '../common/toasts';
+import { YosiSymbol } from '../common/YosiSymbol';
 import { SignOutDialog } from './SignOutDialog';
 
 /**
- * Cuenta de Yosiftware en la barra superior. Entrar, el perfil, la privacidad y salir son del SDK de
- * la plataforma; aquí solo está el estado de la sincronización y borrar los datos de Nodaria.
+ * Cuenta de Yosiftware en la barra superior, con su panel de cuentas propio (`ecosistema-kit/ACCESO.md`,
+ * «El panel de cuentas»): las otras cuentas guardadas en el navegador, añadir otra, salir de esta o de
+ * todas, y «Gestionar tu cuenta» en la web social. Entrar, el perfil, la privacidad y salir son del SDK;
+ * aquí están además el estado de la sincronización y borrar los datos de Nodaria. Antes de cambiar de
+ * cuenta se sube lo pendiente; lo que quede sin subir se aparta para su cuenta (`state/sync.tsx`).
  */
 export function AccountButton() {
-  const { status, user, restrictions, signIn, getToken } = useAuth();
+  const { status, user, restrictions, signIn, getToken, savedAccounts, chooseAccount, addAccount } = useAuth();
   const sync = useSync();
   const toast = useToast();
   const { confirm } = useDialogs();
-  const [signingOut, setSigningOut] = useState(false);
+  const [signingOut, setSigningOut] = useState<'one' | 'all' | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
+  const [saved, setSaved] = useState<SavedAccount[]>([]);
   const [photo, setPhoto] = useState<{ account: string; url: string | null } | null>(null);
   const closeMenu = useCallback(() => setMenuAnchor(null), []);
 
@@ -53,6 +57,19 @@ export function AccountButton() {
   }, [account]);
   const avatar = photo && photo.account === account ? photo.url : null;
 
+  // Las cuentas guardadas se piden al abrir el menú: pueden cambiar desde otra web.
+  useEffect(() => {
+    if (!menuAnchor || !account) return;
+    let cancelled = false;
+    void savedAccounts()
+      .then(list => !cancelled && setSaved(list))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [menuAnchor, account, savedAccounts]);
+  const others = saved.filter(a => !a.activa && a.cuenta.id.toLowerCase() !== account);
+
   if (status === 'loading') return <span className="account-slot" aria-hidden />;
 
   if (status === 'unavailable') {
@@ -67,15 +84,26 @@ export function AccountButton() {
   }
 
   if (status === 'signed-out') {
+    const label = 'Entrar con tu cuenta de Yosiftware (opcional: sincroniza tus proyectos)';
     return (
-      <IconButton
-        icon={LogIn}
-        label="Entrar con tu cuenta de Yosiftware (opcional: sincroniza tus proyectos)"
-        tooltipSide="left"
+      <button
+        type="button"
+        className="icon-btn account-sign-in"
+        aria-label={label}
+        data-tooltip={label}
+        data-tooltip-side="left"
         onClick={() => void signIn()}
-      />
+      >
+        <YosiSymbol size={18} />
+      </button>
     );
   }
+
+  /** Antes de dejar esta cuenta se sube lo pendiente (si se puede); luego cambia en todas las webs. */
+  const leaveFor = async (go: () => Promise<unknown>) => {
+    await sync.syncNow().catch(() => undefined);
+    await go();
+  };
 
   const deleteData = async () => {
     const ok = await confirm({
@@ -144,15 +172,26 @@ export function AccountButton() {
       onSelect: () => void sdk()?.espacios?.verInvitaciones(),
     },
     'separator',
+    ...(others.length ? [{ section: 'Otras cuentas' } satisfies MenuEntry] : []),
+    ...others.map((a): MenuEntry => ({
+      label: a.nombre || a.cuenta.alias,
+      leading: <SavedAvatar account={a} />,
+      onSelect: () => void leaveFor(() => chooseAccount(a.sesion)),
+    })),
+    { label: 'Añadir otra cuenta', icon: UserRoundPlus, onSelect: () => void leaveFor(addAccount) },
+    'separator',
     { label: 'Mi perfil', icon: UserRoundPen, onSelect: () => void sdk()?.editarPerfil() },
     { label: 'Privacidad', icon: ShieldCheck, onSelect: () => void sdk()?.privacidad() },
     {
-      label: 'Tu cuenta en Yosiftware',
-      icon: ExternalLink,
+      label: 'Gestionar tu cuenta',
+      leading: <YosiSymbol className="menu-symbol" />,
       onSelect: () => window.open(SOCIAL_URL, '_blank', 'noopener'),
     },
     'separator',
-    { label: 'Cerrar sesión', icon: LogOut, onSelect: () => setSigningOut(true) },
+    { label: 'Cerrar sesión', icon: LogOut, onSelect: () => setSigningOut('one') },
+    ...(others.length
+      ? [{ label: 'Cerrar sesión en todas las cuentas', icon: LogOut, onSelect: () => setSigningOut('all') }]
+      : []),
     'separator',
     { label: 'Borrar mis datos de Nodaria', icon: Trash2, danger: true, onSelect: () => void deleteData() },
   ];
@@ -181,7 +220,17 @@ export function AccountButton() {
         <span className="account-sync-dot" aria-hidden />
       </button>
       {menuAnchor && <Menu anchor={menuAnchor} entries={entries} onClose={closeMenu} label="Cuenta" />}
-      {signingOut && <SignOutDialog onClose={() => setSigningOut(false)} />}
+      {signingOut && <SignOutDialog all={signingOut === 'all'} onClose={() => setSigningOut(null)} />}
     </>
+  );
+}
+
+/** La miniatura de una cuenta guardada, o su inicial. */
+function SavedAvatar({ account }: { account: SavedAccount }) {
+  const name = account.nombre || account.cuenta.alias || '?';
+  return (
+    <span className="saved-account-avatar" aria-hidden>
+      {account.avatar ? <img src={account.avatar} alt="" /> : name.trim().charAt(0).toUpperCase()}
+    </span>
   );
 }

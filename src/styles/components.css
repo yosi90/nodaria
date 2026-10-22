@@ -769,3 +769,10 @@ img.no-border {
 .type-select .names {
   min-width: 0;
 }
+
+/* Enlaces a la web social: con el símbolo del ecosistema delante (ecosistema-kit/MARCA.md). */
+.social-link {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}

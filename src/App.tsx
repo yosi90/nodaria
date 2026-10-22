@@ -22,6 +22,7 @@ import { AiPanel } from './components/ai/AiPanel';
 import { GroupPanel } from './components/groups/GroupPanel';
 import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
+import { useAuth } from './state/auth';
 import { useNavigation, type View } from './state/navigation';
 
 export default function App() {
@@ -38,6 +39,9 @@ export default function App() {
     clearSelection,
   } = useNavigation();
   const { project } = useApp();
+  // Lo que se pinta con datos de la cuenta se monta de nuevo con cada cuenta (CAMBIO_DE_CUENTA.md).
+  const { user } = useAuth();
+  const account = user?.id ?? 'local';
   // Al cambiar de proyecto, la selección (y su historial) pertenecen al anterior.
   useEffect(() => clearSelection(), [project.id, clearSelection]);
   const openHelp = useCallback(() => openHelpTopic('start'), [openHelpTopic]);
@@ -63,7 +67,7 @@ export default function App() {
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} onTemplates={openTemplates} />
       <div className="app-body" style={{ gridTemplateColumns: columns.join(' ') }}>
         {/* Cada vista guarda estado local (tipo elegido, filtros, plegados) que solo vale para un proyecto. */}
-        <Fragment key={project.id}>
+        <Fragment key={`${account}:${project.id}`}>
           {view === 'map' ? (
             <MapView />
           ) : view === 'table' ? (
@@ -83,8 +87,14 @@ export default function App() {
           )}
         </Fragment>
         {/* El asistente queda al lado de la vista para poder seguir trabajando; su conversación es del proyecto. */}
-        {aiOpen && <AiPanel key={`ai:${project.id}`} onClose={() => setPreference('aiPanelOpen', false)} />}
-        {chatOpen && group && <GroupPanel group={group} onClose={() => setPreference('groupChatOpen', false)} />}
+        {aiOpen && <AiPanel key={`ai:${account}:${project.id}`} onClose={() => setPreference('aiPanelOpen', false)} />}
+        {chatOpen && group && (
+          <GroupPanel
+            key={`group:${account}:${group.id}`}
+            group={group}
+            onClose={() => setPreference('groupChatOpen', false)}
+          />
+        )}
       </div>
       <div className="notice-stack">
         <StorageNotice />

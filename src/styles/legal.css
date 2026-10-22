@@ -153,3 +153,9 @@ body {
     letter-spacing: 0.04em;
   }
 }
+
+/* Enlaces a la web social: con el símbolo del ecosistema delante (ecosistema-kit/MARCA.md). */
+.social-link .yosi-symbol {
+  margin-right: 0.25em;
+  vertical-align: -0.15em;
+}

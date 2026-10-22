@@ -52,6 +52,22 @@ export type SpaceChannelMessage =
   | { tipo: 'cerrado'; espacio: number; motivo: string }
   | { tipo: 'error'; espacio: number; code: string };
 
+/** Una cuenta guardada en este navegador (SDK 1.21, `ecosistema-kit/ACCESO.md`, «El panel de cuentas»). */
+export interface SavedAccount {
+  /** Identificador de la sesión guardada: lo que se pasa a `elegirCuenta`. */
+  sesion: string;
+  cuenta: PlatformAccount;
+  activa: boolean;
+  nombre?: string | null;
+  /** Miniatura del avatar (dirección completa) o `null`. */
+  avatar?: string | null;
+}
+
+/** Un proveedor en `GET /v1/ia/modelos` (`ecosistema-kit/CLAVES_DE_IA.md`, «Elegir el modelo»). */
+export interface PlatformModels {
+  proveedores: { proveedor: string; modelos: { id: string; nombre: string }[]; error: string | null }[];
+}
+
 /** Lo que lanza el SDK al cerrar su ventana de invitaciones (`yosiftware:espacio`). */
 export type SpaceEvent =
   { tipo: 'aceptada'; espacio: PlatformSpace | null } | { tipo: 'rechazada'; invitacion: number };
@@ -62,6 +78,14 @@ export interface YosiftwareSdk {
   alCambiar(listener: (state: PlatformState) => void): () => void;
   entrar(options?: { vista?: 'entrar' | 'registro' }): Promise<boolean>;
   salir(): Promise<void>;
+  /** Las cuentas guardadas en este navegador, para el panel de cuentas propio (SDK 1.21). */
+  cuentasGuardadas?(): Promise<{ cuentas: SavedAccount[]; maximo: number } | null>;
+  /** Cambia a otra cuenta guardada en todas las webs; si su sesión caducó, abre el acceso. */
+  elegirCuenta?(sesion: string): Promise<unknown>;
+  /** Abre el acceso para añadir otra cuenta sin cerrar las guardadas; `true` si se añadió. */
+  anadirCuenta?(): Promise<boolean>;
+  /** Cierra todas las cuentas guardadas en este navegador, en todas las webs. */
+  salirDeTodas?(): Promise<void>;
   /** Token para la API de Nodaria (`aud: nodaria-api`); `null` sin sesión. */
   token(): Promise<string | null>;
   editarPerfil(): Promise<boolean>;
@@ -97,6 +121,8 @@ declare global {
   }
   interface WindowEventMap {
     'yosiftware:espacio': CustomEvent<SpaceEvent>;
+    /** La identidad va a cambiar (SDK 1.20, `CAMBIO_DE_CUENTA.md`): sin datos personales. */
+    'yosiftware:identidad': Event;
   }
 }
 

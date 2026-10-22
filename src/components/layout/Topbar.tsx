@@ -62,6 +62,7 @@ import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
 import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
+import { EcosystemWebs } from './EcosystemWebs';
 import { SnapshotsDialog } from './SnapshotsDialog';
 import { CsvImportDialog } from './CsvImportDialog';
 import { ImportProjectDialog } from './ImportProjectDialog';
@@ -562,6 +563,7 @@ export function Topbar({
         />
         <IconButton icon={CircleHelp} label="Ayuda (?)" tooltipSide="left" onClick={onHelp} data-tour="help" />
         <span className="divider" aria-hidden />
+        <EcosystemWebs />
         <AccountButton />
       </div>
       <input ref={file} hidden type="file" accept="application/json,.json" onChange={upload} />
