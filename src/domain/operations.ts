@@ -14,6 +14,7 @@ import { isFieldLink, ownFields } from './library';
 import { defaultChildTerm } from './kinship';
 import { hideNewTypesInGenealogy } from './layoutFilters';
 import { withoutNodesInFolders } from './folders';
+import { withoutMissingAgendaNodes } from './agenda';
 import type { Calendar } from './calendar';
 import { FIELD_LENS, fieldOfLens, structureEndpoints } from './structure';
 import type {
@@ -460,7 +461,9 @@ function removeNodes(p: Project, removed: Set<string>): Project {
       const values = withoutReferences(r.values, removed);
       return values === r.values ? r : { ...r, values };
     });
-  return withoutNodesInFolders({ ...p, nodes, relations }, removed);
+  // Las entradas de la agenda se quedan; solo pierden el enlace a los nodos borrados.
+  const surviving = new Set(nodes.map(n => n.id));
+  return withoutMissingAgendaNodes(withoutNodesInFolders({ ...p, nodes, relations }, removed), surviving).project;
 }
 
 function withoutReferences(values: Record<string, FieldValue>, removed: Set<string>) {

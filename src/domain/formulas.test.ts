@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { defaultAgendaSettings } from './calendar';
 import { evaluateFormula } from './formulas';
 import { fieldValue } from './selectors';
 import { field, node, project, relation, schema } from '../test/fixtures';
@@ -140,6 +141,7 @@ describe('fechas en las fórmulas', () => {
         firstWeekday: 0,
         leapYears: false,
         today: { year: 1043, month: 3, day: 12 },
+        settings: defaultAgendaSettings(),
       },
     };
     const hero = { ...aria, values: { ...aria.values, nacimiento: '1000-07-30' } };

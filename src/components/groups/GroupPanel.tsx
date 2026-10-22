@@ -130,7 +130,7 @@ function GroupComments({ group }: { group: GroupInfo }) {
   const { project, dispatch } = useApp();
   const { getToken, user } = useAuth();
   const { commentsTick } = useGroups();
-  const { selection, select } = useNavigation();
+  const { selection, select, openAgendaEntry } = useNavigation();
   const [comments, setComments] = useState<GroupComment[] | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -251,6 +251,8 @@ function GroupComments({ group }: { group: GroupInfo }) {
         {visible.map(comment => {
           const mine = comment.author === user?.id;
           const node = comment.nodeId ? project.nodes.find(n => n.id === comment.nodeId) : null;
+          // Los comentarios de una entrada de la agenda llevan su id como destino (`EntryPanel`).
+          const entry = comment.nodeId && !node ? project.agenda.find(e => e.id === comment.nodeId) : undefined;
           const current = node && comment.suggestion ? node.values[comment.suggestion.fieldId] : undefined;
           return (
             <li key={comment.id} className={`group-comment ${comment.state}`}>
@@ -261,7 +263,16 @@ function GroupComments({ group }: { group: GroupInfo }) {
                 </span>
                 {comment.state !== 'abierto' && <span className="badge">{STATE_LABELS[comment.state]}</span>}
               </div>
-              {comment.nodeId && (
+              {entry && (
+                <button
+                  type="button"
+                  className="link-button group-comment-node"
+                  onClick={() => openAgendaEntry(entry.id)}
+                >
+                  Agenda: {entry.title.trim() || 'Sin título'}
+                </button>
+              )}
+              {comment.nodeId && !entry && (
                 <button
                   type="button"
                   className="link-button group-comment-node"

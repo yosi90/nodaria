@@ -12,6 +12,7 @@ import {
   HeartPulse,
   Lightbulb,
   CalendarRange,
+  CalendarDays,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
@@ -152,6 +153,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(CalendarRange),
         keywords: 'vista cronología línea temporal fechas calendario acontecimientos historia',
         run: () => setView('timeline'),
+      },
+      {
+        id: 'view:calendar',
+        label: 'Ir al calendario',
+        group: 'Acciones',
+        leading: icon(CalendarDays),
+        keywords: 'vista calendario agenda tareas entregas eventos notas fechas plazos',
+        run: () => setView('calendar'),
       },
       {
         id: 'view:health',

@@ -11,7 +11,17 @@ export interface MapViewportMemory {
   mapImage: Project['mapImage'];
 }
 
-export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health' | 'timeline';
+export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health' | 'timeline' | 'calendar';
+
+/**
+ * Petición para la vista «Calendario» desde otra vista: abrir una entrada (`created`: recién creada, con
+ * el título listo para escribir). `key` cambia en cada petición para que la vista la atienda una sola vez.
+ */
+export interface AgendaRequest {
+  key: number;
+  entryId: string;
+  created: boolean;
+}
 export type HelpTopic = 'start' | 'shortcuts' | 'formulas';
 
 interface NavigationState {
@@ -27,6 +37,7 @@ interface NavigationState {
   help: HelpTopic | null;
   /** Nodo aislado en el lienzo: solo se ven sus vecinos. Guarda la disposición previa para restaurarla al salir. */
   isolated: { nodeId: string; previousLayout: LayoutMode } | null;
+  agendaRequest: AgendaRequest | null;
 }
 
 interface NavigationContextValue extends NavigationState {
@@ -46,6 +57,10 @@ interface NavigationContextValue extends NavigationState {
   setPaletteOpen: (open: boolean) => void;
   openHelp: (topic?: HelpTopic) => void;
   closeHelp: () => void;
+  /** Va a la vista «Calendario» con una entrada abierta (`created`: la acaba de crear quien llama). */
+  openAgendaEntry: (entryId: string, created?: boolean) => void;
+  /** La vista ya atendió la petición. */
+  clearAgendaRequest: () => void;
 }
 
 const Context = createContext<NavigationContextValue | null>(null);
@@ -68,6 +83,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     paletteOpen: false,
     help: null,
     isolated: null,
+    agendaRequest: null,
   });
 
   const setView = useCallback((view: View) => setState(s => (s.view === view ? s : { ...s, view })), []);
@@ -132,6 +148,19 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const setPaletteOpen = useCallback((paletteOpen: boolean) => setState(s => ({ ...s, paletteOpen })), []);
   const openHelp = useCallback((topic: HelpTopic = 'start') => setState(s => ({ ...s, help: topic })), []);
   const closeHelp = useCallback(() => setState(s => ({ ...s, help: null })), []);
+  const openAgendaEntry = useCallback(
+    (entryId: string, created = false) =>
+      setState(s => ({
+        ...s,
+        view: 'calendar',
+        agendaRequest: { key: (s.agendaRequest?.key ?? 0) + 1, entryId, created },
+      })),
+    [],
+  );
+  const clearAgendaRequest = useCallback(
+    () => setState(s => (s.agendaRequest ? { ...s, agendaRequest: null } : s)),
+    [],
+  );
 
   const value = useMemo<NavigationContextValue>(
     () => ({
@@ -150,6 +179,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setPaletteOpen,
       openHelp,
       closeHelp,
+      openAgendaEntry,
+      clearAgendaRequest,
     }),
     [
       state,
@@ -165,6 +196,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setPaletteOpen,
       openHelp,
       closeHelp,
+      openAgendaEntry,
+      clearAgendaRequest,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;

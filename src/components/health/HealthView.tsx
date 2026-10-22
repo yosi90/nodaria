@@ -1,4 +1,5 @@
 import {
+  CalendarClock,
   AtSign,
   CircleCheck,
   CopyCheck,
@@ -26,6 +27,7 @@ import { analysisLinks, betweenness, bridges, degreeCentrality } from '../../dom
 import { detectCommunities } from '../../domain/communities';
 import { COLORS } from '../../domain/constants';
 import { worldHealth } from '../../domain/health';
+import { isCheckable, kindLabel, longDate, overdueEntries, todayText } from '../../domain/agenda';
 import { databaseLint } from '../../domain/databaseLint';
 import { tableTypes } from '../../domain/database';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
@@ -46,10 +48,11 @@ import { NodeAvatar } from '../common/NodeAvatar';
 /** Vista «Salud»: avisos sobre lo que suele quedar a medias en un mundo, con salto a cada nodo o tipo. */
 export function HealthView() {
   const { project, dispatch } = useApp();
-  const { select, setView } = useNavigation();
+  const { select, setView, openAgendaEntry } = useNavigation();
   const toast = useToast();
   const [editing, setEditing] = useState<SavedQuery | null | 'new'>(null);
   const report = useMemo(() => worldHealth(project), [project]);
+  const overdue = useMemo(() => overdueEntries(project.agenda, todayText()), [project.agenda]);
   const hasTables = tableTypes(project).length > 0;
   const database = useMemo(() => (hasTables ? databaseLint(project) : []), [hasTables, project]);
   const graph = useMemo(() => {
@@ -189,6 +192,23 @@ export function HealthView() {
         </div>
       </header>
       <div className="health-grid">
+        {project.agenda.some(e => isCheckable(e.kind)) && (
+          <Section
+            icon={CalendarClock}
+            title="Tareas y entregas vencidas"
+            count={overdue.length}
+            hint="De la agenda (vista «Calendario»): sin hacer y con el día ya pasado."
+          >
+            {overdue.map(e => (
+              <button key={e.id} type="button" className="health-item" onClick={() => openAgendaEntry(e.id)}>
+                <strong>{e.title.trim() || 'Sin título'}</strong>
+                <span className="health-detail">
+                  {kindLabel(e.kind)} · {longDate(e.endDate ?? e.date)}
+                </span>
+              </button>
+            ))}
+          </Section>
+        )}
         <Section
           icon={Unplug}
           title="Nodos sin conexiones"

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { compareDates, formatDate, monthName, todayOf } from '../../domain/calendar';
 import { getNode, getSchema } from '../../domain/selectors';
 import { groupByYear, timelineEvents, type TimelineEvent } from '../../domain/timeline';
+import { hasWorldCalendar } from '../../domain/projectKinds';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { EmptyState } from '../common/EmptyState';
@@ -17,6 +18,7 @@ import { NodeAvatar } from '../common/NodeAvatar';
 export function TimelineView() {
   const { project } = useApp();
   const { select } = useNavigation();
+  const world = hasWorldCalendar(project.kind);
   const all = useMemo(() => timelineEvents(project), [project]);
   const [typeId, setTypeId] = useState('');
   const [fieldLabel, setFieldLabel] = useState('');
@@ -43,7 +45,7 @@ export function TimelineView() {
       <main className="health-layout timeline-layout">
         <EmptyState icon={CalendarRange} title="Sin fechas todavía">
           Añade a un tipo un atributo de tipo «Fecha» (nacimiento, fundación, batalla…) y rellénalo: cada fecha aparece
-          aquí en orden, con el calendario del proyecto.
+          aquí en orden, con {world ? 'el calendario del mundo' : 'el calendario del proyecto'}.
         </EmptyState>
       </main>
     );
@@ -51,7 +53,9 @@ export function TimelineView() {
 
   const todayRow = (
     <li className="timeline-today" key="today">
-      <span>Hoy en el mundo · {formatDate(project.calendar, today)}</span>
+      <span>
+        {world ? 'Hoy en el mundo' : 'Hoy'} · {formatDate(project.calendar, today)}
+      </span>
     </li>
   );
 
@@ -62,8 +66,8 @@ export function TimelineView() {
         <div>
           <h2>Cronología</h2>
           <p className="muted-note">
-            {events.length === 1 ? '1 fecha' : `${events.length} fechas`} de nodos y relaciones, con el calendario del
-            proyecto.
+            {events.length === 1 ? '1 fecha' : `${events.length} fechas`} de nodos y relaciones, con el calendario del{' '}
+            {world ? 'mundo' : 'proyecto'}.
             {invalid > 0 &&
               ` ${invalid === 1 ? '1 no existe' : `${invalid} no existen`} en el calendario y se marcan para corregirlas.`}
           </p>
@@ -128,7 +132,10 @@ export function TimelineView() {
                           <span className="timeline-kind">{schema.name}</span>
                         )}
                         {!event.valid && (
-                          <span className="timeline-invalid" title="Esta fecha no existe en el calendario del proyecto">
+                          <span
+                            className="timeline-invalid"
+                            title={`Esta fecha no existe en el calendario del ${world ? 'mundo' : 'proyecto'}`}
+                          >
                             <TriangleAlert size={13} aria-hidden /> No existe en el calendario
                           </span>
                         )}

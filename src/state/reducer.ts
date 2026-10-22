@@ -13,6 +13,8 @@ import {
 } from '../domain/schemaFolders';
 import { addFolder, deleteFolder, renameFolder, setNodeFolder } from '../domain/folders';
 import type { Calendar } from '../domain/calendar';
+import * as agenda from '../domain/agenda';
+import type { AgendaEntry, AgendaPatch } from '../domain/agenda';
 import type { SavedQuery } from '../domain/queries';
 import { applySqlAnnotations, setColumnSql, setFieldSql, type SqlColumn } from '../domain/database';
 import { applyProposal, type AiProposal } from '../domain/aiProposal';
@@ -98,6 +100,12 @@ export type Action =
   | { type: 'apply-lens'; id: string }
   | { type: 'update-kinship'; kinship: KinshipTerm[] }
   | { type: 'update-calendar'; calendar: Calendar }
+  /** Agenda del proyecto (`agenda.ts`): son datos, no esquema. */
+  | { type: 'add-agenda-entry'; entry: AgendaEntry }
+  | { type: 'update-agenda-entry'; id: string; patch: AgendaPatch }
+  | { type: 'move-agenda-entry'; id: string; date: string }
+  | { type: 'toggle-agenda-entry'; id: string }
+  | { type: 'delete-agenda-entry'; id: string }
   | { type: 'set-map-image'; image: MapImage | null }
   | { type: 'set-map-scale'; scale: number }
   | { type: 'save-query'; query: SavedQuery }
@@ -301,6 +309,16 @@ function projectReducer(p: Project, action: Action): Project {
       return ops.updateKinship(p, action.kinship);
     case 'update-calendar':
       return ops.updateCalendar(p, action.calendar);
+    case 'add-agenda-entry':
+      return agenda.addAgendaEntry(p, action.entry);
+    case 'update-agenda-entry':
+      return agenda.updateAgendaEntry(p, action.id, action.patch);
+    case 'move-agenda-entry':
+      return agenda.moveAgendaEntry(p, action.id, action.date);
+    case 'toggle-agenda-entry':
+      return agenda.toggleAgendaEntry(p, action.id);
+    case 'delete-agenda-entry':
+      return agenda.deleteAgendaEntry(p, action.id);
     case 'update-node':
       return ops.updateNode(p, action.id, action.values, action.parentId);
     case 'duplicate-node':

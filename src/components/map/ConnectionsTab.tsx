@@ -1,4 +1,9 @@
-import { ArrowDownLeft, ArrowUpRight, AtSign, Layers, Link2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, AtSign, CalendarDays, Layers, Link2, Plus } from 'lucide-react';
+import { createAgendaEntry, entriesOfNode, todayText } from '../../domain/agenda';
+import { now, uid } from '../../domain/factories';
+import { useProjectAccess } from '../../state/groups';
+import { Button } from '../common/Button';
+import { EntryChip } from '../calendar/agendaParts';
 import type { ReactNode } from 'react';
 import { nodeConnections } from '../../domain/connections';
 import { getSchema, nodeLabel, relationRole } from '../../domain/selectors';
@@ -21,12 +26,16 @@ export function ConnectionsTab({ nodeId }: { nodeId: string }) {
     byType.set(key, [...(byType.get(key) ?? []), r]);
   });
 
+  const agenda = <NodeAgenda nodeId={nodeId} />;
   if (!c.total)
     return (
-      <p className="empty-copy">
-        Este nodo aún no está conectado con nada. Crea una relación, rellena un atributo de referencia o menciónalo en
-        las notas de otro nodo con [[su nombre]].
-      </p>
+      <div className="connections">
+        <p className="empty-copy">
+          Este nodo aún no está conectado con nada. Crea una relación, rellena un atributo de referencia o menciónalo en
+          las notas de otro nodo con [[su nombre]].
+        </p>
+        {agenda}
+      </div>
     );
 
   return (
@@ -112,7 +121,50 @@ export function ConnectionsTab({ nodeId }: { nodeId: string }) {
           ))}
         </Group>
       )}
+      {agenda}
     </div>
+  );
+}
+
+/** Las entradas de la agenda que enlazan o mencionan el nodo, y crear una ya enlazada. */
+function NodeAgenda({ nodeId }: { nodeId: string }) {
+  const { project, dispatch } = useApp();
+  const { openAgendaEntry } = useNavigation();
+  const { canEdit } = useProjectAccess();
+  const entries = entriesOfNode(project, nodeId);
+  const today = todayText();
+  return (
+    <Group icon={<CalendarDays size={14} />} title="Agenda">
+      <div className="node-agenda">
+        {entries.map(e => (
+          <EntryChip
+            key={e.id}
+            entry={e}
+            today={today}
+            canEdit={canEdit}
+            showDate
+            onOpen={openAgendaEntry}
+            onToggle={id => dispatch({ type: 'toggle-agenda-entry', id })}
+          />
+        ))}
+        {!entries.length && <p className="field-hint">Ninguna entrada de la agenda enlaza ni menciona este nodo.</p>}
+        {canEdit && (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Plus}
+            onClick={() => {
+              const id = uid('agenda');
+              const entry = createAgendaEntry(id, { kind: 'task', date: todayText(), nodeIds: [nodeId] }, now());
+              dispatch({ type: 'add-agenda-entry', entry });
+              openAgendaEntry(id, true);
+            }}
+          >
+            Nueva entrada en la agenda
+          </Button>
+        )}
+      </div>
+    </Group>
   );
 }
 

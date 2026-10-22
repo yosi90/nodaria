@@ -15,6 +15,7 @@ export type FieldType =
   | 'scale'
   | 'tags'
   | 'list';
+import type { AgendaEntry } from './agenda';
 import type { Calendar } from './calendar';
 import type { Folder } from './folders';
 import type { ImageShape } from './portrait';
@@ -188,6 +189,8 @@ export interface Project {
   kind: ProjectKind;
   /** Carpetas de las listas de Tipos y Relaciones: solo organizan tipos raíz (`src/domain/schemaFolders.ts`). */
   schemaFolders: SchemaFolder[];
+  /** Agenda del proyecto: notas, tareas, entregas y eventos en días reales (`src/domain/agenda.ts`). */
+  agenda: AgendaEntry[];
 }
 /** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
 export interface Lens {

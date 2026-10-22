@@ -1,4 +1,5 @@
 import {
+  CalendarCog,
   CalendarDays,
   ChevronDown,
   CircleHelp,
@@ -99,6 +100,7 @@ const VIEW_GROUPS: { id: 'data' | 'schema'; label: string; title: string; icon: 
       { id: 'map', label: 'Mapa', icon: Network, key: 1 },
       { id: 'table', label: 'Tabla', icon: Table2, key: 2 },
       { id: 'timeline', label: 'Cronología', icon: CalendarRange, key: 7 },
+      { id: 'calendar', label: 'Calendario', icon: CalendarDays, key: 8 },
       { id: 'health', label: 'Salud', icon: HeartPulse, key: 3 },
     ],
   },
@@ -332,7 +334,7 @@ export function Topbar({
       icon: Tags,
       onSelect: () => setKindOpen(true),
     },
-    { label: 'Calendario del proyecto…', icon: CalendarDays, onSelect: () => setCalendarOpen(true) },
+    { label: 'Configuración del calendario…', icon: CalendarCog, onSelect: () => setCalendarOpen(true) },
     group
       ? {
           label: `Grupo «${group.name}»…`,

@@ -1,5 +1,5 @@
-import { Plus, RotateCcw, Trash2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { CalendarDays, ChevronRight, Globe2, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
   defaultCalendar,
   formatDate,
@@ -8,20 +8,165 @@ import {
   parseDate,
   todayOf,
   weekdayOf,
+  type AgendaMode,
+  type AgendaSettings,
   type Calendar,
   type WorldDate,
 } from '../../domain/calendar';
+import { WEEKDAY_NAMES, WEEKDAY_SHORT } from '../../domain/agenda';
+import { hasWorldCalendar } from '../../domain/projectKinds';
 import { allFields } from '../../domain/selectors';
 import { useApp } from '../../state/AppContext';
 import { Button, IconButton } from '../common/Button';
 import { useDialogs } from '../common/dialogs';
 import { Modal } from '../common/Modal';
 
+const MODES: [AgendaMode, string][] = [
+  ['month', 'Mes'],
+  ['week', 'Semana'],
+  ['list', 'Lista'],
+];
+
 /**
- * Calendario del proyecto: meses, días de la semana, bisiestos y fecha actual. Se edita en vivo (cada
- * cambio es una acción deshacible) y afecta a cómo se leen las fechas y a las fórmulas de edad.
+ * Configuración del calendario (docs/roadmaps/ROADMAP_CALENDARIO.md, fase 1). Dos cosas distintas:
+ * los ajustes de la agenda (vista «Calendario», siempre con fechas reales) y el calendario propio del
+ * proyecto (meses, días de la semana y fecha fija), que usan las fichas, las fórmulas y la Cronología.
+ * En Novela y Rol el calendario propio es «del mundo» y va arriba; en el resto es un extra avanzado,
+ * abajo y plegado, salvo que ya no sea el gregoriano, para no esconder algo que cambia sus fechas.
+ * Cada cambio es una acción deshacible.
  */
 export function CalendarDialog({ onClose }: { onClose: () => void }) {
+  const { project } = useApp();
+  const world = hasWorldCalendar(project.kind);
+  const custom = !isStandardCalendar(project.calendar) || project.calendar.today !== null;
+  const [open, setOpen] = useState(custom);
+
+  return (
+    <Modal title="Configuración del calendario" informational wide onClose={onClose}>
+      {world ? (
+        <>
+          <section className="calendar-world">
+            <header>
+              <Globe2 size={18} aria-hidden />
+              <div>
+                <h3>Calendario del mundo</h3>
+                <p>
+                  Cómo se cuentan los días dentro de la historia. Lo usan las fechas de las fichas, las edades y los
+                  días entre fechas de las fórmulas y la Cronología.
+                </p>
+              </div>
+            </header>
+            <CustomCalendarEditor />
+          </section>
+          <AgendaSettingsSection />
+        </>
+      ) : (
+        <>
+          <AgendaSettingsSection />
+          <details className="calendar-advanced" open={open} onToggle={e => setOpen(e.currentTarget.open)}>
+            <summary>
+              <ChevronRight size={15} aria-hidden className="calendar-advanced-chevron" />
+              <span className="calendar-advanced-text">
+                <strong>Calendario personalizado (avanzado)</strong>
+                <span>Meses, días de la semana y fecha fija, para proyectos con un calendario inventado.</span>
+              </span>
+            </summary>
+            {custom && (
+              <p className="validation-message calendar-custom-notice">
+                Este proyecto ya no usa el calendario gregoriano o tiene una fecha fija: sus fichas, fórmulas y
+                Cronología cuentan los días con lo de aquí.
+              </p>
+            )}
+            <CustomCalendarEditor />
+          </details>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/** Ajustes de la vista «Calendario»: con qué día empieza la semana, cuáles se trabajan y cómo se abre. */
+function AgendaSettingsSection() {
+  const { project, dispatch } = useApp();
+  const settings = project.calendar.settings;
+  const set = (patch: Partial<AgendaSettings>) =>
+    dispatch({
+      type: 'update-calendar',
+      calendar: { ...project.calendar, settings: { ...settings, ...patch } },
+    });
+  const toggleWorkday = (day: number) =>
+    set({
+      workdays: settings.workdays.includes(day)
+        ? settings.workdays.filter(d => d !== day)
+        : [...settings.workdays, day].sort((a, b) => a - b),
+    });
+
+  return (
+    <section className="calendar-section calendar-agenda-settings">
+      <div className="card-head">
+        <h3>
+          <CalendarDays size={15} aria-hidden /> Agenda del proyecto
+        </h3>
+      </div>
+      <p className="muted-note">
+        La vista «Calendario» (en «Datos») apunta notas, tareas, entregas y eventos en días reales, aunque el proyecto
+        tenga un calendario propio.
+      </p>
+      <div className="calendar-settings-grid">
+        <label className="field">
+          La semana empieza en
+          <select value={String(settings.weekStart)} onChange={e => set({ weekStart: Number(e.target.value) })}>
+            {WEEKDAY_NAMES.map((name, i) => (
+              <option key={name} value={String(i)}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="field">
+          <span>Días laborables</span>
+          <div className="calendar-workdays" role="group" aria-label="Días laborables">
+            {WEEKDAY_SHORT.map((short, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-pressed={settings.workdays.includes(i)}
+                title={WEEKDAY_NAMES[i]}
+                aria-label={WEEKDAY_NAMES[i]}
+                onClick={() => toggleWorkday(i)}
+              >
+                {short}
+              </button>
+            ))}
+          </div>
+          <small>Los demás se ven más suaves.</small>
+        </div>
+        <div className="field">
+          <span>Se abre en</span>
+          <div className="segmented" role="group" aria-label="Vista inicial">
+            {MODES.map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={settings.defaultMode === mode}
+                onClick={() => set({ defaultMode: mode })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <label className="check">
+        <input type="checkbox" checked={settings.weekNumbers} onChange={e => set({ weekNumbers: e.target.checked })} />
+        Números de semana en el mes
+      </label>
+    </section>
+  );
+}
+
+/** El calendario propio: fecha actual, meses, bisiestos y días de la semana. */
+function CustomCalendarEditor() {
   const { project, dispatch } = useApp();
   const { confirm } = useDialogs();
   const calendar = project.calendar;
@@ -57,21 +202,22 @@ export function CalendarDialog({ onClose }: { onClose: () => void }) {
       confirmLabel: 'Restablecer',
       danger: true,
     });
-    if (ok) set(defaultCalendar());
+    // Los ajustes de la agenda no son parte del calendario propio: se conservan.
+    if (ok) set({ ...defaultCalendar(), settings: calendar.settings });
   };
 
   const standard = isStandardCalendar(calendar);
   return (
-    <Modal title="Calendario del proyecto" informational wide onClose={onClose}>
+    <>
       <p className="templates-intro">
-        Define cómo se cuentan los días en este proyecto. Las fechas se guardan igual que hasta ahora y se leen con
-        estos nombres; las fórmulas <code>{'{edad(nacimiento)}'}</code>, <code>{'{dias(desde, hasta)}'}</code> y{' '}
-        <code>{'{diasemana(fecha)}'}</code> calculan con este calendario y con la fecha actual de aquí.
+        Las fechas se guardan igual que hasta ahora y se leen con estos nombres; las fórmulas{' '}
+        <code>{'{edad(nacimiento)}'}</code>, <code>{'{dias(desde, hasta)}'}</code> y <code>{'{diasemana(fecha)}'}</code>{' '}
+        calculan con este calendario y con la fecha actual de aquí.
       </p>
 
       <section className="calendar-section">
         <div className="card-head">
-          <h3>Fecha actual del proyecto</h3>
+          <h3>Fecha actual</h3>
         </div>
         <div className="check-row">
           <label>
@@ -226,6 +372,6 @@ export function CalendarDialog({ onClose }: { onClose: () => void }) {
           Volver al calendario gregoriano
         </Button>
       </div>
-    </Modal>
+    </>
   );
 }

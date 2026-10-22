@@ -3,6 +3,7 @@ import { GENDERS } from '../domain/constants';
 import { allFields, fieldValue, getSchema, nodeLabel, relationRole } from '../domain/selectors';
 import type { FieldDefinition, FieldValue, Node, Project } from '../domain/types';
 import { serializeProject } from './storage';
+import { agendaCsv, agendaIcs } from './agendaExport';
 import { createZip, dataUrlBytes, type ZipEntry } from './zip';
 
 /*
@@ -147,6 +148,12 @@ export function exportBundle(p: Project): ZipEntry[] {
     const children = p.nodes.filter(n => n.parentId === node.id);
     if (children.length) lines.push('## Dentro', '', ...children.map(c => `- [[${names.get(c.id)}]]`), '');
     entries.push({ name: `notas/${names.get(node.id)}.md`, data: lines.join('\n') });
+  }
+
+  // La agenda: para abrirla en otro calendario y para la hoja de cálculo.
+  if (p.agenda.length) {
+    entries.push({ name: 'agenda/agenda.ics', data: agendaIcs(p) });
+    entries.push({ name: 'agenda/agenda.csv', data: `${BOM}${agendaCsv(p)}` });
   }
 
   entries.unshift({

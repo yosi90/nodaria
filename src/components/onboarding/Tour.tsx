@@ -24,13 +24,13 @@ const STEPS: Step[] = [
   {
     target: 'project',
     title: 'Tu proyecto',
-    body: 'Aquí cambias de proyecto o abres más ejemplos; el engranaje de al lado lo renombra, lo exporta o ajusta su calendario. «Ejemplo: Coches» es ya una copia tuya: cámbialo sin miedo.',
+    body: 'Aquí cambias de proyecto o abres más ejemplos; el engranaje de al lado lo renombra, lo exporta o configura su calendario. «Ejemplo: Coches» es ya una copia tuya: cámbialo sin miedo.',
     view: 'map',
   },
   {
     target: 'views',
     title: 'Datos y esquema',
-    body: 'A la izquierda, las vistas de datos: Mapa, Tabla, Cronología y Salud. A la derecha, el esquema: qué Tipos existen, qué Relaciones los unen y las Propiedades compartidas. Alt+1…7 salta entre ellas.',
+    body: 'A la izquierda, las vistas de datos: Mapa, Tabla, Cronología, Calendario y Salud. A la derecha, el esquema: qué Tipos existen, qué Relaciones los unen y las Propiedades compartidas. Alt+1…8 salta entre ellas.',
     view: 'map',
   },
   {

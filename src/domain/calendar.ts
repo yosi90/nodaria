@@ -29,6 +29,43 @@ export interface Calendar {
   leapYears: boolean;
   /** Fecha actual del mundo; `null` = la fecha real de hoy. */
   today: WorldDate | null;
+  /**
+   * Ajustes de la agenda (vista «Calendario», `agenda.ts`). La agenda usa siempre el calendario real, así
+   * que estos ajustes no cambian cómo se leen las fechas de las fichas.
+   */
+  settings: AgendaSettings;
+}
+
+export type AgendaMode = 'month' | 'week' | 'list';
+
+/** Ajustes de la vista «Calendario» que comparte todo el proyecto. */
+export interface AgendaSettings {
+  /** Primer día de la semana: 0 = lunes … 6 = domingo. */
+  weekStart: number;
+  /** Días laborables (0 = lunes … 6 = domingo); los demás se pintan más suaves. */
+  workdays: number[];
+  /** Enseñar el número de semana ISO en la vista de mes. */
+  weekNumbers: boolean;
+  /** Modo con el que se abre la vista. */
+  defaultMode: AgendaMode;
+}
+
+export function defaultAgendaSettings(): AgendaSettings {
+  return { weekStart: 0, workdays: [0, 1, 2, 3, 4], weekNumbers: false, defaultMode: 'month' };
+}
+
+/** Ajustes leídos de fuera, con los valores por defecto donde falten o no valgan. */
+export function normalizeAgendaSettings(raw: unknown): AgendaSettings {
+  const base = defaultAgendaSettings();
+  if (!raw || typeof raw !== 'object') return base;
+  const s = raw as Partial<Record<keyof AgendaSettings, unknown>>;
+  const day = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 6;
+  return {
+    weekStart: day(s.weekStart) ? s.weekStart : base.weekStart,
+    workdays: Array.isArray(s.workdays) ? [...new Set(s.workdays.filter(day))].sort((a, b) => a - b) : base.workdays,
+    weekNumbers: typeof s.weekNumbers === 'boolean' ? s.weekNumbers : base.weekNumbers,
+    defaultMode: s.defaultMode === 'week' || s.defaultMode === 'list' ? s.defaultMode : 'month',
+  };
 }
 
 export const GREGORIAN_MONTHS: ReadonlyArray<CalendarMonth> = [
@@ -63,6 +100,7 @@ export function defaultCalendar(): Calendar {
     firstWeekday: 0,
     leapYears: true,
     today: null,
+    settings: defaultAgendaSettings(),
   };
 }
 
@@ -92,6 +130,7 @@ export function normalizeCalendar(raw: unknown): Calendar {
         : 0,
     leapYears: typeof c.leapYears === 'boolean' ? c.leapYears : base.leapYears,
     today,
+    settings: normalizeAgendaSettings(c.settings),
   };
 }
 

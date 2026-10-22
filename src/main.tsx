@@ -25,6 +25,7 @@ import './styles/account.css';
 import './styles/database.css';
 import './styles/ai.css';
 import './styles/groups.css';
+import './styles/calendar.css';
 import { registerServiceWorker } from './services/serviceWorker';
 
 createRoot(document.getElementById('root')!).render(

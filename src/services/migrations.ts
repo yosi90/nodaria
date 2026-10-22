@@ -1,6 +1,7 @@
 import { PROJECT_FORMAT_VERSION } from '../domain/constants';
 import { createView, uid } from '../domain/factories';
 import { normalizeCalendar } from '../domain/calendar';
+import { normalizeAgenda } from '../domain/agenda';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
 import { allFields } from '../domain/selectors';
 import { supportsNonNegative } from '../domain/valueConstraints';
@@ -29,6 +30,8 @@ import type {
  *   traducir a tipos y el único proyecto sincronizado que lo tenía estaba vacío.
  * - v7: tipo de proyecto (`kind`), carpetas de tipos (`schemaFolders`) y, por tipo, atributos heredados
  *   ocultos, orden de atributos y metadatos SQL propios (`hiddenFieldIds`, `fieldOrder`, `sqlOverrides`).
+ * - v8: agenda del proyecto (`agenda`, vacía por defecto) y ajustes de la vista «Calendario»
+ *   (`calendar.settings`). No cambia ningún dato existente.
  */
 
 type RawNode = Omit<Node, 'positions'> & { positions?: Node['positions']; position?: Position | null };
@@ -219,6 +222,7 @@ function normalizeProject(project: RawProject): Project {
             schemaIds: Array.isArray(f.schemaIds) ? f.schemaIds : [],
           }))
       : [],
+    agenda: normalizeAgenda(project.agenda),
   };
 }
 

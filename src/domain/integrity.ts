@@ -1,3 +1,4 @@
+import { withoutMissingAgendaNodes } from './agenda';
 import { getSchema } from './selectors';
 import type { Project, Schema } from './types';
 
@@ -123,6 +124,17 @@ export function repairProject(input: Project): RepairResult {
       `Se eliminaron ${p.relations.length - relations.length} relaciones que apuntaban a nodos inexistentes.`,
     );
     p = { ...p, relations };
+  }
+
+  // Entradas de la agenda enlazadas a nodos que ya no existen.
+  const agenda = withoutMissingAgendaNodes(p, new Set(nodes.keys()));
+  if (agenda.removed) {
+    issues.push(
+      agenda.removed === 1
+        ? 'Se quitó de la agenda un enlace a un nodo que ya no existe.'
+        : `Se quitaron de la agenda ${agenda.removed} enlaces a nodos que ya no existen.`,
+    );
+    p = agenda.project;
   }
 
   return { project: issues.length ? p : input, issues };

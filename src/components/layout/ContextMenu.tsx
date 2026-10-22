@@ -51,6 +51,7 @@ export function ContextMenu() {
     ['map', 'Mapa'],
     ['table', 'Tabla'],
     ['timeline', 'Cronología'],
+    ['calendar', 'Calendario'],
     ['health', 'Salud'],
     ['schema', 'Tipos'],
     ['relations', 'Relaciones'],

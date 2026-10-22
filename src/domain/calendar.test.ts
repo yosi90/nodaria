@@ -7,6 +7,7 @@ import {
   formatDate,
   isStandardCalendar,
   isValidDate,
+  defaultAgendaSettings,
   normalizeCalendar,
   parseDate,
   todayOf,
@@ -24,6 +25,7 @@ const munfamed = (): Calendar => ({
   firstWeekday: 0,
   leapYears: false,
   today: { year: 1043, month: 3, day: 12 },
+  settings: defaultAgendaSettings(),
 });
 
 describe('calendario', () => {

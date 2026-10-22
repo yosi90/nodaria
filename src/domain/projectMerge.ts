@@ -110,6 +110,8 @@ export function mergeProject(target: Project, source: Project, { schema }: { sch
     ],
     lenses: [...next.lenses, ...missing(next.lenses, source.lenses)],
     queries: [...next.queries, ...missing(next.queries, source.queries)],
+    // Las entradas de la agenda son datos: se añaden las que faltan; la reparación quita los nodos que no vinieron.
+    agenda: [...next.agenda, ...missing(next.agenda, source.agenda)],
   };
   const sameTitle = nodes.filter(n => titles.has(normalizeName(nodeLabel(next, n)))).length;
   return {

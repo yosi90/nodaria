@@ -178,8 +178,12 @@
 .group-chat-message {
   margin: var(--space-4) var(--space-3);
 }
+/*
+ * El elemento se maqueta a sí mismo como columna (`:host { display: flex }` en el SDK), con los mensajes
+ * creciendo y el campo de escribir abajo. Un `display` desde aquí manda sobre su `:host`: con `block`, el
+ * campo subía hasta debajo de los mensajes cuando la conversación no llenaba el panel. Solo se le da el alto.
+ */
 .group-chat-panel yosi-chat-conversacion {
-  display: block;
   flex: 1;
   min-height: 0;
   --yosi-color-principal: var(--accent);

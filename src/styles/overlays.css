@@ -661,6 +661,111 @@
   font-size: var(--fs-xs);
   text-align: right;
 }
+.calendar-section .card-head h3 {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+/* Novela y Rol: el calendario del mundo, arriba y destacado. */
+.calendar-world {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+}
+.calendar-world > header {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  color: var(--accent-strong);
+}
+.calendar-world > header > svg {
+  flex: none;
+  margin-top: 3px;
+}
+.calendar-world > header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+}
+.calendar-world > header p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+/* El resto: el calendario personalizado, abajo y plegado. */
+.calendar-advanced {
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.calendar-advanced > summary {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3) 0 var(--space-2);
+  cursor: pointer;
+  list-style: none;
+}
+.calendar-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+.calendar-advanced-chevron {
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-muted);
+  transition: transform 0.15s var(--ease);
+}
+.calendar-advanced[open] .calendar-advanced-chevron {
+  transform: rotate(90deg);
+}
+.calendar-advanced-text {
+  display: grid;
+  gap: 2px;
+}
+.calendar-advanced-text strong {
+  font-size: var(--fs-sm);
+}
+.calendar-advanced-text > span {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.calendar-custom-notice {
+  margin: 0 0 var(--space-2);
+}
+.calendar-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+.calendar-workdays {
+  display: flex;
+  gap: 4px;
+}
+.calendar-workdays button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.calendar-workdays button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.calendar-workdays button:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
 .tour {
   position: fixed;
   inset: 0;

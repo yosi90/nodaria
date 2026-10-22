@@ -34,6 +34,7 @@ function groupOf(action: Action) {
   if (action.type === 'set-column-sql') return `sql:${action.typeId}:${action.fieldId}`;
   if (action.type === 'update-kinship') return 'kinship';
   if (action.type === 'update-calendar') return 'calendar';
+  if (action.type === 'update-agenda-entry') return `agenda:${action.id}`;
   if (action.type === 'rename-project') return 'project-name';
   if (action.type === 'move-nodes') return `move:${Object.keys(action.positions).sort().join(',')}`;
   return null;

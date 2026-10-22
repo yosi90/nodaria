@@ -32,6 +32,20 @@ export interface Preferences {
   groupChatWidth: number;
   /** Pestaña del panel del grupo: su chat o los comentarios del proyecto. */
   groupPanelTab: 'chat' | 'comentarios';
+  /** Vista «Calendario»: filtros de este navegador y anchura del panel de la entrada. */
+  agenda: AgendaPreference;
+  agendaPanelWidth: number;
+}
+
+/** Filtros de la vista «Calendario». Son de cada persona: no cambian el proyecto. */
+export interface AgendaPreference {
+  /** Tipos de entrada ocultos. */
+  hiddenKinds: string[];
+  hideDone: boolean;
+  /** Enseñar las fechas de las fichas (si el calendario del proyecto es el real). */
+  fieldDates: boolean;
+  /** En un grupo, solo lo asignado a mí. */
+  onlyMine: boolean;
 }
 
 /** Matriz de relaciones: tipos en filas y columnas, filtro de relación y opciones. */
@@ -75,12 +89,19 @@ const DEFAULTS: Preferences = {
   groupChatOpen: false,
   groupChatWidth: 360,
   groupPanelTab: 'chat',
+  agenda: { hiddenKinds: [], hideDone: false, fieldDates: true, onlyMine: false },
+  agendaPanelWidth: 380,
 };
 
 function loadPreferences(): Preferences {
   try {
     const stored = JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? '{}');
-    return { ...DEFAULTS, ...stored, customColors: normalizePalette(stored.customColors) };
+    return {
+      ...DEFAULTS,
+      ...stored,
+      agenda: { ...DEFAULTS.agenda, ...(stored.agenda ?? {}) },
+      customColors: normalizePalette(stored.customColors),
+    };
   } catch {
     return DEFAULTS;
   }

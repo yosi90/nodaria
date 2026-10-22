@@ -33,11 +33,22 @@ export interface KindVocabulary {
   formulaPlaceholder: string;
 }
 
-export const PROJECT_KINDS: { id: ProjectKind; label: string; description: string }[] = [
+export const PROJECT_KINDS: {
+  id: ProjectKind;
+  label: string;
+  description: string;
+  /** El calendario del mundo (meses y días propios) es parte del proyecto: va arriba y destacado. */
+  worldCalendar?: boolean;
+}[] = [
   { id: 'general', label: 'General', description: 'Ejemplos neutros: personas, productos y actividades.' },
   { id: 'database', label: 'Base de datos', description: 'Tablas, columnas y claves foráneas.' },
-  { id: 'novel', label: 'Novela o guion', description: 'Personajes, capítulos y escenas.' },
-  { id: 'rpg', label: 'Rol y mundos de fantasía', description: 'Reinos, dioses, magia y personajes.' },
+  { id: 'novel', label: 'Novela o guion', description: 'Personajes, capítulos y escenas.', worldCalendar: true },
+  {
+    id: 'rpg',
+    label: 'Rol y mundos de fantasía',
+    description: 'Reinos, dioses, magia y personajes.',
+    worldCalendar: true,
+  },
   { id: 'marketing', label: 'Comercial y marketing', description: 'Clientes, campañas, productos y ventas.' },
   { id: 'software', label: 'Desarrollo de programas', description: 'Módulos, tareas, servicios y versiones.' },
   { id: 'events', label: 'Eventos', description: 'Sesiones, ponentes, salas y proveedores.' },
@@ -253,3 +264,9 @@ const VOCABULARY: Record<ProjectKind, KindVocabulary> = {
 export const vocabulary = (kind: ProjectKind | undefined): KindVocabulary =>
   VOCABULARY[kind ?? 'general'] ?? VOCABULARY.general;
 export const kindLabel = (kind: ProjectKind) => PROJECT_KINDS.find(k => k.id === kind)?.label ?? 'General';
+
+/**
+ * Si en este tipo de proyecto tiene sentido un calendario propio (Novela y Rol): entonces se llama
+ * «Calendario del mundo» y va arriba en la configuración; en el resto es «Calendario personalizado», abajo.
+ */
+export const hasWorldCalendar = (kind: ProjectKind) => PROJECT_KINDS.some(k => k.id === kind && k.worldCalendar);

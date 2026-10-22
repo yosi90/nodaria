@@ -1,10 +1,11 @@
-import { vocabulary } from '../../domain/projectKinds';
+import { hasWorldCalendar, vocabulary } from '../../domain/projectKinds';
 import { useApp } from '../../state/AppContext';
 
 /** Guía de los campos calculados: qué expresiones admite una fórmula y cómo usarlas. Los ejemplos siguen el tipo de proyecto. */
 export function FormulasGuide() {
   const { project } = useApp();
   const words = vocabulary(project.kind);
+  const world = hasWorldCalendar(project.kind);
   return (
     <div className="guide">
       <p>
@@ -77,9 +78,10 @@ export function FormulasGuide() {
 
       <h3>Fechas y edades</h3>
       <p className="muted-note">
-        Las fechas usan el <strong>calendario del proyecto</strong> (ajustes del proyecto, el engranaje junto a su
-        nombre → «Calendario del proyecto…»): sus meses, sus días de la semana y su fecha actual. Un atributo de fecha
-        se lee «3 de Brumal de 1043».
+        Las fechas usan el <strong>{world ? 'calendario del mundo' : 'calendario del proyecto'}</strong> (el engranaje
+        junto a su nombre → «Configuración del calendario…»
+        {world ? '' : ', en «Calendario personalizado»; por defecto, el gregoriano'}): sus meses, sus días de la semana
+        y su fecha actual. Con un calendario propio, un atributo de fecha se lee «3 de Brumal de 1043».
       </p>
       <table className="guide-table">
         <tbody>

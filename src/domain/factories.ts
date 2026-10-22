@@ -33,6 +33,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     calendar: defaultCalendar(),
     kind: 'general',
     schemaFolders: [],
+    agenda: [],
   };
 }
 export function createInitialState(): AppState {
