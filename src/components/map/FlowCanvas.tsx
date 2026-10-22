@@ -78,7 +78,7 @@ import { NodeCard, type CardNode } from './NodeCard';
 import { forceFrameAfterMove, forceFrameKey } from './forceFrame';
 import { foreignKeyLinks, isTableType, tableColumns, tableTypes } from '../../domain/database';
 import { ForeignKeyEdge, type ForeignKeyEdgeType } from './ForeignKeyEdge';
-import { TABLE_W, tableCardColumns, tableHeight } from './tableCard';
+import { tableCardColumns, tableHeight, tableWidth } from './tableCard';
 import { sqlScript } from '../../domain/sqlScript';
 import { vocabulary } from '../../domain/projectKinds';
 import { downloadText } from '../../services/files';
@@ -542,7 +542,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           type: 'card',
           position,
           hidden: clustered.has(n.id) || undefined,
-          width: table ? TABLE_W : compact && !expanded ? MARKER : NODE_W,
+          width: table ? tableWidth(table.some(c => c.description)) : compact && !expanded ? MARKER : NODE_W,
           height: table ? tableHeight(table.length) : compact && !expanded ? MARKER : fullHeight,
           selected: pickedSet.size ? pickedSet.has(n.id) : selectedNodeId === n.id,
           data: {

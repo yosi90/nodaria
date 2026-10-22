@@ -4,6 +4,7 @@ import { junctionProposals } from '../../domain/junctionTables';
 import { JunctionTablesDialog } from './JunctionTablesDialog';
 import {
   allowsIdentity,
+  COLUMN_DESCRIPTION_MAX,
   FK_ACTIONS,
   type FkAction,
   allowsMax,
@@ -113,6 +114,9 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
               <tr>
                 <th>Columna</th>
                 <th>Tipo SQL</th>
+                <th title="Qué guarda la columna. Sin escribir nada vale la descripción del atributo; si alguna columna tiene, la tabla del diagrama la enseña">
+                  Descripción
+                </th>
                 <th title="Clave primaria">PK</th>
                 <th title="Admite nulos">Nulos</th>
                 <th title="Valor único (UNIQUE)">Único</th>
@@ -204,6 +208,24 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                         deduced={column.type}
                         disabled={off}
                         onChange={type => set(column, { type })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="sql-description"
+                        aria-label={`${field.label}: descripción`}
+                        value={sql.description ?? ''}
+                        placeholder={field.description || 'Qué guarda'}
+                        title={
+                          sql.description
+                            ? undefined
+                            : field.description
+                              ? 'La del atributo; escribe otra para esta tabla'
+                              : undefined
+                        }
+                        maxLength={COLUMN_DESCRIPTION_MAX}
+                        disabled={off}
+                        onChange={event => set(column, { description: event.target.value })}
                       />
                     </td>
                     <td>

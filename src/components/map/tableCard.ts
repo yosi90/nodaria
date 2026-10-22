@@ -1,4 +1,4 @@
-import { tableColumns, sqlTypeText } from '../../domain/database';
+import { columnDescription, tableColumns, sqlTypeText } from '../../domain/database';
 import type { Node, Project } from '../../domain/types';
 import type { Box } from './edgeGeometry';
 
@@ -9,6 +9,11 @@ import type { Box } from './edgeGeometry';
  */
 
 export const TABLE_W = 260;
+/** Lo que gana de ancho una tabla con alguna columna descrita (la columna de las descripciones). */
+export const TABLE_DESCRIPTION_W = 240;
+
+/** Ancho de la tarjeta: más ancha solo si alguna columna tiene descripción. */
+export const tableWidth = (withDescriptions: boolean) => TABLE_W + (withDescriptions ? TABLE_DESCRIPTION_W : 0);
 export const TABLE_HEAD = 44;
 export const TABLE_ROW = 22;
 export const TABLE_PAD = 6;
@@ -26,6 +31,8 @@ export interface TableCardColumn {
   unique: boolean;
   nullable: boolean;
   identity: boolean;
+  /** Qué guarda la columna (la suya o la del atributo); vacía si no tiene. */
+  description: string;
 }
 
 export function tableCardColumns(p: Project, node: Node, foreignKeys: Set<string> = new Set()): TableCardColumn[] {
@@ -39,6 +46,7 @@ export function tableCardColumns(p: Project, node: Node, foreignKeys: Set<string
     unique: c.sql.unique,
     nullable: c.sql.nullable,
     identity: c.sql.identity,
+    description: columnDescription(c),
   }));
 }
 

@@ -67,7 +67,15 @@ export interface SqlColumn {
   /** En una clave foránea: qué hacer al borrar o actualizar la fila referenciada. */
   onDelete?: FkAction;
   onUpdate?: FkAction;
+  /**
+   * Qué guarda la columna, para el diagrama y el script (`MS_Description`). Sin ella vale la descripción
+   * del atributo; en una preforma o un atributo heredado se cambia solo en este tipo, como lo demás.
+   */
+  description?: string;
 }
+
+/** Hasta dónde se guarda la descripción de una columna. */
+export const COLUMN_DESCRIPTION_MAX = 500;
 
 export const hasLength = (name: SqlTypeName) => ['char', 'varchar', 'nchar', 'nvarchar', 'varbinary'].includes(name);
 export const allowsMax = (name: SqlTypeName) => ['varchar', 'nvarchar', 'varbinary'].includes(name);
@@ -238,6 +246,8 @@ export function readSqlColumn(raw: unknown): SqlColumn | null {
     FK_ACTIONS.includes(value as FkAction) && value !== 'NO ACTION' ? (value as FkAction) : undefined;
   if (action(r.onDelete)) column.onDelete = action(r.onDelete);
   if (action(r.onUpdate)) column.onUpdate = action(r.onUpdate);
+  if (typeof r.description === 'string' && r.description.trim())
+    column.description = r.description.trim().slice(0, COLUMN_DESCRIPTION_MAX);
   return column;
 }
 
@@ -376,6 +386,13 @@ function primaryKey(p: Project, typeId: string, seen: Set<string>) {
 export const tableFields = (p: Project, typeId: string) => columnsOf(p, typeId, new Set());
 /** Columnas de la tabla, en el orden de los atributos. */
 export const tableColumns = (p: Project, typeId: string) => tableFields(p, typeId).filter(c => !c.sql.excluded);
+
+/** La descripción de una columna: la suya o, si no tiene, la del atributo. Vacía si no hay ninguna. */
+export const columnDescription = (c: TableColumn) => (c.sql.description ?? c.field.description ?? '').trim();
+
+/** Si alguna columna de la tabla tiene descripción: entonces el diagrama le añade su columna. */
+export const tableHasDescriptions = (p: Project, typeId: string) =>
+  tableColumns(p, typeId).some(c => columnDescription(c) !== '');
 
 /** Texto de una columna: «int IDENTITY · PK», «nvarchar(50) · NOT NULL», «date». */
 export function columnText(c: TableColumn) {
@@ -579,6 +596,8 @@ const consistent = (sql: SqlColumn): SqlColumn => ({
   ...sql,
   nullable: sql.primaryKey ? false : sql.nullable,
   identity: sql.identity && !sql.excluded,
+  // Una descripción vacía no se guarda: vuelve a valer la del atributo.
+  description: sql.description?.trim() ? sql.description.slice(0, COLUMN_DESCRIPTION_MAX) : undefined,
 });
 
 /** Fija los metadatos SQL de un atributo en su definición (vale para todos sus tipos); `null` = deducidos. */

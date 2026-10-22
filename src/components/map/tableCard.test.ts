@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, schema } from '../../test/fixtures';
-import { sqlType } from '../../domain/database';
+import { readSqlColumn, sqlType, tableHasDescriptions } from '../../domain/database';
+import { sqlScript } from '../../domain/sqlScript';
 import { databaseLayout, NODE_H } from './layout';
-import { foreignKeyRoute, rowY, TABLE_HEAD, TABLE_ROW, TABLE_W, tableHeight } from './tableCard';
+import {
+  foreignKeyRoute,
+  rowY,
+  TABLE_HEAD,
+  TABLE_ROW,
+  TABLE_W,
+  tableCardColumns,
+  tableHeight,
+  tableWidth,
+} from './tableCard';
 
 const box = (x: number, y: number, rows = 3) => ({ x, y, width: TABLE_W, height: tableHeight(rows) });
 
@@ -75,5 +85,81 @@ describe('disposición «Base de datos»', () => {
     expect(xs.size).toBeGreaterThan(1);
     const bottom = Math.max(...boxes.map(b => b.y + b.h));
     expect(positions.get('idea')!.y).toBeGreaterThan(bottom);
+  });
+});
+
+describe('descripciones de las columnas', () => {
+  const pkColumn = {
+    type: sqlType('int'),
+    primaryKey: true,
+    nullable: false,
+    unique: false,
+    identity: true,
+    excluded: false,
+  };
+  const p = project({
+    schemas: [
+      schema('cliente', {
+        table: true,
+        fields: [
+          field('titulo', { isTitle: true }),
+          field('id', { sql: { ...pkColumn, description: 'Identificador interno' } }),
+          field('nombre', { description: 'Nombre comercial' }),
+        ],
+      }),
+      schema('pedido', {
+        table: true,
+        fields: [
+          field('titulo', { isTitle: true }),
+          field('pid', { sql: pkColumn }),
+          field('cliente', { type: 'nodeRef' }),
+        ],
+      }),
+    ],
+    nodes: [
+      node('c1', 'cliente'),
+      node('c2', 'cliente'),
+      node('p1', 'pedido', null, { cliente: 'c1' }),
+      node('p2', 'pedido', null, { cliente: 'c2' }),
+    ],
+  });
+
+  it('la tabla enseña la descripción propia o la del atributo, y solo si alguna la tiene', () => {
+    expect(tableCardColumns(p, p.nodes[0]).map(c => c.description)).toEqual([
+      'Identificador interno',
+      'Nombre comercial',
+    ]);
+    expect(tableHasDescriptions(p, 'cliente')).toBe(true);
+    expect(tableHasDescriptions(p, 'pedido')).toBe(false);
+    expect(tableWidth(true)).toBeGreaterThan(tableWidth(false));
+  });
+
+  it('la disposición no pisa las tablas más anchas', () => {
+    const positions = databaseLayout(p, null, [], NODE_H);
+    const boxes = p.nodes.map(n => ({
+      ...positions.get(n.id)!,
+      w: tableWidth(tableHasDescriptions(p, n.typeId)),
+      h: tableHeight(2),
+    }));
+    boxes.forEach((a, i) =>
+      boxes.slice(i + 1).forEach(b => {
+        const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+        expect(apart).toBe(true);
+      }),
+    );
+  });
+
+  it('el script las guarda como MS_Description', () => {
+    const script = sqlScript(p);
+    expect(script).toContain(
+      "@value = N'Identificador interno', @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE'",
+    );
+    expect(script).toContain("@level2type = N'COLUMN', @level2name = N'nombre';");
+    expect(script.match(/MS_Description/g)).toHaveLength(4);
+  });
+
+  it('una descripción vacía no se guarda y se leen con cautela', () => {
+    expect(readSqlColumn({ ...pkColumn, description: '   ' })?.description).toBeUndefined();
+    expect(readSqlColumn({ ...pkColumn, description: 'x'.repeat(900) })?.description).toHaveLength(500);
   });
 });

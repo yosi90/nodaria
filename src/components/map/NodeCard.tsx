@@ -196,8 +196,13 @@ function TableCard({
   pin: ReactNode;
   columns: TableCardColumn[];
 }) {
+  // Si alguna columna tiene descripción, la tabla gana una columna para ellas; si no, no se enseña.
+  const described = columns.some(c => c.description);
   return (
-    <div className={`node-table ${selected ? 'selected' : ''}`} style={{ '--type-color': data.color } as CSSProperties}>
+    <div
+      className={`node-table ${selected ? 'selected' : ''} ${described ? 'described' : ''}`}
+      style={{ '--type-color': data.color } as CSSProperties}
+    >
       <Handle type="target" position={Position.Left} className="node-target" isConnectableStart={false} />
       <div className="node-table-head">
         <span className="type-icon" aria-hidden>
@@ -217,7 +222,7 @@ function TableCard({
             <div
               key={c.id}
               className={`node-table-row ${c.primaryKey ? 'pk' : ''}`}
-              title={`${c.label}: ${c.type}${c.nullable ? ' NULL' : ' NOT NULL'}${c.unique ? ' UNIQUE' : ''}`}
+              title={`${c.label}: ${c.type}${c.nullable ? ' NULL' : ' NOT NULL'}${c.unique ? ' UNIQUE' : ''}${c.description ? `\n${c.description}` : ''}`}
             >
               <span className="col-key" aria-hidden>
                 {c.primaryKey ? <KeyRound size={11} /> : c.foreignKey ? <Link2 size={11} /> : null}
@@ -228,6 +233,7 @@ function TableCard({
                 {c.unique && !c.primaryKey && <em> UQ</em>}
               </span>
               <span className="col-null">{c.nullable ? 'NULL' : ''}</span>
+              {described && <span className="col-desc">{c.description}</span>}
             </div>
           ))
         ) : (

@@ -4,7 +4,6 @@ import {
   CloudOff,
   LogOut,
   MailOpen,
-  RefreshCw,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -136,16 +135,17 @@ export function AccountButton() {
           ? `Error al sincronizar: ${sync.error ?? ''}`
           : 'Proyectos sincronizados';
   const syncHint = sync.lastSyncAt
-    ? `Última vez: ${new Date(sync.lastSyncAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`
+    ? `${new Date(sync.lastSyncAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })} · Sincronizar ahora`
     : undefined;
   const entries: MenuEntry[] = [
     { section: user?.alias ?? 'Cuenta' },
+    // El estado de la sincronización es también el botón de sincronizar ahora: una fila menos en el menú.
     {
       label: syncLabel,
-      hint: syncHint,
+      hint: sync.state === 'syncing' ? undefined : (syncHint ?? 'Sincronizar ahora'),
       icon: sync.state === 'offline' ? CloudOff : sync.state === 'error' ? CloudAlert : Cloud,
-      disabled: true,
-      onSelect: () => undefined,
+      disabled: sync.state === 'syncing',
+      onSelect: () => void sync.syncNow(),
     },
     ...(limited
       ? [
@@ -160,12 +160,6 @@ export function AccountButton() {
           } satisfies MenuEntry,
         ]
       : []),
-    {
-      label: 'Sincronizar ahora',
-      icon: RefreshCw,
-      disabled: sync.state === 'syncing',
-      onSelect: () => void sync.syncNow(),
-    },
     {
       label: 'Invitaciones a grupos',
       icon: MailOpen,

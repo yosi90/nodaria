@@ -3,8 +3,8 @@ import { hierarchy, tree, type HierarchyNode } from 'd3-hierarchy';
 import { kinshipGraph, kinshipStructureLink } from '../../domain/kinship';
 import { structureChildren, structureLinks } from '../../domain/structure';
 import type { LayoutMode, Node, Position, Project } from '../../domain/types';
-import { foreignKeyLinks, isTableType, tableColumns } from '../../domain/database';
-import { TABLE_W, tableHeight } from './tableCard';
+import { foreignKeyLinks, isTableType, tableColumns, tableHasDescriptions } from '../../domain/database';
+import { TABLE_W, tableHeight, tableWidth } from './tableCard';
 
 /*
  * Disposiciones automáticas del lienzo. Devuelven la esquina superior izquierda de cada nodo.
@@ -730,16 +730,19 @@ function alignColumns(boxes: Box[]): Box[] {
   });
   const minY = Math.min(...boxes.map(b => b.y - b.h / 2));
   const placed: Box[] = [];
-  columns.forEach((column, i) => {
+  // Cada columna empieza tras la anterior, según su tabla más ancha (las que tienen descripciones lo son más).
+  let left = 0;
+  columns.forEach(column => {
     let bottom = -Infinity;
     column
       .sort((a, b) => a.y - b.y)
       .forEach(b => {
         const wanted = Math.round((b.y - b.h / 2 - minY) / GRID) * GRID;
         const y = Math.max(wanted, bottom === -Infinity ? 0 : bottom + TABLE_GAP);
-        placed.push({ ...b, x: i * (TABLE_W + TABLE_GAP * 2), y });
+        placed.push({ ...b, x: left, y });
         bottom = y + b.h;
       });
+    left += Math.max(...column.map(b => b.w)) + TABLE_GAP * 2;
   });
   const top = Math.min(...placed.map(b => b.y));
   return placed.map(b => ({ ...b, y: b.y - top }));
@@ -772,10 +775,16 @@ export function databaseLayout(
   const tables = p.nodes.filter(n => isTableType(p, n.typeId));
   const ids = new Set(tables.map(n => n.id));
   const heights = new Map<string, number>();
+  const widths = new Map<string, number>();
   const columnCount = new Map<string, number>();
+  const described = new Map<string, boolean>();
   tables.forEach(n => {
-    if (!columnCount.has(n.typeId)) columnCount.set(n.typeId, tableColumns(p, n.typeId).length);
+    if (!columnCount.has(n.typeId)) {
+      columnCount.set(n.typeId, tableColumns(p, n.typeId).length);
+      described.set(n.typeId, tableHasDescriptions(p, n.typeId));
+    }
     heights.set(n.id, tableHeight(columnCount.get(n.typeId)!));
+    widths.set(n.id, tableWidth(described.get(n.typeId)!));
   });
   const pairs = new Map<string, { a: string; b: string }>();
   foreignKeyLinks(p).forEach(l => {
@@ -823,9 +832,9 @@ export function databaseLayout(
     const set = new Set(members);
     const nodes = members.map(id => ({
       id,
-      x: seed.get(id)!.x + TABLE_W / 2,
+      x: seed.get(id)!.x + widths.get(id)! / 2,
       y: seed.get(id)!.y + heights.get(id)! / 2,
-      w: TABLE_W,
+      w: widths.get(id)!,
       h: heights.get(id)!,
     }));
     forceSimulation(nodes)
@@ -848,21 +857,22 @@ export function databaseLayout(
     separate(boxes, TABLE_GAP);
     return alignColumns(boxes);
   };
-  // Las tablas sueltas, en una rejilla de columnas de hasta cuatro.
+  // Las tablas sueltas, en una rejilla de columnas de hasta cuatro; cada columna, tan ancha como su tabla mayor.
   const placeLoose = (members: string[]): Box[] => {
     const cols = Math.ceil(members.length / 4);
     const rows = Math.ceil(members.length / cols);
-    let y = 0;
-    let col = 0;
-    return members.map((id, i) => {
-      if (i && i % rows === 0) {
-        col++;
-        y = 0;
-      }
-      const box = { id, x: col * (TABLE_W + TABLE_GAP), y, w: TABLE_W, h: heights.get(id)! };
-      y += heights.get(id)! + TABLE_GAP;
-      return box;
-    });
+    const boxes: Box[] = [];
+    let left = 0;
+    for (let start = 0; start < members.length; start += rows) {
+      const column = members.slice(start, start + rows);
+      let y = 0;
+      column.forEach(id => {
+        boxes.push({ id, x: left, y, w: widths.get(id)!, h: heights.get(id)! });
+        y += heights.get(id)! + TABLE_GAP;
+      });
+      left += Math.max(...column.map(id => widths.get(id)!)) + TABLE_GAP;
+    }
+    return boxes;
   };
 
   const blocks = [

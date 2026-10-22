@@ -1,4 +1,12 @@
-import { foreignKeyLinks, isTableType, sqlDefaultError, sqlTypeText, tableColumns, type TableColumn } from './database';
+import {
+  columnDescription,
+  foreignKeyLinks,
+  isTableType,
+  sqlDefaultError,
+  sqlTypeText,
+  tableColumns,
+  type TableColumn,
+} from './database';
 import { nodeLabel } from './selectors';
 import type { Node, Project } from './types';
 
@@ -193,6 +201,20 @@ export function sqlScript(p: Project, generatedAt = new Date()): string {
     });
   });
   if (indexes.length) out.push('', '-- Índices', ...indexes);
+
+  // Las descripciones de las columnas, como las guarda SQL Server (la propiedad MS_Description).
+  const text = (value: string) => `N'${value.replace(/'/g, "''")}'`;
+  const descriptions = tables.flatMap(t =>
+    t.columns
+      .filter(c => columnDescription(c))
+      .map(
+        c =>
+          `EXEC sys.sp_addextendedproperty @name = N'MS_Description', @value = ${text(columnDescription(c))}, ` +
+          `@level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = ${text(t.name)}, ` +
+          `@level2type = N'COLUMN', @level2name = ${text(c.name)};`,
+      ),
+  );
+  if (descriptions.length) out.push('', '-- Descripciones de las columnas', ...descriptions);
   out.push('', 'COMMIT TRANSACTION;', '');
   return out.join('\n');
 }
