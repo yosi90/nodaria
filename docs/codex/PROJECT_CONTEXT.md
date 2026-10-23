@@ -152,6 +152,13 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-23, noche (el asistente de IA diseña colecciones):** commit `83eeb58`, la API y la web.
+  - API recompilada y reiniciada (`opsestart-api.ps1`, sin migraciones): `/api/health` correcto y `/api/ia/propuestas` responde `401` sin token.
+  - Web: bundle `main-DA4f2_5s.js`, con el SHA-256 idéntico en los dos dominios.
+  - Edge en producción: `check-records` (25), `check-docs` (9), `check-tables` (9), `check-doc-import` (8) y `check-import` (11), sin errores. `check-import` falló una vez de cada cuatro porque escribía antes de que la hoja llevara el foco a la fila nueva; ahora espera.
+  - 462 pruebas de la web y 100 de la API.
+  - Falta probarlo con un modelo de verdad (lo hará el propietario con su clave).
+  - **Novedades pendientes por el límite diario:** anunciar el 2026-10-24, en una sola novedad (`2026-10-24-bases-de-documentos`): pasar documentos a tablas, importar colecciones desde JSON y el asistente de IA para colecciones.
 - **Publicación del 2026-10-23, noche (importar colecciones desde JSON):** solo la web. `documentImport.ts` (ROADMAP_NOSQL.md, «Importar colecciones que ya existen»). Bundle `main-CEZczB68.js`, con el SHA-256 idéntico en los dos dominios. Edge en producción: 8 comprobaciones, sin errores. Lint, build y 460 pruebas. **Sin anunciar** por el límite de 10 novedades al día. Se anunciará junto con «pasar documentos a tablas» en una sola novedad.
 - **Publicación del 2026-10-23, noche (pasar documentos a tablas):** commit `1f1bed5`, solo la web. `tableConversion.ts` (ROADMAP_NOSQL.md, «Pasar documentos a tablas»). Bundle `main-BxAnJtEa.js`, con el SHA-256 idéntico en los dos dominios. Edge en producción: 9 comprobaciones, sin errores. Lint, build y 457 pruebas. **Sin anunciar todavía:** la plataforma admite 10 novedades al día por web (`demasiadas_novedades`) y Nodaria ya había publicado 10 el 2026-10-23. Queda pendiente anunciarlo otro día con el mismo `idExterno` (`2026-10-23-documentos-a-tablas`).
 - **Publicación del 2026-10-23, noche (pasar tablas a documentos):** solo la web. `documentConversion.ts` (ROADMAP_NOSQL.md, «Pasar tablas a documentos»). Bundle `main-B0kiDIx_.js` en los dos dominios. El dominio propio sirvió unos segundos la página anterior por caché. Edge en producción: 9 comprobaciones, sin errores. Lint, build y 453 pruebas. Anunciado: `2026-10-23-tablas-a-documentos`.
