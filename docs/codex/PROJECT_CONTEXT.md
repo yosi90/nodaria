@@ -152,6 +152,13 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-23, noche (vista «Registros», R3-05, formato 12):** commit `6329abc`, solo la web (la API guarda el proyecto sin mirar su formato).
+  - `npm run deploy`: bundle `main-Sj8szX-7.js`, con el SHA-256 idéntico al local en los dos dominios. El `.wasm` de sql.js se sirve como `application/wasm` y la CSP lleva `'wasm-unsafe-eval'`.
+  - Edge en producción, perfil aislado y sin sesión: las 25 comprobaciones de `check-records.cjs` y las 12 de la tercera ronda, sin errores ni violaciones de la CSP.
+  - Antes, en local: lo mismo en el servidor de desarrollo y sobre `dist/` con la CSP de `firebase.json`; el script con filas, ejecutado en SQL Server Express sobre una base desechable; lint, build y 440 pruebas.
+  - Anunciado como novedad de Yosiftware: `2026-10-23-registros`.
+  - Un proyecto guardado con esta versión no lo abre una pestaña con la anterior hasta recargar.
+  - Falta la prueba de los miembros `DATOS`/`DATOSPF` en el AS/400.
 - **Publicación del 2026-10-23, noche (tercera ronda de `bugs.md`):** commit `98f4380`, solo la web (la API no cambia). R3-01, 02, 03, 04, 06, 07 y 08: segundo «Añadir», preformas como submenú (`Menu` admite `submenu`), atajos A y P con un tipo abierto, packed y zoned en Db2, columnas de atributos independientes, duplicar un atributo y el foco del borrado. `npm run deploy`: bundle `main-D7C6a0x9.js`, SHA-256 idéntico al local en los dos dominios. Edge en local y en producción: 12 comprobaciones, sin errores. Lint, build y 427 pruebas del front. Anunciado como novedad de Yosiftware: `2026-10-23-atributos`. R3-05 (datos y consultas) va a [`ROADMAP_DATOS_BD.md`](../roadmaps/ROADMAP_DATOS_BD.md).
 - **Publicación del 2026-10-23, tarde (Comunidad en vistas y pendientes de los públicos):** commit `b2ba18e`. Copia verificada `Nodaria-antes-de-0013-20261023-1536.bak` (`RESTORE VERIFYONLY` correcto); `0013_public_project_extras` en `NodariaDev` y `Nodaria`. API recompilada y reiniciada: salud correcta, `/compartir/<id>` responde HTML y `/api/publicos/<id>/imagen`, 404 para uno que no existe. Web con `npm run deploy`: bundle `main-Db8V2esb.js`, SHA-256 idéntico al local en los dos dominios, CSP con `img-src` de la API y `/privacidad` ampliada. Edge en producción sin sesión: el botón, la vista, Descubrir, `#comunidad/descubrir` al recargar, volver al proyecto y 390 px, sin errores ni violaciones de la CSP. Antes, Edge en local con la API real: 23 comprobaciones. Lint, build, 425 pruebas del front y 98 de la API (con SQL Server). Anunciado como novedad de Yosiftware: `2026-10-23-comunidad`. Falta probar con cuentas reales los chats y las amistades.
 
