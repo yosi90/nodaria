@@ -115,3 +115,26 @@ Pedido del propietario: «Comunidad» era un modal escondido en el menú de la c
 - **Autoría en las copias**: «Hacer una copia» guarda el original (`Project.origin`: id público, nombre, cuenta y fecha; formato 11). El engranaje lo recuerda («Copia de «X»», que abre el original) y, si la copia se publica, su página dice «Basado en «X»» con el enlace (la API guarda `origin`).
 
 **Verificado:** lint, build, 425 pruebas del front (4 nuevas: direcciones, miniatura y origen) y 98 de la API (imagen, vista previa, origen y grupo; el contrato del almacén también contra SQL Server). Edge con la API real en memoria y la plataforma simulada: 23 comprobaciones (publicar con imagen y su enlace con vista previa, la imagen en la novedad y servida por la API, el botón con su contador, la vista a pantalla completa y su dirección, el feed, Descubrir con imagen, aceptar y pedir amistades, buscar, el perfil, «Mensaje» que abre la directa en Chats, recargar sin perder el sitio, volver al proyecto y 390 px). Los elementos del chat no se pintan sin el SDK real: los chats quedan por probar con cuentas reales.
+
+## Ventana de chats flotante (2026-10-23)
+
+Pedido del propietario: una ventana de chats como la de Fichas. Tiene que poder moverse libremente por toda la web, cerrarse o minimizarse, con los chats como burbujas, y reunir los chats individuales, los de los grupos de trabajo y los que lleguen en el futuro.
+
+- **Decisión: la ventana del SDK, `<yosi-chat>`** (`ecosistema-kit/CHAT.md`), en lugar de una propia. Da lo pedido sin código de Nodaria y es la misma que se aceptó para Fichas en su petición a la plataforma:
+  - un botón con lo no leído;
+  - el listado (directas, grupos, las conversaciones de los grupos de trabajo, que son espacios, y las de las demás webs);
+  - hasta cinco conversaciones en ventanas que se arrastran por toda la página, cambian de tamaño y se minimizan a burbujas con su contador;
+  - el botón y las burbujas se arrastran y se pegan al lado más cercano;
+  - en el móvil, una vista a pantalla completa.
+
+  La plataforma guarda en la cuenta, para esta web, cómo la deja la persona. Nodaria no guarda nada. Lo único que no trae es minimizar la ventana a una barra con título (Fichas la minimiza a burbuja). **(revisable)** Si se quiere ese aspecto, se puede pedir a la plataforma o hacer una carcasa propia, como la de Fichas en el escritorio.
+- **En Nodaria** (`FloatingChat.tsx`):
+  - Se monta en toda la web (`App.tsx`) con los colores del tema y se vuelve a montar con cada cuenta (`CAMBIO_DE_CUENTA.md`). Sin sesión no enseña nada.
+  - «Escribir» en el perfil de una persona abre su conversación en la ventana. Si la ventana está apagada, se abre la pestaña «Chats».
+  - El panel del grupo del proyecto tiene «Abrir en una ventana».
+  - Se puede apagar en este navegador: la casilla de «Chats» o «Ocultar la ventana de chats» en la paleta (preferencia `floatingChat`, encendida por defecto).
+  - La pestaña «Chats» y el panel del grupo siguen igual.
+- **Verificación:**
+  - Edge (`check-chat.cjs`): montada, con los colores de Nodaria, se oculta desde la paleta y sigue oculta al recargar, y se vuelve a mostrar; sin errores.
+  - En producción, además, el SDK real la define.
+  - Falta que el propietario la pruebe con su cuenta: arrastrar, minimizar a burbuja, varias conversaciones y la del grupo.

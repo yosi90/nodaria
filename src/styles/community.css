@@ -634,3 +634,37 @@
     display: inline;
   }
 }
+
+/*
+ * La ventana flotante de los chats (`<yosi-chat>`, FloatingChat.tsx): la del SDK con los colores de Nodaria,
+ * que siguen el tema porque son las variables de la página.
+ */
+yosi-chat.nodaria-chat {
+  --yosi-color-principal: var(--accent);
+  --yosi-color-principal-texto: var(--accent-contrast);
+  --yosi-color-principal-suave: var(--accent-soft);
+  --yosi-color-fondo: var(--surface-1);
+  --yosi-color-fondo-suave: var(--surface-2);
+  --yosi-color-fondo-pagina: var(--bg);
+  --yosi-color-texto: var(--text);
+  --yosi-color-texto-suave: var(--text-muted);
+  --yosi-color-borde: var(--border);
+  --yosi-color-borde-fuerte: var(--border-strong);
+  --yosi-color-acento: var(--warning);
+  --yosi-color-acento-suave: var(--warning-soft);
+  --yosi-color-exito: var(--success);
+  --yosi-color-error: var(--danger);
+  --yosi-color-error-suave: var(--danger-soft);
+  --yosi-fuente: var(--font-ui);
+}
+.community-chats-float {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.group-chat-float {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px var(--space-2);
+  border-bottom: 1px solid var(--border);
+}

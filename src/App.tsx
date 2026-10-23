@@ -21,6 +21,7 @@ import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
 import { AiPanel } from './components/ai/AiPanel';
 import { GroupPanel } from './components/groups/GroupPanel';
+import { FloatingChat } from './components/community/FloatingChat';
 import { CommunityView } from './components/community/CommunityView';
 import { useCommunityHash } from './components/community/communityHash';
 import { PublicCopy } from './components/community/PublicCopy';
@@ -125,6 +126,8 @@ export default function App() {
       <Tour />
       <ContextMenu />
       <PublicCopy />
+      {/* La ventana de chats es de la cuenta: se monta de nuevo con cada cuenta (CAMBIO_DE_CUENTA.md). */}
+      {preferences.floatingChat && <FloatingChat key={`chat:${account}`} />}
       <Db2ExportHost />
       <TablesImportHost />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigation } from '../../state/navigation';
+import { usePreferences } from '../../state/preferences';
 
 declare module 'react' {
   // eslint-disable-next-line @typescript-eslint/no-namespace -- así declara React los elementos propios
@@ -20,6 +21,7 @@ declare module 'react' {
  */
 export function ChatsTab({ conversation }: { conversation: number | null }) {
   const { openCommunity } = useNavigation();
+  const { preferences, setPreference } = usePreferences();
   const inbox = useRef<HTMLElement>(null);
   const chat = useRef<HTMLElement>(null);
 
@@ -48,7 +50,15 @@ export function ChatsTab({ conversation }: { conversation: number | null }) {
         <yosi-chat-conversacion key={conversation} ref={chat} conversacion={String(conversation)} volver="" />
       ) : (
         <div className="community-chats-empty muted-note">
-          Elige una conversación, o empieza una con «+» en la bandeja. Las directas son solo entre amistades.
+          <p>Elige una conversación, o empieza una con «+» en la bandeja. Las directas son solo entre amistades.</p>
+          <label className="community-chats-float">
+            <input
+              type="checkbox"
+              checked={preferences.floatingChat}
+              onChange={e => setPreference('floatingChat', e.target.checked)}
+            />
+            Ventana de chats flotante en toda la web (abajo a la derecha, con las conversaciones como burbujas)
+          </label>
         </div>
       )}
     </div>

@@ -27,6 +27,8 @@ export interface Preferences {
   /** Panel del asistente de IA abierto y su anchura. */
   aiPanelOpen: boolean;
   aiPanelWidth: number;
+  /** La ventana flotante de los chats (`<yosi-chat>`): se puede apagar en este navegador. */
+  floatingChat: boolean;
   /** Panel del chat del grupo (proyectos compartidos) abierto y su anchura. */
   groupChatOpen: boolean;
   groupChatWidth: number;
@@ -88,6 +90,7 @@ const DEFAULTS: Preferences = {
   aiModel: null,
   aiPanelOpen: false,
   aiPanelWidth: 420,
+  floatingChat: true,
   groupChatOpen: false,
   groupChatWidth: 360,
   groupPanelTab: 'chat',

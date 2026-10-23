@@ -21,6 +21,7 @@ import { useDialogs } from '../common/dialogs';
 import { Menu, type MenuEntry } from '../common/Menu';
 import { useToast } from '../common/toasts';
 import { report } from './communityHelpers';
+import { openFloatingChat } from './communityHelpers';
 
 /**
  * Lo que se puede hacer con una persona, con las rutas de la plataforma (`ecosistema-kit/SOCIAL.md`):
@@ -131,7 +132,9 @@ export function RelationActions({
   const write = async () => {
     setBusy(true);
     try {
-      openCommunity({ tab: 'chats', conversation: await directConversation(person.id) });
+      // En la ventana flotante si está; si no, en la pestaña «Chats».
+      const conversation = await directConversation(person.id);
+      if (!(await openFloatingChat(conversation))) openCommunity({ tab: 'chats', conversation });
     } catch (error) {
       toast({ message: socialErrorMessage(error) });
     } finally {

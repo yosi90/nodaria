@@ -110,6 +110,13 @@ export interface YosiftwareSdk {
     extracto?: string;
     persona?: string;
   }): Promise<boolean>;
+  /**
+   * La ventana flotante del chat (`<yosi-chat>`): `abrir()` abre el listado y `abrir(id)`, una conversación;
+   * `false` si la página no tiene la ventana (`ecosistema-kit/CHAT.md`).
+   */
+  chat?: {
+    abrir(conversacion?: number): boolean | Promise<boolean>;
+  };
   /** Token para la API de la plataforma (espacios); `null` sin sesión. */
   tokenPlataforma?(): Promise<string | null>;
   /** Los espacios de la persona en Nodaria (SDK 1.17). Sin sesión, resuelven `null`. */

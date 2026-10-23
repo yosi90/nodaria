@@ -1,4 +1,4 @@
-import { Check, MessageSquareText, MessagesSquare, RotateCcw, Trash2, X } from 'lucide-react';
+import { AppWindow, Check, MessageSquareText, MessagesSquare, RotateCcw, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { visibleFields } from '../../domain/conditions';
 import { nodeLabel } from '../../domain/selectors';
@@ -21,6 +21,7 @@ import { useNavigation } from '../../state/navigation';
 import { usePreferences } from '../../state/preferences';
 import { Button, IconButton } from '../common/Button';
 import { Splitter } from '../common/Splitter';
+import { openFloatingChat } from '../community/communityHelpers';
 
 declare module 'react' {
   // eslint-disable-next-line @typescript-eslint/no-namespace -- así declara React los elementos propios
@@ -106,7 +107,16 @@ function GroupChat({ group }: { group: GroupInfo }) {
       </p>
     );
   if (id === null) return <p className="muted-note group-chat-message">Abriendo el chat del grupo…</p>;
-  return <yosi-chat-conversacion key={id} conversacion={String(id)} />;
+  return (
+    <>
+      <div className="group-chat-float">
+        <Button size="sm" variant="ghost" icon={AppWindow} onClick={() => void openFloatingChat(id)}>
+          Abrir en una ventana
+        </Button>
+      </div>
+      <yosi-chat-conversacion key={id} conversacion={String(id)} />
+    </>
+  );
 }
 
 const STATE_LABELS: Record<CommentState, string> = {

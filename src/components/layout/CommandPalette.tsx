@@ -9,6 +9,7 @@ import {
   Search,
   Shapes,
   Sun,
+  MessagesSquare,
   type LucideIcon,
   Table2,
   HeartPulse,
@@ -184,6 +185,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         run: openTablesImport,
       },
       {
+        id: 'chat:floating',
+        label: preferences.floatingChat ? 'Ocultar la ventana de chats' : 'Mostrar la ventana de chats',
+        group: 'Acciones',
+        leading: icon(MessagesSquare),
+        keywords: 'chat chats ventana flotante burbujas mensajes conversaciones amistades grupos',
+        run: () => setPreference('floatingChat', !preferences.floatingChat),
+      },
+      {
         id: 'help:database',
         label: 'Guía de bases de datos',
         group: 'Acciones',
@@ -234,7 +243,17 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       },
     ];
     return [...nodes, ...relations, ...types, ...actions];
-  }, [project, select, setView, openCommunity, openHelp, dispatch, preferences.theme, setPreference]);
+  }, [
+    project,
+    select,
+    setView,
+    openCommunity,
+    openHelp,
+    dispatch,
+    preferences.theme,
+    preferences.floatingChat,
+    setPreference,
+  ]);
 
   const results = useMemo(() => {
     const q = normalize(query.trim());

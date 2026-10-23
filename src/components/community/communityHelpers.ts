@@ -54,3 +54,17 @@ export function useSentinel(onVisible: () => void, active: boolean) {
   }, [active]);
   return ref;
 }
+
+/**
+ * Abre la ventana de chats en una conversación (o en el listado). `false` si la página no la tiene (la
+ * persona la apagó) o el SDK aún no ha cargado: entonces quien llama abre la pestaña «Chats».
+ */
+export async function openFloatingChat(conversation?: number): Promise<boolean> {
+  const chat = sdk()?.chat;
+  if (!chat || !document.querySelector('yosi-chat')) return false;
+  try {
+    return Boolean(await chat.abrir(conversation));
+  } catch {
+    return false;
+  }
+}
