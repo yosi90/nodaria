@@ -588,7 +588,10 @@
   --yosi-color-borde: var(--border);
   --yosi-color-borde-fuerte: var(--border-strong);
 }
-.community-chats yosi-chat-bandeja {
+.community-chats-tray {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
   border-right: 1px solid var(--border);
 }
 .community-chats-empty {
@@ -621,7 +624,7 @@
   .community-chats {
     grid-template-columns: minmax(0, 1fr);
   }
-  .community-chats.has-conversation yosi-chat-bandeja,
+  .community-chats.has-conversation .community-chats-tray,
   .community-chats:not(.has-conversation) .community-chats-empty {
     display: none;
   }
@@ -657,10 +660,58 @@ yosi-chat.nodaria-chat {
   --yosi-color-error-suave: var(--danger-soft);
   --yosi-fuente: var(--font-ui);
 }
+/* El interruptor de la ventana flotante, debajo de la bandeja (como en la web social). */
 .community-chats-float {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.community-chats-float > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface-3);
+  cursor: pointer;
+  transition:
+    background 0.15s var(--ease),
+    border-color 0.15s var(--ease);
+}
+.switch .switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s var(--ease);
+}
+.switch[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.switch[aria-checked='true'] .switch-knob {
+  transform: translateX(16px);
+}
+.switch:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
 }
 .group-chat-float {
   display: flex;

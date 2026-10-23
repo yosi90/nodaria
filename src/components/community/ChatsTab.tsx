@@ -1,3 +1,4 @@
+import { PictureInPicture2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useNavigation } from '../../state/navigation';
 import { usePreferences } from '../../state/preferences';
@@ -45,20 +46,30 @@ export function ChatsTab({ conversation }: { conversation: number | null }) {
 
   return (
     <div className={`community-chats ${conversation ? 'has-conversation' : ''}`}>
-      <yosi-chat-bandeja ref={inbox} seleccionada={conversation ? String(conversation) : undefined} />
+      <div className="community-chats-tray">
+        <yosi-chat-bandeja ref={inbox} seleccionada={conversation ? String(conversation) : undefined} />
+        {/* Como en la web social: el interruptor de la ventana flotante, debajo de las conversaciones. */}
+        <div className="community-chats-float">
+          <span id="chat-float-label">
+            <PictureInPicture2 size={15} aria-hidden /> Ventana flotante y burbujas
+          </span>
+          <button
+            type="button"
+            role="switch"
+            className="switch"
+            aria-checked={preferences.floatingChat}
+            aria-labelledby="chat-float-label"
+            onClick={() => setPreference('floatingChat', !preferences.floatingChat)}
+          >
+            <span className="switch-knob" aria-hidden />
+          </button>
+        </div>
+      </div>
       {conversation ? (
         <yosi-chat-conversacion key={conversation} ref={chat} conversacion={String(conversation)} volver="" />
       ) : (
         <div className="community-chats-empty muted-note">
-          <p>Elige una conversación, o empieza una con «+» en la bandeja. Las directas son solo entre amistades.</p>
-          <label className="community-chats-float">
-            <input
-              type="checkbox"
-              checked={preferences.floatingChat}
-              onChange={e => setPreference('floatingChat', e.target.checked)}
-            />
-            Ventana de chats flotante en toda la web (abajo a la derecha, con las conversaciones como burbujas)
-          </label>
+          Elige una conversación, o empieza una con «+» en la bandeja. Las directas son solo entre amistades.
         </div>
       )}
     </div>

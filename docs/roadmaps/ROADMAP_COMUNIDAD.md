@@ -132,7 +132,7 @@ Pedido del propietario: una ventana de chats como la de Fichas. Tiene que poder 
   - Se monta en toda la web (`App.tsx`) con los colores del tema y se vuelve a montar con cada cuenta (`CAMBIO_DE_CUENTA.md`). Sin sesión no enseña nada.
   - «Escribir» en el perfil de una persona abre su conversación en la ventana. Si la ventana está apagada, se abre la pestaña «Chats».
   - El panel del grupo del proyecto tiene «Abrir en una ventana».
-  - Se puede apagar en este navegador: la casilla de «Chats» o «Ocultar la ventana de chats» en la paleta (preferencia `floatingChat`, encendida por defecto).
+  - Se puede apagar en este navegador (preferencia `floatingChat`, encendida por defecto) con «Ocultar la ventana de chats» en la paleta o con el interruptor de «Chats». Ese interruptor, «Ventana flotante y burbujas», va en una barra debajo de la bandeja de conversaciones, como en la web social. Lo pidió así el propietario el mismo día: la primera versión era una casilla con mucho texto en el panel vacío.
   - La pestaña «Chats» y el panel del grupo siguen igual.
 - **Verificación:**
   - Edge (`check-chat.cjs`): montada, con los colores de Nodaria, se oculta desde la paleta y sigue oculta al recargar, y se vuelve a mostrar; sin errores.
