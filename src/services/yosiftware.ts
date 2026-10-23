@@ -63,9 +63,16 @@ export interface SavedAccount {
   avatar?: string | null;
 }
 
-/** Un proveedor en `GET /v1/ia/modelos` (`ecosistema-kit/CLAVES_DE_IA.md`, «Elegir el modelo»). */
+/**
+ * Un proveedor en `GET /v1/ia/modelos` (`ecosistema-kit/CLAVES_DE_IA.md`, «Elegir el modelo»). `usos` y
+ * `precio` llegan desde el kit 1.48; `precio: null` es que el modelo no está en la tabla de la plataforma.
+ */
 export interface PlatformModels {
-  proveedores: { proveedor: string; modelos: { id: string; nombre: string }[]; error: string | null }[];
+  proveedores: {
+    proveedor: string;
+    modelos: { id: string; nombre: string; usos?: string[]; precio?: object | null }[];
+    error: string | null;
+  }[];
 }
 
 /** Lo que lanza el SDK al cerrar su ventana de invitaciones (`yosiftware:espacio`). */
@@ -92,6 +99,17 @@ export interface YosiftwareSdk {
   perfil(): Promise<PlatformProfile | null>;
   reportar(options?: { tipo?: 'error' | 'propuesta' }): Promise<boolean>;
   privacidad(options?: { recorrido?: boolean }): Promise<void>;
+  /**
+   * Denuncia lo que es de la plataforma (una persona, una novedad, un comentario) con su ventana; `true` si
+   * se envió. Con `persona`, al terminar propone bloquearla o dejar la amistad (`ecosistema-kit/MODERACION.md`).
+   */
+  denunciar?(options: {
+    tipo: 'persona' | 'novedad' | 'comentario';
+    referencia: string | number;
+    nombre?: string;
+    extracto?: string;
+    persona?: string;
+  }): Promise<boolean>;
   /** Token para la API de la plataforma (espacios); `null` sin sesión. */
   tokenPlataforma?(): Promise<string | null>;
   /** Los espacios de la persona en Nodaria (SDK 1.17). Sin sesión, resuelven `null`. */

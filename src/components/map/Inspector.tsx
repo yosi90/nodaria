@@ -20,6 +20,7 @@ import { relationEnds } from '../../domain/constraints';
 import { isFieldVisible, referenceLimit } from '../../domain/conditions';
 import type { FieldValue, Node, Project, Relation, Selection } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useProjectAccess } from '../../state/groups';
 import { useNavigation } from '../../state/navigation';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
@@ -58,6 +59,7 @@ export function Inspector({
   onDelete,
 }: InspectorProps) {
   const { project, dispatch } = useApp();
+  const { canEdit } = useProjectAccess();
   const { select, back, forward, canBack, canForward, isolated, isolate, clearIsolation, setView } = useNavigation();
   const [duplicateAnchor, setDuplicateAnchor] = useState<Anchor | null>(null);
   const duplicate = (withRelations: boolean) => {
@@ -178,87 +180,92 @@ export function Inspector({
         {node && tab === 'notes' && <NotesTab node={node} />}
         {(!node || tab === 'fields') && (
           <>
-            {node && (
-              <section className="inspector-section">
-                <div className="form-grid">
-                  <div className="field">
-                    Dentro de
-                    <Select
-                      aria-label="Nodo padre"
-                      options={parents.map(n => nodeOption(project, n))}
-                      value={node.parentId}
-                      nullLabel="Raíz (sin padre)"
-                      onChange={parentId =>
-                        dispatch({ type: 'update-node', id: node.id, values: node.values, parentId })
-                      }
-                    />
-                  </div>
-                  <div className="field">
-                    Posición en el lienzo
-                    <div className="check-row">
-                      {node.positions[project.view.layout] ? (
-                        <>
-                          <span className="badge">
-                            <Pin size={10} aria-hidden /> Fijada en esta disposición
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            icon={PinOff}
-                            onClick={() => dispatch({ type: 'move-nodes', positions: { [node.id]: null } })}
-                          >
-                            Volver a automática
-                          </Button>
-                        </>
-                      ) : (
-                        <span className="field-hint">Automática. Arrástralo en el lienzo para fijarla.</span>
-                      )}
+            {/* Sin permiso para editar (lector de un grupo, página pública) se ve, pero no se cambia. */}
+            <fieldset className="access-lock" disabled={!canEdit}>
+              {node && (
+                <section className="inspector-section">
+                  <div className="form-grid">
+                    <div className="field">
+                      Dentro de
+                      <Select
+                        aria-label="Nodo padre"
+                        options={parents.map(n => nodeOption(project, n))}
+                        value={node.parentId}
+                        nullLabel="Raíz (sin padre)"
+                        onChange={parentId =>
+                          dispatch({ type: 'update-node', id: node.id, values: node.values, parentId })
+                        }
+                      />
                     </div>
+                    {canEdit && (
+                      <div className="field">
+                        Posición en el lienzo
+                        <div className="check-row">
+                          {node.positions[project.view.layout] ? (
+                            <>
+                              <span className="badge">
+                                <Pin size={10} aria-hidden /> Fijada en esta disposición
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                icon={PinOff}
+                                onClick={() => dispatch({ type: 'move-nodes', positions: { [node.id]: null } })}
+                              >
+                                Volver a automática
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="field-hint">Automática. Arrástralo en el lienzo para fijarla.</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </section>
-            )}
-            {relation && (
-              <section className="inspector-section">
-                <RelationEndpoints
-                  relation={relation}
-                  onChange={r => dispatch({ type: 'update-relation', relation: r })}
-                />
-                {schema?.genealogical && (
-                  <div className="form-grid" style={{ marginTop: 'var(--space-3)' }}>
-                    <KinshipFields
-                      sourceId={relation.sourceId}
-                      targetId={relation.targetId}
-                      kinshipId={relation.kinshipId}
-                      neutral={relation.kinshipNeutral}
-                      onChange={patch =>
-                        dispatch({
-                          type: 'update-relation',
-                          relation: {
-                            ...relation,
-                            kinshipId: patch.kinshipId === undefined ? relation.kinshipId : patch.kinshipId,
-                            kinshipNeutral: patch.neutral ?? relation.kinshipNeutral,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                )}
-                {schema?.directed && !schema.genealogical && (
-                  <label className="field" style={{ marginTop: 'var(--space-3)' }}>
-                    Visto desde el destino
-                    <input
-                      value={relation.reverseName}
-                      placeholder={schema.inverseName || 'Igual que el nombre'}
-                      onChange={e =>
-                        dispatch({ type: 'update-relation', relation: { ...relation, reverseName: e.target.value } })
-                      }
-                    />
-                    <small>«Tía» desde el origen y «Sobrina» desde el destino, por ejemplo.</small>
-                  </label>
-                )}
-              </section>
-            )}
+                </section>
+              )}
+              {relation && (
+                <section className="inspector-section">
+                  <RelationEndpoints
+                    relation={relation}
+                    onChange={r => dispatch({ type: 'update-relation', relation: r })}
+                  />
+                  {schema?.genealogical && (
+                    <div className="form-grid" style={{ marginTop: 'var(--space-3)' }}>
+                      <KinshipFields
+                        sourceId={relation.sourceId}
+                        targetId={relation.targetId}
+                        kinshipId={relation.kinshipId}
+                        neutral={relation.kinshipNeutral}
+                        onChange={patch =>
+                          dispatch({
+                            type: 'update-relation',
+                            relation: {
+                              ...relation,
+                              kinshipId: patch.kinshipId === undefined ? relation.kinshipId : patch.kinshipId,
+                              kinshipNeutral: patch.neutral ?? relation.kinshipNeutral,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+                  {schema?.directed && !schema.genealogical && (
+                    <label className="field" style={{ marginTop: 'var(--space-3)' }}>
+                      Visto desde el destino
+                      <input
+                        value={relation.reverseName}
+                        placeholder={schema.inverseName || 'Igual que el nombre'}
+                        onChange={e =>
+                          dispatch({ type: 'update-relation', relation: { ...relation, reverseName: e.target.value } })
+                        }
+                      />
+                      <small>«Tía» desde el origen y «Sobrina» desde el destino, por ejemplo.</small>
+                    </label>
+                  )}
+                </section>
+              )}
+            </fieldset>
             {fields.length > 0 && (
               <section className="inspector-section">
                 {columns.size > 0 && schema && (
@@ -331,47 +338,49 @@ export function Inspector({
               </section>
             )}
             {node && <RelationsSection nodeId={node.id} />}
-            <section className="inspector-section">
-              <div className="inspector-actions">
-                {node && canHaveChildren && (
-                  <Button icon={Plus} size="sm" onClick={event => onAddChild(node.id, anchorOf(event.currentTarget))}>
-                    Añadir subnodo
+            {canEdit && (
+              <section className="inspector-section">
+                <div className="inspector-actions">
+                  {node && canHaveChildren && (
+                    <Button icon={Plus} size="sm" onClick={event => onAddChild(node.id, anchorOf(event.currentTarget))}>
+                      Añadir subnodo
+                    </Button>
+                  )}
+                  {node && (
+                    <Button
+                      icon={Copy}
+                      size="sm"
+                      aria-haspopup="menu"
+                      aria-expanded={Boolean(duplicateAnchor)}
+                      onClick={event =>
+                        duplicateAnchor ? setDuplicateAnchor(null) : setDuplicateAnchor(anchorOf(event.currentTarget))
+                      }
+                    >
+                      Duplicar
+                    </Button>
+                  )}
+                  {node && duplicateAnchor && (
+                    <Menu
+                      anchor={duplicateAnchor}
+                      label="Duplicar nodo"
+                      onClose={() => setDuplicateAnchor(null)}
+                      entries={[
+                        { label: 'Duplicar (Ctrl+D)', hint: 'solo la ficha', onSelect: () => duplicate(false) },
+                        {
+                          label: 'Duplicar con relaciones',
+                          hint: 'copia también sus relaciones',
+                          onSelect: () => duplicate(true),
+                        },
+                      ]}
+                    />
+                  )}
+                  <div className="spacer" />
+                  <Button icon={Trash2} size="sm" variant="danger" onClick={onDelete}>
+                    Eliminar
                   </Button>
-                )}
-                {node && (
-                  <Button
-                    icon={Copy}
-                    size="sm"
-                    aria-haspopup="menu"
-                    aria-expanded={Boolean(duplicateAnchor)}
-                    onClick={event =>
-                      duplicateAnchor ? setDuplicateAnchor(null) : setDuplicateAnchor(anchorOf(event.currentTarget))
-                    }
-                  >
-                    Duplicar
-                  </Button>
-                )}
-                {node && duplicateAnchor && (
-                  <Menu
-                    anchor={duplicateAnchor}
-                    label="Duplicar nodo"
-                    onClose={() => setDuplicateAnchor(null)}
-                    entries={[
-                      { label: 'Duplicar (Ctrl+D)', hint: 'solo la ficha', onSelect: () => duplicate(false) },
-                      {
-                        label: 'Duplicar con relaciones',
-                        hint: 'copia también sus relaciones',
-                        onSelect: () => duplicate(true),
-                      },
-                    ]}
-                  />
-                )}
-                <div className="spacer" />
-                <Button icon={Trash2} size="sm" variant="danger" onClick={onDelete}>
-                  Eliminar
-                </Button>
-              </div>
-            </section>
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>

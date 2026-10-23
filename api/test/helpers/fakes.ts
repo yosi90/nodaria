@@ -6,6 +6,8 @@ import { loadConfig } from '../../src/config.ts';
 import { createMemoryConversationStore } from '../../src/ai/conversations.ts';
 import { createMemoryGroupStore } from '../../src/groups/repository.ts';
 import { createMemoryCommentStore } from '../../src/groups/comments.ts';
+import { createMemoryCommunityStore } from '../../src/community/repository.ts';
+import type { CommunityClient } from '../../src/platform/community.ts';
 import type { PlatformSpace } from '../../src/groups/model.ts';
 import { PlatformError, type SpacesClient } from '../../src/platform/spaces.ts';
 import { createMemoryProjectStore, type ProjectStore } from '../../src/projects/repository.ts';
@@ -175,6 +177,51 @@ export function fakeSpaces() {
   };
 }
 
+/** La plataforma y Notificapp, en memoria: apuntan lo que se manda. */
+export function fakeCommunityClient() {
+  const calls: { op: string; body: unknown }[] = [];
+  let failNext: Error | null = null;
+  const fail = () => {
+    if (!failNext) return;
+    const error = failNext;
+    failNext = null;
+    throw error;
+  };
+  const client: CommunityClient = {
+    async declareNewsKinds() {
+      calls.push({ op: 'kinds', body: null });
+    },
+    async postNews(payload) {
+      fail();
+      calls.push({ op: 'news', body: payload });
+      return true;
+    },
+    async retireNews(externalId) {
+      fail();
+      calls.push({ op: 'retire', body: externalId });
+    },
+    async notify(payload) {
+      fail();
+      calls.push({ op: 'notify', body: payload });
+    },
+    async cases() {
+      return [{ clave: 'contenido', nombre: 'Contenido inapropiado' }];
+    },
+    async incident(body) {
+      fail();
+      calls.push({ op: 'incident', body });
+      return { incidente: { id: 1 } };
+    },
+  };
+  return {
+    client,
+    calls,
+    failOnce(error: Error) {
+      failNext = error;
+    },
+  };
+}
+
 export function testDependencies(overrides: Partial<AppDependencies> = {}): AppDependencies {
   const projects = overrides.projects ?? createMemoryProjectStore();
   return {
@@ -190,6 +237,8 @@ export function testDependencies(overrides: Partial<AppDependencies> = {}): AppD
     groups: memoryGroups(projects),
     comments: createMemoryCommentStore(),
     spaces: fakeSpaces().client,
+    community: createMemoryCommunityStore(() => ({ globalId: OWNER, active: true })).store,
+    communityClient: fakeCommunityClient().client,
     feed: null,
     ...overrides,
     projects,

@@ -72,6 +72,10 @@ interface GroupsContextValue {
 
 const Context = createContext<GroupsContextValue | null>(null);
 
+/** Un proyecto que solo se mira (la página pública): nada se puede cambiar, sea de quien sea. */
+const ReadOnlyContext = createContext(false);
+export const ReadOnlyProject = ReadOnlyContext.Provider;
+
 const PUSH_DELAY_MS = 2500;
 const POLL_MS = 60 * 1000;
 /** Tras aceptar una invitación, la plataforma tarda un momento en dejar el cambio en el feed. */
@@ -493,8 +497,11 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
  */
 export function useProjectAccess() {
   const { project } = useApp();
-  const { groupOf } = useGroups();
-  const group = groupOf(project.id);
+  const readOnly = useContext(ReadOnlyContext);
+  // La página pública no monta los grupos: allí todo es de solo lectura.
+  const groups = useContext(Context);
+  if (readOnly || !groups) return { group: null, canEdit: false, canEditSchema: false };
+  const group = groups.groupOf(project.id);
   return {
     group,
     canEdit: !group || group.capabilities.edit,

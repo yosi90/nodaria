@@ -37,6 +37,15 @@ const envSchema = z.object({
     .int()
     .min(10_000)
     .default(5 * 60 * 1000),
+  // Dirección de la web, para los enlaces de las páginas públicas en las novedades.
+  PUBLIC_WEB_URL: z.string().url().default('https://nodaria.yosiftware.es'),
+  // Notificapp (plugin-kit/PROJECT_PLUGIN.md): la credencial de emisor para avisar de las denuncias y la
+  // credencial externa con la que Notificapp llama a /notificapp/v1/* (solo los tokens, fuera de Git).
+  NOTIFICAPP_API: z.string().url().default('https://notificapp-api.yosiftware.es'),
+  NOTIFICAPP_SENDER_TOKEN_FILE: z.string().default('.runtime/notificapp-sender.token'),
+  NOTIFICAPP_UPSTREAM_TOKEN_FILE: z.string().default('.runtime/notificapp-upstream.token'),
+  // Cada cuánto se vacía la cola de salida (novedades y avisos).
+  OUTBOX_INTERVAL_MS: z.coerce.number().int().min(1_000).default(30_000),
   // Con valor, los logs van a archivos diarios en esa carpeta en lugar de a la salida estándar.
   LOG_DIR: z.string().optional(),
 });
@@ -79,6 +88,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       feedIntervalMs: value.PLATFORM_FEED_INTERVAL_MS,
       // El feed solo se lee fuera de las pruebas.
       feedEnabled: value.NODE_ENV !== 'test',
+    },
+    webUrl: value.PUBLIC_WEB_URL,
+    notificapp: {
+      api: value.NOTIFICAPP_API,
+      senderTokenFile: value.NOTIFICAPP_SENDER_TOKEN_FILE,
+      upstreamTokenFile: value.NOTIFICAPP_UPSTREAM_TOKEN_FILE,
+    },
+    outbox: {
+      intervalMs: value.OUTBOX_INTERVAL_MS,
+      // La cola solo se vacía fuera de las pruebas.
+      enabled: value.NODE_ENV !== 'test',
     },
     logDir: value.LOG_DIR,
   };

@@ -41,7 +41,9 @@ import {
   UserPlus,
   UserCog,
   type LucideIcon,
+  Globe,
 } from 'lucide-react';
+import { PublishDialog } from '../community/PublishDialog';
 import { Fragment, useCallback, useRef, useState } from 'react';
 import { downloadBytes, downloadProject, downloadText } from '../../services/files';
 import { exportZip } from '../../services/exportBundle';
@@ -186,6 +188,7 @@ export function Topbar({
   // El asistente de IA trabaja de momento sobre esquemas de base de datos.
   const toggleAi = () => setPreference('aiPanelOpen', !preferences.aiPanelOpen);
   const [kindOpen, setKindOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const { status: authStatus, signIn } = useAuth();
   const { groupOf, present, syncState, isShared } = useGroups();
@@ -356,6 +359,16 @@ export function Topbar({
           icon: Users,
           onSelect: openSharing,
         },
+    {
+      label: 'Publicar…',
+      hint: group
+        ? 'Solo proyectos propios'
+        : authStatus === 'signed-in'
+          ? 'Solo lectura, con enlace'
+          : 'Entra con tu cuenta',
+      icon: Globe,
+      onSelect: () => setPublishOpen(true),
+    },
     'separator',
     { label: 'Exportar JSON', icon: Download, onSelect: () => downloadProject(project) },
     {
@@ -512,6 +525,7 @@ export function Topbar({
       )}
       {csv && <CsvImportDialog fileName={csv.name} table={csv.table} onClose={() => setCsv(null)} />}
       {kindOpen && <ProjectKindDialog onClose={() => setKindOpen(false)} />}
+      {publishOpen && <PublishDialog onClose={() => setPublishOpen(false)} />}
       <span className="divider hide-narrow" aria-hidden />
       {density >= DENSITY.viewMenus ? (
         // Sin sitio, cada grupo de vistas es un menú que enseña la vista abierta.

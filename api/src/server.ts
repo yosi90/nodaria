@@ -9,6 +9,9 @@ import { connectDatabase } from './db/pool.ts';
 import { createGroupMaintenance } from './groups/maintenance.ts';
 import { createSqlGroupStore } from './groups/repository.ts';
 import { createSqlCommentStore } from './groups/comments.ts';
+import { createOutboxWorker } from './community/outbox.ts';
+import { createSqlCommunityStore } from './community/repository.ts';
+import { createCommunityClient } from './platform/community.ts';
 import { createFeedClient, createFeedReader, createSqlFeedStore } from './platform/feed.ts';
 import { createPlatformSpacesClient } from './platform/spaces.ts';
 import { createSqlProjectStore } from './projects/repository.ts';
@@ -18,6 +21,8 @@ const config = loadConfig();
 const db = await connectDatabase(config.db);
 const groups = createSqlGroupStore(db);
 const spaces = createPlatformSpacesClient(config.platform);
+const community = createSqlCommunityStore(db);
+const communityClient = createCommunityClient(config.platform, config.notificapp);
 // El feed de la plataforma avisa de las cuentas cerradas o borradas y de los cambios de los espacios
 // (ecosistema-kit/FEED_DE_CAMBIOS.md y ESPACIOS.md). Se lee cada cierto tiempo y a petición.
 let feed: ReturnType<typeof createFeedReader> | null = null;
@@ -35,6 +40,8 @@ const app = await buildApp({
   groups,
   comments: createSqlCommentStore(db),
   spaces,
+  community,
+  communityClient,
   feed: { readOnce: () => feed?.readOnce() ?? Promise.resolve(0) },
 });
 
@@ -59,12 +66,23 @@ const maintenance = config.platform.feedEnabled
   ? createGroupMaintenance({ groups, spaces, intervalMs: config.platform.feedIntervalMs, log: app.log })
   : null;
 maintenance?.start();
+// Novedades y avisos de denuncias, después de confirmar cada transacción y con reintentos.
+const outbox = config.outbox.enabled
+  ? createOutboxWorker({
+      store: community,
+      client: communityClient,
+      intervalMs: config.outbox.intervalMs,
+      log: app.log,
+    })
+  : null;
+outbox?.start();
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} recibido, cerrando…`);
   await app.close();
   await feed?.stop();
   await maintenance?.stop();
+  await outbox?.stop();
   await db.close();
   process.exit(0);
 };

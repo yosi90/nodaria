@@ -26,31 +26,47 @@ import './styles/database.css';
 import './styles/ai.css';
 import './styles/groups.css';
 import './styles/calendar.css';
+import './styles/community.css';
+import { PublicApp } from './components/community/PublicApp';
+import { publicIdFromPath } from './services/community';
 import { registerServiceWorker } from './services/serviceWorker';
 
+// La página pública de un proyecto (`/p/<id>`) no abre los proyectos del navegador: solo lee el publicado.
+const publicId = publicIdFromPath(window.location.pathname);
+
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <PreferencesProvider>
-      <AppProvider errorView={error => <StorageError message={error.message} />}>
-        <ToastProvider>
-          <AuthProvider>
-            <GroupsProvider>
-              <SyncProvider>
-                <NavigationProvider>
-                  <TourProvider>
-                    <DialogProvider>
-                      <App />
-                      <SyncNotices />
-                    </DialogProvider>
-                  </TourProvider>
-                </NavigationProvider>
-              </SyncProvider>
-            </GroupsProvider>
-          </AuthProvider>
-        </ToastProvider>
-      </AppProvider>
-    </PreferencesProvider>
-  </StrictMode>,
+  publicId ? (
+    <StrictMode>
+      <PreferencesProvider>
+        <AuthProvider>
+          <PublicApp publicId={publicId} />
+        </AuthProvider>
+      </PreferencesProvider>
+    </StrictMode>
+  ) : (
+    <StrictMode>
+      <PreferencesProvider>
+        <AppProvider errorView={error => <StorageError message={error.message} />}>
+          <ToastProvider>
+            <AuthProvider>
+              <GroupsProvider>
+                <SyncProvider>
+                  <NavigationProvider>
+                    <TourProvider>
+                      <DialogProvider>
+                        <App />
+                        <SyncNotices />
+                      </DialogProvider>
+                    </TourProvider>
+                  </NavigationProvider>
+                </SyncProvider>
+              </GroupsProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </AppProvider>
+      </PreferencesProvider>
+    </StrictMode>
+  ),
 );
 
 registerServiceWorker();

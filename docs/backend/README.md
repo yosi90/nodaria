@@ -45,6 +45,11 @@ Separado de producción (`ecosistema-kit/MIGRACION.md`, paso 7):
 | `PLATFORM_SERVICE_TOKEN_FILE`  | `.runtime/plataforma.token`     | Credencial de servicio (solo el token) para el feed de cambios.          |
 | `PLATFORM_FEED_INTERVAL_MS`    | `300000`                        | Cada cuánto se lee el feed (no hay NATS).                                |
 | `UV_THREADPOOL_SIZE`           | `4` (Node)                      | Hilos de libuv; `msnodesqlv8` ocupa uno por consulta. Usar `16`.         |
+| `PUBLIC_WEB_URL`               | `https://nodaria.yosiftware.es` | Dirección de la web para el enlace de las páginas públicas (`/p/<id>`).  |
+| `NOTIFICAPP_API`               | `https://notificapp-api.yosiftware.es` | API de Notificapp para los avisos de denuncias.                   |
+| `NOTIFICAPP_SENDER_TOKEN_FILE` | `.runtime/notificapp-sender.token` | Credencial de emisor del plugin `nodaria-api` (sin ella, los avisos esperan en la cola). |
+| `NOTIFICAPP_UPSTREAM_TOKEN_FILE` | `.runtime/notificapp-upstream.token` | Credencial externa con la que Notificapp llama a `/notificapp/v1/*` (sin ella, 401). |
+| `OUTBOX_INTERVAL_MS`           | `30000`                         | Cada cuánto se vacía la cola de salida (novedades y avisos).             |
 | `LOG_DIR`                      | –                               | Logs diarios rotados (vacío: salida estándar).                           |
 
 ## Autenticación
@@ -84,6 +89,7 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 - `0009_groups`: `groups`, `group_members` y `group_projects` (grupos de trabajo).
 - `0011_group_role_labels`: `groups.role_labels` (nombres propios de los roles, JSON).
 - `0010_group_comments`: `group_comments` (comentarios y sugerencias de los proyectos de grupo; se borran con el proyecto del grupo).
+- `0012_public_projects`: `public_projects`, `public_news`, `public_reports` y `outbox` (proyectos públicos, sus novedades, sus denuncias y la cola de salida).
 
 ## Modelo de datos
 
@@ -97,6 +103,10 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | `groups`         | `id` (`external_id` y `space_id` únicos) | Grupos de trabajo: el espacio de la plataforma (`grupo-<uuid>`), su nombre, propietario y estado (`creando`, `activo`, `borrando`, `borrado`). |
 | `group_members`  | `(group_id, global_id)`             | Copia del feed de los miembros: rol y estado (solo `activo` tiene acceso). Sin clave ajena a `users`. |
 | `group_projects` | `project_id` (único entre grupos)   | El proyecto del grupo: documento, `version`, `updated_by`. No cuelga de ninguna cuenta.         |
+| `public_projects` | `id` (público, 12 caracteres; único por `(user_id, project_id)`) | La copia publicada de un proyecto propio: documento, recuentos, opciones, `allow_copy`, `state` (`publico` o `retirado`) y `version`. |
+| `public_news`    | `external_id`                       | Las novedades publicadas de cada público, para retirarlas todas.                                 |
+| `public_reports` | `id` (único por `(public_id, reporter)`) | Denuncias de proyectos públicos: motivo, texto, `state` (`pendiente`, `retirado`, `desestimado`) y nota. |
+| `outbox`         | `id`                                | Cola de salida: `channel` (`novedades`, `notificapp`), `operation`, `external_id`, `payload`, reintentos. |
 
 `projects` y `ai_conversations` cuelgan de `users` con `ON DELETE CASCADE`, y `ai_messages` de `ai_conversations`; borrar un proyecto borra sus conversaciones desde la API. El antiguo tablón (`requests`, `request_updates`, `request_votes`) y `notificapp_outbox` se retiraron con `0007_drop_request_board` tras importarlo la plataforma. Las columnas `email`, `display_name` y `photo_url` ya no se escriben.
 
@@ -129,6 +139,16 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | PATCH/DELETE | `/api/grupos/{grupo}/proyectos/{id}/comentarios/{comentario}` | Sí | `{ state }`: resolver o reabrir (autor o quien edita), aceptar o rechazar sugerencias (quien edita). Borrar: autor o propiedad. |
 | DELETE | `/api/grupos/{grupo}?recipient=` | Sí | Solo la propiedad: el proyecto pasa a la cuenta elegida y se borra el espacio. `{ id, state: borrado \| borrando }`. |
 
+| GET    | `/api/projects/{id}/publicacion` | Sí | `{ publicacion }`: la publicación propia del proyecto (con `url`, opciones y estado) o `null`. |
+| PUT    | `/api/projects/{id}/publicacion` | Sí | `{ document, description, options: { notes, images, excludedTypeIds }, allowCopy }`: publica o publica los cambios. Ver «Proyectos públicos». |
+| DELETE | `/api/projects/{id}/publicacion` | Sí | Deja de publicar (también lo retirado) y encola la retirada de sus novedades. 404 `sin_publicar`. |
+| GET    | `/api/publicaciones` | Sí   | `{ publicaciones }`: lo que ha publicado la cuenta.                                                                              |
+| GET    | `/api/publicos?cuenta=&limite=` | No | `{ publicos }`: los públicos visibles más recientes (de una cuenta, si se pide), sin documento ni proyecto privado.   |
+| GET    | `/api/publicos/{id}` | No   | Un público con su documento. 404 `publico_no_encontrado` si no existe, se retiró o la cuenta está cerrada.                      |
+| POST   | `/api/publicos/{id}/denuncias` | Sí | `{ motivo, texto? }` → 201 `{ id }`. 400 `denuncia_propia`, 409 `denuncia_repetida`, 404 `publico_no_encontrado`.        |
+| GET    | `/notificapp/v1/reports`, `…/reports/{id}`, `…/cases` | Notificapp | Panel de moderación del plugin (ver «Proyectos públicos»). |
+| POST   | `/notificapp/v1/reports/{id}/retire` y `…/dismiss` | Notificapp | Retirar el proyecto (con aviso opcional a la cuenta) o desestimar la denuncia. Idempotentes. |
+
 El documento es el `Project` del front tal cual (JSON); la API solo comprueba id, nombre, `updatedAt` y las tres listas. El control de versión es optimista.
 
 Errores con formato `{ "error": "<codigo>", "message": "<texto en español>" }`. Límite general de 300 peticiones/minuto por IP (`CF-Connecting-IP` detrás del túnel) y 120 por usuario autenticado.
@@ -144,6 +164,16 @@ Cada grupo es un espacio de la plataforma (`ecosistema-kit/ESPACIOS.md`); el pla
 - **Clave de IA del grupo:** `POST /api/ia/propuestas` en un proyecto del grupo (miembro activo) llama a la pasarela con `X-Yosi-Espacio`; `keySource: 'personal'` usa la clave de la persona. Errores del grupo: `sin_clave_del_grupo` y `tope_del_grupo` (409/429), `proveedor_no_permitido`, `modelo_no_permitido` y `espacio_no_disponible` (403). La respuesta lleva `keySource`.
 - **Canal del espacio** (hito 3): tras guardar el proyecto del grupo, la API publica `{ tipo: 'proyecto', id, version, por }` (`idExterno` `<proyecto>-v<versión>`); tras aplicar cambios de pertenencia del feed, `{ tipo: 'grupo' }` (`miembros-<id del cambio>`). Solo referencias: el frontend baja el documento de esta API. Un fallo al publicar se registra y lo recoge el sondeo del frontend.
 - **Borrar** (`DELETE /api/grupos/{grupo}?recipient=`): solo la propiedad; el proyecto pasa a la cuenta elegida (miembro activo) y se borra el espacio. Si la plataforma falla, el grupo queda `borrando` y el mantenimiento lo termina con el ritmo del feed.
+
+## Proyectos públicos
+
+Plan y decisiones en `docs/roadmaps/ROADMAP_COMUNIDAD.md`. Código en `src/community/` (reglas en `model.ts`, almacén SQL y en memoria en `repository.ts`, cola en `outbox.ts`), `src/routes/community.ts` y `src/platform/community.ts`.
+
+- **Publicar** (`PUT /api/projects/{id}/publicacion`) guarda una copia de solo lectura del documento que manda el navegador, ya sin lo que la persona dejó fuera (`src/domain/publication.ts`). Solo un proyecto propio que la cuenta ya tiene sincronizado (404 `project_not_found` si no; 409 `proyecto_de_grupo` si es de un grupo), hasta `PROJECT_MAX_BYTES` (413). Con `creacion`, `publicacion` o `comunidad` limitadas, 403 `publicacion_limitada` (con `hasta`); con normas pendientes, 403 como todo lo privado. Uno retirado por moderación no se actualiza (409 `publicacion_retirada`); dejar de publicarlo lo borra. Nadie más escribe en un público: no hay ruta para ello.
+- **Novedades** (`ecosistema-kit/NOVEDADES.md`): catálogo `proyecto.publicado` y `proyecto.actualizado`, que la cola declara al arrancar hasta que la plataforma lo acepta. Publicar encola `proyecto-<id>`; publicar los cambios, `proyecto-<id>-<AAAA-MM-DD>` (una al día, que se corrige si se vuelve a publicar ese día), o la misma `proyecto-<id>` si es del día de la publicación. Texto en tercera persona sin el nombre, con el enlace `PUBLIC_WEB_URL/p/<id>`. Dejar de publicar, retirar o borrar el proyecto encola la retirada de todas (`public_news`). `publicada: false` no se reintenta.
+- **Cola de salida** (`outbox`): se escribe en la misma transacción que el cambio y la vacía `createOutboxWorker` cada `OUTBOX_INTERVAL_MS`, en orden. Reintentos a 1 min, 5 min, 30 min y cada 2 h; un 4xx que no sea 401 ni 429 se descarta con un aviso en el registro. Encolar algo de la misma cosa sustituye a lo que quedaba por mandar.
+- **Denuncias** (`POST /api/publicos/{id}/denuncias`): una por persona y proyecto, nunca del propio. Cada una encola un aviso `nodaria_report` a Notificapp (`externalId` `report-<id>`, con `data: { report, publicId }`). Sin la credencial de emisor, el aviso espera en la cola.
+- **Plugin de Notificapp** (`notificapp-plugin/`, id `nodaria-api`, versión 2.0.0, a nombre de Nodaria): lista las denuncias, su detalle y los casos de la plataforma, y resuelve. `retire` (`onSuccess: answered`) retira el proyecto, resuelve con él las demás pendientes, retira sus novedades y, si se elige un caso y un mensaje, registra un aviso a la cuenta en la plataforma (`POST /v1/servicio/moderacion/incidentes`, `idExterno` `report-<id>`). `dismiss` (`onSuccess: deleted`) la desestima. Repetir una acción no cambia nada más. Empaquetar: `python plugin-kit/pack.py --template notificapp-plugin --output api/.runtime/nodaria-api-<versión>.notificapp.zip`. Como cambia `eventKinds` y `api`, no se publica en remoto: el propietario lo instala o lo sube con `plugin_cli install` o `upgrade`, le configura la credencial externa (`plugin_cli set-upstream-token nodaria-api <ruta a api/.runtime/notificapp-upstream.token>`) y la credencial de emisor se copia a `api/.runtime/notificapp-sender.token` sin mostrarla.
 
 ## Asistencia de IA
 

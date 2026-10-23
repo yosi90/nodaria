@@ -1,6 +1,6 @@
 # Calendario del proyecto y configuración del calendario
 
-Fecha: 2026-10-19. Estado: **roadmap activo principal desde el 2026-10-19. Fases 1 a 5 implementadas y publicadas el 2026-10-22**; queda el piloto del propietario con su cuenta y dos cuentas en un grupo (fase 5), que hace la tarde del 2026-10-22. El propietario lo activó al cerrarse [`ROADMAP_COLABORACION.md`](ROADMAP_COLABORACION.md). El 2026-10-22 pidió empezarlo e implementarlo entero sin esperar: las preguntas abiertas se resolvieron con la opción recomendada y se revisan con él sobre la marcha (ver «Preguntas abiertas»).
+Fecha: 2026-10-19. Estado: **roadmap activo principal del 2026-10-19 al 2026-10-23 (lo sustituye [`ROADMAP_COMUNIDAD.md`](ROADMAP_COMUNIDAD.md)). Fases 1 a 5 implementadas y publicadas el 2026-10-22**; queda el piloto del propietario con su cuenta y dos cuentas en un grupo (fase 5), que hace la tarde del 2026-10-22. El propietario lo activó al cerrarse [`ROADMAP_COLABORACION.md`](ROADMAP_COLABORACION.md). El 2026-10-22 pidió empezarlo e implementarlo entero sin esperar: las preguntas abiertas se resolvieron con la opción recomendada y se revisan con él sobre la marcha (ver «Preguntas abiertas»).
 
 ## Objetivo
 

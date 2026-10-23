@@ -9,7 +9,9 @@ import {
   UserRound,
   UserRoundPen,
   UserRoundPlus,
+  Globe,
 } from 'lucide-react';
+import { openCommunity } from '../community/openCommunity';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, deleteMe } from '../../services/api';
 import { SOCIAL_URL, sdk, type SavedAccount } from '../../services/yosiftware';
@@ -160,6 +162,7 @@ export function AccountButton() {
           } satisfies MenuEntry,
         ]
       : []),
+    { label: 'Comunidad', icon: Globe, onSelect: openCommunity },
     {
       label: 'Invitaciones a grupos',
       icon: MailOpen,

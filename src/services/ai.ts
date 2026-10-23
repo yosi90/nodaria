@@ -112,11 +112,18 @@ export const PLATFORM_MODEL_ERRORS: Record<string, string> = {
 /**
  * Los modelos de Nodaria que la plataforma dice que alcanza la clave. Nunca se escribe un modelo a mano:
  * solo se elige de esta lista. Sin respuesta de la plataforma, los de Nodaria (que la pasarela comprueba
- * igualmente al pedir).
+ * igualmente al pedir). Solo los de texto y nunca uno sin precio en la tabla de la plataforma: con tope,
+ * la llamada daría `400 modelo_sin_tarifa` (kit 1.48).
  */
 export function reachableModels(own: AiModelInfo[], platform: PlatformModels | null): AiModelInfo[] {
   if (!platform) return own;
-  const reachable = new Set(platform.proveedores.flatMap(p => p.modelos.map(m => `${p.proveedor}:${m.id}`)));
+  const reachable = new Set(
+    platform.proveedores.flatMap(p =>
+      p.modelos
+        .filter(m => (m.usos === undefined || m.usos.includes('texto')) && m.precio !== null)
+        .map(m => `${p.proveedor}:${m.id}`),
+    ),
+  );
   return own.filter(m => reachable.has(`${m.provider}:${m.id}`));
 }
 

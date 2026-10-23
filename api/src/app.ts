@@ -11,8 +11,11 @@ import type { AppConfig } from './config.ts';
 import type { Database } from './db/pool.ts';
 import type { GroupStore } from './groups/repository.ts';
 import type { CommentStore } from './groups/comments.ts';
+import type { CommunityStore } from './community/repository.ts';
+import type { CommunityClient } from './platform/community.ts';
 import type { SpacesClient } from './platform/spaces.ts';
 import { aiRoutes } from './routes/ai.ts';
+import { communityRoutes, notificappRoutes, publicRoutes } from './routes/community.ts';
 import { groupRoutes } from './routes/groups.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meRoutes } from './routes/me.ts';
@@ -31,6 +34,8 @@ export interface AppDependencies {
   groups: GroupStore;
   comments: CommentStore;
   spaces: SpacesClient;
+  community: CommunityStore;
+  communityClient: CommunityClient;
   /** Lector del feed de la plataforma, para ponerse al día a petición; `null` si no se lee. */
   feed: { readOnce(): Promise<unknown> } | null;
 }
@@ -84,6 +89,8 @@ export async function buildApp({
   groups,
   comments,
   spaces,
+  community,
+  communityClient,
   feed,
 }: AppDependencies) {
   const app = Fastify({
@@ -143,6 +150,9 @@ export async function buildApp({
   );
 
   await app.register(healthRoutes, { prefix: '/api', db });
+  // Los proyectos públicos se leen sin sesión; el panel de moderación de Notificapp, con su credencial.
+  await app.register(publicRoutes, { prefix: '/api', community });
+  await app.register(notificappRoutes, { prefix: '/notificapp/v1', community, communityClient, config });
 
   // Rutas privadas: cada petición trae un token de la plataforma Yosiftware válido.
   await app.register(
@@ -162,7 +172,8 @@ export async function buildApp({
         return reply.status(429).send(tooManyRequests(request, limit));
       });
       await privateApp.register(meRoutes, { users });
-      await privateApp.register(projectRoutes, { projects, config, conversations, groups });
+      await privateApp.register(projectRoutes, { projects, config, conversations, groups, community });
+      await privateApp.register(communityRoutes, { community, projects, groups, config });
       await privateApp.register(groupRoutes, { groups, spaces, users, config, feed, comments });
       await privateApp.register(aiRoutes, { ai, config, conversations, groups });
     },

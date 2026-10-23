@@ -28,8 +28,8 @@ const putSchema = z.object({
 const deleteQuerySchema = z.object({ baseVersion: z.coerce.number().int().min(0).optional() });
 
 export const projectRoutes: FastifyPluginAsync<
-  Pick<AppDependencies, 'projects' | 'config' | 'conversations' | 'groups'>
-> = async (app, { projects, config, conversations, groups }) => {
+  Pick<AppDependencies, 'projects' | 'config' | 'conversations' | 'groups' | 'community'>
+> = async (app, { projects, config, conversations, groups, community }) => {
   app.get('/projects', async request => ({ projects: await projects.list(authenticatedUser(request).id) }));
 
   app.get('/projects/:id', async request => {
@@ -93,8 +93,9 @@ export const projectRoutes: FastifyPluginAsync<
         current: result.current,
       });
     }
-    // Las conversaciones con la IA de un proyecto borrado se borran con él.
+    // Las conversaciones con la IA de un proyecto borrado se borran con él, y deja de ser público.
     await conversations.deleteForProject(authenticatedUser(request).id, id);
+    await community.unpublish(authenticatedUser(request).id, id);
     return { id, version: result.version, serverUpdatedAt: result.serverUpdatedAt };
   });
 };

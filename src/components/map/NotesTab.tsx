@@ -4,6 +4,7 @@ import { mentionIndex, segmentNotes } from '../../domain/notes';
 import { nodeLabel } from '../../domain/selectors';
 import type { Node } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useProjectAccess } from '../../state/groups';
 import { useNavigation } from '../../state/navigation';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { Button } from '../common/Button';
@@ -14,8 +15,11 @@ import { Popover } from '../common/Popover';
 /** Notas libres del nodo con menciones [[Nombre]] que enlazan a otros nodos. */
 export function NotesTab({ node }: { node: Node }) {
   const { project, dispatch } = useApp();
+  const { canEdit } = useProjectAccess();
   const { select } = useNavigation();
-  const [preview, setPreview] = useState(Boolean(node.notes));
+  const [previewChosen, setPreview] = useState(Boolean(node.notes));
+  // Sin permiso para editar, las notas solo se leen.
+  const preview = previewChosen || !canEdit;
   const [mentionAnchor, setMentionAnchor] = useState<Anchor | null>(null);
   const closeMentions = useCallback(() => setMentionAnchor(null), []);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -45,21 +49,23 @@ export function NotesTab({ node }: { node: Node }) {
 
   return (
     <div className="notes">
-      <div className="notes-toolbar">
-        <div className="segmented">
-          <button type="button" aria-pressed={!preview} onClick={() => setPreview(false)}>
-            <Pencil size={13} aria-hidden /> Editar
-          </button>
-          <button type="button" aria-pressed={preview} onClick={() => setPreview(true)}>
-            <Eye size={13} aria-hidden /> Leer
-          </button>
+      {canEdit && (
+        <div className="notes-toolbar">
+          <div className="segmented">
+            <button type="button" aria-pressed={!preview} onClick={() => setPreview(false)}>
+              <Pencil size={13} aria-hidden /> Editar
+            </button>
+            <button type="button" aria-pressed={preview} onClick={() => setPreview(true)}>
+              <Eye size={13} aria-hidden /> Leer
+            </button>
+          </div>
+          {!preview && (
+            <Button size="sm" variant="ghost" icon={AtSign} onClick={e => setMentionAnchor(anchorOf(e.currentTarget))}>
+              Mencionar
+            </Button>
+          )}
         </div>
-        {!preview && (
-          <Button size="sm" variant="ghost" icon={AtSign} onClick={e => setMentionAnchor(anchorOf(e.currentTarget))}>
-            Mencionar
-          </Button>
-        )}
-      </div>
+      )}
       {preview ? (
         <div className="notes-preview" onDoubleClick={() => setPreview(false)}>
           {node.notes.trim() ? (

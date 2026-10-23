@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "nodaria-api",
+  "name": "Nodaria",
+  "version": "2.0.0",
+  "eventKinds": ["nodaria_report"],
+  "agents": [],
+  "ui": { "entry": "ui/index.html" },
+  "api": {
+    "baseUrl": "https://nodaria-api.yosiftware.es",
+    "actions": {
+      "list": { "method": "GET", "path": "/notificapp/v1/reports" },
+      "detail": { "method": "GET", "path": "/notificapp/v1/reports/{id}" },
+      "cases": { "method": "GET", "path": "/notificapp/v1/cases" },
+      "retire": { "method": "POST", "path": "/notificapp/v1/reports/{id}/retire", "onSuccess": "answered" },
+      "dismiss": { "method": "POST", "path": "/notificapp/v1/reports/{id}/dismiss", "onSuccess": "deleted" }
+    }
+  }
+}

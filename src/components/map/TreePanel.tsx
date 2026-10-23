@@ -20,6 +20,7 @@ import { resolveStructure, structureChildren, structureLenses } from '../../doma
 import type { Node, Selection } from '../../domain/types';
 import { vocabulary } from '../../domain/projectKinds';
 import { useApp } from '../../state/AppContext';
+import { useProjectAccess } from '../../state/groups';
 import { usePreferences } from '../../state/preferences';
 import { IconButton } from '../common/Button';
 import { NodeAvatar } from '../common/NodeAvatar';
@@ -47,6 +48,7 @@ interface TreePanelProps {
 
 export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelProps) {
   const { project, dispatch } = useApp();
+  const { canEdit } = useProjectAccess();
   const treeId = useId();
   const structure = resolveStructure(project, project.view.structureId);
   const [query, setQuery] = useState('');
@@ -334,13 +336,15 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
       <div className="panel-head">
         <h2>Estructura</h2>
         <div className="spacer" />
-        <IconButton
-          icon={Plus}
-          label="Añadir nodo raíz"
-          size="sm"
-          onClick={event => onAdd(null, anchorOf(event.currentTarget))}
-        />
-        {structure.id === null && (
+        {canEdit && (
+          <IconButton
+            icon={Plus}
+            label="Añadir nodo raíz"
+            size="sm"
+            onClick={event => onAdd(null, anchorOf(event.currentTarget))}
+          />
+        )}
+        {canEdit && structure.id === null && (
           <IconButton
             icon={FolderPlus}
             label="Nueva carpeta (solo organiza el árbol)"
@@ -441,31 +445,33 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
                   {block.folder.name}
                 </span>
                 <span className="badge">{block.count}</span>
-                <span className="row-actions">
-                  <IconButton
-                    icon={Pencil}
-                    size="sm"
-                    tabIndex={-1}
-                    tooltip={false}
-                    label="Renombrar carpeta"
-                    onClick={event => {
-                      event.stopPropagation();
-                      void renameFolderDialog(block.folder!);
-                    }}
-                  />
-                  <IconButton
-                    icon={Trash2}
-                    size="sm"
-                    variant="danger"
-                    tabIndex={-1}
-                    tooltip={false}
-                    label="Eliminar carpeta (los nodos vuelven a la raíz)"
-                    onClick={event => {
-                      event.stopPropagation();
-                      void removeFolder(block.folder!, block.count);
-                    }}
-                  />
-                </span>
+                {canEdit && (
+                  <span className="row-actions">
+                    <IconButton
+                      icon={Pencil}
+                      size="sm"
+                      tabIndex={-1}
+                      tooltip={false}
+                      label="Renombrar carpeta"
+                      onClick={event => {
+                        event.stopPropagation();
+                        void renameFolderDialog(block.folder!);
+                      }}
+                    />
+                    <IconButton
+                      icon={Trash2}
+                      size="sm"
+                      variant="danger"
+                      tabIndex={-1}
+                      tooltip={false}
+                      label="Eliminar carpeta (los nodos vuelven a la raíz)"
+                      onClick={event => {
+                        event.stopPropagation();
+                        void removeFolder(block.folder!, block.count);
+                      }}
+                    />
+                  </span>
+                )}
               </div>
             )}
             {block.folder && block.expanded && block.count === 0 && (
@@ -486,7 +492,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
                   aria-selected={isSelected}
                   className={`tree-row ${isSelected ? 'selected' : ''} ${focused === row.node.id ? 'focused' : ''} ${row.contextOnly ? 'dimmed' : ''} ${dragging?.nodeId === row.node.id ? 'dragging' : ''} ${dropAt?.key === row.key ? `drop-${dropAt.zone} ${dropAt.ok ? '' : 'drop-invalid'}` : ''}`}
                   style={{ paddingLeft: 4 + row.depth * 16 }}
-                  draggable
+                  draggable={canEdit}
                   onDragStart={event => {
                     event.dataTransfer.effectAllowed = 'move';
                     event.dataTransfer.setData('text/plain', row.node.id);
@@ -518,19 +524,21 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
                   <span className="tree-label" title={`${label} · ${schema?.name ?? ''}`}>
                     {label}
                   </span>
-                  <span className="row-actions">
-                    <IconButton
-                      icon={Plus}
-                      size="sm"
-                      tabIndex={-1}
-                      tooltip={false}
-                      label={`Añadir dentro de ${label}`}
-                      onClick={event => {
-                        event.stopPropagation();
-                        onAdd(row.node.id, anchorOf(event.currentTarget));
-                      }}
-                    />
-                  </span>
+                  {canEdit && (
+                    <span className="row-actions">
+                      <IconButton
+                        icon={Plus}
+                        size="sm"
+                        tabIndex={-1}
+                        tooltip={false}
+                        label={`Añadir dentro de ${label}`}
+                        onClick={event => {
+                          event.stopPropagation();
+                          onAdd(row.node.id, anchorOf(event.currentTarget));
+                        }}
+                      />
+                    </span>
+                  )}
                 </div>
               );
             })}

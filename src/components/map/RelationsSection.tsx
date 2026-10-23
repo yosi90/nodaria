@@ -16,6 +16,7 @@ import { changeRelationDraftType } from '../../domain/relationDraft';
 import { allFields, getNode, getSchema, nodeLabel, relationRole, typeMatches } from '../../domain/selectors';
 import type { FieldValue, Node, Relation, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useProjectAccess } from '../../state/groups';
 import { useNavigation } from '../../state/navigation';
 import { Button, IconButton } from '../common/Button';
 import { TypeIcon } from '../common/icons';
@@ -30,6 +31,7 @@ import { KinshipFields } from './KinshipFields';
  */
 export function RelationsSection({ nodeId }: { nodeId: string }) {
   const { project, dispatch } = useApp();
+  const { canEdit } = useProjectAccess();
   const { select } = useNavigation();
   const toast = useToast();
   const [editing, setEditing] = useState<string | null>(null);
@@ -68,18 +70,20 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
       <div className="section-head">
         <h3>Relaciones</h3>
         <div className="spacer" />
-        <Button
-          size="sm"
-          icon={Plus}
-          disabled={!relationTypes.length}
-          title={relationTypes.length ? undefined : 'Crea primero un tipo de relación en «Relaciones»'}
-          onClick={() => {
-            setCreating(v => !v);
-            setEditing(null);
-          }}
-        >
-          Nueva
-        </Button>
+        {canEdit && (
+          <Button
+            size="sm"
+            icon={Plus}
+            disabled={!relationTypes.length}
+            title={relationTypes.length ? undefined : 'Crea primero un tipo de relación en «Relaciones»'}
+            onClick={() => {
+              setCreating(v => !v);
+              setEditing(null);
+            }}
+          >
+            Nueva
+          </Button>
+        )}
       </div>
       {creating && (
         <RelationForm
@@ -148,7 +152,7 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
                     )}
                     <span className="badge">{schema?.name}</span>
                   </button>
-                  {schema?.genealogical && (
+                  {canEdit && schema?.genealogical && (
                     <IconButton
                       icon={ArrowLeftRight}
                       size="sm"
@@ -158,14 +162,16 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
                       onClick={() => invert(relation)}
                     />
                   )}
-                  <IconButton
-                    icon={Trash2}
-                    size="sm"
-                    variant="danger"
-                    label="Eliminar relación"
-                    tooltipSide="left"
-                    onClick={() => remove(relation)}
-                  />
+                  {canEdit && (
+                    <IconButton
+                      icon={Trash2}
+                      size="sm"
+                      variant="danger"
+                      label="Eliminar relación"
+                      tooltipSide="left"
+                      onClick={() => remove(relation)}
+                    />
+                  )}
                 </div>
                 {open && <RelationForm nodeId={nodeId} relation={relation} onDone={() => setEditing(null)} />}
               </div>
@@ -175,7 +181,9 @@ export function RelationsSection({ nodeId }: { nodeId: string }) {
       ) : (
         !creating && (
           <p className="empty-copy">
-            Sin relaciones. Pulsa «Nueva» o arrastra desde el punto de la tarjeta en el lienzo.
+            {canEdit
+              ? 'Sin relaciones. Pulsa «Nueva» o arrastra desde el punto de la tarjeta en el lienzo.'
+              : 'Sin relaciones.'}
           </p>
         )
       )}

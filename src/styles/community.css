@@ -1,0 +1,308 @@
+/* Comunidad: publicar, la página pública de solo lectura y la sección «Comunidad» (ROADMAP_COMUNIDAD.md). */
+
+/* --- Publicar --- */
+.publish-status {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+}
+.publish-status.retired {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.publish-status p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.publish-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+.publish-link code {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.publish-options,
+.report-reasons {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.publish-options legend,
+.report-reasons legend {
+  padding: 0 var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.social-link {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+/* --- Página pública --- */
+.public-bar .brand {
+  color: inherit;
+  text-decoration: none;
+}
+.public-title {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+.public-title h1 {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.public-badge {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.public-app {
+  grid-template-rows: var(--topbar-height) auto minmax(0, 1fr);
+}
+.public-app yosi-acceso {
+  flex: none;
+}
+.public-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
+  font-size: var(--fs-sm);
+}
+.public-info .muted {
+  color: var(--text-muted);
+}
+.public-description {
+  flex-basis: 100%;
+  order: 10;
+  margin: 0;
+  max-width: 90ch;
+  white-space: pre-line;
+}
+.public-author {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.public-author img,
+.person-avatar {
+  flex: none;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+.avatar-initial {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.public-message {
+  display: grid;
+  gap: var(--space-3);
+  place-content: center;
+  justify-items: center;
+  padding: var(--space-6);
+  text-align: center;
+}
+.public-message h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+}
+.public-message p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* --- Sección «Comunidad» --- */
+.community {
+  display: grid;
+  gap: var(--space-4);
+}
+.community-tabs {
+  justify-self: start;
+}
+.community-tabs button[aria-selected='true'] {
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+}
+.community-empty {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  padding: var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+}
+.community-empty p {
+  margin: 0;
+}
+.community-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: var(--space-4);
+}
+.community h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-md);
+}
+.news-list,
+.public-list {
+  display: grid;
+  gap: var(--space-3);
+}
+.news-card,
+.public-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+.public-card.retired {
+  opacity: 0.75;
+}
+.news-card header,
+.public-card header {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+}
+.public-card header {
+  justify-content: flex-start;
+}
+.news-card p,
+.public-card p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.news-card .muted,
+.public-card .muted {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.public-card-description {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  white-space: pre-line;
+}
+.person-chip {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.person-chip:hover strong {
+  text-decoration: underline;
+}
+.news-actions,
+.public-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.news-actions .liked {
+  color: var(--danger);
+}
+.news-comments {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+.news-comment {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: var(--space-2);
+  align-items: start;
+  font-size: var(--fs-sm);
+}
+.news-comment p {
+  margin: 2px 0 0;
+}
+.news-comment-form {
+  display: flex;
+  gap: var(--space-2);
+}
+.news-comment-form input {
+  flex: 1;
+  min-width: 0;
+}
+.person-view {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: stretch;
+}
+.person-view > .btn:first-child {
+  justify-self: start;
+}
+.person-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.person-head h3 {
+  margin: 0;
+}
+.person-head p {
+  margin: var(--space-1) 0 0;
+  max-width: 60ch;
+  white-space: pre-line;
+}
+.community-foot {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 760px) {
+  .public-badge {
+    display: none;
+  }
+  .public-info {
+    padding: var(--space-2) var(--space-3);
+  }
+}

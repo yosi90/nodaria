@@ -82,17 +82,51 @@ export function AppProvider({ children, errorView }: { children: ReactNode; erro
   return <LoadedAppProvider initial={loaded}>{children}</LoadedAppProvider>;
 }
 
-function LoadedAppProvider({ initial, children }: { initial: LoadResult; children: ReactNode }) {
+/**
+ * Un proyecto que no es del navegador (la página pública de solo lectura): se monta sin leer ni guardar
+ * nada y con un filtro fijo de las acciones. Los proyectos de quien mira no se tocan.
+ */
+export function StaticAppProvider({
+  project,
+  guard,
+  children,
+}: {
+  project: Project;
+  guard: ActionGuard;
+  children: ReactNode;
+}) {
+  const initial = useMemo<LoadResult>(
+    () => ({ state: { version: 3, activeProjectId: project.id, projects: [project] }, repairs: [], damage: null }),
+    [project],
+  );
+  return (
+    <LoadedAppProvider initial={initial} persist={false} fixedGuard={guard}>
+      {children}
+    </LoadedAppProvider>
+  );
+}
+
+function LoadedAppProvider({
+  initial,
+  persist = true,
+  fixedGuard = null,
+  children,
+}: {
+  initial: LoadResult;
+  persist?: boolean;
+  fixedGuard?: ActionGuard | null;
+  children: ReactNode;
+}) {
   const [history, dispatchHistory] = useReducer(historyReducer, initial.state, createHistory);
   const [repairs, setRepairs] = useState(initial.repairs);
   const [damage, setDamage] = useState(initial.damage);
   const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
   const state = history.present;
   // Si el original no se pudo apartar, guardar lo sustituiría: se espera a que el usuario decida.
-  const save = usePersistence(state, Boolean(damage && !damage.rescued), setSaveFailure);
+  const save = usePersistence(state, !persist || Boolean(damage && !damage.rescued), setSaveFailure);
   const lostOnLoad = Boolean(initial.damage);
 
-  const guard = useRef<ActionGuard | null>(null);
+  const guard = useRef<ActionGuard | null>(fixedGuard);
   const current = useRef(state);
   useLayoutEffect(() => {
     current.current = state;
@@ -101,9 +135,12 @@ function LoadedAppProvider({ initial, children }: { initial: LoadResult; childre
     if (guard.current && !guard.current(action, current.current)) return;
     dispatchHistory({ type: 'apply', action, at: Date.now() });
   }, []);
-  const setActionGuard = useCallback((next: ActionGuard | null) => {
-    guard.current = next;
-  }, []);
+  const setActionGuard = useCallback(
+    (next: ActionGuard | null) => {
+      if (!fixedGuard) guard.current = next;
+    },
+    [fixedGuard],
+  );
   // Deshacer y rehacer sobre un compartido que el rol no deja cambiar tampoco se permiten.
   const undo = useCallback(() => {
     if (guard.current && !guard.current({ type: 'rename-project', name: '' }, current.current)) return;

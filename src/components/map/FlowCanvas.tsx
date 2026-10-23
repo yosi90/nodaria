@@ -49,6 +49,7 @@ import { viewForLayout, viewAfterIsolation } from '../../domain/layoutFilters';
 import { resolveStructure, structureLinks } from '../../domain/structure';
 import type { FieldDefinition, LayoutMode, Position, Project, Selection, Relation } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useProjectAccess } from '../../state/groups';
 import { useNavigation } from '../../state/navigation';
 import { pointAnchor, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
@@ -184,6 +185,7 @@ function neighborhood(start: string, links: Link[], depth: number) {
 
 function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: FlowCanvasProps) {
   const { project, dispatch } = useApp();
+  const { canEdit } = useProjectAccess();
   const toast = useToast();
   const flow = useReactFlow();
   const { view } = project;
@@ -1304,7 +1306,8 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           }}
           zoomOnDoubleClick={false}
           selectNodesOnDrag={false}
-          nodesConnectable
+          nodesConnectable={canEdit}
+          nodesDraggable={canEdit}
           elevateNodesOnSelect
           deleteKeyCode={null}
           multiSelectionKeyCode={null}

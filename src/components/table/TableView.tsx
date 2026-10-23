@@ -7,6 +7,7 @@ import { isFieldVisible } from '../../domain/conditions';
 import { allFields, fieldValue, getSchema, nodeLabel, typeMatches } from '../../domain/selectors';
 import type { FieldDefinition, FieldValue, Node } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useProjectAccess } from '../../state/groups';
 import { useNavigation } from '../../state/navigation';
 import { usePreferences, type TablePreference } from '../../state/preferences';
 import { anchorOf, type Anchor } from '../common/anchor';
@@ -40,6 +41,7 @@ interface Column {
 
 export function TableView() {
   const { project, dispatch } = useApp();
+  const { canEdit } = useProjectAccess();
   const { select } = useNavigation();
   const { preferences, setPreference } = usePreferences();
   const { confirm } = useDialogs();
@@ -282,7 +284,7 @@ export function TableView() {
                 onChange={e => setQuery(e.target.value)}
               />
             </div>
-            {selectedIds.length > 0 && (
+            {canEdit && selectedIds.length > 0 && (
               <BulkBar ids={selectedIds} schema={schema} fields={fields} onDone={clearChecked} />
             )}
             <div className="spacer" />
@@ -319,9 +321,11 @@ export function TableView() {
                 </div>
               </Popover>
             )}
-            <Button size="sm" variant="primary" icon={Plus} onClick={addRow}>
-              Nuevo {schema.name.toLowerCase()}
-            </Button>
+            {canEdit && (
+              <Button size="sm" variant="primary" icon={Plus} onClick={addRow}>
+                Nuevo {schema.name.toLowerCase()}
+              </Button>
+            )}
           </div>
           <div className="table-scroll">
             {rows.length ? (
@@ -439,25 +443,29 @@ export function TableView() {
                         </td>
                       ))}
                       <td className="cell-actions">
-                        <IconButton
-                          icon={Copy}
-                          size="sm"
-                          label="Duplicar"
-                          tooltipSide="left"
-                          onClick={() => {
-                            const newId = uid('node');
-                            dispatch({ type: 'duplicate-node', id: n.id, newId });
-                            toast({ message: `«${nodeLabel(project, n)}» duplicado`, undoable: true });
-                          }}
-                        />
-                        <IconButton
-                          icon={Trash2}
-                          size="sm"
-                          variant="danger"
-                          label="Eliminar"
-                          tooltipSide="left"
-                          onClick={() => void removeRow(n)}
-                        />
+                        {canEdit && (
+                          <>
+                            <IconButton
+                              icon={Copy}
+                              size="sm"
+                              label="Duplicar"
+                              tooltipSide="left"
+                              onClick={() => {
+                                const newId = uid('node');
+                                dispatch({ type: 'duplicate-node', id: n.id, newId });
+                                toast({ message: `«${nodeLabel(project, n)}» duplicado`, undoable: true });
+                              }}
+                            />
+                            <IconButton
+                              icon={Trash2}
+                              size="sm"
+                              variant="danger"
+                              label="Eliminar"
+                              tooltipSide="left"
+                              onClick={() => void removeRow(n)}
+                            />
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}

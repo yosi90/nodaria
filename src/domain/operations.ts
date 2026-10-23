@@ -436,7 +436,7 @@ export function deleteRelation(p: Project, id: string): Project {
  * Quita un conjunto de nodos: sus relaciones desaparecen, las referencias a ellos se vacían
  * y los hijos supervivientes suben al ancestro superviviente más cercano.
  */
-function removeNodes(p: Project, removed: Set<string>): Project {
+export function removeNodes(p: Project, removed: Set<string>): Project {
   if (!removed.size) return p;
   const byId = new Map(p.nodes.map(n => [n.id, n]));
   const survivingAncestor = (parentId: string | null) => {

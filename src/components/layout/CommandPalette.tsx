@@ -13,7 +13,9 @@ import {
   Lightbulb,
   CalendarRange,
   CalendarDays,
+  Globe,
 } from 'lucide-react';
+import { openCommunity } from '../community/openCommunity';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
@@ -177,6 +179,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(Table2),
         keywords: 'vista tabla hoja filas columnas editar muchos',
         run: () => setView('table'),
+      },
+      {
+        id: 'community',
+        label: 'Comunidad',
+        group: 'Acciones',
+        leading: icon(Globe),
+        keywords: 'comunidad publico publicar seguir novedades personas compartir enlace',
+        run: openCommunity,
       },
       {
         id: 'report',

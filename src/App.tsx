@@ -20,6 +20,8 @@ import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
 import { AiPanel } from './components/ai/AiPanel';
 import { GroupPanel } from './components/groups/GroupPanel';
+import { CommunityHost } from './components/community/CommunityHost';
+import { PublicCopy } from './components/community/PublicCopy';
 import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
 import { useAuth } from './state/auth';
@@ -105,6 +107,9 @@ export default function App() {
       {welcome.open && <WelcomeDialog onClose={welcome.dismiss} onTemplates={openTemplates} />}
       <Tour />
       <ContextMenu />
+      {/* La comunidad es de la cuenta: se monta de nuevo con cada una (CAMBIO_DE_CUENTA.md). */}
+      <CommunityHost key={`community:${account}`} />
+      <PublicCopy />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );
