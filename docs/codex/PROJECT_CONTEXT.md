@@ -152,6 +152,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-23, noche (guía de bases de datos en la ayuda):** commit `bb2107c`, solo la web. Pestaña «Bases de datos» en la ayuda (`DatabaseGuide.tsx`): tablas como tipos, columnas, claves foráneas, Db2 for i con packed y zoned, Registros, consultas, Salud y exportaciones. Se abre desde el botón de ayuda de «Registros», el enlace de «Columnas SQL» y la paleta («Guía de bases de datos»). Bundle `main-3i9XG3ZW.js`, con el SHA-256 idéntico en los dos dominios. Edge en local y en producción: 7 comprobaciones, sin errores, también a 390 px. Anunciado: `2026-10-23-guia-bd`.
 - **Publicación del 2026-10-23, noche (vista «Registros», R3-05, formato 12):** commit `6329abc`, solo la web (la API guarda el proyecto sin mirar su formato).
   - `npm run deploy`: bundle `main-Sj8szX-7.js`, con el SHA-256 idéntico al local en los dos dominios. El `.wasm` de sql.js se sirve como `application/wasm` y la CSP lleva `'wasm-unsafe-eval'`.
   - Edge en producción, perfil aislado y sin sesión: las 25 comprobaciones de `check-records.cjs` y las 12 de la tercera ronda, sin errores ni violaciones de la CSP.

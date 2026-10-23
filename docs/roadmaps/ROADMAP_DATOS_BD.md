@@ -38,7 +38,7 @@ Fuera del alcance: conectarse a una base real, ejecutar el script contra ella, i
 - **Validación**, con las reglas de la base. Cada error se marca en su celda y se explica al pasar por encima:
   - el tipo de cada columna: enteros y su rango; decimal, *packed* y *zoned* con su precisión y escala; textos con su longitud; fechas y horas; GUID; binario en hexadecimal;
   - NOT NULL, salvo IDENTITY o un valor por defecto;
-  - la PK, simple o compuesta, sin repetir; las UNIQUE, simples y compuestas. En SQL Server una UNIQUE admite un solo NULL; lo descubrió el script en SQL Server Express y se avisa así. En Db2 for i, las filas con un nulo no cuentan, **pendiente de confirmar en el AS/400**;
+  - la PK, simple o compuesta, sin repetir; las UNIQUE, simples y compuestas. En SQL Server una UNIQUE admite un solo NULL; lo descubrió el script en SQL Server Express y se avisa así. En Db2 for i, las filas con un nulo no cuentan. El propietario decidió dejarlo así (2026-10-23);
   - el CHECK de las listas;
   - que cada FK, también compuesta, exista en la tabla destino.
 - **Consultas** (`QueryPanel`).
@@ -101,4 +101,4 @@ Fuera del alcance: conectarse a una base real, ejecutar el script contra ella, i
   - la consulta con TOP, `dbo.` y LEFT JOIN, la que no lee y el error de SQLite;
   - el nombre de la consulta;
   - 390 px.
-- **Pendiente con el propietario:** probar `DATOS`/`DATOSPF` en el AS/400 y confirmar cómo trata los nulos una UNIQUE de Db2 for i.
+- **Pendiente con el propietario:** probar `DATOS`/`DATOSPF` en el AS/400. Lo hará el lunes 2026-10-26 en su trabajo.
