@@ -13,7 +13,7 @@ import {
   tableIssues,
   type SqlColumn,
   type SqlDataType,
-  type SqlTypeName,
+  type SqlServerTypeName,
   type TableColumn,
 } from './database';
 import { COLORS } from './constants';
@@ -156,7 +156,7 @@ function checkName(name: string, what: string) {
 }
 
 function checkType(raw: SqlDataType): SqlDataType {
-  if (!raw || !SQL_TYPES.includes(raw.name as SqlTypeName)) reject(`El tipo «${raw?.name}» no es de SQL Server.`);
+  if (!raw || !SQL_TYPES.includes(raw.name as SqlServerTypeName)) reject(`El tipo «${raw?.name}» no es de SQL Server.`);
   const type = sqlType(raw.name, raw.length, raw.precision ?? undefined, raw.scale ?? undefined);
   const error = sqlTypeError(type);
   if (error) reject(error);

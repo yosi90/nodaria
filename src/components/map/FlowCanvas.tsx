@@ -85,6 +85,7 @@ import {
   isDatabaseType,
   isEmbeddedType,
   projectEngines,
+  tableTypes,
 } from '../../domain/database';
 
 /** Qué es el nodo en su base, para la cabecera de la tarjeta (solo si no es una tabla corriente). */
@@ -95,6 +96,7 @@ function containerOf(p: Project, typeId: string): string | undefined {
 import { ForeignKeyEdge, type ForeignKeyEdgeType } from './ForeignKeyEdge';
 import { tableCardColumns, tableHeight, tableWidth } from './tableCard';
 import { sqlScript } from '../../domain/sqlScript';
+import { openDb2Export } from '../layout/openDb2Export';
 import { vocabulary } from '../../domain/projectKinds';
 import { downloadText } from '../../services/files';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
@@ -136,7 +138,7 @@ const LAYOUTS: { mode: LayoutMode; label: string; icon: typeof Network; hint: st
     mode: 'database',
     label: 'Base de datos',
     icon: Database,
-    hint: 'Las tablas, colecciones y etiquetas de tus bases (SQL Server, MongoDB, Firestore, Neo4j) con sus campos y referencias, en un solo diagrama; los demás nodos, debajo',
+    hint: 'Las tablas, colecciones y etiquetas de tus bases (SQL Server, Db2 for i, MongoDB, Firestore, Neo4j) con sus campos y referencias, en un solo diagrama; los demás nodos, debajo',
   },
 ];
 
@@ -338,7 +340,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
   }, []);
   // Disposición «Base de datos»: los nodos de tipos tabla se dibujan como tablas y sus referencias a
   // otras tablas como claves foráneas (`src/domain/database.ts`).
-  // La disposición «Base de datos» es común a todos los motores (SQL Server, MongoDB, Firestore, Neo4j).
+  // La disposición «Base de datos» es común a todos los motores (SQL Server, Db2 for i, MongoDB, Firestore, Neo4j).
   const hasTables = useMemo(() => databaseTypes(project).length > 0, [project]);
   const databaseMode = view.layout === 'database';
   const keyLinks = useMemo(() => (databaseMode ? databaseLinks(project) : []), [databaseMode, project]);
@@ -1106,7 +1108,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                   if (mode === 'database' && !hasTables) {
                     toast({
                       message:
-                        'Elige primero en «Tipos» la base de datos de algún tipo (SQL Server, MongoDB, Firestore o Neo4j).',
+                        'Elige primero en «Tipos» la base de datos de algún tipo (SQL Server, Db2 for i, MongoDB, Firestore o Neo4j).',
                     });
                     return;
                   }
@@ -1354,16 +1356,29 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
               <ExportMenu
                 name={project.name}
                 container={() => container.current}
-                onSql={
-                  hasTables
-                    ? () =>
-                        downloadText(
-                          `${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.sql`,
-                          sqlScript(project),
-                          'application/sql',
-                        )
-                    : undefined
-                }
+                scripts={[
+                  ...(tableTypes(project, 'sqlserver').length
+                    ? [
+                        {
+                          label: 'Script SQL Server (.sql)',
+                          onSelect: () =>
+                            downloadText(
+                              `${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.sql`,
+                              sqlScript(project),
+                              'application/sql',
+                            ),
+                        },
+                      ]
+                    : []),
+                  ...(tableTypes(project, 'db2i').length
+                    ? [
+                        {
+                          label: 'Db2 for i: script y fuentes…',
+                          onSelect: openDb2Export,
+                        },
+                      ]
+                    : []),
+                ]}
               />
             </div>
             {pathQuery && (

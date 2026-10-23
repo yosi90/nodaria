@@ -1,4 +1,4 @@
-import { isTableNode, type SqlColumn } from './database';
+import { engineOf, isTableNode, type SqlColumn } from './database';
 import { createField, createSchema, now, slugify, uid } from './factories';
 import { allFields, nodeLabel } from './selectors';
 import type { FieldDefinition, Node, Project, Schema } from './types';
@@ -92,6 +92,8 @@ export function createJunctionTables(p: Project, accepted: JunctionProposal[], r
       ...createSchema(name, 'entity'),
       icon: 'table-2',
       table: true,
+      // En la misma base que las tablas que une (SQL Server por defecto, o Db2 for i).
+      dbEngine: engineOf(p, source.typeId) === 'db2i' ? 'db2i' : null,
       description: `Tabla intermedia de la relación muchos a muchos entre «${sourceName}» y «${targetName}».`,
       fields: [title, fromKey, toKey],
     };

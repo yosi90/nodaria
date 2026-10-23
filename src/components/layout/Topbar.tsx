@@ -48,6 +48,7 @@ import { Fragment, useCallback, useRef, useState } from 'react';
 import { downloadBytes, downloadProject, downloadText } from '../../services/files';
 import { exportZip } from '../../services/exportBundle';
 import { sqlScript } from '../../domain/sqlScript';
+import { openDb2Export } from './openDb2Export';
 import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
 import { ProjectKindDialog } from './ProjectKindDialog';
@@ -376,7 +377,16 @@ export function Topbar({
       icon: FileArchive,
       onSelect: () => downloadBytes(`${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.zip`, exportZip(project)),
     },
-    ...(tableTypes(project).length
+    ...(tableTypes(project, 'db2i').length
+      ? [
+          {
+            label: 'Exportar Db2 for i (IBM i)…',
+            icon: Database,
+            onSelect: openDb2Export,
+          },
+        ]
+      : []),
+    ...(tableTypes(project, 'sqlserver').length
       ? [
           {
             label: 'Exportar SQL Server (.sql)',

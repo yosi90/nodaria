@@ -119,7 +119,7 @@ export interface Schema {
   embedded: boolean;
 }
 /** Motores de base de datos que Nodaria sabe dibujar y exportar. */
-export type DbEngine = 'sqlserver' | 'mongodb' | 'firestore' | 'neo4j';
+export type DbEngine = 'sqlserver' | 'db2i' | 'mongodb' | 'firestore' | 'neo4j';
 /** Género de un nodo: masculino, femenino, neutro u otro, o sin definir. */
 export type Gender = 'm' | 'f' | 'n' | '';
 /** Término del vocabulario de parentesco de un proyecto. */

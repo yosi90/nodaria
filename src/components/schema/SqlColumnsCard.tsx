@@ -11,15 +11,18 @@ import {
   hasLength,
   hasPrecision,
   hasTimeScale,
+  convertType,
+  dialectOf,
   referencedTable,
-  SQL_TYPES,
   sqlAnnotations,
   sqlOverrideOwner,
   sqlType,
   sqlTypeText,
   tableFields,
   tableIssues,
+  typesOf,
   type SqlColumn,
+  type SqlDialect,
   type SqlDataType,
   type SqlTypeName,
   type TableColumn,
@@ -30,7 +33,7 @@ import { Button, IconButton } from '../common/Button';
 import { useToast } from '../common/toasts';
 
 /**
- * Columnas SQL de un tipo tabla, como el diseñador de tablas de SQL Server: todos sus atributos
+ * Columnas SQL de un tipo tabla (SQL Server o Db2 for i), como el diseñador de tablas: todos sus atributos
  * efectivos (propios, preformas y heredados) con su tipo, clave primaria, nulos, UNIQUE e IDENTITY.
  * Un atributo propio se cambia en su definición; uno heredado o una preforma, solo en este tipo y sus
  * subtipos (`Schema.sqlOverrides`), sin tocar al padre ni a los demás tipos que usan la preforma.
@@ -40,6 +43,8 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
   const toast = useToast();
   const fields = tableFields(project, schema.id);
   const issues = tableIssues(project, schema.id);
+  const dialect: SqlDialect = dialectOf(project, schema.id) ?? 'sqlserver';
+  const db2 = dialect === 'db2i';
   // Referencias múltiples hacia otras tablas: se ofrecen como tablas intermedias (hito 4).
   const junctions = junctionProposals(project, { typeId: schema.id }).length;
   const [junctionOpen, setJunctionOpen] = useState(false);
@@ -57,7 +62,7 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
     <div className="card sql-columns-card">
       <div className="card-head">
         <h3>
-          <Database size={16} aria-hidden /> Columnas SQL
+          <Database size={16} aria-hidden /> Columnas SQL{db2 ? ' · Db2 for i' : ''}
         </h3>
         {annotations.length > 0 && (
           <Button
@@ -123,8 +128,20 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                 <th title="UNIQUE compuesta: las columnas con el mismo nombre de grupo forman una sola restricción">
                   Grupo único
                 </th>
-                <th title="Numeración automática IDENTITY(1,1)">Identity</th>
-                <th title="Valor por defecto: una expresión de SQL Server, como 0, N'texto' o GETDATE()">
+                <th
+                  title={
+                    db2 ? 'Numeración automática GENERATED ALWAYS AS IDENTITY' : 'Numeración automática IDENTITY(1,1)'
+                  }
+                >
+                  Identity
+                </th>
+                <th
+                  title={
+                    db2
+                      ? "Valor por defecto: una expresión de Db2 for i, como 0, 'texto' o CURRENT_TIMESTAMP"
+                      : "Valor por defecto: una expresión de SQL Server, como 0, N'texto' o GETDATE()"
+                  }
+                >
                   Por defecto
                 </th>
                 <th title="Índice sobre la columna (CREATE INDEX)">Índice</th>
@@ -190,7 +207,8 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                                 value={sql[key] ?? 'NO ACTION'}
                                 onChange={event => set(column, { [key]: event.target.value as FkAction })}
                               >
-                                {FK_ACTIONS.map(action => (
+                                {/* Db2 solo admite NO ACTION (o RESTRICT) al actualizar la fila referenciada. */}
+                                {(db2 && key === 'onUpdate' ? (['NO ACTION'] as const) : FK_ACTIONS).map(action => (
                                   <option key={action} value={action}>
                                     {action}
                                   </option>
@@ -204,7 +222,8 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                     </td>
                     <td>
                       <SqlTypeEditor
-                        type={sql.type}
+                        dialect={dialect}
+                        type={sql.type && convertType(sql.type, dialect)}
                         deduced={column.type}
                         disabled={off}
                         onChange={type => set(column, { type })}
@@ -317,11 +336,13 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
 
 /** Tipo SQL de una columna: «Automático» (deducido) o uno elegido, con su longitud o precisión. */
 function SqlTypeEditor({
+  dialect,
   type,
   deduced,
   disabled,
   onChange,
 }: {
+  dialect: SqlDialect;
   type: SqlDataType | null;
   deduced: SqlDataType;
   disabled: boolean;
@@ -343,7 +364,7 @@ function SqlTypeEditor({
         }}
       >
         <option value="">Automático · {sqlTypeText(deduced)}</option>
-        {SQL_TYPES.map(name => (
+        {typesOf(dialect).map(name => (
           <option key={name} value={name}>
             {name}
           </option>
@@ -369,7 +390,7 @@ function SqlTypeEditor({
             className="sql-size"
             type="number"
             min={1}
-            max={38}
+            max={dialect === 'db2i' ? 63 : 38}
             value={type.precision ?? ''}
             disabled={disabled}
             onChange={event => onChange({ ...type, precision: number(event.target.value) })}
@@ -379,7 +400,7 @@ function SqlTypeEditor({
             className="sql-size"
             type="number"
             min={0}
-            max={38}
+            max={dialect === 'db2i' ? 63 : 38}
             value={type.scale ?? ''}
             disabled={disabled}
             onChange={event => onChange({ ...type, scale: number(event.target.value) })}
@@ -392,7 +413,7 @@ function SqlTypeEditor({
           className="sql-size"
           type="number"
           min={0}
-          max={7}
+          max={type.name === 'TIMESTAMP' ? 12 : 7}
           value={type.scale ?? ''}
           disabled={disabled}
           onChange={event => onChange({ ...type, scale: number(event.target.value) })}

@@ -155,9 +155,11 @@ export function SchemaEditor({ schema, onDuplicated }: { schema: Schema; onDupli
                     {isDatabase &&
                       (engine === 'sqlserver'
                         ? 'Tabla de SQL Server: sus atributos son columnas.'
-                        : engine === 'neo4j'
-                          ? 'Etiqueta de Neo4j: sus atributos son propiedades y sus referencias, relaciones.'
-                          : `Colección de ${engineLabel(engine!)}: sus atributos son los campos del documento.`)}
+                        : engine === 'db2i'
+                          ? 'Tabla de Db2 for i (IBM i, AS/400): sus atributos son columnas, con nombre de sistema de 10 caracteres.'
+                          : engine === 'neo4j'
+                            ? 'Etiqueta de Neo4j: sus atributos son propiedades y sus referencias, relaciones.'
+                            : `Colección de ${engineLabel(engine!)}: sus atributos son los campos del documento.`)}
                   </small>
                 </label>
               )}

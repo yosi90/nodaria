@@ -4,6 +4,7 @@ import {
   engineLabel,
   engineOf,
   isEmbeddedType,
+  isRelationalEngine,
   sqlOverrideOwner,
   tableFields,
   type SqlColumn,
@@ -24,7 +25,7 @@ import { IconButton } from '../common/Button';
 export function DocumentFieldsCard({ schema }: { schema: Schema }) {
   const { project, dispatch } = useApp();
   const engine = engineOf(project, schema.id);
-  if (!engine || engine === 'sqlserver') return null;
+  if (!engine || isRelationalEngine(engine)) return null;
   const fields = tableFields(project, schema.id);
   const neo4j = engine === 'neo4j';
   const embedded = isEmbeddedType(project, schema.id);

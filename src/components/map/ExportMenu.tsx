@@ -17,14 +17,14 @@ interface ExportMenuProps {
   name: string;
   /** Elemento del lienzo (sección que contiene a React Flow). */
   container: () => HTMLElement | null;
-  /** Si el proyecto tiene tablas: descargar su script de SQL Server. */
-  onSql?: () => void;
+  /** Los scripts de las bases relacionales del proyecto (SQL Server, Db2 for i), si tiene tablas. */
+  scripts?: { label: string; onSelect: () => void }[];
 }
 
 const MARGIN = 48;
 const MAX_SIZE = 8192;
 
-export function ExportMenu({ name, container, onSql }: ExportMenuProps) {
+export function ExportMenu({ name, container, scripts = [] }: ExportMenuProps) {
   const flow = useReactFlow();
   const toast = useToast();
   const [anchor, setAnchor] = useState<Anchor | null>(null);
@@ -80,8 +80,8 @@ export function ExportMenu({ name, container, onSql }: ExportMenuProps) {
     { section: 'Vista actual (zoom y encuadre)' },
     { label: 'PNG de la vista', icon: FileImage, onSelect: () => void exportImage('png', 'view') },
     { label: 'SVG de la vista', icon: FileCode2, onSelect: () => void exportImage('svg', 'view') },
-    ...(onSql
-      ? [{ section: 'Base de datos' }, { label: 'Script SQL Server (.sql)', icon: Database, onSelect: onSql }]
+    ...(scripts.length
+      ? [{ section: 'Base de datos' }, ...scripts.map(script => ({ ...script, icon: Database }))]
       : []),
   ];
 
@@ -89,7 +89,7 @@ export function ExportMenu({ name, container, onSql }: ExportMenuProps) {
     <>
       <IconButton
         icon={Download}
-        label={onSql ? 'Exportar imagen o SQL' : 'Exportar imagen (PNG o SVG)'}
+        label={scripts.length ? 'Exportar imagen o SQL' : 'Exportar imagen (PNG o SVG)'}
         disabled={busy}
         active={Boolean(anchor)}
         onClick={event => (anchor ? setAnchor(null) : setAnchor(anchorOf(event.currentTarget)))}

@@ -13,7 +13,11 @@ export { DB_ENGINES, engineLabel, isDocumentEngine } from './dbEngines';
  *
  * Los metadatos SQL de cada atributo viven en `FieldDefinition.sql`; `null` deja que se deduzcan del
  * tipo del atributo, así que marcar un tipo como tabla ya produce columnas sin rellenar nada.
- * Dialecto: SQL Server.
+ *
+ * Dos dialectos relacionales: SQL Server y Db2 for i (la base de datos de IBM i, los AS/400). Los tipos de
+ * SQL Server van en minúsculas y los de Db2 en mayúsculas, así que un tipo guardado dice de qué dialecto
+ * es; en una tabla del otro dialecto se convierte a su equivalente (`convertType`). Así una preforma
+ * compartida vale en tablas de las dos bases.
  */
 
 export const SQL_TYPES = [
@@ -37,7 +41,46 @@ export const SQL_TYPES = [
   'datetime2',
   'uniqueidentifier',
 ] as const;
-export type SqlTypeName = (typeof SQL_TYPES)[number];
+
+/** Tipos de Db2 for i. DECIMAL es decimal empaquetado y NUMERIC, con zona, como en los archivos físicos. */
+export const DB2_TYPES = [
+  'SMALLINT',
+  'INTEGER',
+  'BIGINT',
+  'DECIMAL',
+  'NUMERIC',
+  'DECFLOAT',
+  'REAL',
+  'DOUBLE',
+  'BOOLEAN',
+  'CHAR',
+  'VARCHAR',
+  'NCHAR',
+  'NVARCHAR',
+  'GRAPHIC',
+  'VARGRAPHIC',
+  'CLOB',
+  'NCLOB',
+  'BINARY',
+  'VARBINARY',
+  'BLOB',
+  'DATE',
+  'TIME',
+  'TIMESTAMP',
+] as const;
+
+export type SqlServerTypeName = (typeof SQL_TYPES)[number];
+export type Db2TypeName = (typeof DB2_TYPES)[number];
+export type SqlTypeName = SqlServerTypeName | Db2TypeName;
+
+/** Bases relacionales: sus tipos son tablas con columnas, claves y script (todo lo de SQL). */
+export type SqlDialect = 'sqlserver' | 'db2i';
+export const isRelationalEngine = (engine: DbEngine | null): engine is SqlDialect =>
+  engine === 'sqlserver' || engine === 'db2i';
+/** Los tipos de columna que se ofrecen en cada dialecto. */
+export const typesOf = (dialect: SqlDialect): readonly SqlTypeName[] => (dialect === 'db2i' ? DB2_TYPES : SQL_TYPES);
+const isDb2Name = (name: SqlTypeName): name is Db2TypeName => (DB2_TYPES as readonly string[]).includes(name);
+export const dialectOfType = (name: SqlTypeName): SqlDialect => (isDb2Name(name) ? 'db2i' : 'sqlserver');
 
 export interface SqlDataType {
   name: SqlTypeName;
@@ -85,27 +128,69 @@ export interface SqlColumn {
 /** Hasta dónde se guarda la descripción de una columna. */
 export const COLUMN_DESCRIPTION_MAX = 500;
 
-export const hasLength = (name: SqlTypeName) => ['char', 'varchar', 'nchar', 'nvarchar', 'varbinary'].includes(name);
+const DB2_LOBS: readonly string[] = ['CLOB', 'NCLOB', 'BLOB'];
+const DB2_MAX_LENGTH: Partial<Record<Db2TypeName, number>> = {
+  CHAR: 32766,
+  VARCHAR: 32740,
+  NCHAR: 16383,
+  NVARCHAR: 16370,
+  GRAPHIC: 16383,
+  VARGRAPHIC: 16370,
+  BINARY: 32766,
+  VARBINARY: 32740,
+  CLOB: 2147483647,
+  NCLOB: 1073741823,
+  BLOB: 2147483647,
+};
+export const hasLength = (name: SqlTypeName) =>
+  ['char', 'varchar', 'nchar', 'nvarchar', 'varbinary'].includes(name) || (isDb2Name(name) && name in DB2_MAX_LENGTH);
 export const allowsMax = (name: SqlTypeName) => ['varchar', 'nvarchar', 'varbinary'].includes(name);
-export const hasPrecision = (name: SqlTypeName) => name === 'decimal' || name === 'numeric';
-export const hasTimeScale = (name: SqlTypeName) => ['time', 'datetime2'].includes(name);
-export const allowsIdentity = (name: SqlTypeName) =>
-  ['int', 'bigint', 'smallint', 'tinyint', 'decimal', 'numeric'].includes(name);
-const maxLength = (name: SqlTypeName) => (name === 'nchar' || name === 'nvarchar' ? 4000 : 8000);
+export const hasPrecision = (name: SqlTypeName) => ['decimal', 'numeric', 'DECIMAL', 'NUMERIC'].includes(name);
+export const hasTimeScale = (name: SqlTypeName) => ['time', 'datetime2', 'TIMESTAMP'].includes(name);
+const IDENTITY_TYPES: readonly string[] = [
+  'int',
+  'bigint',
+  'smallint',
+  'tinyint',
+  'decimal',
+  'numeric',
+  'SMALLINT',
+  'INTEGER',
+  'BIGINT',
+  'DECIMAL',
+  'NUMERIC',
+];
+export const allowsIdentity = (name: SqlTypeName) => IDENTITY_TYPES.includes(name);
+const maxLength = (name: SqlTypeName) =>
+  isDb2Name(name) ? (DB2_MAX_LENGTH[name] ?? 0) : name === 'nchar' || name === 'nvarchar' ? 4000 : 8000;
+/** Fracciones de segundo por defecto: 7 en SQL Server, 6 en el TIMESTAMP de Db2. */
+const defaultTimeScale = (name: SqlTypeName) => (name === 'TIMESTAMP' ? 6 : 7);
 
 export function sqlType(name: SqlTypeName, length: number | 'max' | null = null, precision?: number, scale?: number) {
   return {
     name,
-    length: hasLength(name) ? (length ?? 50) : null,
+    length: hasLength(name) ? (length ?? (DB2_LOBS.includes(name) ? 1048576 : 50)) : null,
     precision: hasPrecision(name) ? (precision ?? 18) : null,
-    scale: hasPrecision(name) ? (scale ?? 0) : hasTimeScale(name) ? (scale ?? 7) : null,
+    scale: hasPrecision(name) ? (scale ?? 0) : hasTimeScale(name) ? (scale ?? defaultTimeScale(name)) : null,
   } satisfies SqlDataType;
 }
 
+/** Longitud de un LOB como la escribe Db2: 1M, 64K, 2G (o en bytes si no es un múltiplo exacto). */
+function lobLength(length: number) {
+  for (const [unit, size] of [
+    ['G', 1024 ** 3],
+    ['M', 1024 ** 2],
+    ['K', 1024],
+  ] as const)
+    if (length % size === 0) return `${length / size}${unit}`;
+  return String(length);
+}
+
 export function sqlTypeText(type: SqlDataType) {
+  if (DB2_LOBS.includes(type.name) && typeof type.length === 'number') return `${type.name}(${lobLength(type.length)})`;
   if (hasLength(type.name)) return `${type.name}(${type.length})`;
   if (hasPrecision(type.name)) return `${type.name}(${type.precision},${type.scale})`;
-  if (hasTimeScale(type.name) && type.scale !== 7) return `${type.name}(${type.scale})`;
+  if (hasTimeScale(type.name) && type.scale !== defaultTimeScale(type.name)) return `${type.name}(${type.scale})`;
   return type.name;
 }
 
@@ -120,12 +205,122 @@ export function sqlTypeError(type: SqlDataType): string | null {
   if (hasPrecision(type.name)) {
     const p = Number(type.precision);
     const s = Number(type.scale);
-    if (!Number.isInteger(p) || p < 1 || p > 38) return 'La precisión va de 1 a 38.';
+    const maxPrecision = isDb2Name(type.name) ? 63 : 38;
+    if (!Number.isInteger(p) || p < 1 || p > maxPrecision) return `La precisión va de 1 a ${maxPrecision}.`;
     if (!Number.isInteger(s) || s < 0 || s > p) return 'La escala va de 0 a la precisión.';
   }
-  if (hasTimeScale(type.name) && (!Number.isInteger(type.scale) || Number(type.scale) < 0 || Number(type.scale) > 7))
-    return 'La precisión de fracciones de segundo va de 0 a 7.';
+  const maxScale = type.name === 'TIMESTAMP' ? 12 : 7;
+  if (
+    hasTimeScale(type.name) &&
+    (!Number.isInteger(type.scale) || Number(type.scale) < 0 || Number(type.scale) > maxScale)
+  )
+    return `La precisión de fracciones de segundo va de 0 a ${maxScale}.`;
   return null;
+}
+
+const MB = 1024 * 1024;
+/** El equivalente de un tipo de SQL Server en Db2 for i. El texto sin longitud máxima pasa a CLOB. */
+function toDb2(type: SqlDataType): SqlDataType {
+  const length = type.length === 'max' ? null : type.length;
+  switch (type.name) {
+    case 'int':
+      return sqlType('INTEGER');
+    case 'bigint':
+      return sqlType('BIGINT');
+    case 'smallint':
+    case 'tinyint':
+    case 'bit':
+      // BOOLEAN solo existe desde IBM i 7.5: SMALLINT (0 o 1) vale en todas las versiones.
+      return sqlType('SMALLINT');
+    case 'decimal':
+      return sqlType('DECIMAL', null, type.precision ?? 18, type.scale ?? 0);
+    case 'numeric':
+      return sqlType('NUMERIC', null, type.precision ?? 18, type.scale ?? 0);
+    case 'money':
+      return sqlType('DECIMAL', null, 19, 4);
+    case 'float':
+      return sqlType('DOUBLE');
+    case 'char':
+      return sqlType('CHAR', length);
+    case 'nchar':
+      return sqlType('NCHAR', length);
+    case 'varchar':
+    case 'nvarchar':
+      return length === null ? sqlType('CLOB', MB) : sqlType('VARCHAR', length);
+    case 'varbinary':
+      return length === null ? sqlType('BLOB', MB) : sqlType('VARBINARY', length);
+    case 'date':
+      return sqlType('DATE');
+    case 'time':
+      return sqlType('TIME');
+    case 'datetime':
+    case 'datetime2':
+      return sqlType('TIMESTAMP');
+    case 'uniqueidentifier':
+      return sqlType('CHAR', 36);
+    default:
+      return type;
+  }
+}
+
+/** El equivalente de un tipo de Db2 for i en SQL Server. */
+function toSqlServer(type: SqlDataType): SqlDataType {
+  const length = typeof type.length === 'number' ? type.length : null;
+  const text = (name: 'varchar' | 'nvarchar' | 'varbinary', max: number) =>
+    sqlType(name, length === null || length > max ? 'max' : length);
+  switch (type.name) {
+    case 'SMALLINT':
+      return sqlType('smallint');
+    case 'INTEGER':
+      return sqlType('int');
+    case 'BIGINT':
+      return sqlType('bigint');
+    case 'DECIMAL':
+    case 'NUMERIC': {
+      const precision = Math.min(type.precision ?? 18, 38);
+      const scale = Math.min(type.scale ?? 0, precision);
+      return sqlType(type.name === 'DECIMAL' ? 'decimal' : 'numeric', null, precision, scale);
+    }
+    case 'DECFLOAT':
+    case 'REAL':
+    case 'DOUBLE':
+      return sqlType('float');
+    case 'BOOLEAN':
+      return sqlType('bit');
+    case 'CHAR':
+      return length !== null && length <= 8000 ? sqlType('char', length) : sqlType('varchar', 'max');
+    case 'NCHAR':
+    case 'GRAPHIC':
+      return length !== null && length <= 4000 ? sqlType('nchar', length) : sqlType('nvarchar', 'max');
+    case 'VARCHAR':
+      return text('varchar', 8000);
+    case 'NVARCHAR':
+    case 'VARGRAPHIC':
+      return text('nvarchar', 4000);
+    case 'CLOB':
+      return sqlType('varchar', 'max');
+    case 'NCLOB':
+      return sqlType('nvarchar', 'max');
+    case 'BINARY':
+    case 'VARBINARY':
+      return text('varbinary', 8000);
+    case 'BLOB':
+      return sqlType('varbinary', 'max');
+    case 'DATE':
+      return sqlType('date');
+    case 'TIME':
+      return sqlType('time');
+    case 'TIMESTAMP':
+      return sqlType('datetime2');
+    default:
+      return type;
+  }
+}
+
+/** El tipo en el dialecto de la tabla: el mismo si ya es suyo, o su equivalente si viene del otro. */
+export function convertType(type: SqlDataType, dialect: SqlDialect): SqlDataType {
+  if (dialectOfType(type.name) === dialect) return type;
+  return dialect === 'db2i' ? toDb2(type) : toSqlServer(type);
 }
 
 const ALIASES: Record<string, SqlTypeName> = {
@@ -215,9 +410,14 @@ export function engineOf(p: Project, typeId: string): DbEngine | null {
 /** Tipo (él mismo o un ancestro) que fija el motor, si alguno lo fija. */
 export const engineOrigin = (p: Project, typeId: string): Schema | undefined =>
   [...inheritedSchemas(p, typeId)].reverse().find(s => s.dbEngine);
-/** Si el tipo es una tabla de SQL Server (todo lo de SQL: columnas, claves, script, la IA de tablas). */
+/** Si el tipo es una tabla de una base relacional (todo lo de SQL: columnas, claves, script, la IA de tablas). */
 export function isTableType(p: Project, typeId: string) {
-  return engineOf(p, typeId) === 'sqlserver';
+  return isRelationalEngine(engineOf(p, typeId));
+}
+/** El dialecto de un tipo tabla, o `null` si no lo es. */
+export function dialectOf(p: Project, typeId: string): SqlDialect | null {
+  const engine = engineOf(p, typeId);
+  return isRelationalEngine(engine) ? engine : null;
 }
 /** Subdocumento de MongoDB o Firestore: se incrusta en otros, sin colección propia. */
 export function isEmbeddedType(p: Project, typeId: string) {
@@ -226,8 +426,9 @@ export function isEmbeddedType(p: Project, typeId: string) {
 /** Ancestro (o el propio tipo) que lo marca como de base de datos. */
 export const tableOrigin = (p: Project, typeId: string): Schema | undefined =>
   inheritedSchemas(p, typeId).find(s => s.kind === 'entity' && s.table);
-/** Tablas de SQL Server. */
-export const tableTypes = (p: Project) => p.schemas.filter(s => s.kind === 'entity' && isTableType(p, s.id));
+/** Tablas de las bases relacionales (las de un dialecto, si se pide). */
+export const tableTypes = (p: Project, dialect?: SqlDialect) =>
+  p.schemas.filter(s => s.kind === 'entity' && (dialect ? dialectOf(p, s.id) === dialect : isTableType(p, s.id)));
 /** Tipos de base de datos de cualquier motor. */
 export const databaseTypes = (p: Project) => p.schemas.filter(s => s.kind === 'entity' && isDatabaseType(p, s.id));
 /** Los motores que usa el proyecto. */
@@ -250,7 +451,7 @@ export function defaultSqlColumn(field: FieldDefinition, engine: DbEngine = 'sql
     nullable: !field.required,
     unique: false,
     identity: false,
-    excluded: field.isTitle || field.type === 'computed' || (field.type === 'nodeRefs' && engine === 'sqlserver'),
+    excluded: field.isTitle || field.type === 'computed' || (field.type === 'nodeRefs' && isRelationalEngine(engine)),
   };
 }
 export const sqlColumnOf = (field: FieldDefinition): SqlColumn => field.sql ?? defaultSqlColumn(field);
@@ -313,13 +514,13 @@ export function sqlDefaultError(expression: string): string | null {
 function readSqlType(raw: unknown): SqlDataType | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
-  if (!SQL_TYPES.includes(r.name as SqlTypeName)) return null;
+  if (![...SQL_TYPES, ...DB2_TYPES].includes(r.name as SqlTypeName)) return null;
   const name = r.name as SqlTypeName;
   const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
   return sqlType(name, r.length === 'max' ? 'max' : (num(r.length) ?? null), num(r.precision), num(r.scale));
 }
 
-/** Tipo deducido del tipo de atributo, sin mirar referencias. */
+/** Tipo deducido del tipo de atributo, sin mirar referencias (en SQL Server; Db2 lo convierte). */
 function deducedType(field: FieldDefinition): SqlDataType {
   switch (field.type) {
     case 'longText':
@@ -371,23 +572,33 @@ export interface TableColumn {
   typeText?: string;
 }
 
-/** Tipo tabla al que apuntaría una referencia: el primero admitido que sea tabla, o el del nodo del valor inicial. */
-export function referencedTable(p: Project, field: FieldDefinition): Schema | undefined {
-  const admitted = field.referenceTypeIds.map(id => getSchema(p, id)).find(s => s && isTableType(p, s.id));
+/**
+ * Tipo tabla al que apuntaría una referencia: el primero admitido que sea tabla, o el del nodo del valor
+ * inicial. Con `dialect`, solo una tabla de esa base: hacia otra no hay clave foránea.
+ */
+export function referencedTable(p: Project, field: FieldDefinition, dialect?: SqlDialect): Schema | undefined {
+  const fits = (typeId: string) => (dialect ? dialectOf(p, typeId) === dialect : isTableType(p, typeId));
+  const admitted = field.referenceTypeIds.map(id => getSchema(p, id)).find(s => s && fits(s.id));
   if (admitted) return admitted;
   const node = typeof field.defaultValue === 'string' ? p.nodes.find(n => n.id === field.defaultValue) : undefined;
-  return node && isTableType(p, node.typeId) ? getSchema(p, node.typeId) : undefined;
+  return node && fits(node.typeId) ? getSchema(p, node.typeId) : undefined;
 }
 
-function columnType(p: Project, field: FieldDefinition, sql: SqlColumn, seen: Set<string>): SqlDataType {
-  if (sql.type) return sql.type;
+function columnType(
+  p: Project,
+  field: FieldDefinition,
+  sql: SqlColumn,
+  seen: Set<string>,
+  dialect: SqlDialect,
+): SqlDataType {
+  if (sql.type) return convertType(sql.type, dialect);
   if (field.type === 'nodeRef' && !seen.has(field.id)) {
-    const target = referencedTable(p, field);
+    const target = referencedTable(p, field, dialect);
     const keys = target ? primaryKey(p, target.id, new Set([...seen, field.id])) : [];
     if (keys.length === 1) return keys[0].type;
-    return sqlType('int');
+    return convertType(sqlType('int'), dialect);
   }
-  return deducedType(field);
+  return convertType(deducedType(field), dialect);
 }
 
 function originOf(p: Project, typeId: string, field: FieldDefinition): ColumnOrigin {
@@ -434,13 +645,13 @@ function columnsOf(p: Project, typeId: string, seen: Set<string>): TableColumn[]
     const column: TableColumn = {
       field,
       sql,
-      type: columnType(p, field, sql, seen),
+      type: columnType(p, field, sql, seen, isRelationalEngine(engine) ? engine : 'sqlserver'),
       deduced: !sql.type,
       reference,
       origin: originOf(p, typeId, field),
     };
     // En los motores que no son SQL, el tipo del campo en ese motor y, en las referencias, a qué apuntan.
-    if (engine && engine !== 'sqlserver') {
+    if (engine && !isRelationalEngine(engine)) {
       const target = reference ? referencedDatabaseType(p, field) : undefined;
       const kind: ReferenceKind | null = !target ? null : isEmbeddedType(p, target.id) ? 'embedded' : 'reference';
       // Una referencia a otra base guarda su id como texto: ni objectId ni referencia de Firestore la entienden.
@@ -544,7 +755,9 @@ export function foreignKeyLinks(p: Project): ForeignKeyLink[] {
         const ids = typeof raw === 'string' ? [raw] : Array.isArray(raw) ? raw : [];
         ids.forEach(targetId => {
           const target = nodes.get(targetId);
-          if (!target || !isTableType(p, target.typeId)) return;
+          // Una clave foránea une tablas de la misma base: entre SQL Server y Db2 es una referencia entre motores.
+          if (!target || !isTableType(p, target.typeId) || engineOf(p, target.typeId) !== engineOf(p, node.typeId))
+            return;
           const keys = columnsFor(target.typeId).filter(k => k.sql.primaryKey);
           result.push({
             sourceId: node.id,
@@ -587,7 +800,10 @@ export function databaseLinks(p: Project): DatabaseLink[] {
         ids.forEach(targetId => {
           const target = nodes.get(targetId);
           if (!target || !isDatabaseType(p, target.typeId) || isEmbeddedType(p, target.typeId)) return;
-          const keys = isTableType(p, target.typeId) ? columnsFor(target.typeId).filter(k => k.sql.primaryKey) : [];
+          const keys =
+            isTableType(p, target.typeId) && engineOf(p, target.typeId) === engine
+              ? columnsFor(target.typeId).filter(k => k.sql.primaryKey)
+              : [];
           result.push({
             sourceId: node.id,
             fieldId: c.field.id,
@@ -612,6 +828,7 @@ export function tableIssues(p: Project, typeId: string): TableIssue[] {
   const issues: TableIssue[] = [];
   const columns = tableColumns(p, typeId);
   const keys = columns.filter(c => c.sql.primaryKey);
+  const dialect = dialectOf(p, typeId);
   if (!columns.length) issues.push({ severity: 'warning', message: 'La tabla no tiene columnas.' });
   else if (!keys.length)
     issues.push({
@@ -649,6 +866,26 @@ export function tableIssues(p: Project, typeId: string): TableIssue[] {
         message: `${c.field.label}: una columna IDENTITY no admite valor por defecto.`,
         fieldId: c.field.id,
       });
+    if (dialect === 'db2i') {
+      if (c.type.name === 'BOOLEAN')
+        issues.push({
+          severity: 'warning',
+          message: `${c.field.label}: BOOLEAN solo existe desde IBM i 7.5; en versiones anteriores usa SMALLINT o CHAR(1).`,
+          fieldId: c.field.id,
+        });
+      if (c.sql.defaultValue && /\bGETDATE\b|\bNEWID\b|\bSYSDATETIME\b|(^|[^A-Za-z])N'/i.test(c.sql.defaultValue))
+        issues.push({
+          severity: 'warning',
+          message: `${c.field.label}: el valor por defecto es de SQL Server; en Db2 for i, CURRENT_DATE, CURRENT_TIMESTAMP o 'texto'.`,
+          fieldId: c.field.id,
+        });
+      if (c.field.type === 'nodeRef' && c.sql.onUpdate && c.sql.onUpdate !== 'NO ACTION')
+        issues.push({
+          severity: 'warning',
+          message: `${c.field.label}: Db2 for i solo admite NO ACTION al actualizar la fila referenciada.`,
+          fieldId: c.field.id,
+        });
+    }
     if (c.field.type === 'nodeRef') {
       for (const [rule, action] of [
         ['Al borrar', c.sql.onDelete],
@@ -682,7 +919,7 @@ export function tableIssues(p: Project, typeId: string): TableIssue[] {
         fieldId: c.field.id,
       });
     if (c.field.type === 'nodeRef') {
-      const target = referencedTable(p, c.field);
+      const target = referencedTable(p, c.field, dialectOf(p, typeId) ?? undefined);
       const targetKeys = target ? tableColumns(p, target.id).filter(k => k.sql.primaryKey) : [];
       // Hacia una clave primaria compuesta, el script abre la referencia en una columna por cada parte.
       if (target && targetKeys.length === 1 && !c.deduced && sqlTypeText(targetKeys[0].type) !== sqlTypeText(c.type))

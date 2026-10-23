@@ -1,5 +1,17 @@
 import { databaseLint } from './databaseLint';
-import { columnSqlIn, isTableType, sqlColumnOf, sqlTypeText, tableColumns, type TableColumn } from './database';
+import {
+  columnSqlIn,
+  convertType,
+  isTableType,
+  sqlColumnOf,
+  sqlTypeText,
+  tableColumns,
+  type TableColumn,
+} from './database';
+
+// El asistente propone tipos de SQL Server; las tablas de Db2 for i se le enseñan con su equivalente y lo
+// que proponga se convierte al aplicarlo (`convertType`).
+const asSqlServer = (type: Parameters<typeof convertType>[0]) => sqlTypeText(convertType(type, 'sqlserver'));
 import { isFieldLink } from './library';
 import { getSchema, nodeLabel } from './selectors';
 import type { Node, Project, Schema } from './types';
@@ -100,7 +112,7 @@ function columnContext(p: Project, node: Node | null, c: TableColumn, idOf: Map<
   const target = node && c.field.type === 'nodeRef' ? node.values[c.field.id] : undefined;
   return {
     name: c.field.key || c.field.label,
-    type: sqlTypeText(c.type),
+    type: asSqlServer(c.type),
     primaryKey: c.sql.primaryKey,
     nullable: c.sql.nullable,
     unique: c.sql.unique,
@@ -164,7 +176,7 @@ export function databaseContext(
       const column = user ? tableColumns(p, user.id).find(c => c.field.id === f.id) : undefined;
       return {
         name: f.key || f.label,
-        type: column ? sqlTypeText(column.type) : sql.type ? sqlTypeText(sql.type) : '',
+        type: column ? asSqlServer(column.type) : sql.type ? asSqlServer(sql.type) : '',
         reference: f.type === 'nodeRef',
         primaryKey: sql.primaryKey,
         nullable: sql.nullable,

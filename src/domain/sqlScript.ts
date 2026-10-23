@@ -1,10 +1,11 @@
 import {
   columnDescription,
+  dialectOf,
   foreignKeyLinks,
-  isTableType,
   sqlDefaultError,
   sqlTypeText,
   tableColumns,
+  type SqlDialect,
   type TableColumn,
 } from './database';
 import { nodeLabel } from './selectors';
@@ -28,26 +29,26 @@ export const quoteName = (name: string) => `[${name.slice(0, MAX_NAME).replace(/
 const constraintName = (...parts: string[]) => quoteName(parts.join('_').replace(/\s+/g, '_'));
 const list = (columns: { name: string }[]) => columns.map(c => quoteName(c.name)).join(', ');
 
-interface ScriptColumn extends TableColumn {
+export interface ScriptColumn extends TableColumn {
   name: string;
   /** Parte de una referencia a una clave primaria compuesta: el nombre de la columna destino. */
   targetKey?: string;
 }
 
-interface ScriptTable {
+export interface ScriptTable {
   node: Node;
   name: string;
   columns: ScriptColumn[];
 }
 
-/** Nombres únicos, sin distinguir mayúsculas como SQL Server: el segundo «Cliente» pasa a «Cliente_2». */
-function uniqueNames<T>(items: T[], nameOf: (item: T) => string) {
+/**
+ * Nombres únicos, sin distinguir mayúsculas: el segundo «Cliente» pasa a «Cliente_2». `normalize` adapta
+ * el nombre a lo que admite la base (SQL Server lo deja como está; Db2, como identificador ordinario).
+ */
+export function uniqueNames<T>(items: T[], nameOf: (item: T) => string, normalize: (name: string) => string = n => n) {
   const taken = new Set<string>();
   return items.map(item => {
-    const base =
-      nameOf(item)
-        .trim()
-        .slice(0, MAX_NAME - 4) || 'Sin_nombre';
+    const base = normalize(nameOf(item).trim()).slice(0, MAX_NAME - 4) || normalize('Sin_nombre');
     let name = base;
     for (let i = 2; taken.has(name.toLowerCase()); i++) name = `${base}_${i}`;
     taken.add(name.toLowerCase());
@@ -55,12 +56,17 @@ function uniqueNames<T>(items: T[], nameOf: (item: T) => string) {
   });
 }
 
-function scriptTables(p: Project): ScriptTable[] {
-  const nodes = p.nodes.filter(n => isTableType(p, n.typeId));
-  const names = uniqueNames(nodes, n => nodeLabel(p, n));
+/** Las tablas de un dialecto con sus columnas ya nombradas, listas para el script. */
+export function scriptTables(
+  p: Project,
+  dialect: SqlDialect = 'sqlserver',
+  normalize?: (name: string) => string,
+): ScriptTable[] {
+  const nodes = p.nodes.filter(n => dialectOf(p, n.typeId) === dialect);
+  const names = uniqueNames(nodes, n => nodeLabel(p, n), normalize);
   const base: ScriptTable[] = nodes.map((node, i) => {
     const columns = tableColumns(p, node.typeId);
-    const columnNames = uniqueNames(columns, c => c.field.key || c.field.label);
+    const columnNames = uniqueNames(columns, c => c.field.key || c.field.label, normalize);
     return { node, name: names[i], columns: columns.map((c, j) => ({ ...c, name: columnNames[j] })) };
   });
   const byNode = new Map(base.map(t => [t.node.id, t]));
@@ -79,13 +85,13 @@ function scriptTables(p: Project): ScriptTable[] {
         targetKey: key.name,
       }));
     });
-    const finalNames = uniqueNames(expanded, c => c.name);
+    const finalNames = uniqueNames(expanded, c => c.name, normalize);
     return { ...table, columns: expanded.map((c, i) => ({ ...c, name: finalNames[i] })) };
   });
 }
 
 /** Las columnas de un atributo en la tabla (una, o varias si es una referencia a una clave compuesta). */
-const columnsOf = (table: ScriptTable, fieldId: string) => table.columns.filter(c => c.field.id === fieldId);
+export const columnsOf = (table: ScriptTable, fieldId: string) => table.columns.filter(c => c.field.id === fieldId);
 
 export function sqlScript(p: Project, generatedAt = new Date()): string {
   const tables = scriptTables(p);

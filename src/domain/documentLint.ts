@@ -1,4 +1,12 @@
-import { engineLabel, engineOf, isDatabaseType, isEmbeddedType, tableColumns, type TableColumn } from './database';
+import {
+  engineLabel,
+  engineOf,
+  isDatabaseType,
+  isEmbeddedType,
+  isRelationalEngine,
+  tableColumns,
+  type TableColumn,
+} from './database';
 import { isDocumentEngine } from './dbEngines';
 import { getSchema, nodeLabel } from './selectors';
 import type { Node, Project, Schema } from './types';
@@ -37,7 +45,7 @@ function depthOf(p: Project, typeId: string, open: Set<string>): number {
 export function documentLint(p: Project): DocumentLintIssue[] {
   const issues: DocumentLintIssue[] = [];
   const types = p.schemas.filter(
-    s => s.kind === 'entity' && !s.isAbstract && isDatabaseType(p, s.id) && engineOf(p, s.id) !== 'sqlserver',
+    s => s.kind === 'entity' && !s.isAbstract && isDatabaseType(p, s.id) && !isRelationalEngine(engineOf(p, s.id)),
   );
   const collections = types.filter(s => !isEmbeddedType(p, s.id));
   const label = (s: Schema, c: TableColumn) => `${s.name}.${c.field.key || c.field.label}`;
@@ -107,7 +115,7 @@ export function documentLint(p: Project): DocumentLintIssue[] {
   p.nodes
     .filter(n => {
       const engine = engineOf(p, n.typeId);
-      return engine && engine !== 'sqlserver' && !isEmbeddedType(p, n.typeId);
+      return engine && !isRelationalEngine(engine) && !isEmbeddedType(p, n.typeId);
     })
     .forEach(n => {
       const key = `${engineOf(p, n.typeId)}|${isDocumentEngine(engineOf(p, n.typeId)) ? (n.parentId ?? '') : ''}|${nodeLabel(p, n).trim().toLowerCase()}`;

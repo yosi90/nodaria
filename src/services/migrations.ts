@@ -35,6 +35,8 @@ import type {
  * - v9: bases no relacionales: motor por tipo (`Schema.dbEngine`, `null` = SQL Server como hasta ahora),
  *   subdocumentos (`Schema.embedded`) y tipo de campo de documento (`SqlColumn.docType`). Las tablas de
  *   antes siguen siendo de SQL Server.
+ * - v10: Db2 for i como motor (`Schema.dbEngine = 'db2i'`) y sus tipos de columna (en mayúsculas). No cambia
+ *   ningún dato existente; una versión anterior perdería el motor al abrirlo, por eso sube el formato.
  */
 
 type RawNode = Omit<Node, 'positions'> & { positions?: Node['positions']; position?: Position | null };

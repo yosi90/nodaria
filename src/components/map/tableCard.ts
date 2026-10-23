@@ -1,4 +1,11 @@
-import { columnDescription, engineOf, tableColumns, sqlTypeText, type TableColumn } from '../../domain/database';
+import {
+  columnDescription,
+  engineOf,
+  isRelationalEngine,
+  tableColumns,
+  sqlTypeText,
+  type TableColumn,
+} from '../../domain/database';
 import type { Node, Project } from '../../domain/types';
 import type { Box } from './edgeGeometry';
 
@@ -47,7 +54,7 @@ const MAX_DEPTH = 4;
  */
 export function tableCardColumns(p: Project, node: Node, foreignKeys: Set<string> = new Set()): TableCardColumn[] {
   const engine = engineOf(p, node.typeId);
-  if (engine && engine !== 'sqlserver') {
+  if (engine && !isRelationalEngine(engine)) {
     const rows: TableCardColumn[] = [];
     if (engine === 'mongodb')
       rows.push({

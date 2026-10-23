@@ -22,6 +22,7 @@ import { AiPanel } from './components/ai/AiPanel';
 import { GroupPanel } from './components/groups/GroupPanel';
 import { CommunityHost } from './components/community/CommunityHost';
 import { PublicCopy } from './components/community/PublicCopy';
+import { Db2ExportHost } from './components/layout/Db2ExportDialog';
 import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
 import { useAuth } from './state/auth';
@@ -110,6 +111,7 @@ export default function App() {
       {/* La comunidad es de la cuenta: se monta de nuevo con cada una (CAMBIO_DE_CUENTA.md). */}
       <CommunityHost key={`community:${account}`} />
       <PublicCopy />
+      <Db2ExportHost />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );
