@@ -278,3 +278,41 @@
   color: var(--text-muted);
   font-size: var(--fs-xs);
 }
+
+/* Pasar tablas a documentos: cada tabla con lo que se hará con ella y por qué. */
+.conversion-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: 4px var(--space-3);
+}
+/* En los formularios, una casilla ocupa toda la fila: aquí comparte la suya con lo que se hará. */
+.conversion-row > .field-inline {
+  grid-column: auto;
+}
+.conversion-row > select,
+.conversion-row > .muted-note {
+  justify-self: start;
+}
+.conversion-reason {
+  grid-column: 1 / -1;
+  padding-left: 26px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.conversion-copy {
+  align-self: end;
+  padding-bottom: 6px;
+}
+.conversion-warnings {
+  margin: 0;
+  padding-left: 18px;
+}
+@media (max-width: 560px) {
+  .conversion-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .conversion-row > select {
+    margin-left: 26px;
+  }
+}

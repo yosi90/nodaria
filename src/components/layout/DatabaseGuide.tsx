@@ -161,6 +161,12 @@ export function DatabaseGuide() {
           proyecto se puede exportar también como grafo a Neo4j.
         </li>
         <li>
+          <strong>Pasar tablas a documentos</strong> (menú del proyecto): convierte las tablas en colecciones de MongoDB
+          o Firestore. Sugiere incrustar como subdocumento la tabla cuyas filas solo existen con su padre (las líneas de
+          un pedido) y dejar como colección con referencias lo que se comparte. Por defecto lo hace en una copia del
+          proyecto.
+        </li>
+        <li>
           El <strong>asistente de IA</strong> puede proponer tablas y columnas con su tipo y sus claves; tú revisas la
           propuesta antes de aplicarla.
         </li>

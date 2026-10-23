@@ -29,6 +29,7 @@ import { usePreferences } from '../../state/preferences';
 import { TypeIcon } from '../common/icons';
 import { NodeAvatar } from '../common/NodeAvatar';
 import { openTablesImport } from './openTablesImport';
+import { openDocumentConversion } from './openDocumentConversion';
 
 interface Command {
   id: string;
@@ -191,6 +192,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(MessagesSquare),
         keywords: 'chat chats ventana flotante burbujas mensajes conversaciones amistades grupos',
         run: () => setPreference('floatingChat', !preferences.floatingChat),
+      },
+      {
+        id: 'convert:documents',
+        label: 'Pasar tablas a documentos (MongoDB o Firestore)',
+        group: 'Acciones',
+        leading: icon(Database),
+        keywords: 'convertir tablas documentos colecciones mongodb firestore nosql incrustar subdocumentos',
+        run: openDocumentConversion,
       },
       {
         id: 'help:database',

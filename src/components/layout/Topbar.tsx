@@ -53,6 +53,7 @@ import { exportZip } from '../../services/exportBundle';
 import { sqlScript } from '../../domain/sqlScript';
 import { openDb2Export } from './openDb2Export';
 import { openTablesImport } from './openTablesImport';
+import { openDocumentConversion } from './openDocumentConversion';
 import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
 import { ProjectKindDialog } from './ProjectKindDialog';
@@ -344,6 +345,10 @@ export function Topbar({
     { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
     { label: 'Importar nodos desde CSV…', icon: Sheet, onSelect: () => csvFile.current?.click() },
     { label: 'Importar tablas (SQL o DDS)…', icon: Database, onSelect: openTablesImport },
+    // Pasar tablas a documentos (documentConversion.ts), si hay tablas relacionales.
+    ...(tableTypes(project, 'sqlserver').length || tableTypes(project, 'db2i').length
+      ? [{ label: 'Pasar tablas a documentos…', icon: Database, onSelect: openDocumentConversion }]
+      : []),
     { label: 'Copias de seguridad…', icon: History, onSelect: () => setSnapshotsOpen(true) },
   ];
   const engines = projectEngines(project);

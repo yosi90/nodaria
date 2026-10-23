@@ -27,6 +27,7 @@ import { useCommunityHash } from './components/community/communityHash';
 import { PublicCopy } from './components/community/PublicCopy';
 import { Db2ExportHost } from './components/layout/Db2ExportDialog';
 import { TablesImportHost } from './components/layout/TablesImportDialog';
+import { DocumentConversionHost } from './components/layout/DocumentConversionDialog';
 import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
 import { useAuth } from './state/auth';
@@ -130,6 +131,7 @@ export default function App() {
       {preferences.floatingChat && <FloatingChat key={`chat:${account}`} />}
       <Db2ExportHost />
       <TablesImportHost />
+      <DocumentConversionHost />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );

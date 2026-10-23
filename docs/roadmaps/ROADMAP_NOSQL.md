@@ -49,7 +49,7 @@ Reutiliza lo de SQL en lugar de crear un editor aparte, como se decidió para la
 ### Opcional, más adelante
 
 - Firestore: subcolecciones y un esqueleto de reglas de seguridad.
-- Pasar un diseño de tablas a documentos (sugerir qué incrustar según las claves foráneas) y al revés.
+- Pasar un diseño de tablas a documentos (sugerir qué incrustar según las claves foráneas) y al revés. **Lo primero, hecho el 2026-10-23** (ver «Pasar tablas a documentos»); falta pasar de documentos a tablas.
 - Importar el esquema de una base existente (leer una muestra de documentos y deducir la forma). Para las bases relacionales ya está hecho (2026-10-23, SQL o DDS: `ROADMAP_DATOS_BD.md`); falta para los documentos.
 - La IA del asistente para proponer colecciones, como ya hace con tablas.
 
@@ -81,3 +81,21 @@ Respuestas del propietario: MongoDB y Firestore, y Neo4j porque es barato; mezcl
 **Verificado:** 11 pruebas nuevas (`nosql.test.ts`) y 404 en total; contra motores reales en el servidor, sin instalar nada en el sistema: MongoDB con mongodb-memory-server (7 comprobaciones: colección, índices por ruta, documento válido aceptado y tres inválidos rechazados, repetible), las reglas en el emulador oficial de Firestore (9 comprobaciones: válido, sin sesión, obligatorio, tipo, lista de opciones, campo desconocido, subdocumento y subcolección) y Neo4j Community 5.26 (11 comprobaciones: restricción e índice, grafo repetible sin duplicar, comillas, fechas, listas, relaciones, referencias y jerarquía). Edge: un proyecto con los cuatro motores en el mismo diagrama, el selector y la tarjeta de campos, y la descarga del script de MongoDB.
 
 **Pendiente / más adelante:** lo de «Opcional» de arriba (importar un esquema existente, pasar de tablas a documentos, la IA para colecciones) y que el propietario lo pruebe con sus bases reales.
+
+## Pasar tablas a documentos (2026-10-23)
+
+Se abre desde el menú del proyecto, «Pasar tablas a documentos…», o desde la paleta. Usa `documentConversion.ts` y `DocumentConversionDialog`, con la acción `convert-to-documents`, que cuenta como cambio del esquema. Se eligen MongoDB o Firestore y las tablas (de SQL Server o Db2), y para cada una se sugiere qué hacer y por qué:
+
+- **Incrustarla en su tabla padre**, como subdocumento, cuando se dan las tres cosas:
+  - sus filas solo existen con ese padre: la clave foránea no admite nulos y es parte de su clave primaria o se borra en cascada, como las líneas de un pedido;
+  - ninguna otra tabla la apunta;
+  - su tipo no tiene más tablas.
+
+  El padre gana una referencia al subdocumento: una lista, o un objeto si es uno a uno. La clave hacia el padre sobra y se quita, o se oculta si es heredada. El nodo de la tabla se va, porque no tiene colección propia. Se puede anidar.
+- **Colección con referencias**, en los demás casos: sus claves foráneas guardan el id.
+
+Cada sugerencia se puede cambiar. Por defecto se hace en **una copia del proyecto**, para que las tablas se queden como están. **(revisable)** Las filas de ejemplo de las tablas convertidas no pasan a los documentos, y se avisa.
+
+**Verificado:**
+- `documentConversion.test.ts`, 3 pruebas: sugerencias y motivos; la conversión con el subdocumento, la lista en el padre, las referencias y el script de mongosh; dejarla como colección.
+- Edge (`check-docs.cjs`, 9 comprobaciones): la sugerencia en el diálogo, la copia, el pedido con las líneas dentro en el diagrama, las colecciones de MongoDB y el original intacto.

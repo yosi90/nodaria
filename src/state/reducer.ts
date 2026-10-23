@@ -26,6 +26,7 @@ import { importCsvRows, type ColumnTarget, type CsvTable } from '../domain/csvIm
 import * as tableRows from '../domain/tableData';
 import type { CellValue, SqlQueryDef } from '../domain/tableData';
 import { importTables, type ImportOptions } from '../domain/tablesImport';
+import { convertToDocuments, type ConversionChoice, type DocumentEngine } from '../domain/documentConversion';
 import type { ImportResult } from '../domain/schemaImport';
 import type { AiContextRefs } from '../domain/aiContext';
 import type {
@@ -122,6 +123,8 @@ export type Action =
   | { type: 'save-sql-query'; query: SqlQueryDef }
   /** Crea las tablas leídas de un SQL o un DDS (`tablesImport.ts`). */
   | { type: 'import-tables'; result: ImportResult; options: ImportOptions }
+  /** Pasa tablas a colecciones de documentos, incrustando las que se elija (`documentConversion.ts`). */
+  | { type: 'convert-to-documents'; engine: DocumentEngine; choices: ConversionChoice[] }
   | { type: 'delete-sql-query'; id: string }
   | { type: 'save-query'; query: SavedQuery }
   | { type: 'delete-query'; id: string }
@@ -337,6 +340,8 @@ function projectReducer(p: Project, action: Action): Project {
           ? p.sqlQueries.map(q => (q.id === action.query.id ? action.query : q))
           : [...p.sqlQueries, action.query],
       };
+    case 'convert-to-documents':
+      return convertToDocuments(p, action.engine, action.choices).project;
     case 'import-tables':
       return importTables(p, action.result, action.options).project;
     case 'delete-sql-query':
