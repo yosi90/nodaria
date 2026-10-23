@@ -12,7 +12,16 @@ export interface MapViewportMemory {
 }
 
 export type View =
-  'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health' | 'timeline' | 'calendar' | 'community';
+  | 'map'
+  | 'table'
+  | 'schema'
+  | 'relations'
+  | 'properties'
+  | 'health'
+  | 'timeline'
+  | 'calendar'
+  | 'records'
+  | 'community';
 /** Las vistas de un proyecto (todas menos «Comunidad», que no depende del proyecto abierto). */
 export type ProjectView = Exclude<View, 'community'>;
 

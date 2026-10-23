@@ -69,6 +69,7 @@ describe('publicationSnapshot', () => {
       notes: 0,
       hiddenNotes: 1,
       agenda: 1,
+      tableRows: 0,
     });
   });
 });

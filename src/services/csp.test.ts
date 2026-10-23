@@ -12,7 +12,9 @@ describe('Content-Security-Policy', () => {
 
   it('admite la plataforma y Yosiftadísticas de su entorno, sin «unsafe-inline» ni otros entornos', () => {
     const production = contentSecurityPolicy('produccion');
-    expect(production).toContain("script-src 'self' https://cuentas.yosiftware.es https://estadisticas.yosiftware.es");
+    expect(production).toContain(
+      "script-src 'self' 'wasm-unsafe-eval' https://cuentas.yosiftware.es https://estadisticas.yosiftware.es",
+    );
     expect(production).toContain('wss://cuentas-ws.yosiftware.es');
     expect(production).toContain('frame-src https://cuentas.yosiftware.es');
     expect(production).not.toContain('unsafe-inline');

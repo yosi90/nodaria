@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db2Library, db2Model, db2Script, db2Sources, isSystemName } from '../../domain/db2Script';
+import { rowCount } from '../../domain/rowsScript';
 import { downloadBytes, downloadText } from '../../services/files';
 import { createZip } from '../../services/zip';
 import { useApp } from '../../state/AppContext';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { OPEN_DB2_EXPORT_EVENT } from './openDb2Export';
-
 
 /** Monta el diálogo cuando lo pide el engranaje o el menú de exportar del lienzo. */
 export function Db2ExportHost() {
@@ -33,6 +33,9 @@ export function Db2ExportDialog({ onClose }: { onClose: () => void }) {
   const [script, setScript] = useState(true);
   const [sqlMembers, setSqlMembers] = useState(true);
   const [ddsMembers, setDdsMembers] = useState(false);
+  const [withRows, setWithRows] = useState(true);
+  // Las filas de ejemplo de las tablas que se crean (vista «Registros»).
+  const rows = rowCount(project, [...chosen]);
 
   const libraryOk = isSystemName(library);
   const anything = script || sqlMembers || ddsMembers;
@@ -47,7 +50,7 @@ export function Db2ExportDialog({ onClose }: { onClose: () => void }) {
 
   const download = () => {
     const now = new Date();
-    const options = { library, tableIds: [...chosen], folder };
+    const options = { library, tableIds: [...chosen], folder, rows: withRows };
     const scriptText = db2Script(project, now, options);
     if (script && !sqlMembers && !ddsMembers) {
       downloadText(`${base}.db2.sql`, scriptText, 'application/sql');
@@ -132,6 +135,12 @@ export function Db2ExportDialog({ onClose }: { onClose: () => void }) {
             <input type="checkbox" checked={ddsMembers} onChange={e => setDdsMembers(e.target.checked)} />
             Miembros fuente DDS (PF y LF en QDDSSRC) y su CL con CRTPF y ADDPFCST
           </label>
+          {rows > 0 && (
+            <label className="field-inline">
+              <input type="checkbox" checked={withRows} onChange={e => setWithRows(e.target.checked)} />
+              Las filas de ejemplo ({rows}): INSERT antes de las claves foráneas (en los miembros, el miembro DATOS)
+            </label>
+          )}
           <small className="muted-note">
             Con miembros fuente se descarga un ZIP con <code>CARGAR.sql</code>: las órdenes para copiarlos a la
             biblioteca y compilar el CL.

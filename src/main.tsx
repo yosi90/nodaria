@@ -27,6 +27,7 @@ import './styles/ai.css';
 import './styles/groups.css';
 import './styles/calendar.css';
 import './styles/community.css';
+import './styles/records.css';
 import { PublicApp } from './components/community/PublicApp';
 import { CommunityPendingProvider } from './state/communityPending';
 import { publicIdFromPath } from './services/community';

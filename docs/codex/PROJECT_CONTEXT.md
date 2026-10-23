@@ -112,7 +112,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - `src/domain/connections.ts` reúne todo lo que conecta a un nodo (jerarquía, relaciones, referencias, menciones) para la pestaña Conexiones.
 - **Estructuras** (`src/domain/structure.ts`): la jerarquía «Dentro de» (`parentId`) es la estructura base. Un tipo de relación con `structural: true` define otra, con `parentEnd` indicando qué extremo es el superior; en ellas un nodo puede colgar de varios superiores. El árbol («Ver por») y la disposición jerárquica usan la estructura elegida en `Project.view.structureId`.
 
-`Project.formatVersion` indica la versión del formato (actual: 11, con el origen de las copias de proyectos públicos, `Project.origin`; v10, Db2 for i como motor de base de datos; v9 trajo los motores no relacionales; v8, la agenda `agenda` y `calendar.settings`, sin cambiar datos existentes; v7 trajo el tipo de proyecto, carpetas de tipos y, por tipo, atributos heredados ocultos, orden de atributos y ajustes SQL; v6 trajo las tablas como tipos con `Schema.table` y `FieldDefinition.sql`, descartando la configuración SQL por nodo de v5; posiciones fijadas por disposición en `Node.positions[layout]`, también `database`; los datos sin versión se tratan como v2). `AppState.version` es 3. La clave histórica de persistencia es `nodaria_state_v1`. Debe mantenerse mientras sea posible para conservar los proyectos creados con la versión monolítica anterior.
+`Project.formatVersion` indica la versión del formato (actual: 12, con las filas de ejemplo de las tablas, `Project.tableData`, y las consultas SQL guardadas, `Project.sqlQueries` (`src/domain/tableData.ts`, ver [`ROADMAP_DATOS_BD.md`](../roadmaps/ROADMAP_DATOS_BD.md)); v11, el origen de las copias de proyectos públicos, `Project.origin`; v10, Db2 for i como motor de base de datos; v9 trajo los motores no relacionales; v8, la agenda `agenda` y `calendar.settings`, sin cambiar datos existentes; v7 trajo el tipo de proyecto, carpetas de tipos y, por tipo, atributos heredados ocultos, orden de atributos y ajustes SQL; v6 trajo las tablas como tipos con `Schema.table` y `FieldDefinition.sql`, descartando la configuración SQL por nodo de v5; posiciones fijadas por disposición en `Node.positions[layout]`, también `database`; los datos sin versión se tratan como v2). `AppState.version` es 3. La clave histórica de persistencia es `nodaria_state_v1`. Debe mantenerse mientras sea posible para conservar los proyectos creados con la versión monolítica anterior.
 
 ## Estado técnico
 
@@ -152,6 +152,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-23, noche (tercera ronda de `bugs.md`):** commit `98f4380`, solo la web (la API no cambia). R3-01, 02, 03, 04, 06, 07 y 08: segundo «Añadir», preformas como submenú (`Menu` admite `submenu`), atajos A y P con un tipo abierto, packed y zoned en Db2, columnas de atributos independientes, duplicar un atributo y el foco del borrado. `npm run deploy`: bundle `main-D7C6a0x9.js`, SHA-256 idéntico al local en los dos dominios. Edge en local y en producción: 12 comprobaciones, sin errores. Lint, build y 427 pruebas del front. Anunciado como novedad de Yosiftware: `2026-10-23-atributos`. R3-05 (datos y consultas) va a [`ROADMAP_DATOS_BD.md`](../roadmaps/ROADMAP_DATOS_BD.md).
 - **Publicación del 2026-10-23, tarde (Comunidad en vistas y pendientes de los públicos):** commit `b2ba18e`. Copia verificada `Nodaria-antes-de-0013-20261023-1536.bak` (`RESTORE VERIFYONLY` correcto); `0013_public_project_extras` en `NodariaDev` y `Nodaria`. API recompilada y reiniciada: salud correcta, `/compartir/<id>` responde HTML y `/api/publicos/<id>/imagen`, 404 para uno que no existe. Web con `npm run deploy`: bundle `main-Db8V2esb.js`, SHA-256 idéntico al local en los dos dominios, CSP con `img-src` de la API y `/privacidad` ampliada. Edge en producción sin sesión: el botón, la vista, Descubrir, `#comunidad/descubrir` al recargar, volver al proyecto y 390 px, sin errores ni violaciones de la CSP. Antes, Edge en local con la API real: 23 comprobaciones. Lint, build, 425 pruebas del front y 98 de la API (con SQL Server). Anunciado como novedad de Yosiftware: `2026-10-23-comunidad`. Falta probar con cuentas reales los chats y las amistades.
 
 - **Publicación del 2026-10-23, tarde (Db2 for i):** commit `fbf8196`, `npm run deploy` (solo Hosting; sin cambios de API). Bundle `main-BzSRYjeT.js`, SHA-256 idéntico al local en los dos dominios. Edge en producción sin sesión y excluido de estadísticas, con un proyecto importado: motor Db2 en el editor del tipo, sus tipos en «Columnas SQL», el diagrama, la exportación con elección de tablas y el ZIP (script, miembros SQL y DDS, CL y `CARGAR.sql`), 390 px; 12 comprobaciones sin errores. Lint, build y 421 pruebas. Sin probar en un IBM i real. Anunciado como novedad de Yosiftware: `2026-10-23-db2-for-i`. Antes, el mismo día, el plugin de Notificapp 2.0.1 se publicó con las actualizaciones remotas.
@@ -192,6 +193,14 @@ estart-api.ps1`): salud correcta y `/api/ia/modelos` y `/api/ia/propuestas` resp
 ## Roadmap activo
 
 **Comunidad (desde el 2026-10-23): [`ROADMAP_COMUNIDAD.md`](../roadmaps/ROADMAP_COMUNIDAD.md)**, ver más abajo. El del calendario sigue a la espera del piloto del propietario.
+
+**Datos y consultas en las tablas (2026-10-23, R3-05): [`ROADMAP_DATOS_BD.md`](../roadmaps/ROADMAP_DATOS_BD.md)**. Los cuatro hitos están implementados el mismo día:
+- la vista «Registros» (Alt+9, solo con tablas relacionales), con filas de ejemplo por nodo tabla en `Project.tableData` (formato 12), validadas como la base;
+- pegar desde Excel o desde un CSV;
+- consultas SQL en SQLite dentro de un *worker* (`sql.js` 1.14.2, con `'wasm-unsafe-eval'` en la CSP), guardadas en `Project.sqlQueries`;
+- `INSERT` en el script de SQL Server y en los de Db2 (miembros `DATOS` y `DATOSPF`).
+
+Las filas no se publican ni las recibe la IA. Queda pendiente la prueba en el AS/400.
 
 **Calendario del proyecto (desde el 2026-10-19): [`ROADMAP_CALENDARIO.md`](../roadmaps/ROADMAP_CALENDARIO.md)**, activado por el propietario al cerrar el de colaboración. Fases 1 a 5 implementadas y publicadas el 2026-10-22; detalle más abajo.
 

@@ -35,6 +35,8 @@ function groupOf(action: Action) {
   if (action.type === 'update-kinship') return 'kinship';
   if (action.type === 'update-calendar') return 'calendar';
   if (action.type === 'update-agenda-entry') return `agenda:${action.id}`;
+  if (action.type === 'set-table-cell') return `cell:${action.nodeId}:${action.rowId}:${action.key}`;
+  if (action.type === 'save-sql-query') return `sql-query:${action.query.id}`;
   if (action.type === 'rename-project') return 'project-name';
   if (action.type === 'move-nodes') return `move:${Object.keys(action.positions).sort().join(',')}`;
   return null;

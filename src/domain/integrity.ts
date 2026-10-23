@@ -1,4 +1,5 @@
 import { withoutMissingAgendaNodes } from './agenda';
+import { withoutStaleTableData } from './tableData';
 import { getSchema } from './selectors';
 import type { Project, Schema } from './types';
 
@@ -135,6 +136,17 @@ export function repairProject(input: Project): RepairResult {
         : `Se quitaron de la agenda ${agenda.removed} enlaces a nodos que ya no existen.`,
     );
     p = agenda.project;
+  }
+
+  // Filas de nodos que ya no existen o que ya no son tablas.
+  const tableData = withoutStaleTableData(p);
+  if (tableData.removed) {
+    issues.push(
+      tableData.removed === 1
+        ? 'Se quitaron las filas de una tabla que ya no existe.'
+        : `Se quitaron las filas de ${tableData.removed} tablas que ya no existen.`,
+    );
+    p = tableData.project;
   }
 
   return { project: issues.length ? p : input, issues };

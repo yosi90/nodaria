@@ -498,7 +498,12 @@ export function removeNodes(p: Project, removed: Set<string>): Project {
     });
   // Las entradas de la agenda se quedan; solo pierden el enlace a los nodos borrados.
   const surviving = new Set(nodes.map(n => n.id));
-  return withoutMissingAgendaNodes(withoutNodesInFolders({ ...p, nodes, relations }, removed), surviving).project;
+  // Las filas de una tabla borrada se van con ella.
+  const tableData = Object.keys(p.tableData).some(id => removed.has(id))
+    ? Object.fromEntries(Object.entries(p.tableData).filter(([id]) => !removed.has(id)))
+    : p.tableData;
+  return withoutMissingAgendaNodes(withoutNodesInFolders({ ...p, nodes, relations, tableData }, removed), surviving)
+    .project;
 }
 
 function withoutReferences(values: Record<string, FieldValue>, removed: Set<string>) {

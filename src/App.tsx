@@ -15,6 +15,7 @@ import { PropertiesView } from './components/schema/PropertiesView';
 import { HealthView } from './components/health/HealthView';
 import { TimelineView } from './components/timeline/TimelineView';
 import { CalendarView } from './components/calendar/CalendarView';
+import { RecordsView } from './components/records/RecordsView';
 import { TableView } from './components/table/TableView';
 import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
@@ -94,6 +95,8 @@ export default function App() {
               <TimelineView />
             ) : view === 'calendar' ? (
               <CalendarView />
+            ) : view === 'records' ? (
+              <RecordsView />
             ) : (
               <PropertiesView />
             )}
@@ -174,10 +177,10 @@ function useGlobalShortcuts(
       else if (
         event.altKey &&
         !mod &&
-        ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8'].includes(event.code)
+        ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'].includes(event.code)
       )
         setView(
-          (['map', 'table', 'health', 'schema', 'relations', 'properties', 'timeline', 'calendar'] as const)[
+          (['map', 'table', 'health', 'schema', 'relations', 'properties', 'timeline', 'calendar', 'records'] as const)[
             Number(event.code.slice(-1)) - 1
           ],
         );

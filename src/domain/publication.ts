@@ -5,8 +5,9 @@ import type { FieldValue, Project } from './types';
 /*
  * Qué sale de un proyecto al hacerlo público (docs/roadmaps/ROADMAP_COMUNIDAD.md). Publicar sube una copia
  * de solo lectura; quien publica deja fuera lo que no quiere enseñar. Nunca salen la agenda (tareas,
- * entregas y asignaciones de trabajo), las conversaciones con la IA ni los comentarios del grupo: estos dos
- * últimos ni siquiera viven en el proyecto.
+ * entregas y asignaciones de trabajo), las filas de las tablas y sus consultas (pueden ser datos reales del
+ * trabajo; docs/roadmaps/ROADMAP_DATOS_BD.md), las conversaciones con la IA ni los comentarios del grupo:
+ * estos dos últimos ni siquiera viven en el proyecto.
  */
 
 export interface PublicationOptions {
@@ -46,7 +47,7 @@ export function excludedTypes(p: Project, typeIds: string[]) {
 export function publicationSnapshot(p: Project, options: PublicationOptions): Project {
   const excluded = excludedTypes(p, options.excludedTypeIds);
   const removed = new Set(p.nodes.filter(n => excluded.has(n.typeId)).map(n => n.id));
-  let project = removeNodes({ ...p, agenda: [] }, removed);
+  let project = removeNodes({ ...p, agenda: [], tableData: {}, sqlQueries: [] }, removed);
   project = { ...project, relations: project.relations.filter(r => !excluded.has(r.typeId)) };
   if (!options.notes) project = { ...project, nodes: project.nodes.map(n => (n.notes ? { ...n, notes: '' } : n)) };
   if (!options.images) {
@@ -70,5 +71,6 @@ export function publicationSummary(p: Project, options: PublicationOptions) {
     notes: options.notes ? snapshot.nodes.filter(n => n.notes.trim()).length : 0,
     hiddenNotes: options.notes ? 0 : p.nodes.filter(n => n.notes.trim()).length,
     agenda: p.agenda.length,
+    tableRows: Object.values(p.tableData).reduce((n, t) => n + t.rows.length, 0),
   };
 }

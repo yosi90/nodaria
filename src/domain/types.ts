@@ -21,6 +21,7 @@ import type { Folder } from './folders';
 import type { ImageShape } from './portrait';
 import type { SavedQuery } from './queries';
 import type { SqlColumn } from './database';
+import type { SqlQueryDef, TableData } from './tableData';
 
 export type SchemaKind = 'entity' | 'relationship';
 export type RelationStyle = 'normal' | 'strong' | 'hidden';
@@ -202,6 +203,10 @@ export interface Project {
   agenda: AgendaEntry[];
   /** Copia de un proyecto público de otra persona: el original, para citar la autoría (`null` si no lo es). */
   origin: ProjectOrigin | null;
+  /** Filas de ejemplo de cada nodo tabla (`src/domain/tableData.ts`). */
+  tableData: Record<string, TableData>;
+  /** Consultas SQL guardadas sobre esas filas. */
+  sqlQueries: SqlQueryDef[];
 }
 /** De dónde sale una copia: el proyecto público original y la cuenta que lo publicó. */
 export interface ProjectOrigin {

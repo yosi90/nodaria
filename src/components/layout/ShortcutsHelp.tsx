@@ -15,6 +15,7 @@ const GROUPS: { title: string; items: [string, string[]][] }[] = [
       ['Ir a propiedades', ['Alt', '6']],
       ['Ir a la cronología', ['Alt', '7']],
       ['Ir al calendario', ['Alt', '8']],
+      ['Ir a los registros (con tablas)', ['Alt', '9']],
       ['Duplicar el nodo seleccionado', ['Ctrl', 'D']],
     ],
   },

@@ -23,6 +23,8 @@ import { withConvertedValues } from '../domain/valueConversion';
 import { createJunctionTables, type JunctionProposal } from '../domain/junctionTables';
 import { mergeProject } from '../domain/projectMerge';
 import { importCsvRows, type ColumnTarget, type CsvTable } from '../domain/csvImport';
+import * as tableRows from '../domain/tableData';
+import type { CellValue, SqlQueryDef } from '../domain/tableData';
 import type { AiContextRefs } from '../domain/aiContext';
 import type {
   AppState,
@@ -109,6 +111,14 @@ export type Action =
   | { type: 'delete-agenda-entry'; id: string }
   | { type: 'set-map-image'; image: MapImage | null }
   | { type: 'set-map-scale'; scale: number }
+  /** Filas de ejemplo de una tabla (`tableData.ts`): son datos, no esquema. */
+  | { type: 'add-table-rows'; nodeId: string; ids: string[]; afterId?: string }
+  | { type: 'set-table-cell'; nodeId: string; rowId: string; key: string; value: CellValue }
+  | { type: 'remove-table-rows'; nodeId: string; rowIds: string[] }
+  | { type: 'duplicate-table-rows'; nodeId: string; rowIds: string[] }
+  | { type: 'paste-table-cells'; nodeId: string; rowId: string | null; key: string; grid: string[][] }
+  | { type: 'save-sql-query'; query: SqlQueryDef }
+  | { type: 'delete-sql-query'; id: string }
   | { type: 'save-query'; query: SavedQuery }
   | { type: 'delete-query'; id: string }
   | { type: 'update-node'; id: string; values: Record<string, FieldValue>; parentId: string | null }
@@ -306,6 +316,25 @@ function projectReducer(p: Project, action: Action): Project {
       };
     case 'delete-query':
       return { ...p, queries: p.queries.filter(q => q.id !== action.id) };
+    case 'add-table-rows':
+      return tableRows.addRows(p, action.nodeId, action.ids, action.afterId);
+    case 'set-table-cell':
+      return tableRows.setCell(p, action.nodeId, action.rowId, action.key, action.value);
+    case 'remove-table-rows':
+      return tableRows.removeRows(p, action.nodeId, action.rowIds);
+    case 'duplicate-table-rows':
+      return tableRows.duplicateRows(p, action.nodeId, action.rowIds).project;
+    case 'paste-table-cells':
+      return tableRows.pasteCells(p, action.nodeId, action.rowId, action.key, action.grid).project;
+    case 'save-sql-query':
+      return {
+        ...p,
+        sqlQueries: p.sqlQueries.some(q => q.id === action.query.id)
+          ? p.sqlQueries.map(q => (q.id === action.query.id ? action.query : q))
+          : [...p.sqlQueries, action.query],
+      };
+    case 'delete-sql-query':
+      return { ...p, sqlQueries: p.sqlQueries.filter(q => q.id !== action.id) };
     case 'set-map-scale':
       return ops.setMapScale(p, action.scale);
     case 'update-kinship':

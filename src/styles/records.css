@@ -1,0 +1,248 @@
+/* Vista «Registros»: filas de ejemplo de las tablas y consultas SQL (docs/roadmaps/ROADMAP_DATOS_BD.md). */
+
+.records-layout.empty {
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+}
+.records-group + .records-group {
+  margin-top: var(--space-2);
+}
+.records-queries-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.records-queries-title .link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--fs-xs);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.records-side-note {
+  padding: var(--space-1) var(--space-3);
+}
+.records-side-errors {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--danger);
+}
+.records-query-preview {
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-main .workspace-toolbar {
+  min-height: 48px;
+  flex-wrap: wrap;
+}
+.records-errors {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+
+/* La hoja: cabeceras con el nombre y el tipo de cada columna. */
+.records-grid th {
+  padding: 6px 10px;
+  vertical-align: bottom;
+}
+.records-head {
+  display: grid;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.records-head-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+}
+.records-head small {
+  color: var(--text-subtle);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+}
+.records-grid .records-number {
+  min-width: 0;
+  width: 1%;
+  padding: 0 8px;
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.records-grid td.records-cell {
+  min-width: 110px;
+}
+.records-grid td.kind-integer input,
+.records-grid td.kind-exact input,
+.records-grid td.kind-float input {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.records-grid td.records-cell input::placeholder {
+  color: var(--text-subtle);
+  font-style: italic;
+}
+.records-grid td.records-cell.invalid {
+  background: var(--danger-soft);
+  box-shadow: inset 2px 0 0 var(--danger);
+}
+.records-grid tr:hover td.records-cell.invalid {
+  background: var(--danger-soft);
+}
+.records-paste {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.records-paste input {
+  width: min(100%, 360px);
+}
+.records-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+/* Consultas. */
+.records-query-name {
+  min-width: 0;
+  max-width: 360px;
+  flex: 1 1 200px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-weight: 650;
+}
+.records-query-name:hover,
+.records-query-name:focus {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+.records-query-body {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: var(--space-2);
+  min-height: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  overflow: hidden;
+}
+.records-editor {
+  width: 100%;
+  min-height: 150px;
+  height: 200px;
+  padding: var(--space-3);
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  tab-size: 2;
+}
+.records-tables-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.records-tables-hint .chip {
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.records-query-note {
+  max-width: 70ch;
+}
+.records-query-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.records-query-error strong {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.records-query-error .muted-note {
+  margin: 4px 0 0;
+}
+.records-result {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  min-height: 0;
+}
+.records-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.records-result-scroll {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.records-result-table td {
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+.records-result-table td.records-null {
+  color: var(--text-subtle);
+  font-style: italic;
+}
+.records-result-table td.records-number-cell {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* En el móvil, la lista de tablas va arriba (con su altura) y la hoja o la consulta debajo. */
+@media (max-width: 760px) {
+  .records-layout:not(.empty) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .records-layout > .side-panel {
+    max-height: 32vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .records-layout > .side-panel .splitter {
+    display: none;
+  }
+  .records-query-body {
+    padding: var(--space-2);
+  }
+  .records-editor {
+    height: 140px;
+  }
+}

@@ -1,3 +1,4 @@
+import { hasDataTables } from '../../domain/tableData';
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Shapes, Undo2, Redo2, Copy, Trash2 } from 'lucide-react';
 import { getNode, getSchema, creatableTypes } from '../../domain/selectors';
@@ -52,6 +53,7 @@ export function ContextMenu() {
     ['table', 'Tabla'],
     ['timeline', 'Cronología'],
     ['calendar', 'Calendario'],
+    ...(hasDataTables(project) ? ([['records', 'Registros']] as [View, string][]) : []),
     ['health', 'Salud'],
     ['schema', 'Tipos'],
     ['relations', 'Relaciones'],

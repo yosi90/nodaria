@@ -286,8 +286,9 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
               Se publicarán {summary.nodes} nodos y {summary.relations} relaciones
               {summary.leftOutNodes ? ` (${summary.leftOutNodes} nodos quedan fuera)` : ''}.
               {summary.hiddenNotes ? ` Las notas de ${summary.hiddenNotes} fichas no salen.` : ''}
-              {summary.agenda ? ' La agenda nunca se publica.' : ''} Quienes te siguen verán la novedad en Nodaria y en
-              la web social; puedes apagarlo en{' '}
+              {summary.agenda ? ' La agenda nunca se publica.' : ''}
+              {summary.tableRows ? ' Las filas de las tablas no se publican.' : ''} Quienes te siguen verán la novedad
+              en Nodaria y en la web social; puedes apagarlo en{' '}
               <a className="social-link" href={SOCIAL_NEWS} target="_blank" rel="noreferrer">
                 <YosiSymbol size={14} /> tu cuenta de Yosiftware
               </a>

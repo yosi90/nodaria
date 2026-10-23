@@ -7,6 +7,7 @@ import { allFields } from '../domain/selectors';
 import { supportsNonNegative } from '../domain/valueConstraints';
 import { DB_ENGINES, readSqlColumn, readSqlOverrides } from '../domain/database';
 import { PROJECT_KINDS } from '../domain/projectKinds';
+import { readSqlQueries, readTableData } from '../domain/tableData';
 import type {
   FieldDefinition,
   FieldValue,
@@ -38,6 +39,8 @@ import type {
  * - v10: Db2 for i como motor (`Schema.dbEngine = 'db2i'`) y sus tipos de columna (en mayúsculas). No cambia
  *   ningún dato existente; una versión anterior perdería el motor al abrirlo, por eso sube el formato.
  * - v11: el origen de una copia de un proyecto público (`Project.origin`, `null` en los demás).
+ * - v12: filas de ejemplo de las tablas (`Project.tableData`) y consultas SQL guardadas (`sqlQueries`),
+ *   vacías por defecto. Una versión anterior las perdería al guardar, por eso sube el formato.
  */
 
 /** El origen de una copia; uno que no se entiende se olvida (la copia sigue siendo de quien la tiene). */
@@ -241,6 +244,8 @@ function normalizeProject(project: RawProject): Project {
       : [],
     agenda: normalizeAgenda(project.agenda),
     origin: normalizeOrigin(project.origin),
+    tableData: readTableData(project.tableData),
+    sqlQueries: readSqlQueries(project.sqlQueries),
   };
 }
 

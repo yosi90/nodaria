@@ -1,4 +1,5 @@
 import { columnDescription, foreignKeyLinks, sqlDefaultError, sqlTypeText, type FkAction } from './database';
+import { db2Inserts } from './rowsScript';
 import { nodeLabel } from './selectors';
 import { scriptTables, type ScriptColumn, type ScriptTable } from './sqlScript';
 import type { Project } from './types';
@@ -130,6 +131,8 @@ export interface Db2Options {
   library?: string;
   /** Nodos tabla que se crean; sin lista, todos los de Db2 for i. */
   tableIds?: string[];
+  /** Las filas de ejemplo de las tablas que se crean (por defecto, sí). */
+  rows?: boolean;
 }
 
 /** Las tablas de Db2 for i del proyecto, con lo que se crea de cada una. */
@@ -322,6 +325,8 @@ export function db2Script(p: Project, generatedAt = new Date(), options: Db2Opti
     const create = createTable(t);
     out.push(...(create ?? [`-- ${t.name}: sin columnas, no se crea.`]), '');
   });
+  // Las filas de ejemplo, antes de las claves foráneas: así no importa el orden de las tablas.
+  if (options.rows !== false) out.push(...db2Inserts(p, created, db2Quote));
   const foreign = created.flatMap(t => [
     ...t.skipped.map(s => `-- Omitida ${s}`),
     ...t.foreignKeys.flatMap(k => foreignKeySql(t, k)),
@@ -610,7 +615,15 @@ export function db2Sources(p: Project, generatedAt = new Date(), options: Db2Sou
     });
   // Los miembros de las claves y los índices no chocan con los de las tablas.
   const taken = new Set(tables.map(t => t.system));
-  const [foreignMember, indexMember] = systemNames(['CLAVES', 'INDICES'], taken);
+  const [foreignMember, indexMember, rowsMember, ddsRowsMember] = systemNames(
+    ['CLAVES', 'INDICES', 'DATOS', 'DATOSPF'],
+    taken,
+  );
+  const runSql = (mbr: string) =>
+    `RUNSQLSTM SRCFILE(&LIB/QSQLSRC) SRCMBR(${mbr}) COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB)`;
+  // Las filas de ejemplo van en QSQLSRC aunque las tablas se creen con DDS (allí, con los nombres de sistema).
+  const rows = options.rows !== false ? db2Inserts(p, tables, db2Quote) : [];
+  const ddsRows = options.rows !== false && options.dds ? db2Inserts(p, tables, db2Quote, true) : [];
   const [sqlProgram, ddsProgram] = systemNames(['CRTSQL', 'CRTDDS'], new Set(taken));
   const header = (what: string) => [`-- ${what}`, `-- ${stamp(p, generatedAt)}.`];
 
@@ -628,12 +641,12 @@ export function db2Sources(p: Project, generatedAt = new Date(), options: Db2Sou
       ...t.skipped.map(s => `-- Omitida ${s}`),
       ...t.foreignKeys.flatMap(k => foreignKeySql(t, k)),
     ]);
+    if (rows.length)
+      add('QSQLSRC', rowsMember, 'SQL', 'Filas de ejemplo', member([...header('Filas de ejemplo'), ...rows]));
     if (foreign.length)
       add('QSQLSRC', foreignMember, 'SQL', 'Claves foráneas', member([...header('Claves foráneas'), ...foreign]));
     const indexes = tables.flatMap(t => t.indexes.map(x => indexSql(t, x)));
     if (indexes.length) add('QSQLSRC', indexMember, 'SQL', 'Índices', member([...header('Índices'), ...indexes]));
-    const run = (mbr: string) =>
-      `RUNSQLSTM SRCFILE(&LIB/QSQLSRC) SRCMBR(${mbr}) COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB)`;
     add(
       'QCLSRC',
       sqlProgram,
@@ -642,7 +655,7 @@ export function db2Sources(p: Project, generatedAt = new Date(), options: Db2Sou
       clMember([
         'PGM PARM(&LIB)',
         'DCL VAR(&LIB) TYPE(*CHAR) LEN(10)',
-        ...files.filter(f => f.file === 'QSQLSRC').map(f => run(f.member)),
+        ...files.filter(f => f.file === 'QSQLSRC').map(f => runSql(f.member)),
         'ENDPGM',
       ]),
     );
@@ -660,6 +673,8 @@ export function db2Sources(p: Project, generatedAt = new Date(), options: Db2Sou
       'DCL VAR(&LIB) TYPE(*CHAR) LEN(10)',
       ...tables.map(t => `CRTPF FILE(&LIB/${t.system}) SRCFILE(&LIB/QDDSSRC) SRCMBR(${t.system})`),
       ...tables.flatMap(t => t.indexes.map(x => `CRTLF FILE(&LIB/${x.name}) SRCFILE(&LIB/QDDSSRC) SRCMBR(${x.name})`)),
+      // Las filas, antes de las restricciones (como en SQL: así no importa el orden de las tablas).
+      ...(ddsRows.length ? [runSql(ddsRowsMember)] : []),
       ...tables.flatMap(t => [
         ...(t.keys.length ? [`ADDPFCST FILE(&LIB/${t.system}) TYPE(*PRIKEY) KEY(${keyList(t.keys)})`] : []),
         ...t.uniques.map(u => `ADDPFCST FILE(&LIB/${t.system}) TYPE(*UNQCST) KEY(${keyList(u.columns)})`),
@@ -677,6 +692,14 @@ export function db2Sources(p: Project, generatedAt = new Date(), options: Db2Sou
       ),
       'ENDPGM',
     ];
+    if (ddsRows.length)
+      add(
+        'QSQLSRC',
+        ddsRowsMember,
+        'SQL',
+        'Filas de ejemplo (DDS)',
+        member([...header('Filas de ejemplo, con los nombres de sistema de los archivos DDS'), ...ddsRows]),
+      );
     add('QCLSRC', ddsProgram, 'CLLE', 'Crea las tablas con DDS', clMember(commands));
   }
 

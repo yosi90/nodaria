@@ -44,6 +44,7 @@ import {
   ExternalLink,
   Globe,
 } from 'lucide-react';
+import { hasDataTables } from '../../domain/tableData';
 import { PublishDialog } from '../community/PublishDialog';
 import { CommunityButton } from '../community/CommunityButton';
 import { Fragment, useCallback, useRef, useState } from 'react';
@@ -112,6 +113,8 @@ const VIEW_GROUPS: { id: 'data' | 'schema'; label: string; title: string; icon: 
       { id: 'table', label: 'Tabla', icon: Table2, key: 2 },
       { id: 'timeline', label: 'Cronología', icon: CalendarRange, key: 7 },
       { id: 'calendar', label: 'Calendario', icon: CalendarDays, key: 8 },
+      // Solo con tablas relacionales (docs/roadmaps/ROADMAP_DATOS_BD.md).
+      { id: 'records', label: 'Registros', icon: Database, key: 9 },
       { id: 'health', label: 'Salud', icon: HeartPulse, key: 3 },
     ],
   },
@@ -170,6 +173,11 @@ export function Topbar({
   onTemplates: () => void;
 }) {
   const { state, project, dispatch, undo, redo, canUndo, canRedo } = useApp();
+  // «Registros» solo aparece con tablas donde escribir filas (o si ya se está en ella).
+  const withRecords = hasDataTables(project) || view === 'records';
+  const viewGroups = withRecords
+    ? VIEW_GROUPS
+    : VIEW_GROUPS.map(g => ({ ...g, views: g.views.filter(v => v.id !== 'records') }));
   const { preferences, setPreference } = usePreferences();
   const { prompt, confirm } = useDialogs();
   const toast = useToast();
@@ -259,7 +267,7 @@ export function Topbar({
       ]
     : [];
   const viewEntries = (kind: 'data' | 'schema'): MenuEntry[] => {
-    const viewGroup = VIEW_GROUPS.find(g => g.id === kind)!;
+    const viewGroup = viewGroups.find(g => g.id === kind)!;
     return [
       { section: viewGroup.label },
       ...viewGroup.views.map(v => ({
@@ -555,7 +563,7 @@ export function Topbar({
       {density >= DENSITY.viewMenus ? (
         // Sin sitio, cada grupo de vistas es un menú que enseña la vista abierta.
         <nav className="segmented views-nav views-menus" aria-label="Vistas" data-tour="views">
-          {VIEW_GROUPS.map(viewGroup => {
+          {viewGroups.map(viewGroup => {
             const current = viewGroup.views.find(v => v.id === view);
             const Icon = current?.icon ?? viewGroup.icon;
             const text = current ? current.label : viewGroup.label;
@@ -585,7 +593,7 @@ export function Topbar({
           aria-label="Vistas"
           data-tour="views"
         >
-          {VIEW_GROUPS.map((viewGroup, index) => (
+          {viewGroups.map((viewGroup, index) => (
             <Fragment key={viewGroup.id}>
               {index > 0 && <span className="views-divider" aria-hidden />}
               <span className="segmented-label" title={viewGroup.title}>

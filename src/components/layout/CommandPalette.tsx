@@ -1,4 +1,5 @@
 import {
+  Database,
   GitFork,
   Library,
   Moon,
@@ -162,6 +163,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(CalendarDays),
         keywords: 'vista calendario agenda tareas entregas eventos notas fechas plazos',
         run: () => setView('calendar'),
+      },
+      {
+        id: 'view:records',
+        label: 'Ir a los registros',
+        group: 'Acciones',
+        leading: icon(Database),
+        keywords: 'vista registros filas datos tablas consultas sql select base de datos',
+        run: () => setView('records'),
       },
       {
         id: 'view:health',

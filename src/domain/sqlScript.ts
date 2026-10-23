@@ -8,6 +8,7 @@ import {
   type SqlDialect,
   type TableColumn,
 } from './database';
+import { sqlServerInserts } from './rowsScript';
 import { nodeLabel } from './selectors';
 import type { Node, Project } from './types';
 
@@ -151,6 +152,10 @@ export function sqlScript(p: Project, generatedAt = new Date()): string {
       );
     out.push(`CREATE TABLE ${table} (`, lines.join(',\n'), ');', '');
   });
+
+  // Las filas de ejemplo, antes de las claves foráneas: así no importa el orden de las tablas.
+  const inserts = sqlServerInserts(p, tables, quoteName);
+  if (inserts.length) out.push(...inserts);
 
   const links = foreignKeyLinks(p);
   if (links.length) out.push('-- Claves foráneas');

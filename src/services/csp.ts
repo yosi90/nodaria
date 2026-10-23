@@ -6,6 +6,8 @@
  * - La plataforma: el SDK (`script-src`), su API y el tiempo real (`connect-src`), la ventana de
  *   acceso y el canal de sesión (`frame-src`) y los avatares (`img-src`).
  * - Yosiftadísticas: su script y su envío (`estadisticas-kit/INTEGRACION.md`).
+ * - Las consultas de «Registros»: SQLite compilado a WebAssembly (`sqlWorker.ts`), que pide
+ *   'wasm-unsafe-eval' (solo deja compilar WebAssembly, no `eval` de JavaScript).
  * - Lo propio: la API de Nodaria, las imágenes en `data:` y `blob:` (retratos, mapas, exportar a
  *   PNG/SVG con html-to-image) y las fuentes empaquetadas.
  */
@@ -36,7 +38,7 @@ export function contentSecurityPolicy(env: CspEnvironment): string {
   const platform = PLATFORM[env];
   const directives: Record<string, string[]> = {
     'default-src': ["'self'"],
-    'script-src': ["'self'", platform.sdk, STATS],
+    'script-src': ["'self'", "'wasm-unsafe-eval'", platform.sdk, STATS],
     'connect-src': ["'self'", ...NODARIA_API[env], platform.api, platform.ws, STATS],
     'frame-src': [platform.sdk],
     // La API de Nodaria sirve la imagen del mapa de los proyectos públicos (Comunidad).
