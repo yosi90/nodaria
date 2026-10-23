@@ -94,5 +94,5 @@ Además:
 
 ## Pendiente
 
-- Lo del propietario: instalar el plugin (`python plugin-kit/pack.py …` ya hecho; `plugin_cli install` o `upgrade` y `set-upstream-token`), copiar la credencial de emisor a `api/.runtime/notificapp-sender.token`, publicar las normas y el piloto con dos cuentas (publicar, seguir, ver la novedad en Nodaria y en la web social, denunciar y resolver desde Notificapp).
+- Hecho el 2026-10-23: plugin instalado con su credencial externa, credencial de emisor copiada a la API y normas publicadas (versión 1). Falta el piloto con dos cuentas (publicar, seguir, ver la novedad en Nodaria y en la web social, denunciar y resolver desde Notificapp).
 - Imagen del mapa en la novedad; metadatos para compartir; publicar proyectos de grupo; citar la autoría en las copias.
