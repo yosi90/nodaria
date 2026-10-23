@@ -25,6 +25,7 @@ import { CommunityView } from './components/community/CommunityView';
 import { useCommunityHash } from './components/community/communityHash';
 import { PublicCopy } from './components/community/PublicCopy';
 import { Db2ExportHost } from './components/layout/Db2ExportDialog';
+import { TablesImportHost } from './components/layout/TablesImportDialog';
 import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
 import { useAuth } from './state/auth';
@@ -125,6 +126,7 @@ export default function App() {
       <ContextMenu />
       <PublicCopy />
       <Db2ExportHost />
+      <TablesImportHost />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );

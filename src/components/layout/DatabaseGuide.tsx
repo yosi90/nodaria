@@ -29,6 +29,13 @@ export function DatabaseGuide() {
           tablas, con una fila por columna, y las claves foráneas como líneas de fila a fila.
         </li>
       </ol>
+      <p>
+        <strong>¿Ya tienes las tablas?</strong> En el menú del proyecto, <strong>Importar tablas (SQL o DDS)</strong>{' '}
+        lee el SQL que las crea (los <code>CREATE TABLE</code> de SQL Server o de Db2, también los que genera SQL Server
+        Management Studio) o los fuentes DDS de los archivos físicos y lógicos del AS/400. Crea un tipo por tabla, con
+        sus columnas, claves, índices, descripciones y claves foráneas, como subtipo del tipo que elijas (por ejemplo,
+        «Archivo físico»). Las que ya están en el proyecto no se tocan.
+      </p>
 
       <h3>Columnas («Columnas SQL»)</h3>
       <table className="guide-table guide-terms">

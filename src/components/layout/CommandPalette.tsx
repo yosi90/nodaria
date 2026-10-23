@@ -27,6 +27,7 @@ import { sdk } from '../../services/yosiftware';
 import { usePreferences } from '../../state/preferences';
 import { TypeIcon } from '../common/icons';
 import { NodeAvatar } from '../common/NodeAvatar';
+import { openTablesImport } from './openTablesImport';
 
 interface Command {
   id: string;
@@ -172,6 +173,15 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(Database),
         keywords: 'vista registros filas datos tablas consultas sql select base de datos',
         run: () => setView('records'),
+      },
+      {
+        id: 'import:tables',
+        label: 'Importar tablas (SQL o DDS)',
+        group: 'Acciones',
+        leading: icon(Database),
+        keywords:
+          'importar tablas create table ddl sql server db2 as400 dds pf lf archivo físico lógico esquema existente',
+        run: openTablesImport,
       },
       {
         id: 'help:database',

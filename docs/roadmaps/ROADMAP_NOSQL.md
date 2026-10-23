@@ -50,7 +50,7 @@ Reutiliza lo de SQL en lugar de crear un editor aparte, como se decidió para la
 
 - Firestore: subcolecciones y un esqueleto de reglas de seguridad.
 - Pasar un diseño de tablas a documentos (sugerir qué incrustar según las claves foráneas) y al revés.
-- Importar el esquema de una base existente (leer una muestra de documentos y deducir la forma).
+- Importar el esquema de una base existente (leer una muestra de documentos y deducir la forma). Para las bases relacionales ya está hecho (2026-10-23, SQL o DDS: `ROADMAP_DATOS_BD.md`); falta para los documentos.
 - La IA del asistente para proponer colecciones, como ya hace con tablas.
 
 ## Preguntas abiertas

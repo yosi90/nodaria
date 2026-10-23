@@ -1,4 +1,4 @@
-import { CircleHelp, Database, Plus, Search, TriangleAlert } from 'lucide-react';
+import { CircleHelp, Database, Plus, Search, TriangleAlert, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { engineLabel } from '../../domain/database';
 import { uid } from '../../domain/factories';
@@ -10,6 +10,7 @@ import { usePreferences } from '../../state/preferences';
 import { Button, IconButton } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
 import { Splitter } from '../common/Splitter';
+import { openTablesImport } from '../layout/openTablesImport';
 import { QueryPanel } from './QueryPanel';
 import { RecordsGrid } from './RecordsGrid';
 
@@ -47,13 +48,18 @@ export function RecordsView() {
           icon={Database}
           title="Sin tablas todavía"
           action={
-            <Button icon={Database} onClick={() => setView('schema')}>
-              Ir a Tipos
-            </Button>
+            <div className="guide-actions">
+              <Button icon={Database} onClick={() => setView('schema')}>
+                Ir a Tipos
+              </Button>
+              <Button icon={Upload} onClick={openTablesImport}>
+                Importar tablas
+              </Button>
+            </div>
           }
         >
           Aquí se rellenan filas de ejemplo de las tablas y se consultan con SQL. Marca un tipo como tabla de SQL Server
-          o de Db2 for i en «Tipos» y crea sus tablas en el mapa.
+          o de Db2 for i en «Tipos» y crea sus tablas en el mapa, o importa las que ya tienes desde su SQL o su DDS.
         </EmptyState>
       </main>
     );

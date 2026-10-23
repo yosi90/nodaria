@@ -52,6 +52,7 @@ import { downloadBytes, downloadProject, downloadText } from '../../services/fil
 import { exportZip } from '../../services/exportBundle';
 import { sqlScript } from '../../domain/sqlScript';
 import { openDb2Export } from './openDb2Export';
+import { openTablesImport } from './openTablesImport';
 import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
 import { ProjectKindDialog } from './ProjectKindDialog';
@@ -342,6 +343,7 @@ export function Topbar({
     { label: 'Ejemplos y plantillas…', icon: Layers, onSelect: onTemplates },
     { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
     { label: 'Importar nodos desde CSV…', icon: Sheet, onSelect: () => csvFile.current?.click() },
+    { label: 'Importar tablas (SQL o DDS)…', icon: Database, onSelect: openTablesImport },
     { label: 'Copias de seguridad…', icon: History, onSelect: () => setSnapshotsOpen(true) },
   ];
   const engines = projectEngines(project);

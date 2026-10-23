@@ -75,6 +75,33 @@ Fuera del alcance: conectarse a una base real, ejecutar el script contra ella, i
   - En las fuentes, el miembro `QSQLSRC/DATOS` lo ejecuta el CL de SQL antes de `CLAVES`.
   - Con DDS, el miembro `DATOSPF` usa los nombres de sistema y no lleva IDENTITY. El CL de DDS lo ejecuta con RUNSQLSTM después de CRTPF/CRTLF y antes de ADDPFCST.
 
+## Importar tablas que ya existen (2026-10-23)
+
+Para no tener que representar a mano lo que ya está en la base: se pega o se sube el SQL que crea las tablas o los fuentes DDS del AS/400, y Nodaria crea los tipos.
+- **Dónde:** el menú del proyecto, «Importar tablas (SQL o DDS)…». También desde la paleta y desde «Registros» sin tablas.
+- **Qué lee** ():
+  - Los  de SQL Server (también los que genera SQL Server Management Studio, con corchetes,  y ) y de Db2 (, , , ).
+  - Sus  de PK, UNIQUE, FK (con ON DELETE y ON UPDATE) y CHECK; los ; Se denegó el acceso porque no tienes suficientes privilegios o
+el disco podría estar bloqueado por otro proceso.
+Invoca esta utilidad ejecutándola en modo elevado
+y asegúrate de que el disco esté desbloqueado. y ; y las descripciones  de SQL Server.
+  - Las columnas, con su tipo, NULL, IDENTITY y DEFAULT. Un  pasa a ser una lista de opciones.
+  - Los fuentes DDS de los PF, en columnas fijas y con las continuaciones: A, P, S, B, F, L, T, Z, G, H; VARLEN, ALWNULL, DFT, TEXT y COLHDG; UNIQUE con K pasa a ser la PK y K sin UNIQUE, un índice.
+  - Los LF con , como índices (o UNIQUE) de su tabla.
+  - Lo que no reconoce lo convierte en lo más parecido y lo avisa: tipos sin equivalente, archivos de referencias (REF), claves foráneas o índices compuestos que no encajan.
+- **Qué crea** (, acción , que cuenta como cambio del esquema y se deshace):
+  - Un tipo por tabla, como subtipo del que se elija. Por defecto se propone un tipo abstracto de esa base, como «Archivo físico». El tipo hereda su título y su motor.
+  - Las columnas como atributos, con su metadato SQL. Si el tipo base ya tiene una columna, se usa la heredada.
+  - Un nodo con el nombre de la tabla.
+  - Las FK de una columna pasan a ser referencias a su tabla, esté entre las importadas o ya en el proyecto.
+  - Las FK compuestas vuelven a ser una sola referencia si sus columnas se llaman «prefijo_columnaDestino», como las abre el script de Nodaria.
+  - Una tabla que ya está en el proyecto no se toca.
+- **Ida y vuelta comprobada:** el script de SQL Server y el de Db2 del caso comercial, importados en un proyecto vacío, dan las mismas tablas: columnas, tipos, PK, nulos, IDENTITY y FK, también la compuesta.
+- **Verificación:**
+  - : 6 pruebas con un script de SSMS, las dos idas y vueltas, un DDS escrito a mano con PF y LF, los PF que genera Nodaria y la herencia con enlace a una tabla existente.
+  - Edge (, 11 comprobaciones): pegar el SQL de SSMS, las tablas y sus claves en Tipos, la FK en Registros, subir un PF y un LF, deshacer y 390 px.
+- **Pendiente:** el propietario lo probará con los fuentes reales de su trabajo el lunes 2026-10-26.
+
 ## Hitos
 
 - [x] **1. Modelo y validación.** Formato 12, `tableData` y `sqlQueries`; migración, integridad, borrado de nodos, fusión y publicación sin filas; validación y pruebas.

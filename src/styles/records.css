@@ -246,3 +246,35 @@
     height: 140px;
   }
 }
+
+/* Importar tablas desde SQL o DDS. */
+.tables-import-text {
+  min-height: 160px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--fs-sm);
+}
+.tables-import-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tables-import-list {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 260px;
+  overflow: auto;
+}
+.tables-import-detail {
+  display: block;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--fs-2xs);
+  overflow-wrap: anywhere;
+}
+.tables-import-warnings ul {
+  margin: var(--space-2) 0 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}

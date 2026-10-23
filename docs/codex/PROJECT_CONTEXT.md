@@ -208,7 +208,7 @@ estart-api.ps1`): salud correcta y `/api/ia/modelos` y `/api/ia/propuestas` resp
 - consultas SQL en SQLite dentro de un *worker* (`sql.js` 1.14.2, con `'wasm-unsafe-eval'` en la CSP), guardadas en `Project.sqlQueries`;
 - `INSERT` en el script de SQL Server y en los de Db2 (miembros `DATOS` y `DATOSPF`).
 
-Las filas no se publican ni las recibe la IA. Queda pendiente la prueba en el AS/400.
+Las filas no se publican ni las recibe la IA. Queda pendiente la prueba en el AS/400. El mismo día se añadió **importar tablas que ya existen**: desde su SQL (SQL Server, incluido SSMS, o Db2) o desde los fuentes DDS (PF y LF), con `schemaImport.ts` y `tablesImport.ts`.
 
 **Calendario del proyecto (desde el 2026-10-19): [`ROADMAP_CALENDARIO.md`](../roadmaps/ROADMAP_CALENDARIO.md)**, activado por el propietario al cerrar el de colaboración. Fases 1 a 5 implementadas y publicadas el 2026-10-22; detalle más abajo.
 

@@ -393,6 +393,7 @@ const FREE_ACTIONS = new Set([
 
 /** Acciones que cambian el esquema (tipos, atributos, preformas, parentesco, calendario, tipo de proyecto). */
 export const SCHEMA_ACTIONS = new Set([
+  'import-tables',
   'set-project-kind',
   'merge-template',
   'merge-project',
