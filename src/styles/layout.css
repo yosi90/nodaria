@@ -642,10 +642,20 @@
   gap: 8px;
   align-items: start;
 }
-@container attributes (min-width: 960px) {
-  .field-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+/* Dos columnas que crecen cada una por su cuenta (R3-06): las decide la tarjeta (`AttributesCard`). */
+.field-list.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.field-column {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+}
+.attributes-bottom {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
 }
 .field-list > .empty-copy,
 .library-list > .empty-copy {

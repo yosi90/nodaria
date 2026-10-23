@@ -81,6 +81,7 @@ export type Action =
   | { type: 'unlink-field'; schemaId: string; libraryId: string }
   | { type: 'share-field'; schemaId: string; fieldId: string }
   | { type: 'delete-field'; schemaId: string; fieldId: string }
+  | { type: 'duplicate-field'; schemaId: string; fieldId: string }
   | {
       type: 'add-node';
       typeId: string;
@@ -264,6 +265,8 @@ function projectReducer(p: Project, action: Action): Project {
       return lib.unlinkField(p, action.schemaId, action.libraryId);
     case 'share-field':
       return lib.shareField(p, action.schemaId, action.fieldId);
+    case 'duplicate-field':
+      return ops.duplicateField(p, action.schemaId, action.fieldId).project;
     case 'delete-field':
       return ops.deleteField(p, action.schemaId, action.fieldId);
     case 'add-node':

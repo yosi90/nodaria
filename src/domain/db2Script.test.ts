@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, schema } from '../test/fixtures';
 import {
+  columnTypeText,
   convertType,
+  parseSqlAnnotation,
+  typeOptionLabel,
   foreignKeyLinks,
   sqlType,
   sqlTypeError,
@@ -236,5 +239,18 @@ describe('miembros fuente', () => {
       ['CLIENTESDE', false],
       ['PEDIDOS', true],
     ]);
+  });
+});
+
+describe('packed y zoned', () => {
+  it('se escriben como en IBM i y se entienden en las anotaciones', () => {
+    expect(typeOptionLabel('DECIMAL')).toBe('DECIMAL · packed (P)');
+    expect(typeOptionLabel('NUMERIC')).toBe('NUMERIC · zoned (S)');
+    expect(typeOptionLabel('int')).toBe('int');
+    expect(columnTypeText(sqlType('DECIMAL', null, 9, 2))).toBe('DECIMAL(9,2) packed');
+    expect(columnTypeText(sqlType('NUMERIC', null, 7, 0))).toBe('NUMERIC(7,0) zoned');
+    const packed = parseSqlAnnotation('packed(9,2)')!;
+    expect(sqlTypeText(convertType(packed, 'db2i'))).toBe('DECIMAL(9,2)');
+    expect(sqlTypeText(convertType(parseSqlAnnotation('Zoned(7)')!, 'db2i'))).toBe('NUMERIC(7,0)');
   });
 });

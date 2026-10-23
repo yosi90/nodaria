@@ -21,7 +21,15 @@ export function DeleteSchemaModal({ schema, onClose }: { schema: Schema; onClose
   };
 
   return (
-    <Modal title={`Eliminar “${schema.name}”`} submitLabel="Eliminar tipo" onSubmit={confirmDelete} onClose={onClose}>
+    // El foco va a «Eliminar»: Intro confirma (R3-08). El rótulo dice si es un tipo o un tipo de relación.
+    <Modal
+      title={`Eliminar “${schema.name}”`}
+      submitLabel={schema.kind === 'relationship' ? 'Eliminar relación' : 'Eliminar tipo'}
+      tone="danger"
+      initialFocus="submit"
+      onSubmit={confirmDelete}
+      onClose={onClose}
+    >
       <div className="form-grid">
         <ul className="impact-list">
           <li>

@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { field, node, project, relation, schema } from '../test/fixtures';
-import { addNode, deleteField, deleteNode, deleteSchema, typedDefault, updateNode, updateSchema } from './operations';
+import {
+  addNode,
+  deleteField,
+  deleteNode,
+  deleteSchema,
+  duplicateField,
+  typedDefault,
+  updateNode,
+  updateSchema,
+} from './operations';
+import type { FieldDefinition } from './types';
 
 const world = () =>
   project({
@@ -181,5 +191,27 @@ describe('duplicar', () => {
       else expect(f.id).not.toBe((o as { id: string }).id);
     });
     expect(p.nodes.some(n => n.typeId === schemaId)).toBe(false);
+  });
+});
+
+describe('duplicateField (R3-07)', () => {
+  it('copia el atributo debajo, con otro id y una clave libre, sin ser título', () => {
+    const p = project({
+      schemas: [
+        schema('t', {
+          fields: [field('nombre', { isTitle: true, label: 'Nombre' }), field('edad', { type: 'number' })],
+          fieldOrder: ['nombre', 'edad'],
+        }),
+      ],
+    });
+    const { project: next, fieldId } = duplicateField(p, 't', 'nombre');
+    const fields = next.schemas[0].fields as FieldDefinition[];
+    expect(fields.map(f => f.label)).toEqual(['Nombre', 'Nombre (copia)', 'edad']);
+    expect(fields[1]).toMatchObject({ id: fieldId, key: 'nombre_copia', isTitle: false });
+    expect(next.schemas[0].fieldOrder).toEqual(['nombre', fieldId, 'edad']);
+    expect(
+      duplicateField(next, 't', 'nombre').project.schemas[0].fields.map(f => (f as FieldDefinition).key),
+    ).toContain('nombre_copia_2');
+    expect(duplicateField(p, 't', 'no-existe').fieldId).toBeNull();
   });
 });

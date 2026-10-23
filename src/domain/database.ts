@@ -340,6 +340,11 @@ const ALIASES: Record<string, SqlTypeName> = {
   float: 'float',
   real: 'float',
   money: 'money',
+  // Como se llaman en IBM i (los archivos físicos y el DDS): en una tabla de Db2 pasan a DECIMAL y NUMERIC.
+  packed: 'decimal',
+  empaquetado: 'decimal',
+  zoned: 'numeric',
+  zonado: 'numeric',
   char: 'char',
   varchar: 'varchar',
   nchar: 'nchar',
@@ -698,9 +703,43 @@ export const tableHasDescriptions = (p: Project, typeId: string) =>
   tableColumns(p, typeId).some(c => columnDescription(c) !== '');
 
 /** Texto de una columna: «int IDENTITY · PK», «nvarchar(50) · NOT NULL», «date»; en documentos, «string · obligatorio». */
+/**
+ * Cómo se llama cada tipo de Db2 for i en IBM i: el nombre de los archivos físicos y la letra del DDS
+ * (R3-04: en producción se habla de *packed* y *zoned*, no de DECIMAL y NUMERIC).
+ */
+export const DB2_TYPE_HINTS: Partial<Record<Db2TypeName, string>> = {
+  DECIMAL: 'packed (P)',
+  NUMERIC: 'zoned (S)',
+  SMALLINT: 'binario de 4 (B)',
+  INTEGER: 'binario de 9 (B)',
+  BIGINT: 'binario de 18 (B)',
+  REAL: 'coma flotante (F)',
+  DOUBLE: 'coma flotante (F)',
+  CHAR: 'carácter (A)',
+  VARCHAR: 'carácter VARLEN (A)',
+  GRAPHIC: 'gráfico (G)',
+  VARGRAPHIC: 'gráfico VARLEN (G)',
+  BINARY: 'hexadecimal (H)',
+  VARBINARY: 'hexadecimal VARLEN (H)',
+  DATE: 'fecha (L)',
+  TIME: 'hora (T)',
+  TIMESTAMP: 'fecha y hora (Z)',
+  BOOLEAN: 'IBM i 7.5',
+};
+
+/** El nombre de un tipo en el selector: el de SQL y, en Db2, el de IBM i («DECIMAL · packed (P)»). */
+export const typeOptionLabel = (name: SqlTypeName) =>
+  isDb2Name(name) && DB2_TYPE_HINTS[name] ? `${name} · ${DB2_TYPE_HINTS[name]}` : name;
+
+/** El tipo en el diagrama y la ficha; en Db2, packed y zoned como se dicen en IBM i: «DECIMAL(9,2) packed». */
+export function columnTypeText(type: SqlDataType) {
+  const text = sqlTypeText(type);
+  return type.name === 'DECIMAL' ? `${text} packed` : type.name === 'NUMERIC' ? `${text} zoned` : text;
+}
+
 export function columnText(c: TableColumn) {
   if (c.typeText !== undefined) return c.sql.nullable ? c.typeText : `${c.typeText} · obligatorio`;
-  const type = sqlTypeText(c.type) + (c.sql.identity ? ' IDENTITY' : '');
+  const type = columnTypeText(c.type) + (c.sql.identity ? ' IDENTITY' : '');
   return c.sql.primaryKey ? `${type} · PK` : c.sql.nullable ? type : `${type} · NOT NULL`;
 }
 

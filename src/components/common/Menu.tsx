@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import { ChevronRight, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { Popover } from './Popover';
 import { type Anchor } from './anchor';
@@ -13,6 +13,11 @@ export type MenuEntry =
       danger?: boolean;
       disabled?: boolean;
       checked?: boolean;
+      /**
+       * Abre un submenú junto a la entrada (al pasar por encima, con la flecha derecha o al pulsarla) en vez
+       * de elegir: recibe dónde colocarlo. El menú no se cierra.
+       */
+      submenu?: (anchor: Anchor) => void;
     }
   | 'separator'
   | { section: string };
@@ -22,10 +27,23 @@ interface MenuProps {
   entries: MenuEntry[];
   onClose: () => void;
   label: string;
+  /** Al pasar por otra entrada que no abre submenú (para cerrar el que hubiera abierto). */
+  onHoverItem?: () => void;
 }
 
+/** Lo que suele medir un submenú, para decidir hacia qué lado se abre. */
+const SUBMENU_WIDTH = 280;
+
+/** Dónde se abre un submenú: a la derecha de la entrada, a su altura; si no cabe, a la izquierda. */
+const besides = (element: HTMLElement): Anchor => {
+  const rect = element.getBoundingClientRect();
+  const fitsRight = rect.right + 2 + SUBMENU_WIDTH <= window.innerWidth - 8;
+  const x = fitsRight ? rect.right + 2 : Math.max(8, rect.left - 2 - SUBMENU_WIDTH);
+  return { x, y: rect.top - 6, width: 0, height: 0, element };
+};
+
 /** Menú de acciones con navegación por flechas, Inicio/Fin y Escape. */
-export function Menu({ anchor, entries, onClose, label }: MenuProps) {
+export function Menu({ anchor, entries, onClose, label, onHoverItem }: MenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const items = () => [
     ...(ref.current?.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)') ?? []),
@@ -45,7 +63,11 @@ export function Menu({ anchor, entries, onClose, label }: MenuProps) {
     else if (event.key === 'Home') next = 0;
     else if (event.key === 'End') next = list.length - 1;
     else if (event.key === 'Tab') return onClose();
-    else return;
+    else if (event.key === 'ArrowRight' && index >= 0 && list[index].dataset.submenu === 'true') {
+      event.preventDefault();
+      list[index].click();
+      return;
+    } else return;
     event.preventDefault();
     list[next]?.focus();
   };
@@ -69,8 +91,16 @@ export function Menu({ anchor, entries, onClose, label }: MenuProps) {
               role={entry.checked === undefined ? 'menuitem' : 'menuitemradio'}
               aria-checked={entry.checked}
               disabled={entry.disabled}
-              className={`menu-item ${entry.danger ? 'danger' : ''}`}
-              onClick={() => {
+              className={`menu-item ${entry.danger ? 'danger' : ''} ${entry.submenu ? 'has-submenu' : ''}`}
+              aria-haspopup={entry.submenu ? 'menu' : undefined}
+              data-submenu={entry.submenu ? 'true' : undefined}
+              onMouseEnter={event => {
+                if (entry.disabled) return;
+                if (entry.submenu) entry.submenu(besides(event.currentTarget));
+                else onHoverItem?.();
+              }}
+              onClick={event => {
+                if (entry.submenu) return entry.submenu(besides(event.currentTarget));
                 onClose();
                 entry.onSelect();
               }}
@@ -79,6 +109,7 @@ export function Menu({ anchor, entries, onClose, label }: MenuProps) {
               {entry.leading}
               <span className="label">{entry.label}</span>
               {entry.hint && <span className="hint">{entry.hint}</span>}
+              {entry.submenu && <ChevronRight size={14} className="submenu-caret" aria-hidden />}
             </button>
           );
         })}

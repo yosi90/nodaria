@@ -155,6 +155,41 @@ export function addField(p: Project, schemaId: string, preset: Partial<FieldDefi
   };
 }
 
+/**
+ * Duplica un atributo propio del tipo (R3-07): la copia va justo debajo, con otro id, «(copia)» en el nombre y
+ * una clave libre; conserva la configuración (opciones, referencias, condiciones, SQL) pero no es el título
+ * ni lleva los valores de las fichas. Devuelve el id de la copia.
+ */
+export function duplicateField(
+  p: Project,
+  schemaId: string,
+  fieldId: string,
+): { project: Project; fieldId: string | null } {
+  const schema = p.schemas.find(s => s.id === schemaId);
+  const index = schema ? schema.fields.findIndex(f => !isFieldLink(f) && f.id === fieldId) : -1;
+  if (!schema || index < 0) return { project: p, fieldId: null };
+  const original = schema.fields[index] as FieldDefinition;
+  const taken = new Set([...ownFields(schema).map(x => x.key), ...p.fieldLibrary.map(x => x.key)]);
+  let key = `${original.key}_copia`;
+  for (let i = 2; taken.has(key); i++) key = `${original.key}_copia_${i}`;
+  const copy: FieldDefinition = {
+    ...original,
+    id: uid('field'),
+    key,
+    label: `${original.label} (copia)`,
+    isTitle: false,
+  };
+  const fields = [...schema.fields.slice(0, index + 1), copy, ...schema.fields.slice(index + 1)];
+  // Si el tipo fija el orden de sus atributos, la copia va también detrás del original.
+  const fieldOrder = schema.fieldOrder?.length
+    ? schema.fieldOrder.flatMap(id => (id === fieldId ? [id, copy.id] : [id]))
+    : schema.fieldOrder;
+  return {
+    project: { ...p, schemas: p.schemas.map(s => (s.id === schemaId ? { ...s, fields, fieldOrder } : s)) },
+    fieldId: copy.id,
+  };
+}
+
 /** Elimina un atributo y los valores que guardaban sus instancias. */
 export function deleteField(p: Project, schemaId: string, fieldId: string): Project {
   const ids = new Set([fieldId]);

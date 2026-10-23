@@ -408,6 +408,7 @@ export const SCHEMA_ACTIONS = new Set([
   'duplicate-schema',
   'add-field',
   'delete-field',
+  'duplicate-field',
   'share-field',
   'add-library-field',
   'update-library-field',

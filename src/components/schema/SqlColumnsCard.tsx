@@ -20,6 +20,8 @@ import {
   sqlTypeText,
   tableFields,
   tableIssues,
+  columnTypeText,
+  typeOptionLabel,
   typesOf,
   type SqlColumn,
   type SqlDialect,
@@ -363,10 +365,10 @@ function SqlTypeEditor({
           onChange(name ? sqlType(name, hasLength(name) && type && hasLength(type.name) ? type.length : null) : null);
         }}
       >
-        <option value="">Automático · {sqlTypeText(deduced)}</option>
+        <option value="">Automático · {columnTypeText(deduced)}</option>
         {typesOf(dialect).map(name => (
           <option key={name} value={name}>
-            {name}
+            {typeOptionLabel(name)}
           </option>
         ))}
       </select>

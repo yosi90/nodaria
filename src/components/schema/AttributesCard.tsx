@@ -1,5 +1,6 @@
-import { Eye, EyeOff, GitBranch, Library, Link2, Plus, Unlink, TriangleAlert } from 'lucide-react';
-import { useCallback, useState, type DragEvent, type ReactNode } from 'react';
+import { Copy, Eye, EyeOff, GitBranch, Library, Link2, Plus, Unlink, TriangleAlert } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { isTypingTarget } from '../common/keyboard';
 import { FIELD_TYPES } from '../../domain/constants';
 import { isFieldLink, usersOfLibraryField } from '../../domain/library';
 import { allFields, effectiveFields, inheritedSchemas } from '../../domain/selectors';
@@ -8,7 +9,7 @@ import { fieldOverlaps, inheritedFields, type FieldOverlap } from '../../domain/
 import type { FieldDefinition, FieldLink, Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
-import { anchorOf, type Anchor } from '../common/anchor';
+import { anchorOf, pointAnchor, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
 import { useToast } from '../common/toasts';
 import { Menu } from '../common/Menu';
@@ -17,6 +18,35 @@ import { Popover } from '../common/Popover';
 import { FieldEditor } from './FieldEditor';
 
 const entryId = (f: FieldDefinition | FieldLink) => (isFieldLink(f) ? f.ref : f.id);
+
+/** Con tantos atributos, el «Añadir» de arriba suele quedar fuera de la vista: se repite abajo (R3-01). */
+const BOTTOM_ADD_FROM = 6;
+/**
+ * Anchura de la tarjeta a partir de la que los atributos van en dos columnas, y por debajo de la que vuelven
+ * a una: el margen evita que abrir un atributo (y que aparezca la barra de desplazamiento) cambie la rejilla.
+ */
+const TWO_COLUMNS_FROM = 960;
+const ONE_COLUMN_BELOW = 920;
+
+/**
+ * Dos columnas que crecen cada una por su cuenta (R3-06): abrir un atributo no empuja hacia abajo los de la
+ * otra columna, como pasaba con una rejilla de filas compartidas. Se mide la tarjeta, no la ventana.
+ */
+function useTwoColumns() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [two, setTwo] = useState(false);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      setTwo(current => (current ? width >= ONE_COLUMN_BELOW : width >= TWO_COLUMNS_FROM));
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, two };
+}
 
 /** Atributos de un tipo: propios (editables aquí) y vinculados de la biblioteca (editables allí). */
 export function AttributesCard({ schema }: { schema: Schema }) {
@@ -62,6 +92,36 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   const [linkAnchor, setLinkAnchor] = useState<Anchor | null>(null);
   const closeAdd = useCallback(() => setAddAnchor(null), []);
   const closeLink = useCallback(() => setLinkAnchor(null), []);
+  const { ref: cardRef, two } = useTwoColumns();
+  const addQuick = useCallback(() => dispatch({ type: 'add-field', schemaId: schema.id }), [dispatch, schema.id]);
+
+  // Atajos con el tipo abierto (R3-03): A añade un atributo y P abre las preformas donde está el ratón.
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const onMove = (event: PointerEvent) => {
+      pointer.current = { x: event.clientX, y: event.clientY };
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target))
+        return;
+      if (document.querySelector('dialog[open], [role="menu"]')) return;
+      const key = event.key.toLowerCase();
+      if (key === 'a') {
+        event.preventDefault();
+        addQuick();
+      } else if (key === 'p') {
+        event.preventDefault();
+        const at = pointer.current ?? { x: window.innerWidth / 2, y: window.innerHeight / 3 };
+        setLinkAnchor(pointAnchor(at.x, at.y));
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [addQuick]);
   const update = (fields: Schema['fields']) => dispatch({ type: 'update-schema', schema: { ...schema, fields } });
   const ancestors = inheritedSchemas(project, schema.id).slice(0, -1);
   const overlaps = new Map(fieldOverlaps(project, schema).map(o => [o.field.id, o]));
@@ -147,14 +207,21 @@ export function AttributesCard({ schema }: { schema: Schema }) {
     dispatch({ type: 'unlink-field', schemaId: schema.id, libraryId: field.id });
   };
 
+  const toggleAdd = (element: HTMLElement) => (addAnchor ? closeAdd() : setAddAnchor(anchorOf(element)));
+  const duplicate = (field: FieldDefinition) => {
+    toast({ message: `«${field.label}» duplicado`, undoable: true });
+    dispatch({ type: 'duplicate-field', schemaId: schema.id, fieldId: field.id });
+  };
+
   return (
-    <div className="card attributes-card" data-tour="attributes">
+    <div className="card attributes-card" data-tour="attributes" ref={cardRef}>
       <div className="card-head">
         <h3>Atributos</h3>
         <Button
           size="sm"
           icon={Plus}
-          onClick={event => (addAnchor ? closeAdd() : setAddAnchor(anchorOf(event.currentTarget)))}
+          title="Añadir un atributo (A) o una preforma (P)"
+          onClick={event => toggleAdd(event.currentTarget)}
         >
           Añadir
         </Button>
@@ -163,22 +230,25 @@ export function AttributesCard({ schema }: { schema: Schema }) {
         <Menu
           anchor={addAnchor}
           onClose={closeAdd}
+          onHoverItem={closeLink}
           label="Añadir atributo"
           entries={[
             {
               label: 'Definición rápida',
-              hint: 'solo este tipo',
+              hint: 'A',
               icon: Plus,
-              onSelect: () => dispatch({ type: 'add-field', schemaId: schema.id }),
+              onSelect: addQuick,
             },
             {
-              label: 'Preforma…',
+              // Las preformas se abren en un submenú al pasar por encima (R3-02).
+              label: 'Preformas',
               icon: Link2,
               hint: linkable.length
-                ? `${linkable.filter(f => !inherited.some(i => i.field.id === f.id)).length} disponibles`
+                ? `${linkable.filter(f => !inherited.some(i => i.field.id === f.id)).length} · P`
                 : 'ninguna',
               disabled: !linkable.length,
-              onSelect: () => setLinkAnchor(addAnchor),
+              onSelect: () => undefined,
+              submenu: anchor => setLinkAnchor(anchor),
             },
             {
               label: 'Gestionar preformas',
@@ -210,6 +280,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
             onPick={id => {
               dispatch({ type: 'link-field', schemaId: schema.id, libraryId: id });
               closeLink();
+              closeAdd();
             }}
             emptyLabel="Todas las preformas ya están vinculadas."
           />
@@ -221,7 +292,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
           puedes ordenarlos con los propios u ocultarlos solo en este tipo y sus subtipos.
         </p>
       )}
-      <div className="field-list">
+      <AttributeColumns two={two}>
         {shownIds.length ? (
           shownIds.map(id => {
             const entry = schema.fields.find(f => entryId(f) === id);
@@ -282,13 +353,22 @@ export function AttributesCard({ schema }: { schema: Schema }) {
                 onDelete={() => removeOwn(entry)}
                 note={overlapNote(overlaps.get(entry.id), () => removeOwn(entry))}
                 actions={
-                  <IconButton
-                    icon={Library}
-                    size="sm"
-                    label="Convertir en preforma"
-                    tooltipSide="left"
-                    onClick={() => share(entry)}
-                  />
+                  <>
+                    <IconButton
+                      icon={Copy}
+                      size="sm"
+                      label="Duplicar el atributo"
+                      tooltipSide="left"
+                      onClick={() => duplicate(entry)}
+                    />
+                    <IconButton
+                      icon={Library}
+                      size="sm"
+                      label="Convertir en preforma"
+                      tooltipSide="left"
+                      onClick={() => share(entry)}
+                    />
+                  </>
                 }
               />
             );
@@ -299,7 +379,26 @@ export function AttributesCard({ schema }: { schema: Schema }) {
             tipos.
           </p>
         )}
-      </div>
+      </AttributeColumns>
+      {shownIds.length >= BOTTOM_ADD_FROM && (
+        <div className="attributes-bottom">
+          <Button size="sm" icon={Plus} onClick={event => toggleAdd(event.currentTarget)}>
+            Añadir
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** La lista de atributos, en una columna o en dos que no comparten filas (por orden: izquierda, derecha…). */
+function AttributeColumns({ two, children }: { two: boolean; children: ReactNode }) {
+  const items = Array.isArray(children) ? children.filter(Boolean) : [children];
+  if (!two || items.length < 2) return <div className="field-list">{children}</div>;
+  return (
+    <div className="field-list two-columns">
+      <div className="field-column">{items.filter((_, i) => i % 2 === 0)}</div>
+      <div className="field-column">{items.filter((_, i) => i % 2 === 1)}</div>
     </div>
   );
 }

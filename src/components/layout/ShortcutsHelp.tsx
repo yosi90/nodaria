@@ -29,6 +29,13 @@ const GROUPS: { title: string; items: [string, string[]][] }[] = [
     ],
   },
   {
+    title: 'Tipos y relaciones (con uno abierto)',
+    items: [
+      ['Añadir un atributo', ['A']],
+      ['Vincular una preforma, donde está el ratón', ['P']],
+    ],
+  },
+  {
     title: 'Árbol de estructura',
     items: [
       ['Moverse entre nodos', ['↑', '↓']],

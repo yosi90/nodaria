@@ -3,7 +3,7 @@ import {
   engineOf,
   isRelationalEngine,
   tableColumns,
-  sqlTypeText,
+  columnTypeText,
   type TableColumn,
 } from '../../domain/database';
 import type { Node, Project } from '../../domain/types';
@@ -97,7 +97,7 @@ export function tableCardColumns(p: Project, node: Node, foreignKeys: Set<string
     id: c.field.id,
     name: c.field.key || c.field.label,
     label: c.field.label,
-    type: sqlTypeText(c.type) + (c.sql.identity ? ' IDENTITY' : ''),
+    type: columnTypeText(c.type) + (c.sql.identity ? ' IDENTITY' : ''),
     primaryKey: c.sql.primaryKey,
     foreignKey: foreignKeys.has(c.field.id),
     unique: c.sql.unique,

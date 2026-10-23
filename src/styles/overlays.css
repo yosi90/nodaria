@@ -118,6 +118,14 @@
   color: var(--text-subtle);
   font-size: var(--fs-xs);
 }
+/* Una entrada que abre un submenú (las preformas del «Añadir» de un tipo). */
+.menu-item > .submenu-caret {
+  flex: none;
+  color: var(--text-subtle);
+}
+.menu-item.has-submenu[aria-expanded='true'] {
+  background: var(--hover);
+}
 .menu-item:hover:not(:disabled),
 .menu-item.active {
   background: var(--hover);
