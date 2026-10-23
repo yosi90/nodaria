@@ -1,7 +1,9 @@
-import type { AiContextRefs } from './aiContext';
+import { isAiTable, type AiContextRefs } from './aiContext';
 import {
   columnSqlIn,
+  engineOf,
   foreignKeyLinks,
+  isEmbeddedType,
   isTableType,
   replaceField,
   setColumnSql,
@@ -17,12 +19,13 @@ import {
   type TableColumn,
 } from './database';
 import { COLORS } from './constants';
+import { DOC_TYPES, isDocumentEngine } from './dbEngines';
 import { createField, createSchema } from './factories';
 import { isFieldLink } from './library';
 import { addNode, deleteField, deleteNodes, deleteSchema, updateNodeValue } from './operations';
 import { allFields, getNode, getSchema, nodeLabel } from './selectors';
 import { hideNewTypesInGenealogy } from './layoutFilters';
-import type { FieldDefinition, FieldType, Node, Project, SchemaField } from './types';
+import type { DbEngine, FieldDefinition, FieldType, Node, Project, SchemaField } from './types';
 
 /*
  * Propuestas de la asistencia de IA para un esquema de base de datos. La respuesta del modelo es
@@ -50,6 +53,8 @@ export interface AiColumnSpec {
   description: string;
   /** Preforma de la biblioteca que se vincula en lugar de crear la columna; `null` o vacío = columna nueva. */
   preform?: string | null;
+  /** En una colección o un subdocumento: el tipo del campo en su base («string», «objectId»…). */
+  docType?: string | null;
 }
 
 /** Cambios de una columna: `null` deja ese aspecto como está. */
@@ -60,6 +65,7 @@ export interface AiColumnChanges {
   unique: boolean | null;
   identity: boolean | null;
   description: string | null;
+  docType?: string | null;
 }
 
 export type AiOperation =
@@ -70,6 +76,10 @@ export type AiOperation =
       description: string;
       /** Base de la que hereda (`b1`…); `null` o vacío = ninguna. */
       base?: string | null;
+      /** Una colección de documentos; sin él, una tabla de SQL Server (o como las del proyecto). */
+      engine?: 'mongodb' | 'firestore' | null;
+      /** Un subdocumento: va dentro de una colección (con `embed`), sin colección propia. */
+      embedded?: boolean;
       columns: AiColumnSpec[];
       reason: string;
     }
@@ -87,6 +97,16 @@ export type AiOperation =
       nullable: boolean;
       /** Forma parte de la clave primaria (tablas intermedias). */
       primaryKey?: boolean;
+      reason: string;
+    }
+  | {
+      /** Lleva un subdocumento dentro de una colección o de otro subdocumento (una lista con `many`). */
+      op: 'embed';
+      table: string;
+      column: string;
+      references: string;
+      many: boolean;
+      nullable: boolean;
       reason: string;
     };
 
@@ -172,6 +192,45 @@ function fieldTypeFor(type: SqlDataType): FieldType {
   return type.length === 'max' ? 'longText' : 'text';
 }
 
+/** Un tipo de SQL Server que el modelo pone en un campo de documento: su equivalente en esa base. */
+const SQL_TO_DOC: Record<string, Partial<Record<'mongodb' | 'firestore', string>>> = {
+  int: { mongodb: 'int', firestore: 'int' },
+  bigint: { mongodb: 'long', firestore: 'int' },
+  smallint: { mongodb: 'int', firestore: 'int' },
+  tinyint: { mongodb: 'int', firestore: 'int' },
+  bit: { mongodb: 'bool', firestore: 'boolean' },
+  decimal: { mongodb: 'decimal', firestore: 'number' },
+  numeric: { mongodb: 'decimal', firestore: 'number' },
+  money: { mongodb: 'decimal', firestore: 'number' },
+  float: { mongodb: 'double', firestore: 'number' },
+  date: { mongodb: 'date', firestore: 'timestamp' },
+  datetime: { mongodb: 'date', firestore: 'timestamp' },
+  datetime2: { mongodb: 'date', firestore: 'timestamp' },
+  uniqueidentifier: { mongodb: 'string', firestore: 'string' },
+  varbinary: { mongodb: 'binData', firestore: 'bytes' },
+};
+
+/** El tipo de documento de una columna pedida para una colección o un subdocumento de `engine`. */
+function docTypeFor(engine: 'mongodb' | 'firestore', spec: Pick<AiColumnSpec, 'docType' | 'type'>): string {
+  const wanted = spec.docType?.trim();
+  if (wanted) {
+    const match = DOC_TYPES[engine].find(t => same(t, wanted));
+    if (!match) reject(`El tipo «${wanted}» no es de ${engine === 'mongodb' ? 'MongoDB' : 'Firestore'}.`);
+    return match!;
+  }
+  const fromSql = spec.type ? SQL_TO_DOC[spec.type.name]?.[engine] : undefined;
+  return fromSql ?? 'string';
+}
+
+/** Tipo de atributo de Nodaria para un campo de documento; el tipo de la base va en `sql.docType`. */
+function fieldTypeForDoc(docType: string): FieldType {
+  if (['number', 'int', 'long', 'double', 'decimal'].includes(docType)) return 'number';
+  if (docType === 'bool' || docType === 'boolean') return 'boolean';
+  if (docType === 'date' || docType === 'timestamp') return 'date';
+  if (docType === 'array') return 'list';
+  return 'text';
+}
+
 function columnSql(
   spec: Pick<AiColumnSpec, 'primaryKey' | 'nullable' | 'unique' | 'identity'>,
   type: SqlDataType | null,
@@ -184,6 +243,22 @@ function columnSql(
     identity: spec.identity,
     excluded: false,
   } satisfies SqlColumn;
+}
+
+/** Un campo nuevo de una colección o un subdocumento: sin tipo SQL, con el de su base. */
+function docFieldFromSpec(spec: AiColumnSpec, engine: 'mongodb' | 'firestore', id: string): FieldDefinition {
+  const name = checkName(spec.name, 'campo');
+  const docType = docTypeFor(engine, spec);
+  return {
+    ...createField(),
+    id,
+    key: name,
+    label: name,
+    type: fieldTypeForDoc(docType),
+    required: !spec.nullable,
+    description: spec.description.trim(),
+    sql: { ...columnSql({ ...spec, primaryKey: false, identity: false }, null), docType },
+  };
 }
 
 function fieldFromSpec(spec: AiColumnSpec & { type: SqlDataType }, id: string): FieldDefinition {
@@ -206,35 +281,62 @@ interface RunState {
   tables: Map<string, string>;
   /** Identificador corto de cada base → id del tipo. */
   bases: Map<string, string>;
+  /** Identificador corto (o referencia nueva) de cada subdocumento → id del tipo. */
+  subdocs: Map<string, string>;
   /** Referencias de tablas nuevas que no se crean (desmarcadas o no válidas). */
   missing: Set<string>;
   touchedTypes: Set<string>;
   newId: (prefix: string) => string;
 }
 
+/** Una tabla o una colección (un nodo). */
 function tableNode(s: RunState, ref: string): Node {
   if (s.missing.has(ref)) reject(`Depende de crear la tabla «${ref}», que no se va a crear.`);
   const nodeId = s.tables.get(ref);
   const node = nodeId ? getNode(s.project, nodeId) : undefined;
-  if (!nodeId) reject(`No hay ninguna tabla «${ref}».`);
-  if (!node || !isTableType(s.project, node.typeId)) reject(`La tabla «${ref}» ya no existe.`);
+  if (!nodeId)
+    reject(s.subdocs.has(ref) ? `«${ref}» es un subdocumento, no una tabla.` : `No hay ninguna tabla «${ref}».`);
+  if (!node || !isAiTable(s.project, node.typeId)) reject(`La tabla «${ref}» ya no existe.`);
   return node!;
 }
 
-function findColumn(p: Project, node: Node, name: string): TableColumn | undefined {
-  const matches = tableColumns(p, node.typeId).filter(c => same(c.field.key || c.field.label, name));
-  if (matches.length > 1) reject(`Hay varias columnas «${name}» en «${nodeLabel(p, node)}».`);
+/** Donde van las columnas: una tabla o colección (con su nodo) o un subdocumento (solo su tipo). */
+interface Target {
+  typeId: string;
+  node: Node | null;
+  label: string;
+  engine: DbEngine | null;
+}
+function target(s: RunState, ref: string): Target {
+  const subId = s.subdocs.get(ref);
+  if (subId) {
+    if (s.missing.has(ref)) reject(`Depende de crear el subdocumento «${ref}», que no se va a crear.`);
+    const schema = getSchema(s.project, subId);
+    if (!schema || !isEmbeddedType(s.project, subId)) reject(`El subdocumento «${ref}» ya no existe.`);
+    return { typeId: subId, node: null, label: schema!.name, engine: engineOf(s.project, subId) };
+  }
+  const node = tableNode(s, ref);
+  return { typeId: node.typeId, node, label: nodeLabel(s.project, node), engine: engineOf(s.project, node.typeId) };
+}
+const documentEngine = (t: Target) => (isDocumentEngine(t.engine) ? t.engine : null);
+
+function findColumn(p: Project, t: Target | Node, name: string): TableColumn | undefined {
+  const typeId = t.typeId;
+  const label = 'label' in t ? t.label : nodeLabel(p, t);
+  const matches = tableColumns(p, typeId).filter(c => same(c.field.key || c.field.label, name));
+  if (matches.length > 1) reject(`Hay varias columnas «${name}» en «${label}».`);
   return matches[0];
 }
 
-function existingColumn(p: Project, node: Node, name: string): TableColumn {
-  const column = findColumn(p, node, name);
-  if (!column) reject(`«${nodeLabel(p, node)}» no tiene la columna «${name}».`);
+function existingColumn(p: Project, t: Target, name: string): TableColumn {
+  const column = findColumn(p, t, name);
+  if (!column) reject(`«${t.label}» no tiene la columna «${name}».`);
   return column!;
 }
 
 /** Otras tablas que comparten el tipo (y por tanto sus columnas). */
-function sharing(p: Project, node: Node) {
+function sharing(p: Project, node: Node | null) {
+  if (!node) return [];
   const others = p.nodes.filter(n => n.id !== node.id && n.typeId === node.typeId).map(n => `«${nodeLabel(p, n)}»`);
   return others.length
     ? [`También cambia ${others.join(', ')}, que comparte${others.length > 1 ? 'n' : ''} su tipo.`]
@@ -242,9 +344,9 @@ function sharing(p: Project, node: Node) {
 }
 
 /** Tipos (además del de la tabla) que usan el atributo: su definición vale para todos. */
-function otherUsers(p: Project, node: Node, field: FieldDefinition) {
+function otherUsers(p: Project, node: Node | null, field: FieldDefinition) {
   const users = p.nodes
-    .filter(n => n.id !== node.id && isTableType(p, n.typeId) && allFields(p, n.typeId).some(f => f.id === field.id))
+    .filter(n => n.id !== node?.id && isAiTable(p, n.typeId) && allFields(p, n.typeId).some(f => f.id === field.id))
     .map(n => `«${nodeLabel(p, n)}»`);
   return users.length ? [`La columna se define fuera de la tabla: también cambia en ${users.join(', ')}.`] : [];
 }
@@ -281,6 +383,7 @@ function planColumn(
   spec: AiColumnSpec,
   inherited: FieldDefinition[],
   messages: string[],
+  engine: 'mongodb' | 'firestore' | null = null,
 ): PlannedColumn | null {
   const name = checkName(spec.name, 'columna');
   const already = inherited.find(f => same(f.key || f.label, name) || (spec.preform && same(f.key, spec.preform)));
@@ -306,6 +409,11 @@ function planColumn(
       fieldId: preform.id,
       sql: differs ? { ...(theirs ?? columnSql(spec, null)), ...own, type: theirs?.type ?? null } : null,
     };
+  }
+  // En una colección o un subdocumento, un campo de su base.
+  if (engine) {
+    const field = docFieldFromSpec(spec, engine, s.newId('field'));
+    return { entry: field, fieldId: field.id, sql: null };
   }
   if (!spec.type) {
     messages.push(`«${name}» no tiene tipo ni preforma: no se crea.`);
@@ -350,8 +458,10 @@ function setTableName(p: Project, node: Node, name: string): Project {
 }
 
 function tableNameTaken(p: Project, name: string, except?: string) {
-  return p.nodes.some(n => n.id !== except && isTableType(p, n.typeId) && same(nodeLabel(p, n), name));
+  return p.nodes.some(n => n.id !== except && isAiTable(p, n.typeId) && same(nodeLabel(p, n), name));
 }
+const subdocNameTaken = (p: Project, name: string) =>
+  p.schemas.some(x => isEmbeddedType(p, x.id) && same(x.name, name));
 
 /** Aplica una operación sobre el estado; lanza `Rejected` si no es válida. Devuelve los avisos. */
 function step(s: RunState, op: AiOperation, apply: boolean): string[] {
@@ -366,12 +476,19 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
     case 'create-table': {
       const ref = op.ref.trim();
       if (!ref) reject('Falta la referencia de la tabla nueva.');
-      if (s.tables.has(ref) || s.missing.has(ref) || s.bases.has(ref)) reject(`La referencia «${ref}» ya está en uso.`);
-      const name = checkName(op.name, 'tabla');
-      if (tableNameTaken(p, name)) reject(`Ya hay una tabla «${name}».`);
+      if (s.tables.has(ref) || s.missing.has(ref) || s.bases.has(ref) || s.subdocs.has(ref))
+        reject(`La referencia «${ref}» ya está en uso.`);
+      const engine = op.engine === 'mongodb' || op.engine === 'firestore' ? op.engine : null;
+      const embedded = Boolean(op.embedded);
+      if (embedded && !engine)
+        reject('Un subdocumento es de una base de documentos: le falta «mongodb» o «firestore».');
+      const what = embedded ? 'subdocumento' : engine ? 'colección' : 'tabla';
+      const name = checkName(op.name, what);
+      if (embedded ? subdocNameTaken(p, name) : tableNameTaken(p, name))
+        reject(`Ya hay un${what === 'tabla' || what === 'colección' ? 'a' : ''} ${what} «${name}».`);
       if (op.columns.length > AI_MAX_COLUMNS) reject(`Una tabla nueva admite hasta ${AI_MAX_COLUMNS} columnas.`);
       let parentId: string | null = null;
-      if (op.base?.trim()) {
+      if (op.base?.trim() && !embedded) {
         parentId = s.bases.get(op.base.trim()) ?? null;
         const parent = parentId ? getSchema(p, parentId) : undefined;
         if (!parent || parent.kind !== 'entity') reject(`No hay ninguna base «${op.base}».`);
@@ -380,7 +497,7 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
       const messages: string[] = [];
       const planned: PlannedColumn[] = [];
       op.columns.forEach(spec => {
-        const column = planColumn(s, p, spec, [...inherited], messages);
+        const column = planColumn(s, p, spec, [...inherited], messages, engine);
         if (!column) return;
         const key = isFieldLink(column.entry) ? spec.name : column.entry.key;
         if (planned.some(o => o.fieldId === column.fieldId) || op.columns.filter(c => same(c.name, key)).length > 1)
@@ -388,31 +505,37 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
         planned.push(column);
       });
       const typeId = s.newId('type');
-      // El nombre de la tabla va en su título: el heredado, la preforma de título o uno propio.
-      const titlePreform = p.fieldLibrary.find(f => f.isTitle);
+      // Un subdocumento no tiene nodo ni título: va dentro de su colección.
+      const titlePreform = embedded ? undefined : p.fieldLibrary.find(f => f.isTitle);
       const ownTitle: FieldDefinition | null =
-        inherited.some(f => f.isTitle) || titlePreform
+        embedded || inherited.some(f => f.isTitle) || titlePreform
           ? null
           : { ...createField(), id: s.newId('field'), key: titleKey(p, inherited), label: 'Título', isTitle: true };
-      const titleEntries: SchemaField[] = inherited.some(f => f.isTitle)
-        ? []
-        : titlePreform
-          ? [{ ref: titlePreform.id }]
-          : [ownTitle!];
+      const titleEntries: SchemaField[] =
+        embedded || inherited.some(f => f.isTitle) ? [] : titlePreform ? [{ ref: titlePreform.id }] : [ownTitle!];
+      const inheritsEngine = parentId ? engineOf(p, parentId) : null;
       const schema = {
         ...createSchema(name, 'entity'),
         id: typeId,
         parentTypeId: parentId,
         // Color fijo por orden de creación: con la misma semilla, la vista previa y lo aplicado coinciden.
         color: parentId ? (getSchema(p, parentId)?.color ?? COLORS[0]) : COLORS[s.tables.size % COLORS.length],
-        table: !parentId || !isTableType(p, parentId),
-        icon: parentId ? (getSchema(p, parentId)?.icon ?? 'table-2') : 'table-2',
+        table: engine ? true : !parentId || !isTableType(p, parentId),
+        // La base de la colección: la del tipo base si ya es esa, o la suya.
+        dbEngine: engine && inheritsEngine !== engine ? engine : null,
+        embedded,
+        icon: parentId ? (getSchema(p, parentId)?.icon ?? 'table-2') : engine ? 'phosphor-database' : 'table-2',
         description: op.description.trim(),
         fields: titleEntries,
       };
       if (!apply) return messages;
       let next = hideNewTypesInGenealogy({ ...p, schemas: [...p.schemas, schema] }, [typeId]);
       next = addPlanned(next, typeId, planned);
+      if (embedded) {
+        s.subdocs.set(ref, typeId);
+        commit(next, typeId);
+        return messages;
+      }
       const added = addNode(next, typeId, null, s.newId('node'));
       const title = allFields(added.project, typeId).find(f => f.isTitle);
       next = title ? updateNodeValue(added.project, added.nodeId, title.id, name) : added.project;
@@ -422,15 +545,30 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
     }
 
     case 'rename-table': {
-      const node = tableNode(s, op.table);
+      const t = target(s, op.table);
+      if (!t.node) {
+        const name = checkName(op.name, 'subdocumento');
+        if (subdocNameTaken(p, name)) reject(`Ya hay un subdocumento «${name}».`);
+        commit({ ...p, schemas: p.schemas.map(x => (x.id === t.typeId ? { ...x, name } : x)) }, t.typeId);
+        return [];
+      }
       const name = checkName(op.name, 'tabla');
-      if (tableNameTaken(p, name, node.id)) reject(`Ya hay una tabla «${name}».`);
-      commit(setTableName(p, node, name), node.typeId);
+      if (tableNameTaken(p, name, t.node.id)) reject(`Ya hay una tabla «${name}».`);
+      commit(setTableName(p, t.node, name), t.typeId);
       return [];
     }
 
     case 'delete-table': {
-      const node = tableNode(s, op.table);
+      const t = target(s, op.table);
+      if (!t.node) {
+        // Un subdocumento: se va su tipo, y con él los campos que lo llevaban dentro.
+        const users = p.schemas.filter(x =>
+          x.fields.some(f => !isFieldLink(f) && f.referenceTypeIds.includes(t.typeId)),
+        );
+        commit(deleteSchema(p, t.typeId, 'lift'));
+        return users.length ? [`Deja de ir dentro de ${users.map(u => `«${u.name}»`).join(', ')}.`] : [];
+      }
+      const node = t.node;
       const pointing = foreignKeyLinks(p)
         .filter(l => l.targetId === node.id && l.sourceId !== node.id)
         .map(l => `«${nodeLabel(p, getNode(p, l.sourceId)!)}»`);
@@ -444,32 +582,36 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
     }
 
     case 'add-column': {
-      const node = tableNode(s, op.table);
+      const t = target(s, op.table);
       const name = checkName(op.column.name, 'columna');
-      if (findColumn(p, node, name)) reject(`«${nodeLabel(p, node)}» ya tiene la columna «${name}».`);
+      if (findColumn(p, t, name)) reject(`«${t.label}» ya tiene la columna «${name}».`);
       const messages: string[] = [];
-      const column = planColumn(s, p, op.column, allFields(p, node.typeId), messages);
-      if (!column) reject(`«${nodeLabel(p, node)}» ya tiene la columna «${name}».`);
-      if (allFields(p, node.typeId).some(f => f.id === column!.fieldId))
-        reject(`«${nodeLabel(p, node)}» ya tiene esa preforma.`);
-      commit(addPlanned(p, node.typeId, [column!]), node.typeId);
-      return [...messages, ...sharing(p, node)];
+      const column = planColumn(s, p, op.column, allFields(p, t.typeId), messages, documentEngine(t));
+      if (!column) reject(`«${t.label}» ya tiene la columna «${name}».`);
+      if (allFields(p, t.typeId).some(f => f.id === column!.fieldId)) reject(`«${t.label}» ya tiene esa preforma.`);
+      commit(addPlanned(p, t.typeId, [column!]), t.typeId);
+      return [...messages, ...sharing(p, t.node)];
     }
 
     case 'update-column': {
-      const node = tableNode(s, op.table);
-      const column = existingColumn(p, node, op.column);
+      const t = target(s, op.table);
+      const column = existingColumn(p, t, op.column);
       const c = op.changes;
-      const current = columnSqlIn(p, node.typeId, column.field);
+      const current = columnSqlIn(p, t.typeId, column.field);
+      const engine = documentEngine(t);
       const sql: SqlColumn = {
         ...current,
-        type: c.type ? checkType(c.type) : current.type,
+        // En una colección cambia el tipo de su base; en una tabla, el de SQL Server.
+        type: engine ? current.type : c.type ? checkType(c.type) : current.type,
+        ...(engine && (c.docType || c.type)
+          ? { docType: docTypeFor(engine, { docType: c.docType, type: c.type }) }
+          : {}),
         primaryKey: c.primaryKey ?? current.primaryKey,
         nullable: c.nullable ?? current.nullable,
         unique: c.unique ?? current.unique,
         identity: c.identity ?? current.identity,
       };
-      const messages = column.origin.kind === 'own' ? [...sharing(p, node)] : [];
+      const messages = column.origin.kind === 'own' ? [...sharing(p, t.node)] : [];
       if (column.origin.kind !== 'own')
         messages.push('Es heredada o una preforma: el cambio solo vale para este tipo y sus subtipos.');
       let next = p;
@@ -478,27 +620,27 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
           next = replaceField(next, { ...column.field, description: c.description.trim() });
         else messages.push('La descripción de una columna heredada o preforma no se cambia desde aquí.');
       }
-      next = setColumnSql(next, node.typeId, column.field.id, sql);
-      commit(next, node.typeId);
+      next = setColumnSql(next, t.typeId, column.field.id, sql);
+      commit(next, t.typeId);
       return messages;
     }
 
     case 'rename-column': {
-      const node = tableNode(s, op.table);
-      const column = existingColumn(p, node, op.column);
+      const t = target(s, op.table);
+      const column = existingColumn(p, t, op.column);
       const name = checkName(op.name, 'columna');
-      const clash = findColumn(p, node, name);
-      if (clash && clash.field.id !== column.field.id) reject(`«${nodeLabel(p, node)}» ya tiene la columna «${name}».`);
-      commit(replaceField(p, { ...column.field, key: name, label: name }), node.typeId);
-      return [...otherUsers(p, node, column.field), ...(column.origin.kind === 'own' ? sharing(p, node) : [])];
+      const clash = findColumn(p, t, name);
+      if (clash && clash.field.id !== column.field.id) reject(`«${t.label}» ya tiene la columna «${name}».`);
+      commit(replaceField(p, { ...column.field, key: name, label: name }), t.typeId);
+      return [...otherUsers(p, t.node, column.field), ...(column.origin.kind === 'own' ? sharing(p, t.node) : [])];
     }
 
     case 'delete-column': {
-      const node = tableNode(s, op.table);
-      const column = existingColumn(p, node, op.column);
-      const schema = getSchema(p, node.typeId)!;
+      const t = target(s, op.table);
+      const column = existingColumn(p, t, op.column);
+      const schema = getSchema(p, t.typeId)!;
       let next: Project;
-      const messages = column.origin.kind === 'own' ? sharing(p, node) : [];
+      const messages = column.origin.kind === 'own' ? sharing(p, t.node) : [];
       if (column.origin.kind === 'own') next = deleteField(p, schema.id, column.field.id);
       else if (schema.fields.some(f => isFieldLink(f) && f.ref === column.field.id))
         next = {
@@ -518,26 +660,27 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
         };
         messages.push('Es heredada: se oculta en este tipo y sus subtipos, sin tocar el tipo del que viene.');
       }
-      commit(next, node.typeId);
+      commit(next, t.typeId);
       return messages;
     }
 
     case 'add-foreign-key': {
-      const node = tableNode(s, op.table);
-      const target = tableNode(s, op.references);
+      // Desde una tabla, una colección o un subdocumento, hacia una tabla o una colección (por su id).
+      const t = target(s, op.table);
+      const destination = tableNode(s, op.references);
       const name = checkName(op.column, 'columna');
-      const existing = findColumn(p, node, name);
+      const existing = findColumn(p, t, name);
       const messages: string[] = [];
       let next = p;
       let fieldId: string;
       if (existing && existing.field.type === 'nodeRef') {
         fieldId = existing.field.id;
-        if (!existing.field.referenceTypeIds.includes(target.typeId) && existing.field.referenceTypeIds.length) {
+        if (!existing.field.referenceTypeIds.includes(destination.typeId) && existing.field.referenceTypeIds.length) {
           next = replaceField(next, {
             ...existing.field,
-            referenceTypeIds: [...existing.field.referenceTypeIds, target.typeId],
+            referenceTypeIds: [...existing.field.referenceTypeIds, destination.typeId],
           });
-          messages.push(...otherUsers(p, node, existing.field));
+          messages.push(...otherUsers(p, t.node, existing.field));
         }
       } else if (existing) {
         // Una columna propia que aún no es referencia (a menudo creada por la propia propuesta) se
@@ -545,18 +688,19 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
         if (existing.origin.kind !== 'own')
           reject(`«${name}» llega por herencia o es una preforma y no es una referencia a otra tabla.`);
         fieldId = existing.field.id;
+        const current = columnSqlIn(p, t.typeId, existing.field);
         next = replaceField(next, {
           ...existing.field,
           type: 'nodeRef',
-          referenceTypeIds: [target.typeId],
-          sql: { ...columnSqlIn(p, node.typeId, existing.field), type: null },
+          referenceTypeIds: [destination.typeId],
+          sql: { ...current, type: null, docType: undefined },
         });
-        messages.push(`«${name}» pasa a ser una referencia a «${nodeLabel(p, target)}», con el tipo de su clave.`);
+        messages.push(`«${name}» pasa a ser una referencia a «${nodeLabel(p, destination)}», con el tipo de su clave.`);
       } else {
         const preform = findPreform(p, name);
         if (preform && preform.type === 'nodeRef') {
           fieldId = preform.id;
-          next = addPlanned(next, node.typeId, [{ entry: { ref: preform.id }, fieldId, sql: null }]);
+          next = addPlanned(next, t.typeId, [{ entry: { ref: preform.id }, fieldId, sql: null }]);
           messages.push(`Usa la preforma «${preform.key}».`);
         } else {
           const field: FieldDefinition = {
@@ -565,32 +709,68 @@ function step(s: RunState, op: AiOperation, apply: boolean): string[] {
             key: name,
             label: name,
             type: 'nodeRef',
-            referenceTypeIds: [target.typeId],
+            referenceTypeIds: [destination.typeId],
             sql: columnSql({ primaryKey: false, nullable: op.nullable, unique: false, identity: false }, null),
           };
           fieldId = field.id;
-          next = addOwnField(next, node.typeId, field);
+          next = addOwnField(next, t.typeId, field);
         }
-        if (p.nodes.some(n => n.id !== node.id && n.typeId === node.typeId))
+        if (t.node && p.nodes.some(n => n.id !== t.node!.id && n.typeId === t.typeId))
           messages.push('Las demás tablas de su tipo reciben la columna vacía.');
       }
-      const field = allFields(next, node.typeId).find(f => f.id === fieldId)!;
-      const sql = columnSqlIn(next, node.typeId, field);
-      const primaryKey = op.primaryKey ?? sql.primaryKey;
+      const field = allFields(next, t.typeId).find(f => f.id === fieldId)!;
+      const sql = columnSqlIn(next, t.typeId, field);
+      const primaryKey = documentEngine(t) ? false : (op.primaryKey ?? sql.primaryKey);
       const nullable = primaryKey ? false : op.nullable;
       if (sql.primaryKey !== primaryKey || sql.nullable !== nullable)
-        next = setColumnSql(next, node.typeId, fieldId, { ...sql, primaryKey, nullable });
-      next = updateNodeValue(next, node.id, fieldId, target.id);
-      const keys = tableColumns(next, target.typeId).filter(k => k.sql.primaryKey);
-      if (keys.length !== 1)
-        messages.push(`«${nodeLabel(p, target)}» no tiene una clave primaria de una sola columna a la que apuntar.`);
-      commit(next, node.typeId);
+        next = setColumnSql(next, t.typeId, fieldId, { ...sql, primaryKey, nullable });
+      if (t.node) next = updateNodeValue(next, t.node.id, fieldId, destination.id);
+      // En SQL, la clave foránea apunta a una clave primaria; en documentos, al id del documento.
+      if (isTableType(next, destination.typeId) && !documentEngine(t)) {
+        const keys = tableColumns(next, destination.typeId).filter(k => k.sql.primaryKey);
+        if (keys.length !== 1)
+          messages.push(
+            `«${nodeLabel(p, destination)}» no tiene una clave primaria de una sola columna a la que apuntar.`,
+          );
+      }
+      commit(next, t.typeId);
+      return messages;
+    }
+
+    case 'embed': {
+      const t = target(s, op.table);
+      if (!documentEngine(t))
+        reject(`«${t.label}» no es una colección: solo una colección lleva subdocumentos dentro.`);
+      const ref = op.references.trim();
+      if (s.missing.has(ref)) reject(`Depende de crear el subdocumento «${op.references}», que no se va a crear.`);
+      const subId = s.subdocs.get(ref);
+      if (!subId) reject(`No hay ningún subdocumento «${op.references}».`);
+      if (subId === t.typeId) reject('Un subdocumento no puede ir dentro de sí mismo.');
+      const sub = getSchema(p, subId!);
+      if (!sub) reject(`El subdocumento «${op.references}» ya no existe.`);
+      const name = checkName(op.column, 'campo');
+      if (findColumn(p, t, name)) reject(`«${t.label}» ya tiene el campo «${name}».`);
+      const field: FieldDefinition = {
+        ...createField(),
+        id: s.newId('field'),
+        key: name,
+        label: name,
+        type: op.many ? 'nodeRefs' : 'nodeRef',
+        referenceTypeIds: [subId!],
+        required: !op.nullable,
+        sql: columnSql({ primaryKey: false, nullable: op.nullable, unique: false, identity: false }, null),
+      };
+      const messages =
+        engineOf(p, subId!) !== t.engine ? [`«${sub!.name}» es de otra base: guardará su id como texto.`] : [];
+      commit(addOwnField(p, t.typeId, field), t.typeId);
       return messages;
     }
   }
 }
 
 function tableRefName(s: RunState, ref: string, created: Map<string, string>) {
+  const subId = s.subdocs.get(ref);
+  if (subId) return getSchema(s.project, subId)?.name ?? created.get(ref) ?? ref;
   const nodeId = s.tables.get(ref);
   const node = nodeId ? getNode(s.project, nodeId) : undefined;
   return node ? nodeLabel(s.project, node) : (created.get(ref) ?? ref);
@@ -601,15 +781,31 @@ function describe(s: RunState, op: AiOperation, created: Map<string, string>): s
   switch (op.op) {
     case 'create-table': {
       const base = op.base?.trim() ? getSchema(s.project, s.bases.get(op.base.trim()) ?? '')?.name : undefined;
-      const columns = `${op.columns.length} ${op.columns.length === 1 ? 'columna' : 'columnas'}`;
-      return `Crear la tabla ${op.name} (${base ? `hereda de ${base}, ` : ''}${columns})`;
+      const engine = op.engine === 'mongodb' ? 'MongoDB' : op.engine === 'firestore' ? 'Firestore' : null;
+      const what = op.embedded ? 'el subdocumento' : engine ? 'la colección' : 'la tabla';
+      const unit = engine ? ['campo', 'campos'] : ['columna', 'columnas'];
+      const columns = `${op.columns.length} ${op.columns.length === 1 ? unit[0] : unit[1]}`;
+      return `Crear ${what} ${op.name} (${engine && !op.embedded ? `${engine}, ` : ''}${base ? `hereda de ${base}, ` : ''}${columns})`;
     }
     case 'rename-table':
-      return `Renombrar la tabla ${t(op.table)} a ${op.name}`;
+      return `Renombrar ${t(op.table)} a ${op.name}`;
     case 'delete-table':
-      return `Quitar la tabla ${t(op.table)}`;
-    case 'add-column':
-      return `Añadir a ${t(op.table)} la columna ${op.column.name} (${op.column.type?.name ? sqlTypeText(sqlType(op.column.type.name, op.column.type.length, op.column.type.precision ?? undefined, op.column.type.scale ?? undefined)) : '?'})`;
+      return `Quitar ${t(op.table)}`;
+    case 'add-column': {
+      const type = op.column.docType?.trim()
+        ? op.column.docType.trim()
+        : op.column.type?.name
+          ? sqlTypeText(
+              sqlType(
+                op.column.type.name,
+                op.column.type.length,
+                op.column.type.precision ?? undefined,
+                op.column.type.scale ?? undefined,
+              ),
+            )
+          : '?';
+      return `Añadir a ${t(op.table)} la columna ${op.column.name} (${type})`;
+    }
     case 'update-column':
       return `Cambiar ${t(op.table)}.${op.column}`;
     case 'rename-column':
@@ -618,6 +814,8 @@ function describe(s: RunState, op: AiOperation, created: Map<string, string>): s
       return `Quitar la columna ${t(op.table)}.${op.column}`;
     case 'add-foreign-key':
       return `Clave foránea ${t(op.table)}.${op.column} → ${t(op.references)}`;
+    case 'embed':
+      return `Llevar ${t(op.references)} dentro de ${t(op.table)}, en ${op.column} (${op.many ? 'una lista' : 'un objeto'})`;
   }
 }
 
@@ -639,6 +837,7 @@ export function reviewProposal(
     project: p,
     tables: new Map(Object.entries(refs.tables)),
     bases: new Map(Object.entries(refs.bases ?? {})),
+    subdocs: new Map(Object.entries(refs.subdocuments ?? {})),
     missing: new Set(),
     touchedTypes: new Set(),
     newId: seededIds(seed),
@@ -680,7 +879,8 @@ export function reviewProposal(
 
   const issues = [...s.touchedTypes].flatMap(typeId => {
     const schema = getSchema(s.project, typeId);
-    if (!schema) return [];
+    // Los avisos de las tablas son de SQL: las colecciones tienen los suyos en Salud.
+    if (!schema || !isTableType(s.project, typeId)) return [];
     return tableIssues(s.project, typeId).map(issue => `${schema.name}: ${issue.message}`);
   });
   return { project: s.project, operations, issues };
@@ -710,11 +910,17 @@ export function resumeRefs(
   applied: readonly number[],
 ): AiContextRefs {
   const tables = { ...refs.tables };
+  const subdocuments = { ...(refs.subdocuments ?? {}) };
   for (const index of applied) {
     const op = proposal.operations[index];
-    if (op?.op !== 'create-table' || !op.ref.trim() || tables[op.ref.trim()]) continue;
-    const node = p.nodes.find(n => isTableType(p, n.typeId) && same(nodeLabel(p, n), op.name));
+    if (op?.op !== 'create-table' || !op.ref.trim() || tables[op.ref.trim()] || subdocuments[op.ref.trim()]) continue;
+    if (op.embedded) {
+      const schema = p.schemas.find(x => isEmbeddedType(p, x.id) && same(x.name, op.name));
+      if (schema) subdocuments[op.ref.trim()] = schema.id;
+      continue;
+    }
+    const node = p.nodes.find(n => isAiTable(p, n.typeId) && same(nodeLabel(p, n), op.name));
     if (node) tables[op.ref.trim()] = node.id;
   }
-  return { ...refs, tables };
+  return { ...refs, tables, subdocuments };
 }

@@ -2,12 +2,17 @@ import { databaseLint } from './databaseLint';
 import {
   columnSqlIn,
   convertType,
+  engineOf,
+  isDatabaseType,
+  isEmbeddedType,
   isTableType,
   sqlColumnOf,
   sqlTypeText,
   tableColumns,
   type TableColumn,
 } from './database';
+import { isDocumentEngine } from './dbEngines';
+import type { DbEngine } from './types';
 
 // El asistente propone tipos de SQL Server; las tablas de Db2 for i se le enseñan con su equivalente y lo
 // que proponga se convierte al aplicarlo (`convertType`).
@@ -36,8 +41,11 @@ export interface AiColumnContext {
   nullable: boolean;
   unique: boolean;
   identity: boolean;
-  /** Tabla a la que apunta, si es una clave foránea. */
+  /** Tabla a la que apunta, si es una clave foránea (o, en una colección, una referencia por id). */
   references: string | null;
+  /** En una colección o un subdocumento: el subdocumento que lleva dentro (`s1`…) y si es una lista. */
+  embeds?: string | null;
+  many?: boolean;
   /** Dónde se define: propia del tipo, la preforma que vincula o el tipo del que la hereda. */
   origin: string;
   description: string;
@@ -55,6 +63,19 @@ export interface AiTableContext {
   sharesColumnsWith: string[];
   /** Fuera de la parte elegida solo se envían las claves primarias. */
   partial: boolean;
+  /** Su base: una tabla relacional o una colección de documentos. */
+  engine?: AiEngine;
+  columns: AiColumnContext[];
+}
+
+export type AiEngine = 'sqlserver' | 'db2i' | 'mongodb' | 'firestore';
+
+/** Un subdocumento: va dentro de las colecciones por un campo, sin colección propia (`Schema.embedded`). */
+export interface AiSubdocumentContext {
+  id: string;
+  name: string;
+  engine: 'mongodb' | 'firestore';
+  description: string;
   columns: AiColumnContext[];
 }
 
@@ -86,6 +107,8 @@ export interface AiDatabaseContext {
   tables: AiTableContext[];
   bases: AiBaseContext[];
   preforms: AiPreformContext[];
+  /** Los subdocumentos de las colecciones (MongoDB y Firestore). */
+  subdocuments?: AiSubdocumentContext[];
   /** Avisos del linter del esquema (`databaseLint`), como texto. */
   issues: string[];
 }
@@ -95,7 +118,18 @@ export interface AiContextRefs {
   tables: Record<string, string>;
   /** Identificador corto de cada base → id del tipo. */
   bases?: Record<string, string>;
+  /** Identificador corto de cada subdocumento → id del tipo. */
+  subdocuments?: Record<string, string>;
 }
+
+/** Las bases que entiende el asistente (Neo4j no: es un grafo, no tablas ni documentos). */
+export const aiEngineOf = (p: Project, typeId: string): AiEngine | null => {
+  const engine: DbEngine | null = engineOf(p, typeId);
+  return engine === 'sqlserver' || engine === 'db2i' || engine === 'mongodb' || engine === 'firestore' ? engine : null;
+};
+/** Una tabla o una colección (no un subdocumento) que el asistente puede tocar. */
+export const isAiTable = (p: Project, typeId: string) =>
+  isDatabaseType(p, typeId) && !isEmbeddedType(p, typeId) && aiEngineOf(p, typeId) !== null;
 
 export const AI_CONTEXT_MAX_ISSUES = 50;
 
@@ -108,11 +142,22 @@ function originText(c: TableColumn) {
   return 'propia';
 }
 
-function columnContext(p: Project, node: Node | null, c: TableColumn, idOf: Map<string, string>): AiColumnContext {
+function columnContext(
+  p: Project,
+  node: Node | null,
+  c: TableColumn,
+  idOf: Map<string, string>,
+  subOf: Map<string, string> = new Map(),
+  engine: AiEngine = 'sqlserver',
+): AiColumnContext {
   const target = node && c.field.type === 'nodeRef' ? node.values[c.field.id] : undefined;
+  const documents = isDocumentEngine(engine);
+  const embeds = documents && c.refKind === 'embedded' && c.target ? (subOf.get(c.target.id) ?? null) : null;
   return {
     name: c.field.key || c.field.label,
-    type: asSqlServer(c.type),
+    // En una colección, el tipo del campo en su base; en una tabla, el de SQL Server.
+    type: documents ? (c.docType ?? 'string') : asSqlServer(c.type),
+    ...(documents ? { embeds, many: c.field.type === 'nodeRefs' } : {}),
     primaryKey: c.sql.primaryKey,
     nullable: c.sql.nullable,
     unique: c.sql.unique,
@@ -138,7 +183,9 @@ export function databaseContext(
   p: Project,
   focusNodeIds?: readonly string[],
 ): { context: AiDatabaseContext; refs: AiContextRefs } {
-  const tableNodes = p.nodes.filter(n => isTableType(p, n.typeId));
+  const tableNodes = p.nodes.filter(n => isAiTable(p, n.typeId));
+  const subdocuments = p.schemas.filter(s => isDatabaseType(p, s.id) && isEmbeddedType(p, s.id) && aiEngineOf(p, s.id));
+  const subOf = new Map(subdocuments.map((s, i) => [s.id, `s${i + 1}`]));
   const idOf = new Map(tableNodes.map((n, i) => [n.id, `t${i + 1}`]));
   const bases = baseTypes(p);
   const baseId = new Map(bases.map((s, i) => [s.id, `b${i + 1}`]));
@@ -158,9 +205,10 @@ export function databaseContext(
       description: schema?.description ?? '',
       sharesColumnsWith: (byType.get(node.typeId) ?? []).filter(n => n.id !== node.id).map(n => idOf.get(n.id)!),
       partial,
+      engine: aiEngineOf(p, node.typeId) ?? 'sqlserver',
       columns: tableColumns(p, node.typeId)
         .filter(c => !partial || c.sql.primaryKey)
-        .map(c => columnContext(p, node, c, idOf)),
+        .map(c => columnContext(p, node, c, idOf, subOf, aiEngineOf(p, node.typeId) ?? 'sqlserver')),
     };
   });
 
@@ -205,6 +253,13 @@ export function databaseContext(
         }).length,
       })),
       preforms,
+      subdocuments: subdocuments.map(s => ({
+        id: subOf.get(s.id)!,
+        name: s.name,
+        engine: aiEngineOf(p, s.id) as 'mongodb' | 'firestore',
+        description: s.description,
+        columns: tableColumns(p, s.id).map(c => columnContext(p, null, c, idOf, subOf, aiEngineOf(p, s.id)!)),
+      })),
       issues: databaseLint(p)
         .slice(0, AI_CONTEXT_MAX_ISSUES)
         .map(issue => issue.message),
@@ -212,6 +267,7 @@ export function databaseContext(
     refs: {
       tables: Object.fromEntries([...idOf].map(([nodeId, id]) => [id, nodeId])),
       bases: Object.fromEntries([...baseId].map(([typeId, id]) => [id, typeId])),
+      subdocuments: Object.fromEntries([...subOf].map(([typeId, id]) => [id, typeId])),
     },
   };
 }

@@ -507,3 +507,103 @@ describe('retomar una propuesta aplicada en parte', () => {
     expect(names(review.project, marca.typeId)).toEqual(['id']);
   });
 });
+
+/** Una tienda en MongoDB: clientes y pedidos (con la dirección de envío dentro). */
+function mongoShop(): Project {
+  return project({
+    schemas: [
+      schema('cliente', {
+        table: true,
+        dbEngine: 'mongodb',
+        fields: [field('nombre', { isTitle: true }), field('email')],
+      }),
+      schema('direccion', { table: true, dbEngine: 'mongodb', embedded: true, fields: [field('calle')] }),
+      schema('pedido', {
+        table: true,
+        dbEngine: 'mongodb',
+        fields: [
+          field('titulo', { isTitle: true }),
+          field('envio', { type: 'nodeRef', referenceTypeIds: ['direccion'] }),
+          field('cliente', { type: 'nodeRef', referenceTypeIds: ['cliente'] }),
+        ],
+      }),
+    ],
+    nodes: [
+      node('n-cliente', 'cliente', null, { nombre: 'clientes' }),
+      node('n-pedido', 'pedido', null, { titulo: 'pedidos', cliente: 'n-cliente' }),
+    ],
+  });
+}
+
+describe('la IA con colecciones de documentos', () => {
+  it('el contexto lleva las colecciones con su base y los subdocumentos', () => {
+    const { context, refs } = databaseContext(mongoShop());
+    const pedidos = context.tables.find(t => t.name === 'pedidos')!;
+    expect(pedidos.engine).toBe('mongodb');
+    expect(pedidos.columns.find(c => c.name === 'envio')).toMatchObject({ embeds: 's1', many: false, type: 'object' });
+    expect(pedidos.columns.find(c => c.name === 'cliente')).toMatchObject({ references: 't1', type: 'objectId' });
+    expect(context.subdocuments).toEqual([expect.objectContaining({ id: 's1', name: 'direccion', engine: 'mongodb' })]);
+    expect(refs.subdocuments).toEqual({ s1: 'direccion' });
+  });
+
+  it('crea una colección, un subdocumento, lo lleva dentro y apunta a otra colección', () => {
+    const p = mongoShop();
+    const { refs } = databaseContext(p);
+    const plan = proposal([
+      {
+        op: 'create-table',
+        ref: 'n1',
+        name: 'facturas',
+        description: '',
+        engine: 'mongodb',
+        columns: [
+          column('total', { type: null, docType: 'decimal', nullable: false }),
+          column('emitida', { type: { name: 'date', length: null, precision: null, scale: null } }),
+        ],
+        reason: '',
+      },
+      {
+        op: 'create-table',
+        ref: 'n2',
+        name: 'concepto',
+        description: '',
+        engine: 'mongodb',
+        embedded: true,
+        columns: [column('importe', { type: null, docType: 'double' })],
+        reason: '',
+      },
+      { op: 'embed', table: 'n1', column: 'conceptos', references: 'n2', many: true, nullable: false, reason: '' },
+      { op: 'add-foreign-key', table: 'n1', column: 'cliente', references: 't1', nullable: false, reason: '' },
+      { op: 'add-column', table: 's1', column: column('cp', { type: null, docType: 'string' }), reason: '' },
+      {
+        op: 'create-table',
+        ref: 'n3',
+        name: 'mal',
+        description: '',
+        engine: 'mongodb',
+        columns: [column('x', { type: null, docType: 'varchar' })],
+        reason: '',
+      },
+    ]);
+    const review = reviewProposal(p, plan, refs);
+    expect(review.operations.map(o => o.status)).toEqual(['ok', 'ok', 'ok', 'ok', 'ok', 'invalid']);
+    expect(review.operations[5].messages[0]).toMatch(/no es de MongoDB/);
+    expect(review.operations.map(o => o.title).slice(0, 3)).toEqual([
+      'Crear la colección facturas (MongoDB, 2 campos)',
+      'Crear el subdocumento concepto (1 campo)',
+      'Llevar concepto dentro de facturas, en conceptos (una lista)',
+    ]);
+    const next = review.project;
+    const facturas = next.nodes.find(n => nodeLabel(next, n) === 'facturas')!;
+    const columns = Object.fromEntries(tableColumns(next, facturas.typeId).map(c => [c.field.key, c]));
+    expect(columns.total).toMatchObject({ docType: 'decimal' });
+    expect(columns.total.field.required).toBe(true);
+    expect(columns.emitida).toMatchObject({ docType: 'date' });
+    expect(columns.conceptos).toMatchObject({ refKind: 'embedded', docType: 'array' });
+    expect(columns.cliente).toMatchObject({ refKind: 'reference', docType: 'objectId' });
+    expect(facturas.values[columns.cliente.field.id]).toBe('n-cliente');
+    // El subdocumento no tiene nodo; el de antes gana su campo.
+    expect(next.nodes.some(n => getSchema(next, n.typeId)?.name === 'concepto')).toBe(false);
+    expect(names(next, 'direccion')).toEqual(['calle', 'cp']);
+  });
+});

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SQL_TYPES, type AiProposal } from './schema.ts';
+import { ALL_DOC_TYPES, SQL_TYPES, type AiProposal } from './schema.ts';
 
 /*
  * Formato que se pide al modelo. Es plano a propósito: una sola forma de operación con todos sus
@@ -35,6 +35,7 @@ export const wireOperationSchema = z.object({
     'rename-column',
     'delete-column',
     'add-foreign-key',
+    'embed',
   ]),
   table: z.string(),
   ref: z.string(),
@@ -47,6 +48,12 @@ export const wireOperationSchema = z.object({
   nullable: z.boolean(),
   /** En una clave foránea, si forma parte de la clave primaria (tablas intermedias). */
   primaryKey: z.boolean(),
+  /** En una tabla nueva: «mongodb» o «firestore» para una colección; vacío, una tabla como las demás. */
+  engine: z.string(),
+  /** En una tabla nueva de documentos: es un subdocumento (va dentro de otra, con «embed»). */
+  embedded: z.boolean(),
+  /** En «embed»: el subdocumento va en una lista. */
+  many: z.boolean(),
   columns: z.array(wireColumn),
   changes: z.object({
     type: z.string(),
@@ -102,6 +109,17 @@ export function parseSqlType(text: string): SqlType | null {
   return first ? null : { name, length: null, precision: null, scale: null };
 }
 
+/** Un tipo de documento escrito como texto («string», «objectId»…), o `null` si no lo es. */
+export function parseDocType(text: string): string | null {
+  const clean = text.trim();
+  return (ALL_DOC_TYPES as readonly string[]).find(t => t.toLowerCase() === clean.toLowerCase()) ?? null;
+}
+
+const documentEngine = (text: string) => {
+  const clean = text.trim().toLowerCase();
+  return clean === 'mongodb' || clean === 'firestore' ? clean : null;
+};
+
 class Untranslatable extends Error {}
 
 function sqlType(text: string): SqlType {
@@ -121,10 +139,14 @@ type WireColumn = WireOperation['columns'][number];
 
 const column = (c: WireColumn) => {
   const preform = c.preform.trim() || null;
+  // En una colección o un subdocumento, el tipo es de documento: la web comprueba que vale en su base.
+  const docType = parseSqlType(c.type) ? null : parseDocType(c.type);
   return {
     name: c.name,
     // Una columna de preforma toma el tipo de la preforma: el modelo suele dejarlo vacío.
-    type: preform && !c.type.trim() ? null : sqlType(c.type),
+    // «int» o «date» valen en los dos: el tipo SQL va si lo es, y el de documento, aparte.
+    type: preform && !c.type.trim() ? null : (parseSqlType(c.type) ?? (docType ? null : sqlType(c.type))),
+    docType,
     primaryKey: c.primaryKey,
     nullable: c.nullable,
     unique: c.unique,
@@ -164,6 +186,8 @@ function translate(o: WireOperation, fks: Set<string>, advice: string[]): Operat
         name: o.name,
         description: o.description,
         base: o.base.trim() || null,
+        engine: documentEngine(o.engine),
+        embedded: o.embedded,
         columns: columnsOf(o, fks, advice),
         reason,
       };
@@ -181,7 +205,10 @@ function translate(o: WireOperation, fks: Set<string>, advice: string[]): Operat
         table,
         column: o.column,
         changes: {
-          type: o.changes.type.trim() ? sqlType(o.changes.type) : null,
+          type: o.changes.type.trim()
+            ? (parseSqlType(o.changes.type) ?? (parseDocType(o.changes.type) ? null : sqlType(o.changes.type)))
+            : null,
+          docType: parseSqlType(o.changes.type) ? null : parseDocType(o.changes.type),
           primaryKey: flagValue(o.changes.primaryKey),
           nullable: flagValue(o.changes.nullable),
           unique: flagValue(o.changes.unique),
@@ -202,6 +229,16 @@ function translate(o: WireOperation, fks: Set<string>, advice: string[]): Operat
         references: o.references,
         nullable: o.nullable,
         primaryKey: o.primaryKey,
+        reason,
+      };
+    case 'embed':
+      return {
+        op: o.op,
+        table,
+        column: o.column,
+        references: o.references,
+        many: o.many,
+        nullable: o.nullable,
         reason,
       };
   }

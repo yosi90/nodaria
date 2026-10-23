@@ -51,7 +51,7 @@ Reutiliza lo de SQL en lugar de crear un editor aparte, como se decidió para la
 - Firestore: subcolecciones y un esqueleto de reglas de seguridad.
 - Pasar un diseño de tablas a documentos (sugerir qué incrustar según las claves foráneas) y al revés. **Lo primero, hecho el 2026-10-23** (ver «Pasar tablas a documentos»); y el camino contrario también (ver «Pasar documentos a tablas»).
 - Importar el esquema de una base existente (leer una muestra de documentos y deducir la forma). Hecho el 2026-10-23: para las bases relacionales, desde SQL o DDS (`ROADMAP_DATOS_BD.md`), y para los documentos, desde una muestra en JSON (ver «Importar colecciones que ya existen»).
-- La IA del asistente para proponer colecciones, como ya hace con tablas.
+- La IA del asistente para proponer colecciones, como ya hace con tablas. **Hecho el 2026-10-23** (ver «El asistente de IA también para colecciones»).
 
 ## Preguntas abiertas
 
@@ -144,3 +144,27 @@ El `_id` no se importa: Nodaria ya da a cada documento el suyo. Se elige el moto
   - la deducción: tipos, obligatorios, opciones, lo de dentro y enteros con decimales;
   - la creación, con la referencia al cliente, los subdocumentos y el `$jsonSchema` del script de mongosh con lo obligatorio.
 - Edge (`check-doc-import.cjs`, 8 comprobaciones): dos archivos de mongoexport y un texto de mongosh pegado, el diagrama con el pedido, su cliente por id y la dirección y las líneas dentro, los decimales y deshacer.
+
+## El asistente de IA también para colecciones (2026-10-23)
+
+El modo «Diseñar tablas» del asistente sirve ahora para colecciones de MongoDB o Firestore. Se ofrece también en los proyectos que solo tienen colecciones.
+
+**El contrato** (`src/domain/aiContext.ts` y `aiProposal.ts` en la web; `api/src/ai/schema.ts`, `wire.ts` y `prompt.ts` en la API) se amplía sin romper lo de antes: los campos nuevos del contexto son opcionales, y el formato que se pide al modelo añade `engine`, `embedded` y `many`.
+
+- **Contexto:**
+  - cada tabla lleva su base en `engine`; las colecciones de documentos también entran, con el tipo de cada campo en su base y, en los que llevan un subdocumento dentro, `embeds` (`s1`…) y `many`;
+  - una lista nueva, `subdocuments` (`s1`…), con sus campos;
+  - `refs.subdocuments` traduce esos identificadores de vuelta a los tipos.
+- **Operaciones:**
+  - `create-table` con `engine` («mongodb» o «firestore») crea una colección, y con `embedded`, un subdocumento: sin nodo ni título;
+  - las columnas de una colección llevan un tipo de su base (`docType`, que se comprueba contra `DOC_TYPES`). Un tipo de SQL Server que ponga el modelo se traduce al equivalente: `decimal` → `decimal`, `date` → `date` o `timestamp`, `bit` → `bool` o `boolean`…;
+  - `add-foreign-key` desde una colección guarda el id del otro documento;
+  - una operación nueva, **`embed`**, lleva un subdocumento dentro de una colección o de otro subdocumento, como objeto o como lista (`many`);
+  - las operaciones de columnas, renombrar y quitar valen también sobre un subdocumento.
+- **El prompt** explica cuándo incrustar (lo que solo existe con su documento y se lee con él) y cuándo referenciar (lo que se comparte o crece sin límite), y los tamaños máximos de un documento.
+
+**Verificado:**
+- 2 pruebas de la web (`aiProposal.test.ts`): el contexto con colecciones y subdocumentos; y una propuesta con colección, subdocumento, `embed`, referencia, campo en un subdocumento que ya había y un tipo que no vale, rechazado.
+- 2 pruebas de la API (`ai.test.ts`): la traducción del formato del modelo y el contexto nuevo junto con el de antes.
+- 462 pruebas de la web y 100 de la API.
+- **Falta probarlo con un modelo de verdad**, con la clave del propietario: no se puede llamar al proveedor sin ella.

@@ -32,6 +32,29 @@ export const SQL_TYPES = [
   'uniqueidentifier',
 ] as const;
 
+/**
+ * Tipos de campo de las bases de documentos (los de `src/domain/dbEngines.ts`, `DOC_TYPES`): en una colección o
+ * un subdocumento, una columna lleva uno de estos en lugar de un tipo SQL.
+ */
+export const DOC_TYPES = {
+  mongodb: [
+    'string',
+    'number',
+    'int',
+    'long',
+    'double',
+    'decimal',
+    'bool',
+    'date',
+    'objectId',
+    'array',
+    'object',
+    'binData',
+  ],
+  firestore: ['string', 'number', 'int', 'boolean', 'timestamp', 'reference', 'array', 'map', 'geopoint', 'bytes'],
+} as const;
+export const ALL_DOC_TYPES = [...new Set([...DOC_TYPES.mongodb, ...DOC_TYPES.firestore])];
+
 const text = (max: number) => z.string().max(max);
 
 const columnContext = z.object({
@@ -42,9 +65,15 @@ const columnContext = z.object({
   unique: z.boolean(),
   identity: z.boolean(),
   references: text(16).nullable(),
+  /** En una colección o un subdocumento: el subdocumento que lleva dentro (`s1`…) y si es una lista. */
+  embeds: text(16).nullable().optional(),
+  many: z.boolean().optional(),
   origin: text(200),
   description: text(2000),
 });
+
+/** Las bases de cada tabla: las relacionales y las de documentos (colecciones). */
+const engine = z.enum(['sqlserver', 'db2i', 'mongodb', 'firestore']);
 
 export const contextSchema = z.object({
   projectName: text(200),
@@ -58,10 +87,25 @@ export const contextSchema = z.object({
         description: text(2000),
         sharesColumnsWith: z.array(text(16)).max(500),
         partial: z.boolean(),
+        /** Sin él, SQL Server (lo que mandaban las versiones anteriores de la web). */
+        engine: engine.optional(),
         columns: z.array(columnContext).max(300),
       }),
     )
     .max(500),
+  /** Los subdocumentos: van dentro de las colecciones, sin colección propia. */
+  subdocuments: z
+    .array(
+      z.object({
+        id: z.string().regex(/^s\d{1,4}$/),
+        name: text(200),
+        engine: z.enum(['mongodb', 'firestore']),
+        description: text(2000),
+        columns: z.array(columnContext).max(300),
+      }),
+    )
+    .max(500)
+    .optional(),
   bases: z
     .array(
       z.object({
@@ -106,6 +150,8 @@ const columnSpec = z.object({
   identity: z.boolean(),
   description: z.string(),
   preform: z.string().nullable(),
+  /** En una colección o un subdocumento: su tipo de documento (`type` va entonces vacío). */
+  docType: z.string().nullable(),
 });
 
 const columnChanges = z.object({
@@ -115,6 +161,7 @@ const columnChanges = z.object({
   unique: z.boolean().nullable(),
   identity: z.boolean().nullable(),
   description: z.string().nullable(),
+  docType: z.string().nullable(),
 });
 
 const reason = z.string();
@@ -126,6 +173,10 @@ export const operationSchema = z.discriminatedUnion('op', [
     name: z.string(),
     description: z.string(),
     base: z.string().nullable(),
+    /** Una colección de documentos (`null` = una tabla como las demás del proyecto). */
+    engine: z.enum(['mongodb', 'firestore']).nullable(),
+    /** Un subdocumento: va dentro de otra colección (con `embed`), sin colección propia. */
+    embedded: z.boolean(),
     columns: z.array(columnSpec),
     reason,
   }),
@@ -142,6 +193,16 @@ export const operationSchema = z.discriminatedUnion('op', [
     references: z.string(),
     nullable: z.boolean(),
     primaryKey: z.boolean(),
+    reason,
+  }),
+  /** Lleva un subdocumento dentro de una colección (o de otro subdocumento): un objeto, o una lista con `many`. */
+  z.object({
+    op: z.literal('embed'),
+    table: z.string(),
+    column: z.string(),
+    references: z.string(),
+    many: z.boolean(),
+    nullable: z.boolean(),
     reason,
   }),
 ]);

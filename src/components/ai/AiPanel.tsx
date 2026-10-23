@@ -2,10 +2,10 @@ import { Download, ExternalLink, Plus, Send, Sparkles, Trash2, X } from 'lucide-
 import { YosiSymbol } from '../common/YosiSymbol';
 import type { PlatformModels } from '../../services/yosiftware';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { databaseContext } from '../../domain/aiContext';
+import { databaseContext, isAiTable } from '../../domain/aiContext';
 import { answerParts, worldContext } from '../../domain/aiWorld';
 import { defaultSelection, resumeRefs, reviewProposal } from '../../domain/aiProposal';
-import { isTableType, tableTypes } from '../../domain/database';
+import { tableTypes } from '../../domain/database';
 import { getNode, nodeLabel } from '../../domain/selectors';
 import { ApiError, OfflineError } from '../../services/api';
 import {
@@ -97,7 +97,11 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const [instruction, setInstruction] = useState('');
   const [onlySelected, setOnlySelected] = useState(false);
   // Los dos modos en cualquier proyecto; se empieza diseñando tablas si el proyecto ya las tiene.
-  const hasTables = project.kind === 'database' || tableTypes(project).length > 0;
+  // También con colecciones de MongoDB o Firestore: el asistente las diseña igual (ROADMAP_NOSQL.md).
+  const hasTables =
+    project.kind === 'database' ||
+    tableTypes(project).length > 0 ||
+    project.nodes.some(n => isAiTable(project, n.typeId));
   const [mode, setMode] = useState<'question' | 'database'>(() => (hasTables ? 'database' : 'question'));
   const [waiting, setWaiting] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -179,7 +183,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
     .map(p => `${PROVIDERS[p.proveedor as AiModelInfo['provider']]}: ${PLATFORM_MODEL_ERRORS[p.error!] ?? p.error}`);
   const model = models.find(m => modelKey(m) === preferences.aiModel) ?? models[0];
   const selected = selection?.kind === 'node' ? getNode(project, selection.id) : undefined;
-  const selectedTable = selected && isTableType(project, selected.typeId) ? selected : null;
+  const selectedTable = selected && isAiTable(project, selected.typeId) ? selected : null;
   const focusId = onlySelected && selectedTable ? selectedTable.id : null;
   const { context, refs } = useMemo(
     () => databaseContext(project, focusId ? [focusId] : undefined),
@@ -422,7 +426,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 <p className="muted-note">
                   {mode === 'question'
                     ? 'Pregunta lo que quieras sobre tu proyecto: quién no tiene motivación clara, qué relaciones faltan, quién podría traicionar a quién… La IA responde con los datos del proyecto y enlaza los nodos que nombra. No cambia nada.'
-                    : 'Describe qué quieres hacer con el esquema: crear tablas, añadir columnas o claves, corregir tipos… La IA propone cambios y tú decides cuáles aplicar. Puedes seguir trabajando mientras tanto.'}
+                    : 'Describe qué quieres hacer con el esquema: crear tablas o colecciones (MongoDB, Firestore), añadir columnas o claves, incrustar subdocumentos, corregir tipos… La IA propone cambios y tú decides cuáles aplicar. Puedes seguir trabajando mientras tanto.'}
                 </p>
               </div>
             )}

@@ -60,6 +60,8 @@ const proposal: AiProposal = {
       name: 'Pedido',
       description: '',
       base: null,
+      engine: null,
+      embedded: false,
       columns: [
         {
           name: 'id',
@@ -70,6 +72,7 @@ const proposal: AiProposal = {
           identity: true,
           description: '',
           preform: null,
+          docType: null,
         },
       ],
       reason: 'Cada cliente hace pedidos.',
@@ -88,6 +91,9 @@ const proposal: AiProposal = {
 };
 
 const blank = {
+  engine: '',
+  embedded: false,
+  many: false,
   table: '',
   ref: '',
   base: '',
@@ -570,6 +576,7 @@ describe('formato plano de la respuesta del modelo', () => {
           unique: null,
           identity: null,
           description: 'Correo',
+          docType: null,
         },
         reason: '',
       },
@@ -886,5 +893,97 @@ describe('columnas sin tipo en la respuesta del modelo', () => {
     expect(result.advice).toEqual([
       'Se ha quitado la columna «notas» de «Modelo»: el tipo «texto» no es de SQL Server.',
     ]);
+  });
+});
+
+describe('colecciones de documentos en la propuesta', () => {
+  const col = {
+    name: '',
+    type: '',
+    primaryKey: false,
+    nullable: false,
+    unique: false,
+    identity: false,
+    description: '',
+    preform: '',
+  };
+  it('traduce una colección, un subdocumento y llevarlo dentro', () => {
+    const result = fromWire({
+      summary: 'Pedidos con sus líneas.',
+      operations: [
+        {
+          ...blank,
+          op: 'create-table',
+          ref: 'n1',
+          name: 'pedidos',
+          engine: 'MongoDB',
+          columns: [
+            { ...col, name: 'fecha', type: 'date' },
+            { ...col, name: 'total', type: 'decimal' },
+            { ...col, name: 'estado', type: 'string' },
+          ],
+          changes: noChanges,
+          reason: '',
+        },
+        {
+          ...blank,
+          op: 'create-table',
+          ref: 'n2',
+          name: 'linea',
+          engine: 'mongodb',
+          embedded: true,
+          columns: [{ ...col, name: 'cantidad', type: 'int' }],
+          changes: noChanges,
+          reason: '',
+        },
+        {
+          ...blank,
+          op: 'embed',
+          table: 'n1',
+          column: 'lineas',
+          references: 'n2',
+          many: true,
+          changes: noChanges,
+          reason: '',
+        },
+      ],
+      advice: [],
+    });
+    expect(result.advice).toEqual([]);
+    const [pedidos, linea, embed] = result.operations as never[] as Record<string, unknown>[];
+    expect(pedidos).toMatchObject({ engine: 'mongodb', embedded: false });
+    // «date» y «decimal» son también de SQL Server: van como tipo SQL, y «string», como tipo de documento.
+    expect(
+      (pedidos.columns as Record<string, unknown>[]).map(c => [
+        c.name,
+        (c.type as { name: string } | null)?.name ?? null,
+        c.docType,
+      ]),
+    ).toEqual([
+      ['fecha', 'date', null],
+      ['total', 'decimal', null],
+      ['estado', null, 'string'],
+    ]);
+    expect(linea).toMatchObject({ engine: 'mongodb', embedded: true });
+    expect(embed).toEqual({
+      op: 'embed',
+      table: 'n1',
+      column: 'lineas',
+      references: 'n2',
+      many: true,
+      nullable: false,
+      reason: '',
+    });
+  });
+
+  it('el contexto admite colecciones y subdocumentos, y el de antes sigue valiendo', async () => {
+    const { contextSchema } = await import('../src/ai/schema.ts');
+    expect(contextSchema.safeParse(context).success).toBe(true);
+    const withDocs = {
+      ...context,
+      tables: context.tables.map(t => ({ ...t, engine: 'mongodb' as const })),
+      subdocuments: [{ id: 's1', name: 'linea', engine: 'mongodb' as const, description: '', columns: [] }],
+    };
+    expect(contextSchema.safeParse(withDocs).success).toBe(true);
   });
 });
