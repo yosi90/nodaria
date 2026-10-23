@@ -31,6 +31,7 @@ import { NodeAvatar } from '../common/NodeAvatar';
 import { openTablesImport } from './openTablesImport';
 import { openDocumentConversion } from './openDocumentConversion';
 import { openTableConversion } from './openTableConversion';
+import { openDocumentImport } from './openDocumentImport';
 
 interface Command {
   id: string;
@@ -210,6 +211,15 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         keywords:
           'convertir documentos colecciones mongodb firestore tablas sql server db2 relacional aplanar subdocumentos',
         run: openTableConversion,
+      },
+      {
+        id: 'import:collections',
+        label: 'Importar colecciones (JSON de MongoDB o Firestore)',
+        group: 'Acciones',
+        leading: icon(Database),
+        keywords:
+          'importar colecciones documentos json mongoexport mongosh mongodb firestore esquema existente muestra',
+        run: openDocumentImport,
       },
       {
         id: 'help:database',

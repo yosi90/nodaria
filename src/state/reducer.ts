@@ -28,6 +28,7 @@ import type { CellValue, SqlQueryDef } from '../domain/tableData';
 import { importTables, type ImportOptions } from '../domain/tablesImport';
 import { convertToDocuments, type ConversionChoice, type DocumentEngine } from '../domain/documentConversion';
 import { convertToTables, type TableConversionChoices } from '../domain/tableConversion';
+import { importDocumentCollections, type DocumentImportOptions, type SampleCollection } from '../domain/documentImport';
 import type { SqlDialect } from '../domain/database';
 import type { ImportResult } from '../domain/schemaImport';
 import type { AiContextRefs } from '../domain/aiContext';
@@ -129,6 +130,8 @@ export type Action =
   | { type: 'convert-to-documents'; engine: DocumentEngine; choices: ConversionChoice[] }
   /** Pasa colecciones de documentos a tablas (`tableConversion.ts`). */
   | { type: 'convert-to-tables'; dialect: SqlDialect; choices: TableConversionChoices }
+  /** Crea las colecciones deducidas de una muestra de documentos (`documentImport.ts`). */
+  | { type: 'import-collections'; collections: SampleCollection[]; options: DocumentImportOptions }
   | { type: 'delete-sql-query'; id: string }
   | { type: 'save-query'; query: SavedQuery }
   | { type: 'delete-query'; id: string }
@@ -344,6 +347,8 @@ function projectReducer(p: Project, action: Action): Project {
           ? p.sqlQueries.map(q => (q.id === action.query.id ? action.query : q))
           : [...p.sqlQueries, action.query],
       };
+    case 'import-collections':
+      return importDocumentCollections(p, action.collections, action.options).project;
     case 'convert-to-tables':
       return convertToTables(p, action.dialect, action.choices).project;
     case 'convert-to-documents':

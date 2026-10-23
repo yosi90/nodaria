@@ -50,7 +50,7 @@ Reutiliza lo de SQL en lugar de crear un editor aparte, como se decidió para la
 
 - Firestore: subcolecciones y un esqueleto de reglas de seguridad.
 - Pasar un diseño de tablas a documentos (sugerir qué incrustar según las claves foráneas) y al revés. **Lo primero, hecho el 2026-10-23** (ver «Pasar tablas a documentos»); y el camino contrario también (ver «Pasar documentos a tablas»).
-- Importar el esquema de una base existente (leer una muestra de documentos y deducir la forma). Para las bases relacionales ya está hecho (2026-10-23, SQL o DDS: `ROADMAP_DATOS_BD.md`); falta para los documentos.
+- Importar el esquema de una base existente (leer una muestra de documentos y deducir la forma). Hecho el 2026-10-23: para las bases relacionales, desde SQL o DDS (`ROADMAP_DATOS_BD.md`), y para los documentos, desde una muestra en JSON (ver «Importar colecciones que ya existen»).
 - La IA del asistente para proponer colecciones, como ya hace con tablas.
 
 ## Preguntas abiertas
@@ -118,3 +118,29 @@ Por defecto se hace en una copia del proyecto. **(revisable)**
   - el aviso sin tablas intermedias;
   - la **ida y vuelta** del caso comercial (tablas → documentos → tablas): las líneas vuelven a ser una tabla de su pedido, con la clave primaria (pedido, número) y ON DELETE CASCADE.
 - Edge (`check-tables.cjs`, 9 comprobaciones): las sugerencias en el diálogo, la copia, las columnas aplanadas, la tabla hija, `pedidos_etiquetas`, ya sin MongoDB, y el original intacto.
+
+## Importar colecciones que ya existen (2026-10-23)
+
+Se abre desde el menú del proyecto, «Importar colecciones (JSON)…», o desde la paleta. Usa `documentImport.ts` y `DocumentImportDialog`, con la acción `import-collections`.
+
+Se pega o se sube una muestra de documentos por colección; un archivo se llama como su colección, por ejemplo `pedidos.json`. Formatos que lee:
+- lo que da `mongoexport`: un array JSON o un documento por línea, con el JSON extendido (`$oid`, `$date`, `$numberLong`, `$numberDecimal`…);
+- lo que escribe mongosh (`ObjectId(…)`, `ISODate(…)`, `NumberDecimal(…)`, claves sin comillas y comillas simples);
+- un objeto con una lista por colección.
+
+De la muestra se deduce:
+- cada campo con su tipo (`int`, `double`, `decimal`, `date`, `objectId`, `bool`, texto…);
+- **obligatorio** si está y no es nulo en todos los documentos;
+- una **lista de opciones**, si es un texto con pocos valores que se repiten (6 textos o más, 6 valores distintos o menos);
+- **subdocumentos** para los objetos y las listas de objetos, también anidados;
+- **referencias** para los ids que nombran otra colección (`cliente_id`, `clienteId` o `cliente` → «clientes»), en una o en lista;
+- un id que no se reconoce queda como texto con su tipo `objectId`, y se avisa.
+
+El `_id` no se importa: Nodaria ya da a cada documento el suyo. Se elige el motor (se deduce por los `$oid`) y el tipo base. Una colección que ya está no se toca. **(revisable)** Los umbrales de las listas de opciones.
+
+**Verificado:**
+- `documentImport.test.ts`, 3 pruebas:
+  - los formatos;
+  - la deducción: tipos, obligatorios, opciones, lo de dentro y enteros con decimales;
+  - la creación, con la referencia al cliente, los subdocumentos y el `$jsonSchema` del script de mongosh con lo obligatorio.
+- Edge (`check-doc-import.cjs`, 8 comprobaciones): dos archivos de mongoexport y un texto de mongosh pegado, el diagrama con el pedido, su cliente por id y la dirección y las líneas dentro, los decimales y deshacer.

@@ -55,6 +55,7 @@ import { openDb2Export } from './openDb2Export';
 import { openTablesImport } from './openTablesImport';
 import { openDocumentConversion } from './openDocumentConversion';
 import { openTableConversion } from './openTableConversion';
+import { openDocumentImport } from './openDocumentImport';
 import { documentCollections } from '../../domain/tableConversion';
 import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
@@ -347,6 +348,7 @@ export function Topbar({
     { label: 'Importar JSON…', icon: Upload, onSelect: () => file.current?.click() },
     { label: 'Importar nodos desde CSV…', icon: Sheet, onSelect: () => csvFile.current?.click() },
     { label: 'Importar tablas (SQL o DDS)…', icon: Database, onSelect: openTablesImport },
+    { label: 'Importar colecciones (JSON)…', icon: Database, onSelect: openDocumentImport },
     // Pasar tablas a documentos (documentConversion.ts), si hay tablas relacionales.
     ...(tableTypes(project, 'sqlserver').length || tableTypes(project, 'db2i').length
       ? [{ label: 'Pasar tablas a documentos…', icon: Database, onSelect: openDocumentConversion }]

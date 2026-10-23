@@ -34,7 +34,10 @@ export function DatabaseGuide() {
         lee el SQL que las crea (los <code>CREATE TABLE</code> de SQL Server o de Db2, también los que genera SQL Server
         Management Studio) o los fuentes DDS de los archivos físicos y lógicos del AS/400. Crea un tipo por tabla, con
         sus columnas, claves, índices, descripciones y claves foráneas, como subtipo del tipo que elijas (por ejemplo,
-        «Archivo físico»). Las que ya están en el proyecto no se tocan.
+        «Archivo físico»). Las que ya están en el proyecto no se tocan. Para MongoDB o Firestore,{' '}
+        <strong>Importar colecciones (JSON)</strong> deduce la forma de cada colección a partir de una muestra de
+        documentos (lo que da <code>mongoexport</code> o mongosh): sus campos y tipos, los obligatorios, los
+        subdocumentos y las referencias por id.
       </p>
 
       <h3>Columnas («Columnas SQL»)</h3>

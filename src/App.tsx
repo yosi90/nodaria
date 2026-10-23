@@ -29,6 +29,7 @@ import { Db2ExportHost } from './components/layout/Db2ExportDialog';
 import { TablesImportHost } from './components/layout/TablesImportDialog';
 import { DocumentConversionHost } from './components/layout/DocumentConversionDialog';
 import { TableConversionHost } from './components/layout/TableConversionDialog';
+import { DocumentImportHost } from './components/layout/DocumentImportDialog';
 import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
 import { useAuth } from './state/auth';
@@ -134,6 +135,7 @@ export default function App() {
       <TablesImportHost />
       <DocumentConversionHost />
       <TableConversionHost />
+      <DocumentImportHost />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );
