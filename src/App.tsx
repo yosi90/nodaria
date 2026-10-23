@@ -20,7 +20,8 @@ import { SchemaView } from './components/schema/SchemaView';
 import { ContextMenu } from './components/layout/ContextMenu';
 import { AiPanel } from './components/ai/AiPanel';
 import { GroupPanel } from './components/groups/GroupPanel';
-import { CommunityHost } from './components/community/CommunityHost';
+import { CommunityView } from './components/community/CommunityView';
+import { useCommunityHash } from './components/community/communityHash';
 import { PublicCopy } from './components/community/PublicCopy';
 import { Db2ExportHost } from './components/layout/Db2ExportDialog';
 import { useGroups } from './state/groups';
@@ -59,38 +60,49 @@ export default function App() {
   // El chat del grupo solo con un proyecto compartido abierto.
   const { groupOf } = useGroups();
   const group = groupOf(project.id);
-  const chatOpen = preferences.groupChatOpen && group !== null;
+  // En «Comunidad» no van los paneles del proyecto (el asistente y el chat del grupo).
+  const inCommunity = view === 'community';
+  const chatOpen = preferences.groupChatOpen && group !== null && !inCommunity;
+  const assistantOpen = aiOpen && !inCommunity;
   const columns = [
     'minmax(0, 1fr)',
-    ...(aiOpen ? [`${preferences.aiPanelWidth}px`] : []),
+    ...(assistantOpen ? [`${preferences.aiPanelWidth}px`] : []),
     ...(chatOpen ? [`${preferences.groupChatWidth}px`] : []),
   ];
+  useCommunityHash();
   return (
     <div className="app">
       <Topbar view={view} onView={setView} onHelp={openHelp} onSearch={openPalette} onTemplates={openTemplates} />
       <div className="app-body" style={{ gridTemplateColumns: columns.join(' ') }}>
         {/* Cada vista guarda estado local (tipo elegido, filtros, plegados) que solo vale para un proyecto. */}
-        <Fragment key={`${account}:${project.id}`}>
-          {view === 'map' ? (
-            <MapView />
-          ) : view === 'table' ? (
-            <TableView />
-          ) : view === 'schema' ? (
-            <SchemaView kind="entity" />
-          ) : view === 'relations' ? (
-            <SchemaView kind="relationship" />
-          ) : view === 'health' ? (
-            <HealthView />
-          ) : view === 'timeline' ? (
-            <TimelineView />
-          ) : view === 'calendar' ? (
-            <CalendarView />
-          ) : (
-            <PropertiesView />
-          )}
-        </Fragment>
+        {/* La comunidad es de la cuenta, no del proyecto: se monta de nuevo con cada cuenta (CAMBIO_DE_CUENTA.md). */}
+        {inCommunity ? (
+          <CommunityView key={`community:${account}`} />
+        ) : (
+          <Fragment key={`${account}:${project.id}`}>
+            {view === 'map' ? (
+              <MapView />
+            ) : view === 'table' ? (
+              <TableView />
+            ) : view === 'schema' ? (
+              <SchemaView kind="entity" />
+            ) : view === 'relations' ? (
+              <SchemaView kind="relationship" />
+            ) : view === 'health' ? (
+              <HealthView />
+            ) : view === 'timeline' ? (
+              <TimelineView />
+            ) : view === 'calendar' ? (
+              <CalendarView />
+            ) : (
+              <PropertiesView />
+            )}
+          </Fragment>
+        )}
         {/* El asistente queda al lado de la vista para poder seguir trabajando; su conversación es del proyecto. */}
-        {aiOpen && <AiPanel key={`ai:${account}:${project.id}`} onClose={() => setPreference('aiPanelOpen', false)} />}
+        {assistantOpen && (
+          <AiPanel key={`ai:${account}:${project.id}`} onClose={() => setPreference('aiPanelOpen', false)} />
+        )}
         {chatOpen && group && (
           <GroupPanel
             key={`group:${account}:${group.id}`}
@@ -108,8 +120,6 @@ export default function App() {
       {welcome.open && <WelcomeDialog onClose={welcome.dismiss} onTemplates={openTemplates} />}
       <Tour />
       <ContextMenu />
-      {/* La comunidad es de la cuenta: se monta de nuevo con cada una (CAMBIO_DE_CUENTA.md). */}
-      <CommunityHost key={`community:${account}`} />
       <PublicCopy />
       <Db2ExportHost />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}

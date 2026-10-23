@@ -15,7 +15,6 @@ import {
   CalendarDays,
   Globe,
 } from 'lucide-react';
-import { openCommunity } from '../community/openCommunity';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
@@ -48,7 +47,7 @@ const MAX_RESULTS = 40;
 /** Buscador global (Ctrl+K): salta a cualquier nodo, relación o tipo, o ejecuta una acción. */
 export function CommandPalette({ onClose }: { onClose: () => void }) {
   const { project, dispatch } = useApp();
-  const { select, setView } = useNavigation();
+  const { select, setView, openCommunity } = useNavigation();
   const { preferences, setPreference } = usePreferences();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -186,7 +185,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         group: 'Acciones',
         leading: icon(Globe),
         keywords: 'comunidad publico publicar seguir novedades personas compartir enlace',
-        run: openCommunity,
+        run: () => openCommunity(),
       },
       {
         id: 'report',
@@ -206,7 +205,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       },
     ];
     return [...nodes, ...relations, ...types, ...actions];
-  }, [project, select, setView, dispatch, preferences.theme, setPreference]);
+  }, [project, select, setView, openCommunity, dispatch, preferences.theme, setPreference]);
 
   const results = useMemo(() => {
     const q = normalize(query.trim());

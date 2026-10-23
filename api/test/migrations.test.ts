@@ -30,6 +30,7 @@ describe('migration files', () => {
       '0010_group_comments',
       '0011_group_role_labels',
       '0012_public_projects',
+      '0013_public_project_extras',
     ]);
     for (const migration of migrations) {
       expect(migration.checksum).toMatch(/^[0-9a-f]{64}$/);

@@ -1,5 +1,5 @@
 import type { PublicationOptions } from '../domain/publication';
-import type { Project } from '../domain/types';
+import type { Project, ProjectOrigin } from '../domain/types';
 import { ApiError, apiRequest, OfflineError } from './api';
 import { PLATFORM_API_URL, sdk } from './yosiftware';
 
@@ -25,6 +25,10 @@ export interface PublicSummary {
   version: number;
   publishedAt: string;
   updatedAt: string;
+  /** La imagen del mapa que la API sirve para la novedad y la vista previa, si la hay. */
+  imageUrl?: string | null;
+  /** Copiado de otro proyecto público: el original y quién lo publicó. */
+  origin?: ProjectOrigin | null;
 }
 
 export interface PublicProject extends PublicSummary {
@@ -37,6 +41,10 @@ export interface OwnPublication extends PublicSummary {
   options: PublicationOptions;
   retiredReason: string | null;
   url: string;
+  /** El enlace con vista previa (título, descripción e imagen) para compartir fuera. */
+  shareUrl?: string;
+  /** El grupo del proyecto, si lo publicó su propiedad. */
+  groupId?: string | null;
 }
 
 /** La publicación del proyecto, o `null` si no está publicado. */
@@ -50,7 +58,7 @@ export const getPublication = (token: string, projectId: string) =>
 export const publishProject = (
   token: string,
   document: Project,
-  body: { description: string; options: PublicationOptions; allowCopy: boolean },
+  body: { description: string; options: PublicationOptions; allowCopy: boolean; image?: string },
 ) =>
   apiRequest<OwnPublication>('PUT', `/api/projects/${encodeURIComponent(document.id)}/publicacion`, token, {
     document,
@@ -146,6 +154,8 @@ export interface NewsComment {
 
 export interface Relationship {
   amistad: 'ninguna' | 'solicitud_enviada' | 'solicitud_recibida' | 'amistades';
+  /** La solicitud pendiente, enviada o recibida. */
+  idSolicitud: number | null;
   sigo: boolean;
   meSigue: boolean;
   bloqueada: boolean;
@@ -279,4 +289,112 @@ export function localPublicLink(link: string | null) {
   } catch {
     return null;
   }
+}
+
+// --- Personas, amistades y bloqueos (`ecosistema-kit/SOCIAL.md`) ---
+
+const withPersonAvatar = <T extends { persona: Person }>(item: T): T => ({
+  ...item,
+  persona: { ...item.persona, avatar: absoluteAvatar(item.persona.avatar) },
+});
+
+/** Busca personas por alias o nombre (los perfiles privados, solo por su alias exacto). */
+export const searchPeople = (text: string) =>
+  platform<{ personas: Person[] }>('GET', `/v1/personas?q=${encodeURIComponent(text)}`).then(r =>
+    r.personas.map(p => ({ ...p, avatar: absoluteAvatar(p.avatar) })),
+  );
+
+/** Una relación en los listados (amistades, seguidos, seguidores, bloqueos). */
+export interface PersonLink {
+  persona: Person;
+  desde: string;
+  relacion: Relationship | null;
+}
+
+export type PeopleList = 'amistades' | 'seguidos' | 'seguidores' | 'bloqueos';
+
+export const peopleList = (list: PeopleList, cursor: string | null = null) =>
+  platform<{ vinculos: PersonLink[]; cursor: string | null }>('GET', `/v1/social/${list}${page(cursor)}`).then(r => ({
+    ...r,
+    vinculos: r.vinculos.map(withPersonAvatar),
+  }));
+
+export interface FriendRequest {
+  id: number;
+  persona: Person;
+  creada: string;
+  caduca: string;
+}
+
+export const friendRequests = (tipo: 'recibidas' | 'enviadas') =>
+  platform<{ solicitudes: FriendRequest[] }>('GET', `/v1/social/amistades/solicitudes?tipo=${tipo}`).then(r =>
+    r.solicitudes.map(withPersonAvatar),
+  );
+
+/** Pide amistad; si ella ya la había pedido, queda aceptada. */
+export const requestFriendship = (id: string) =>
+  platform<{ estado: 'solicitud_enviada' | 'amistades'; idSolicitud: number }>(
+    'POST',
+    '/v1/social/amistades/solicitudes',
+    { idCuenta: id },
+  );
+
+export const answerFriendRequest = (requestId: number, accept: boolean) =>
+  platform<void>('POST', `/v1/social/amistades/solicitudes/${requestId}/${accept ? 'aceptar' : 'rechazar'}`);
+
+export const withdrawFriendRequest = (requestId: number) =>
+  platform<void>('DELETE', `/v1/social/amistades/solicitudes/${requestId}`);
+
+export const removeFriend = (id: string) => platform<void>('DELETE', `/v1/social/amistades/${encodeURIComponent(id)}`);
+
+export const setBlocked = (id: string, block: boolean) =>
+  platform<void>(block ? 'PUT' : 'DELETE', `/v1/social/bloqueos/${encodeURIComponent(id)}`);
+
+/** Los contadores de la barra: solicitudes recibidas, amistades, seguidos, seguidores… */
+export const socialSummary = () =>
+  platform<{
+    solicitudesRecibidas: number;
+    solicitudesEnviadas: number;
+    amistades: number;
+    seguidos: number;
+    seguidores: number;
+    bloqueos: number;
+  }>('GET', '/v1/social/resumen');
+
+/** Por qué no se ha podido hacer algo con una persona, para enseñarlo. */
+export function socialErrorMessage(error: unknown) {
+  if (error instanceof OfflineError) return 'No hay conexión con Yosiftware.';
+  if (error instanceof PlatformRequestError) {
+    const known: Record<string, string> = {
+      solicitud_ya_enviada: 'Ya le has pedido amistad.',
+      ya_son_amistades: 'Ya sois amistades.',
+      solicitud_rechazada_hace_poco: 'Rechazó tu solicitud hace poco: podrás volver a pedirla pasados 30 días.',
+      persona_bloqueada: 'Tienes bloqueada a esta persona.',
+      demasiadas_solicitudes: 'Has pedido demasiadas amistades hoy. Prueba mañana.',
+      demasiadas_peticiones: 'Demasiadas acciones seguidas. Espera un momento.',
+      solo_entre_amistades: 'Las conversaciones directas son solo entre amistades.',
+      persona_no_encontrada: 'Esta persona ya no está disponible.',
+      busqueda_no_valida: 'Escribe al menos 2 caracteres.',
+    };
+    return known[error.code] ?? error.message;
+  }
+  return error instanceof Error ? error.message : 'No se ha podido.';
+}
+
+// --- Chat (`ecosistema-kit/CHAT.md`): la bandeja y las conversaciones son los elementos del SDK ---
+
+/** Abre (o crea) la conversación directa con una amistad y devuelve su id. */
+export const directConversation = (id: string) =>
+  platform<{ id: number }>('POST', '/v1/chat/conversaciones/directa', { idCuenta: id }).then(r => r.id);
+
+/** Lo pendiente para el botón de Comunidad: mensajes sin leer y solicitudes de amistad recibidas. */
+export async function communityPending() {
+  const [chats, summary] = await Promise.all([
+    platform<{ conversaciones: { noLeidos: number }[] }>('GET', '/v1/chat/conversaciones'),
+    socialSummary(),
+  ]);
+  return {
+    unread: chats.conversaciones.reduce((total, c) => total + (c.noLeidos ?? 0), 0),
+    requests: summary.solicitudesRecibidas,
+  };
 }

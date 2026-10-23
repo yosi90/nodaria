@@ -22,6 +22,12 @@ export interface Publication {
   version: number;
   publishedAt: string;
   updatedAt: string;
+  /** Tiene imagen del mapa (para la novedad y la vista previa del enlace). */
+  hasImage: boolean;
+  /** Si es una copia de otro público: el original y quién lo publicó. */
+  origin: Record<string, unknown> | null;
+  /** El grupo del proyecto, si es de un grupo (lo publica su propiedad). */
+  groupId: string | null;
 }
 
 export interface StoredPublication extends Publication {
@@ -38,6 +44,10 @@ export interface PublicationWrite {
   relationCount: number;
   options: Record<string, unknown>;
   allowCopy: boolean;
+  /** La imagen nueva; sin ella se conserva la que hubiera. */
+  image?: Buffer;
+  origin?: Record<string, unknown> | null;
+  groupId?: string | null;
 }
 
 export type OutboxChannel = 'novedades' | 'notificapp';
@@ -83,6 +93,8 @@ export interface CommunityStore {
   forProject(userId: number, projectId: string): Promise<Publication | null>;
   mine(userId: number): Promise<Publication[]>;
   get(publicId: string): Promise<StoredPublication | null>;
+  /** La imagen de un público visible (no retirado, de una cuenta activa), o `null`. */
+  image(publicId: string): Promise<Buffer | null>;
   /** Los públicos visibles (no retirados, de cuentas activas), los más recientes primero. */
   listPublic(filter: { author?: string; limit: number }): Promise<Publication[]>;
   /**
@@ -152,6 +164,9 @@ interface PublicationRow {
   version: number;
   published_at: Date;
   updated_at: Date;
+  has_image?: number | boolean;
+  origin?: string | null;
+  group_id?: string | null;
   document?: string;
   author_active?: number | boolean;
 }
@@ -172,10 +187,14 @@ const toPublication = (row: PublicationRow): Publication => ({
   version: row.version,
   publishedAt: row.published_at.toISOString(),
   updatedAt: row.updated_at.toISOString(),
+  hasImage: Boolean(row.has_image),
+  origin: row.origin ? (JSON.parse(row.origin) as Record<string, unknown>) : null,
+  groupId: row.group_id ?? null,
 });
 
 const COLUMNS = `p.id, p.project_id, u.id_global AS author, p.name, p.description, p.allow_copy, p.options, p.state,
-  p.retired_reason, p.node_count, p.relation_count, p.size_bytes, p.version, p.published_at, p.updated_at`;
+  p.retired_reason, p.node_count, p.relation_count, p.size_bytes, p.version, p.published_at, p.updated_at,
+  CASE WHEN p.image IS NULL THEN 0 ELSE 1 END AS has_image, p.origin, p.group_id`;
 const ACTIVE = 'u.closed_at IS NULL AND u.disabled_at IS NULL';
 
 interface ReportRow {
@@ -293,6 +312,17 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
         : null;
     },
 
+    async image(publicId) {
+      const result = await db
+        .request()
+        .input('publicId', sql.VarChar(20), publicId)
+        .query<{ image: Buffer | null }>(
+          `SELECT p.image FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id
+           WHERE p.id = @publicId AND p.state = 'publico' AND ${ACTIVE}`,
+        );
+      return result.recordset[0]?.image ?? null;
+    },
+
     async listPublic({ author, limit }) {
       const request = db.request().input('limit', sql.Int, limit);
       if (author) request.input('author', sql.UniqueIdentifier, author);
@@ -328,16 +358,21 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
           .input('relations', sql.Int, write.relationCount)
           .input('options', sql.NVarChar(2000), JSON.stringify(write.options))
           .input('allowCopy', sql.Bit, write.allowCopy)
+          .input('setImage', sql.Bit, write.image !== undefined)
+          .input('image', sql.VarBinary(sql.MAX), write.image ?? null)
+          .input('origin', sql.NVarChar(1000), write.origin ? JSON.stringify(write.origin) : null)
+          .input('groupId', sql.VarChar(120), write.groupId ?? null)
           .query(
             before
               ? `UPDATE dbo.public_projects SET name = @name, description = @description, document = @document,
                    size_bytes = @size, node_count = @nodes, relation_count = @relations, options = @options,
-                   allow_copy = @allowCopy, version = version + 1, updated_at = SYSUTCDATETIME()
+                   allow_copy = @allowCopy, version = version + 1, updated_at = SYSUTCDATETIME(),
+                   image = CASE WHEN @setImage = 1 THEN @image ELSE image END, origin = @origin, group_id = @groupId
                  WHERE id = @id`
               : `INSERT INTO dbo.public_projects (id, user_id, project_id, name, description, document, size_bytes,
-                   node_count, relation_count, options, allow_copy)
+                   node_count, relation_count, options, allow_copy, image, origin, group_id)
                  VALUES (@id, @userId, @projectId, @name, @description, @document, @size, @nodes, @relations,
-                   @options, @allowCopy)`,
+                   @options, @allowCopy, @image, @origin, @groupId)`,
           );
         const written = await keyed().query<PublicationRow>(
           `SELECT ${COLUMNS} FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id
@@ -507,6 +542,7 @@ export function createMemoryCommunityStore(
   clock: () => Date = () => new Date(),
 ) {
   const rows = new Map<string, StoredPublication & { userId: number }>();
+  const images = new Map<string, Buffer>();
   const news = new Map<string, { publicId: string; userId: number }>();
   const reports = new Map<number, Report & { reporter: string }>();
   const outbox: (OutboxItem & { nextAttemptAt: Date })[] = [];
@@ -564,6 +600,10 @@ export function createMemoryCommunityStore(
       if (!row) return null;
       return { ...omit(row, ['userId']), authorActive: active(row) };
     },
+    async image(publicId) {
+      const row = rows.get(publicId);
+      return row && row.state === 'publico' && active(row) ? (images.get(publicId) ?? null) : null;
+    },
     async listPublic({ author, limit }) {
       return [...rows.values()]
         .filter(r => r.state === 'publico' && active(r) && (!author || r.author === author.toLowerCase()))
@@ -594,7 +634,11 @@ export function createMemoryCommunityStore(
         updatedAt: now,
         document: write.document,
         authorActive: true,
+        hasImage: write.image !== undefined ? true : (before?.hasImage ?? false),
+        origin: write.origin ?? null,
+        groupId: write.groupId ?? null,
       };
+      if (write.image !== undefined) images.set(row.id, write.image);
       rows.set(row.id, row);
       const publication = strip(row);
       const message = makeNews(publication, !before);
@@ -607,6 +651,7 @@ export function createMemoryCommunityStore(
       if (!row) return null;
       retireNews(row.id);
       rows.delete(row.id);
+      images.delete(row.id);
       for (const [id, report] of reports) if (report.publicId === row.id) reports.delete(id);
       return strip(row);
     },

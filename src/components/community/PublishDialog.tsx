@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, Globe } from 'lucide-react';
+import { Copy, ExternalLink, Globe, Share2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_PUBLICATION_OPTIONS,
@@ -25,6 +25,7 @@ import { schemaOption } from '../common/options';
 import { MultiSelect } from '../common/Select';
 import { useToast } from '../common/toasts';
 import { YosiSymbol } from '../common/YosiSymbol';
+import { thumbnailPng } from './mapThumbnail';
 
 const SOCIAL_NEWS = 'https://social.yosiftware.es/?vista=novedades';
 
@@ -38,10 +39,12 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
   const { project } = useApp();
   const { status, user, getToken, signIn } = useAuth();
   const { syncNow } = useSync();
-  const { groupOf } = useGroups();
+  const { groupOf, syncShared } = useGroups();
   const toast = useToast();
   const { confirm } = useDialogs();
   const group = groupOf(project.id);
+  // El proyecto de un grupo solo lo publica su propiedad; los demás miembros lo ven aquí sin poder hacerlo.
+  const blockedByGroup = Boolean(group && !group.isOwner);
   const signedIn = status === 'signed-in' && user !== null;
 
   const [current, setCurrent] = useState<OwnPublication | null | undefined>(undefined);
@@ -53,7 +56,7 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (!signedIn || group) return;
+    if (!signedIn || blockedByGroup) return;
     let alive = true;
     void (async () => {
       try {
@@ -76,7 +79,7 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
     return () => {
       alive = false;
     };
-  }, [signedIn, group, getToken, project.id]);
+  }, [signedIn, blockedByGroup, getToken, project.id]);
 
   const summary = useMemo(() => publicationSummary(project, options), [project, options]);
   const typeOptions = useMemo(() => project.schemas.map(s => schemaOption(s)), [project.schemas]);
@@ -85,14 +88,18 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      // La API solo publica proyectos que la cuenta ya tiene: primero se sube lo último.
-      await syncNow();
+      // La API solo publica proyectos que ya tiene: primero se sube lo último (el propio o el del grupo).
+      await (group ? syncShared() : syncNow());
       const token = await getToken();
       if (!token) throw new ApiError(401, 'no_autenticado', 'Entra con tu cuenta para publicar.');
-      const published = await publishProject(token, publicationSnapshot(project, options), {
+      const snapshot = publicationSnapshot(project, options);
+      // La imagen del mapa para la novedad y la vista previa; si el navegador no la dibuja, se publica sin ella.
+      const image = await thumbnailPng(snapshot);
+      const published = await publishProject(token, snapshot, {
         description: description.trim(),
         options,
         allowCopy,
+        ...(image ? { image } : {}),
       });
       setCurrent(published);
       toast({ message: current ? 'Cambios publicados' : 'Proyecto publicado' });
@@ -134,13 +141,14 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
-  if (!signedIn || group) {
+  if (!signedIn || blockedByGroup) {
     return (
       <Modal title="Publicar el proyecto" informational onClose={onClose}>
         <div className="form-grid">
-          {group ? (
+          {blockedByGroup ? (
             <p className="muted-note">
-              Los proyectos de un grupo todavía no se pueden publicar. Duplícalo para publicar tu propia copia.
+              Este proyecto es del grupo «{group!.name}»: solo su propiedad puede publicarlo. Duplícalo si quieres
+              publicar tu propia copia.
             </p>
           ) : (
             <>
@@ -200,6 +208,17 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
                       <ExternalLink size={14} aria-hidden /> Ver la página
                     </a>
                   </div>
+                  {current.shareUrl && (
+                    <p className="publish-share">
+                      <Button size="sm" icon={Share2} onClick={() => void copyLink(current.shareUrl!)}>
+                        Copiar el enlace con vista previa
+                      </Button>
+                      <small>
+                        Para redes y apps de mensajería: enseña el título, la descripción y la imagen del mapa, y lleva
+                        a la página pública.
+                      </small>
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -209,6 +228,12 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
           <p className="muted-note">
             Cualquiera con el enlace podrá ver una copia de «{project.name}» (mapa, Tabla, Cronología y fichas), también
             sin cuenta, y nadie podrá cambiarla. Lo que edites después no sale hasta que publiques los cambios.
+            {group ? ` Es el proyecto del grupo «${group.name}»: lo publicas como su propiedad.` : ''}
+          </p>
+        )}
+        {project.origin && (
+          <p className="muted-note">
+            Es una copia de «{project.origin.name}»: la página pública lo dirá y enlazará al original.
           </p>
         )}
         {!retired && (

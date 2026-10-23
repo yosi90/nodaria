@@ -200,6 +200,16 @@ export interface Project {
   schemaFolders: SchemaFolder[];
   /** Agenda del proyecto: notas, tareas, entregas y eventos en días reales (`src/domain/agenda.ts`). */
   agenda: AgendaEntry[];
+  /** Copia de un proyecto público de otra persona: el original, para citar la autoría (`null` si no lo es). */
+  origin: ProjectOrigin | null;
+}
+/** De dónde sale una copia: el proyecto público original y la cuenta que lo publicó. */
+export interface ProjectOrigin {
+  publicId: string;
+  name: string;
+  /** Id global de la cuenta que lo publicó. */
+  author: string;
+  copiedAt: string;
 }
 /** Una vista guardada: la configuración del mapa y, opcionalmente, las posiciones de los nodos. */
 export interface Lens {

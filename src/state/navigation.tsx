@@ -11,7 +11,20 @@ export interface MapViewportMemory {
   mapImage: Project['mapImage'];
 }
 
-export type View = 'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health' | 'timeline' | 'calendar';
+export type View =
+  'map' | 'table' | 'schema' | 'relations' | 'properties' | 'health' | 'timeline' | 'calendar' | 'community';
+/** Las vistas de un proyecto (todas menos «Comunidad», que no depende del proyecto abierto). */
+export type ProjectView = Exclude<View, 'community'>;
+
+/** Dónde se está dentro de «Comunidad» (docs/roadmaps/ROADMAP_COMUNIDAD.md). */
+export type CommunityTab = 'inicio' | 'descubrir' | 'personas' | 'chats' | 'publicados' | 'persona';
+export interface CommunityRoute {
+  tab: CommunityTab;
+  /** En «persona», de quién es el perfil. */
+  person: string | null;
+  /** En «chats», la conversación abierta. */
+  conversation: number | null;
+}
 
 /**
  * Petición para la vista «Calendario» desde otra vista: abrir una entrada (`created`: recién creada, con
@@ -38,6 +51,9 @@ interface NavigationState {
   /** Nodo aislado en el lienzo: solo se ven sus vecinos. Guarda la disposición previa para restaurarla al salir. */
   isolated: { nodeId: string; previousLayout: LayoutMode } | null;
   agendaRequest: AgendaRequest | null;
+  community: CommunityRoute;
+  /** La última vista del proyecto, para volver desde «Comunidad». */
+  projectView: ProjectView;
 }
 
 interface NavigationContextValue extends NavigationState {
@@ -61,6 +77,8 @@ interface NavigationContextValue extends NavigationState {
   openAgendaEntry: (entryId: string, created?: boolean) => void;
   /** La vista ya atendió la petición. */
   clearAgendaRequest: () => void;
+  /** Va a «Comunidad» (a la pestaña, persona o conversación que se pida). */
+  openCommunity: (route?: Partial<CommunityRoute>) => void;
 }
 
 const Context = createContext<NavigationContextValue | null>(null);
@@ -84,17 +102,36 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     help: null,
     isolated: null,
     agendaRequest: null,
+    community: { tab: 'inicio', person: null, conversation: null },
+    projectView: 'map',
   });
 
-  const setView = useCallback((view: View) => setState(s => (s.view === view ? s : { ...s, view })), []);
+  const setView = useCallback(
+    (view: View) =>
+      setState(s => (s.view === view ? s : { ...s, view, projectView: view === 'community' ? s.projectView : view })),
+    [],
+  );
+  const openCommunity = useCallback(
+    (route: Partial<CommunityRoute> = {}) =>
+      setState(s => ({
+        ...s,
+        view: 'community',
+        community: {
+          tab: route.tab ?? (route.person ? 'persona' : route.conversation ? 'chats' : s.community.tab),
+          person: route.person ?? (route.tab && route.tab !== 'persona' ? null : s.community.person),
+          conversation: route.conversation ?? (route.tab === 'chats' ? s.community.conversation : null),
+        },
+      })),
+    [],
+  );
   const select = useCallback(
     (selection: Selection, options?: { reveal?: boolean }) =>
       setState(s => {
         const revealKey = options?.reveal ? s.revealKey + 1 : s.revealKey;
-        if (sameSelection(s.selection, selection)) return { ...s, view: 'map', revealKey };
+        if (sameSelection(s.selection, selection)) return { ...s, view: 'map', projectView: 'map', revealKey };
         // Deseleccionar no crea un paso en el historial; seleccionar algo sí.
         const past = selection && s.selection ? [...s.past, s.selection].slice(-HISTORY_LIMIT) : s.past;
-        return { ...s, view: 'map', selection, past, future: selection ? [] : s.future, revealKey };
+        return { ...s, view: 'map', projectView: 'map', selection, past, future: selection ? [] : s.future, revealKey };
       }),
     [],
   );
@@ -153,6 +190,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setState(s => ({
         ...s,
         view: 'calendar',
+        projectView: 'calendar',
         agendaRequest: { key: (s.agendaRequest?.key ?? 0) + 1, entryId, created },
       })),
     [],
@@ -181,6 +219,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       closeHelp,
       openAgendaEntry,
       clearAgendaRequest,
+      openCommunity,
     }),
     [
       state,
@@ -198,6 +237,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       closeHelp,
       openAgendaEntry,
       clearAgendaRequest,
+      openCommunity,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;

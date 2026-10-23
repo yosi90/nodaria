@@ -39,7 +39,8 @@ export function contentSecurityPolicy(env: CspEnvironment): string {
     'script-src': ["'self'", platform.sdk, STATS],
     'connect-src': ["'self'", ...NODARIA_API[env], platform.api, platform.ws, STATS],
     'frame-src': [platform.sdk],
-    'img-src': ["'self'", 'data:', 'blob:', platform.api],
+    // La API de Nodaria sirve la imagen del mapa de los proyectos públicos (Comunidad).
+    'img-src': ["'self'", 'data:', 'blob:', ...NODARIA_API[env], platform.api],
     'style-src': ["'self'"],
     'font-src': ["'self'", 'data:'],
     'object-src': ["'none'"],

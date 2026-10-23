@@ -11,7 +11,6 @@ import {
   UserRoundPlus,
   Globe,
 } from 'lucide-react';
-import { openCommunity } from '../community/openCommunity';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, deleteMe } from '../../services/api';
 import { SOCIAL_URL, sdk, type SavedAccount } from '../../services/yosiftware';
@@ -24,6 +23,7 @@ import { Menu, type MenuEntry } from '../common/Menu';
 import { useToast } from '../common/toasts';
 import { YosiSymbol } from '../common/YosiSymbol';
 import { SignOutDialog } from './SignOutDialog';
+import { useNavigation } from '../../state/navigation';
 
 /**
  * Cuenta de Yosiftware en la barra superior, con su panel de cuentas propio (`ecosistema-kit/ACCESO.md`,
@@ -35,6 +35,7 @@ import { SignOutDialog } from './SignOutDialog';
 export function AccountButton() {
   const { status, user, restrictions, signIn, getToken, savedAccounts, chooseAccount, addAccount } = useAuth();
   const sync = useSync();
+  const { openCommunity } = useNavigation();
   const toast = useToast();
   const { confirm } = useDialogs();
   const [signingOut, setSigningOut] = useState<'one' | 'all' | null>(null);
@@ -162,7 +163,7 @@ export function AccountButton() {
           } satisfies MenuEntry,
         ]
       : []),
-    { label: 'Comunidad', icon: Globe, onSelect: openCommunity },
+    { label: 'Comunidad', icon: Globe, onSelect: () => openCommunity() },
     {
       label: 'Invitaciones a grupos',
       icon: MailOpen,

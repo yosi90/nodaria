@@ -2,7 +2,14 @@ import { CalendarRange, Copy, Flag, Network, Table2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { Project } from '../../domain/types';
 import { ApiError, OfflineError } from '../../services/api';
-import { fetchPublic, personName, personProfile, type Person, type PublicProject } from '../../services/community';
+import {
+  fetchPublic,
+  personName,
+  personProfile,
+  publicPath,
+  type Person,
+  type PublicProject,
+} from '../../services/community';
 import { parseProject } from '../../services/storage';
 import { StaticAppProvider, type ActionGuard } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
@@ -175,6 +182,14 @@ function PublicWorkspace({ publication }: { publication: PublicProject }) {
         <span className="muted">
           {publication.nodeCount} nodos · {publication.relationCount} relaciones · actualizado el {updated}
         </span>
+        {publication.origin && (
+          <span className="muted">
+            Basado en{' '}
+            <a href={publicPath(publication.origin.publicId)} target="_blank" rel="noreferrer">
+              «{publication.origin.name}»
+            </a>
+          </span>
+        )}
         {publication.description && <p className="public-description">{publication.description}</p>}
         <div className="spacer" />
         {publication.allowCopy && !own && (
@@ -221,7 +236,18 @@ function Author({ id, own }: { id: string; own: boolean }) {
           {person.alias.slice(0, 1).toUpperCase()}
         </span>
       )}
-      <span>{own ? 'Publicado por ti' : <>De {personName(person)}</>}</span>
+      <span>
+        {own ? (
+          'Publicado por ti'
+        ) : (
+          <>
+            De{' '}
+            <a href={`/#comunidad/persona/${encodeURIComponent(id)}`} title="Ver su perfil en Comunidad">
+              {personName(person)}
+            </a>
+          </>
+        )}
+      </span>
       {!own && <FollowButton personId={id} />}
     </span>
   );

@@ -41,9 +41,11 @@ import {
   UserPlus,
   UserCog,
   type LucideIcon,
+  ExternalLink,
   Globe,
 } from 'lucide-react';
 import { PublishDialog } from '../community/PublishDialog';
+import { CommunityButton } from '../community/CommunityButton';
 import { Fragment, useCallback, useRef, useState } from 'react';
 import { downloadBytes, downloadProject, downloadText } from '../../services/files';
 import { exportZip } from '../../services/exportBundle';
@@ -347,6 +349,17 @@ export function Topbar({
       onSelect: () => setKindOpen(true),
     },
     { label: 'Configuración del calendario…', icon: CalendarCog, onSelect: () => setCalendarOpen(true) },
+    // Una copia de un proyecto público recuerda de dónde sale y deja abrir el original.
+    ...(project.origin
+      ? [
+          {
+            label: `Copia de «${project.origin.name}»`,
+            hint: 'Ver el original',
+            icon: ExternalLink,
+            onSelect: () => window.open(`/p/${project.origin!.publicId}`, '_blank', 'noopener'),
+          },
+        ]
+      : []),
     group
       ? {
           label: `Grupo «${group.name}»…`,
@@ -363,7 +376,9 @@ export function Topbar({
     {
       label: 'Publicar…',
       hint: group
-        ? 'Solo proyectos propios'
+        ? group.isOwner
+          ? 'Como propiedad del grupo'
+          : 'Solo la propiedad del grupo'
         : authStatus === 'signed-in'
           ? 'Solo lectura, con enlace'
           : 'Entra con tu cuenta',
@@ -593,6 +608,7 @@ export function Topbar({
           ))}
         </nav>
       )}
+      <CommunityButton compact={density >= DENSITY.viewIcons} />
       <div className="spacer" />
       {density >= DENSITY.searchIcon ? (
         <IconButton icon={Search} label="Buscar (Ctrl+K)" className="hide-narrow" onClick={onSearch} />

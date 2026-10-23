@@ -15,7 +15,7 @@ import type { CommunityStore } from './community/repository.ts';
 import type { CommunityClient } from './platform/community.ts';
 import type { SpacesClient } from './platform/spaces.ts';
 import { aiRoutes } from './routes/ai.ts';
-import { communityRoutes, notificappRoutes, publicRoutes } from './routes/community.ts';
+import { communityRoutes, notificappRoutes, publicRoutes, shareRoutes } from './routes/community.ts';
 import { groupRoutes } from './routes/groups.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meRoutes } from './routes/me.ts';
@@ -151,7 +151,8 @@ export async function buildApp({
 
   await app.register(healthRoutes, { prefix: '/api', db });
   // Los proyectos públicos se leen sin sesión; el panel de moderación de Notificapp, con su credencial.
-  await app.register(publicRoutes, { prefix: '/api', community });
+  await app.register(publicRoutes, { prefix: '/api', community, config });
+  await app.register(shareRoutes, { community, config });
   await app.register(notificappRoutes, { prefix: '/notificapp/v1', community, communityClient, config });
 
   // Rutas privadas: cada petición trae un token de la plataforma Yosiftware válido.

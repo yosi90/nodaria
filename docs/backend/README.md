@@ -46,6 +46,7 @@ Separado de producción (`ecosistema-kit/MIGRACION.md`, paso 7):
 | `PLATFORM_FEED_INTERVAL_MS`    | `300000`                        | Cada cuánto se lee el feed (no hay NATS).                                |
 | `UV_THREADPOOL_SIZE`           | `4` (Node)                      | Hilos de libuv; `msnodesqlv8` ocupa uno por consulta. Usar `16`.         |
 | `PUBLIC_WEB_URL`               | `https://nodaria.yosiftware.es` | Dirección de la web para el enlace de las páginas públicas (`/p/<id>`).  |
+| `PUBLIC_API_URL`               | `https://nodaria-api.yosiftware.es` | Dirección pública de esta API: imagen de los públicos y enlace con vista previa. |
 | `NOTIFICAPP_API`               | `https://notificapp-api.yosiftware.es` | API de Notificapp para los avisos de denuncias.                   |
 | `NOTIFICAPP_SENDER_TOKEN_FILE` | `.runtime/notificapp-sender.token` | Credencial de emisor del plugin `nodaria-api` (sin ella, los avisos esperan en la cola). |
 | `NOTIFICAPP_UPSTREAM_TOKEN_FILE` | `.runtime/notificapp-upstream.token` | Credencial externa con la que Notificapp llama a `/notificapp/v1/*` (sin ella, 401). |
@@ -90,6 +91,7 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 - `0011_group_role_labels`: `groups.role_labels` (nombres propios de los roles, JSON).
 - `0010_group_comments`: `group_comments` (comentarios y sugerencias de los proyectos de grupo; se borran con el proyecto del grupo).
 - `0012_public_projects`: `public_projects`, `public_news`, `public_reports` y `outbox` (proyectos públicos, sus novedades, sus denuncias y la cola de salida).
+- `0013_public_project_extras`: en `public_projects`, `image` (la imagen del mapa), `origin` (JSON: de qué público se copió) y `group_id` (el grupo, si lo publicó su propiedad).
 
 ## Modelo de datos
 
@@ -145,6 +147,8 @@ Con `--env-file=.env.dev` se ejecutan contra la base de desarrollo (`npx tsx --e
 | GET    | `/api/publicaciones` | Sí   | `{ publicaciones }`: lo que ha publicado la cuenta.                                                                              |
 | GET    | `/api/publicos?cuenta=&limite=` | No | `{ publicos }`: los públicos visibles más recientes (de una cuenta, si se pide), sin documento ni proyecto privado.   |
 | GET    | `/api/publicos/{id}` | No   | Un público con su documento. 404 `publico_no_encontrado` si no existe, se retiró o la cuenta está cerrada.                      |
+| GET    | `/api/publicos/{id}/imagen` | No | La imagen del mapa (PNG o JPEG), con caché de 5 minutos; la dirección lleva `?v=<versión>`. 404 si no hay o no es visible. |
+| GET    | `/compartir/{id}`    | No   | Página mínima con los metadatos Open Graph (título, descripción, imagen) que lleva a la página pública: el enlace con vista previa. |
 | POST   | `/api/publicos/{id}/denuncias` | Sí | `{ motivo, texto? }` → 201 `{ id }`. 400 `denuncia_propia`, 409 `denuncia_repetida`, 404 `publico_no_encontrado`.        |
 | GET    | `/notificapp/v1/reports`, `…/reports/{id}`, `…/cases` | Notificapp | Panel de moderación del plugin (ver «Proyectos públicos»). |
 | POST   | `/notificapp/v1/reports/{id}/retire` y `…/dismiss` | Notificapp | Retirar el proyecto (con aviso opcional a la cuenta) o desestimar la denuncia. Idempotentes. |
@@ -169,7 +173,7 @@ Cada grupo es un espacio de la plataforma (`ecosistema-kit/ESPACIOS.md`); el pla
 
 Plan y decisiones en `docs/roadmaps/ROADMAP_COMUNIDAD.md`. Código en `src/community/` (reglas en `model.ts`, almacén SQL y en memoria en `repository.ts`, cola en `outbox.ts`), `src/routes/community.ts` y `src/platform/community.ts`.
 
-- **Publicar** (`PUT /api/projects/{id}/publicacion`) guarda una copia de solo lectura del documento que manda el navegador, ya sin lo que la persona dejó fuera (`src/domain/publication.ts`). Solo un proyecto propio que la cuenta ya tiene sincronizado (404 `project_not_found` si no; 409 `proyecto_de_grupo` si es de un grupo), hasta `PROJECT_MAX_BYTES` (413). Con `creacion`, `publicacion` o `comunidad` limitadas, 403 `publicacion_limitada` (con `hasta`); con normas pendientes, 403 como todo lo privado. Uno retirado por moderación no se actualiza (409 `publicacion_retirada`); dejar de publicarlo lo borra. Nadie más escribe en un público: no hay ruta para ello.
+- **Publicar** (`PUT /api/projects/{id}/publicacion`) guarda una copia de solo lectura del documento que manda el navegador, ya sin lo que la persona dejó fuera (`src/domain/publication.ts`). Un proyecto propio que la cuenta ya tiene sincronizado (404 `project_not_found` si no) o, si es de un grupo, solo su propiedad (403 `solo_la_propiedad`) y con el proyecto del grupo en el servidor, hasta `PROJECT_MAX_BYTES` (413). `image` (opcional): la imagen del mapa en `data:` (PNG o JPEG de hasta 1 MB, se comprueba la firma; 400 `imagen_no_valida`); sin ella se conserva la anterior. `document.origin` (si es una copia) se guarda aparte y sale en los resúmenes. Las respuestas propias llevan `url`, `shareUrl` e `imageUrl`; las públicas, `imageUrl` y `origin`, nunca `projectId` ni `groupId`. Con `creacion`, `publicacion` o `comunidad` limitadas, 403 `publicacion_limitada` (con `hasta`); con normas pendientes, 403 como todo lo privado. Uno retirado por moderación no se actualiza (409 `publicacion_retirada`); dejar de publicarlo lo borra. Nadie más escribe en un público: no hay ruta para ello.
 - **Novedades** (`ecosistema-kit/NOVEDADES.md`): catálogo `proyecto.publicado` y `proyecto.actualizado`, que la cola declara al arrancar hasta que la plataforma lo acepta. Publicar encola `proyecto-<id>`; publicar los cambios, `proyecto-<id>-<AAAA-MM-DD>` (una al día, que se corrige si se vuelve a publicar ese día), o la misma `proyecto-<id>` si es del día de la publicación. Texto en tercera persona sin el nombre, con el enlace `PUBLIC_WEB_URL/p/<id>`. Dejar de publicar, retirar o borrar el proyecto encola la retirada de todas (`public_news`). `publicada: false` no se reintenta.
 - **Cola de salida** (`outbox`): se escribe en la misma transacción que el cambio y la vacía `createOutboxWorker` cada `OUTBOX_INTERVAL_MS`, en orden. Reintentos a 1 min, 5 min, 30 min y cada 2 h; un 4xx que no sea 401 ni 429 se descarta con un aviso en el registro. Encolar algo de la misma cosa sustituye a lo que quedaba por mandar.
 - **Denuncias** (`POST /api/publicos/{id}/denuncias`): una por persona y proyecto, nunca del propio. Cada una encola un aviso `nodaria_report` a Notificapp (`externalId` `report-<id>`, con `data: { report, publicId }`). Sin la credencial de emisor, el aviso espera en la cola.

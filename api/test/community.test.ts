@@ -175,6 +175,27 @@ function storeContract(
       expect(await store.unpublish(owner.id, 'p1')).toBeNull();
     });
 
+    it('guarda la imagen, el origen y el grupo, y conserva la imagen al publicar sin ella', async () => {
+      const { store, owner } = await make();
+      const image = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+      const origin = { publicId: 'abcdefghijkl', name: 'Original', author: OTHER, copiedAt: '2026-10-23' };
+      const first = await store.publish(
+        owner,
+        'p3',
+        { ...write(), image, origin, groupId: 'grupo-1' },
+        newsFor(owner.globalId),
+      );
+      if (first.status !== 'applied') throw new Error('no publicado');
+      expect(first.publication).toMatchObject({ hasImage: true, origin, groupId: 'grupo-1' });
+      expect((await store.image(first.publication.id))?.equals(image)).toBe(true);
+      const second = await store.publish(owner, 'p3', write(), newsFor(owner.globalId));
+      expect(second).toMatchObject({ publication: { hasImage: true, origin: null, groupId: null } });
+      expect((await store.image(first.publication.id))?.equals(image)).toBe(true);
+      expect(await store.image('noexiste1234')).toBeNull();
+      // La base de SQL Server es la misma para todas las pruebas del contrato: la cola se deja vacía.
+      for (const item of await store.due(50)) await store.complete(item.id);
+    });
+
     it('reintenta más tarde lo que no salió', async () => {
       const { store, owner } = await make();
       await store.publish(owner, 'p2', write(), newsFor(owner.globalId));
@@ -270,7 +291,36 @@ describe('community routes', () => {
         auth: tokens.provider,
         users: users.store,
         projects,
-        groups: { ...groups, projectGroup: async (id: string) => (id === 'g1' ? 'grupo-1' : groups.projectGroup(id)) },
+        // «g1» es el proyecto de «grupo-1», cuya propiedad es OWNER.
+        groups: {
+          ...groups,
+          projectGroup: async (id: string) => (id === 'g1' ? 'grupo-1' : groups.projectGroup(id)),
+          find: async (id: string) =>
+            id === 'grupo-1'
+              ? {
+                  externalId: 'grupo-1',
+                  spaceId: 9,
+                  name: 'Taller',
+                  owner: OWNER,
+                  state: 'activo' as const,
+                  createdBy: OWNER,
+                  roleLabels: null,
+                }
+              : groups.find(id),
+          getProject: async (groupId: string, projectId: string) =>
+            groupId === 'grupo-1' && projectId === 'g1'
+              ? {
+                  id: 'g1',
+                  name: 'Taller',
+                  version: 1,
+                  updatedAt: '2026-10-23T10:00:00.000Z',
+                  updatedBy: OWNER,
+                  serverUpdatedAt: '2026-10-23T10:00:00.000Z',
+                  sizeBytes: 100,
+                  document: JSON.stringify(doc('g1')),
+                }
+              : groups.getProject(groupId, projectId),
+        },
         community,
         communityClient: fake.client,
         config: loadConfig({
@@ -344,14 +394,58 @@ describe('community routes', () => {
     expect((await call('GET', '/api/publicos/noexiste1234', undefined, 'none')).statusCode).toBe(404);
   });
 
+  it('guarda la imagen del mapa, la sirve, la pone en la novedad y en el enlace con vista previa', async () => {
+    const { call, outbox } = await setup();
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32, 7)]);
+    const image = `data:image/png;base64,${png.toString('base64')}`;
+    expect(
+      (await call('PUT', '/api/projects/p1/publicacion', publish({ image: 'data:image/png;base64,AAAA' }))).json(),
+    ).toMatchObject({ error: 'imagen_no_valida' });
+    const origin = { publicId: 'abcdefghijkl', name: 'Original', author: OTHER, copiedAt: '2026-10-23' };
+    const put = await call('PUT', '/api/projects/p1/publicacion', publish({ image, document: doc('p1', { origin }) }));
+    const { id, imageUrl, shareUrl } = put.json();
+    expect(imageUrl).toBe(`https://nodaria-api.yosiftware.es/api/publicos/${id}/imagen?v=1`);
+    expect(shareUrl).toBe(`https://nodaria-api.yosiftware.es/compartir/${id}`);
+    expect(outbox.find(i => i.channel === 'novedades')?.payload).toMatchObject({ imagen: imageUrl });
+
+    const served = await call('GET', `/api/publicos/${id}/imagen`, undefined, 'none');
+    expect(served.statusCode).toBe(200);
+    expect(served.headers['content-type']).toBe('image/png');
+    expect(served.rawPayload.equals(png)).toBe(true);
+
+    const summary = (await call('GET', `/api/publicos/${id}`, undefined, 'none')).json();
+    expect(summary).toMatchObject({ imageUrl, origin });
+
+    // Publicar los cambios sin imagen conserva la que había.
+    const again = (await call('PUT', '/api/projects/p1/publicacion', publish())).json();
+    expect(again.imageUrl).toBe(`https://nodaria-api.yosiftware.es/api/publicos/${id}/imagen?v=2`);
+
+    const share = await call('GET', `/compartir/${id}`, undefined, 'none');
+    expect(share.statusCode).toBe(200);
+    expect(share.headers['content-type']).toContain('text/html');
+    expect(share.body).toContain('<meta property="og:title" content="Crónicas de Munfamed · Nodaria">');
+    expect(share.body).toContain(
+      `<meta property="og:image" content="https://nodaria-api.yosiftware.es/api/publicos/${id}/imagen?v=2">`,
+    );
+    expect(share.body).toContain(`url=https://nodaria.yosiftware.es/p/${id}`);
+    expect((await call('GET', '/compartir/noexiste1234', undefined, 'none')).statusCode).toBe(404);
+  });
+
   it('no publica lo que no es de la persona, de un grupo, con la publicación limitada o sin sincronizar', async () => {
     const { call } = await setup();
     expect((await call('PUT', '/api/projects/p1/publicacion', publish(), 'other')).json()).toMatchObject({
       error: 'project_not_found',
     });
-    expect((await call('PUT', '/api/projects/g1/publicacion', publish({ document: doc('g1') }))).json()).toMatchObject({
-      error: 'proyecto_de_grupo',
-    });
+    // El proyecto de un grupo solo lo publica su propiedad.
+    expect(
+      (await call('PUT', '/api/projects/g1/publicacion', publish({ document: doc('g1') }), 'other')).json(),
+    ).toMatchObject({ error: 'solo_la_propiedad' });
+    const group = await call('PUT', '/api/projects/g1/publicacion', publish({ document: doc('g1') }));
+    expect(group.statusCode).toBe(200);
+    expect(group.json()).toMatchObject({ groupId: 'grupo-1' });
+    expect((await call('GET', `/api/publicos/${group.json().id}`, undefined, 'none')).json()).not.toHaveProperty(
+      'groupId',
+    );
     expect((await call('PUT', '/api/projects/p1/publicacion', publish(), 'limited')).json()).toMatchObject({
       error: 'publicacion_limitada',
     });

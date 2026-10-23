@@ -28,6 +28,7 @@ import './styles/groups.css';
 import './styles/calendar.css';
 import './styles/community.css';
 import { PublicApp } from './components/community/PublicApp';
+import { CommunityPendingProvider } from './state/communityPending';
 import { publicIdFromPath } from './services/community';
 import { registerServiceWorker } from './services/serviceWorker';
 
@@ -54,7 +55,9 @@ createRoot(document.getElementById('root')!).render(
                   <NavigationProvider>
                     <TourProvider>
                       <DialogProvider>
-                        <App />
+                        <CommunityPendingProvider>
+                          <App />
+                        </CommunityPendingProvider>
                         <SyncNotices />
                       </DialogProvider>
                     </TourProvider>

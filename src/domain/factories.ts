@@ -34,6 +34,7 @@ export function createProject(name = 'Mi primer mapa'): Project {
     kind: 'general',
     schemaFolders: [],
     agenda: [],
+    origin: null,
   };
 }
 export function createInitialState(): AppState {

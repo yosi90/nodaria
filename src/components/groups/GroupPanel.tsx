@@ -29,6 +29,8 @@ declare module 'react' {
       /** La conversación del chat de la plataforma (`ecosistema-kit/CHAT.md`), del SDK. */
       'yosi-chat-conversacion': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         conversacion?: string;
+        /** Con él, la conversación lleva un botón de volver (`yosi-chat-volver`), para el móvil. */
+        volver?: string;
       };
     }
   }

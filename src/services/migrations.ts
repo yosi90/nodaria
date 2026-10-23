@@ -37,7 +37,17 @@ import type {
  *   antes siguen siendo de SQL Server.
  * - v10: Db2 for i como motor (`Schema.dbEngine = 'db2i'`) y sus tipos de columna (en mayúsculas). No cambia
  *   ningún dato existente; una versión anterior perdería el motor al abrirlo, por eso sube el formato.
+ * - v11: el origen de una copia de un proyecto público (`Project.origin`, `null` en los demás).
  */
+
+/** El origen de una copia; uno que no se entiende se olvida (la copia sigue siendo de quien la tiene). */
+function normalizeOrigin(raw: unknown): Project['origin'] {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const text = (value: unknown) => (typeof value === 'string' ? value.slice(0, 200) : '');
+  if (!text(r.publicId) || !text(r.author)) return null;
+  return { publicId: text(r.publicId), name: text(r.name), author: text(r.author), copiedAt: text(r.copiedAt) };
+}
 
 type RawNode = Omit<Node, 'positions'> & { positions?: Node['positions']; position?: Position | null };
 type RawProject = Partial<Omit<Project, 'nodes'>> & { formatVersion?: number; nodes?: RawNode[] };
@@ -230,6 +240,7 @@ function normalizeProject(project: RawProject): Project {
           }))
       : [],
     agenda: normalizeAgenda(project.agenda),
+    origin: normalizeOrigin(project.origin),
   };
 }
 

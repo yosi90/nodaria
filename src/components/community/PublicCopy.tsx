@@ -32,7 +32,18 @@ export function PublicCopy() {
         const { project } = parseProject(JSON.stringify(publication.document));
         dispatch({
           type: 'import-project',
-          project: { ...project, id: uid('project'), name: `${publication.name} (copia)`.slice(0, 200) },
+          project: {
+            ...project,
+            id: uid('project'),
+            name: `${publication.name} (copia)`.slice(0, 200),
+            // La copia cita de dónde sale: el original y quién lo publicó.
+            origin: {
+              publicId: publication.id,
+              name: publication.name,
+              author: publication.author,
+              copiedAt: new Date().toISOString(),
+            },
+          },
           replaceBlank: true,
         });
         toast({ message: `La copia de «${publication.name}» está en tus proyectos.` });
