@@ -395,6 +395,7 @@ const FREE_ACTIONS = new Set([
 export const SCHEMA_ACTIONS = new Set([
   'import-tables',
   'convert-to-documents',
+  'convert-to-tables',
   'set-project-kind',
   'merge-template',
   'merge-project',

@@ -54,6 +54,8 @@ import { sqlScript } from '../../domain/sqlScript';
 import { openDb2Export } from './openDb2Export';
 import { openTablesImport } from './openTablesImport';
 import { openDocumentConversion } from './openDocumentConversion';
+import { openTableConversion } from './openTableConversion';
+import { documentCollections } from '../../domain/tableConversion';
 import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
 import { ProjectKindDialog } from './ProjectKindDialog';
@@ -348,6 +350,9 @@ export function Topbar({
     // Pasar tablas a documentos (documentConversion.ts), si hay tablas relacionales.
     ...(tableTypes(project, 'sqlserver').length || tableTypes(project, 'db2i').length
       ? [{ label: 'Pasar tablas a documentos…', icon: Database, onSelect: openDocumentConversion }]
+      : []),
+    ...(documentCollections(project).length
+      ? [{ label: 'Pasar documentos a tablas…', icon: Database, onSelect: openTableConversion }]
       : []),
     { label: 'Copias de seguridad…', icon: History, onSelect: () => setSnapshotsOpen(true) },
   ];

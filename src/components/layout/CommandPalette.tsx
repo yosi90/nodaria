@@ -30,6 +30,7 @@ import { TypeIcon } from '../common/icons';
 import { NodeAvatar } from '../common/NodeAvatar';
 import { openTablesImport } from './openTablesImport';
 import { openDocumentConversion } from './openDocumentConversion';
+import { openTableConversion } from './openTableConversion';
 
 interface Command {
   id: string;
@@ -200,6 +201,15 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         leading: icon(Database),
         keywords: 'convertir tablas documentos colecciones mongodb firestore nosql incrustar subdocumentos',
         run: openDocumentConversion,
+      },
+      {
+        id: 'convert:tables',
+        label: 'Pasar documentos a tablas (SQL Server o Db2)',
+        group: 'Acciones',
+        leading: icon(Database),
+        keywords:
+          'convertir documentos colecciones mongodb firestore tablas sql server db2 relacional aplanar subdocumentos',
+        run: openTableConversion,
       },
       {
         id: 'help:database',

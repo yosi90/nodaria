@@ -49,7 +49,7 @@ Reutiliza lo de SQL en lugar de crear un editor aparte, como se decidió para la
 ### Opcional, más adelante
 
 - Firestore: subcolecciones y un esqueleto de reglas de seguridad.
-- Pasar un diseño de tablas a documentos (sugerir qué incrustar según las claves foráneas) y al revés. **Lo primero, hecho el 2026-10-23** (ver «Pasar tablas a documentos»); falta pasar de documentos a tablas.
+- Pasar un diseño de tablas a documentos (sugerir qué incrustar según las claves foráneas) y al revés. **Lo primero, hecho el 2026-10-23** (ver «Pasar tablas a documentos»); y el camino contrario también (ver «Pasar documentos a tablas»).
 - Importar el esquema de una base existente (leer una muestra de documentos y deducir la forma). Para las bases relacionales ya está hecho (2026-10-23, SQL o DDS: `ROADMAP_DATOS_BD.md`); falta para los documentos.
 - La IA del asistente para proponer colecciones, como ya hace con tablas.
 
@@ -99,3 +99,22 @@ Cada sugerencia se puede cambiar. Por defecto se hace en **una copia del proyect
 **Verificado:**
 - `documentConversion.test.ts`, 3 pruebas: sugerencias y motivos; la conversión con el subdocumento, la lista en el padre, las referencias y el script de mongosh; dejarla como colección.
 - Edge (`check-docs.cjs`, 9 comprobaciones): la sugerencia en el diálogo, la copia, el pedido con las líneas dentro en el diagrama, las colecciones de MongoDB y el original intacto.
+
+## Pasar documentos a tablas (2026-10-23)
+
+Es el camino contrario. Se abre desde el menú del proyecto, «Pasar documentos a tablas…», o desde la paleta. Usa `tableConversion.ts` y `TableConversionDialog`, con la acción `convert-to-tables`. Se eligen SQL Server o Db2 y las colecciones de MongoDB o Firestore:
+
+- **Colección** → tabla. Si no tiene clave primaria, gana `id` (IDENTITY), como su `_id`.
+- **Subdocumento en lista** (las líneas) → tabla hija, con una clave foránea hacia el padre que no admite nulos y se borra en cascada. La lista del padre sobra. Si el subdocumento ya tenía su clave (el número de línea), la clave primaria pasa a ser compuesta, con la del padre.
+- **Subdocumento en objeto** (la dirección de envío) → sus campos pasan a ser columnas del padre (`envio_calle`, `envio_cp`), si tiene como mucho 8 y solo lo usa ese padre. Si no, o si se elige, pasa a una tabla aparte, uno a uno, con una clave foránea única. Un tipo aplanado que ya no usa nadie se borra.
+- **Lista de ids** hacia otra colección → tabla intermedia (`junctionTables.ts`), si se marca, que es lo que viene por defecto. Si no, se avisa.
+
+Por defecto se hace en una copia del proyecto. **(revisable)**
+
+**Verificado:**
+- `tableConversion.test.ts`, 4 pruebas:
+  - las sugerencias;
+  - la conversión, con columnas aplanadas, la tabla hija y su FK en cascada en el script, y la tabla intermedia;
+  - el aviso sin tablas intermedias;
+  - la **ida y vuelta** del caso comercial (tablas → documentos → tablas): las líneas vuelven a ser una tabla de su pedido, con la clave primaria (pedido, número) y ON DELETE CASCADE.
+- Edge (`check-tables.cjs`, 9 comprobaciones): las sugerencias en el diálogo, la copia, las columnas aplanadas, la tabla hija, `pedidos_etiquetas`, ya sin MongoDB, y el original intacto.
