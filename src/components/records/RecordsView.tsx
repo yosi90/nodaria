@@ -1,4 +1,4 @@
-import { Database, Plus, Search, TriangleAlert } from 'lucide-react';
+import { CircleHelp, Database, Plus, Search, TriangleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { engineLabel } from '../../domain/database';
 import { uid } from '../../domain/factories';
@@ -7,7 +7,7 @@ import { useApp } from '../../state/AppContext';
 import { useProjectAccess } from '../../state/groups';
 import { useNavigation } from '../../state/navigation';
 import { usePreferences } from '../../state/preferences';
-import { Button } from '../common/Button';
+import { Button, IconButton } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
 import { Splitter } from '../common/Splitter';
 import { QueryPanel } from './QueryPanel';
@@ -22,7 +22,7 @@ type Selection = { kind: 'table'; id: string } | { kind: 'query'; id: string };
 export function RecordsView() {
   const { project, dispatch } = useApp();
   const { canEdit } = useProjectAccess();
-  const { setView } = useNavigation();
+  const { setView, openHelp } = useNavigation();
   const { preferences, setPreference } = usePreferences();
   const tables = useMemo(() => dataTables(project), [project]);
   const issues = useMemo(
@@ -80,6 +80,7 @@ export function RecordsView() {
       <aside className="side-panel left" style={{ gridTemplateRows: 'auto minmax(0, 1fr)' }} aria-label="Tablas">
         <div className="panel-head">
           <h2>Registros</h2>
+          <IconButton icon={CircleHelp} size="sm" label="Guía de bases de datos" onClick={() => openHelp('database')} />
         </div>
         <nav className="type-items" aria-label="Tablas y consultas">
           {[...engines].map(engine => (

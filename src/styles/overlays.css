@@ -524,12 +524,18 @@
 .guide-table tr:last-child td {
   border-bottom: 0;
 }
-.guide ul {
+.guide ul,
+.guide ol {
   margin: 0;
   padding-left: 18px;
 }
 .guide li + li {
   margin-top: 4px;
+}
+/* Términos con su explicación (guía de bases de datos): el término ocupa menos y puede partirse. */
+.guide-table.guide-terms td:first-child {
+  width: 30%;
+  white-space: normal;
 }
 
 /* ---------- Bienvenida, ejemplos y recorrido guiado ---------- */

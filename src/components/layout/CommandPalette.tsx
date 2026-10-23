@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Database,
   GitFork,
   Library,
@@ -48,7 +49,7 @@ const MAX_RESULTS = 40;
 /** Buscador global (Ctrl+K): salta a cualquier nodo, relación o tipo, o ejecuta una acción. */
 export function CommandPalette({ onClose }: { onClose: () => void }) {
   const { project, dispatch } = useApp();
-  const { select, setView, openCommunity } = useNavigation();
+  const { select, setView, openCommunity, openHelp } = useNavigation();
   const { preferences, setPreference } = usePreferences();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -173,6 +174,15 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         run: () => setView('records'),
       },
       {
+        id: 'help:database',
+        label: 'Guía de bases de datos',
+        group: 'Acciones',
+        leading: icon(BookOpen),
+        keywords:
+          'ayuda guía base de datos tablas columnas sql server db2 as400 ibm packed zoned registros filas consultas mongodb firestore neo4j',
+        run: () => openHelp('database'),
+      },
+      {
         id: 'view:health',
         label: 'Ir a la salud del proyecto',
         group: 'Acciones',
@@ -214,7 +224,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       },
     ];
     return [...nodes, ...relations, ...types, ...actions];
-  }, [project, select, setView, openCommunity, dispatch, preferences.theme, setPreference]);
+  }, [project, select, setView, openCommunity, openHelp, dispatch, preferences.theme, setPreference]);
 
   const results = useMemo(() => {
     const q = normalize(query.trim());

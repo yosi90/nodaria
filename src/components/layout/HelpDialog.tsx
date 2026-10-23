@@ -1,4 +1,5 @@
 import { Modal } from '../common/Modal';
+import { DatabaseGuide } from './DatabaseGuide';
 import { FormulasGuide } from './FormulasGuide';
 import { ShortcutsContent } from './ShortcutsHelp';
 import type { HelpTopic } from '../../state/navigation';
@@ -12,9 +13,10 @@ const TOPICS: { id: HelpTopic; label: string }[] = [
   { id: 'start', label: 'Primeros pasos' },
   { id: 'shortcuts', label: 'Atajos de teclado' },
   { id: 'formulas', label: 'Fórmulas' },
+  { id: 'database', label: 'Bases de datos' },
 ];
 
-/** Ayuda de la aplicación: atajos y guía de fórmulas, en pestañas. */
+/** Ayuda de la aplicación: primeros pasos, atajos y las guías de fórmulas y de bases de datos, en pestañas. */
 export function HelpDialog({
   topic,
   onTopic,
@@ -106,6 +108,8 @@ export function HelpDialog({
         </div>
       ) : topic === 'shortcuts' ? (
         <ShortcutsContent />
+      ) : topic === 'database' ? (
+        <DatabaseGuide />
       ) : (
         <FormulasGuide />
       )}

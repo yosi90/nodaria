@@ -44,7 +44,7 @@ export interface AgendaRequest {
   entryId: string;
   created: boolean;
 }
-export type HelpTopic = 'start' | 'shortcuts' | 'formulas';
+export type HelpTopic = 'start' | 'shortcuts' | 'formulas' | 'database';
 
 interface NavigationState {
   view: View;

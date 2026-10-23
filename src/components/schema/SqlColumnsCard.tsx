@@ -31,6 +31,7 @@ import {
 } from '../../domain/database';
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
+import { useNavigation } from '../../state/navigation';
 import { Button, IconButton } from '../common/Button';
 import { useToast } from '../common/toasts';
 
@@ -43,6 +44,7 @@ import { useToast } from '../common/toasts';
 export function SqlColumnsCard({ schema }: { schema: Schema }) {
   const { project, dispatch } = useApp();
   const toast = useToast();
+  const { openHelp } = useNavigation();
   const fields = tableFields(project, schema.id);
   const issues = tableIssues(project, schema.id);
   const dialect: SqlDialect = dialectOf(project, schema.id) ?? 'sqlserver';
@@ -87,7 +89,10 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
       <p className="muted-note">
         Los atributos son las columnas; el título del nodo es el nombre de la tabla. Si no eliges tipo, se deduce del
         atributo, y una referencia a otra tabla toma el de su clave primaria y se dibuja como clave foránea. Cambiar
-        aquí una preforma o un atributo heredado solo afecta a este tipo y a sus subtipos.
+        aquí una preforma o un atributo heredado solo afecta a este tipo y a sus subtipos.{' '}
+        <button type="button" className="link-button" onClick={() => openHelp('database')}>
+          Guía de bases de datos
+        </button>
       </p>
       {junctions > 0 && (
         <p className="sql-junctions">
