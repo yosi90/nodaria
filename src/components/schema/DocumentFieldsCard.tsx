@@ -1,11 +1,10 @@
-import { Braces, RotateCcw } from 'lucide-react';
+import { Braces } from 'lucide-react';
 import {
   COLUMN_DESCRIPTION_MAX,
   engineLabel,
   engineOf,
   isEmbeddedType,
   isRelationalEngine,
-  sqlOverrideOwner,
   tableFields,
   type SqlColumn,
   type TableColumn,
@@ -13,7 +12,7 @@ import {
 import { DOC_TYPES } from '../../domain/dbEngines';
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
-import { IconButton } from '../common/Button';
+import { ColumnName } from './ColumnName';
 
 /**
  * Campos de un tipo de MongoDB, Firestore o Neo4j (docs/roadmaps/ROADMAP_NOSQL.md), como «Columnas SQL»
@@ -80,32 +79,10 @@ export function DocumentFieldsCard({ schema }: { schema: Schema }) {
               {fields.map(column => {
                 const { field, sql } = column;
                 const off = sql.excluded;
-                const owner = column.origin.kind === 'own' ? undefined : sqlOverrideOwner(project, schema.id, field.id);
                 return (
                   <tr key={field.id} className={off ? 'excluded' : ''}>
                     <td>
-                      <div className="sql-name">
-                        <code>{field.key || field.label}</code>
-                        {column.origin.kind === 'library' && <span className="badge accent">Preforma</span>}
-                        {column.origin.kind === 'inherited' && (
-                          <span className="badge">De «{column.origin.from.name}»</span>
-                        )}
-                        {field.isTitle && <span className="badge accent">Título</span>}
-                        {owner?.id === schema.id && (
-                          <>
-                            <span className="badge warning">Ajustado en este tipo</span>
-                            <IconButton
-                              icon={RotateCcw}
-                              size="sm"
-                              label="Volver a los ajustes heredados"
-                              onClick={() =>
-                                dispatch({ type: 'set-column-sql', typeId: schema.id, fieldId: field.id, sql: null })
-                              }
-                            />
-                          </>
-                        )}
-                        {owner && owner.id !== schema.id && <span className="badge">Ajustado en «{owner.name}»</span>}
-                      </div>
+                      <ColumnName typeId={schema.id} column={column} />
                       {column.reference && (
                         <small>
                           {!column.target

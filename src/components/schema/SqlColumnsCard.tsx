@@ -1,4 +1,4 @@
-import { CircleAlert, Database, KeyRound, Network, RotateCcw, TriangleAlert, Wand2 } from 'lucide-react';
+import { CircleAlert, Database, KeyRound, Network, TriangleAlert, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import { junctionProposals } from '../../domain/junctionTables';
 import { JunctionTablesDialog } from './JunctionTablesDialog';
@@ -15,7 +15,6 @@ import {
   dialectOf,
   referencedTable,
   sqlAnnotations,
-  sqlOverrideOwner,
   sqlType,
   sqlTypeText,
   tableFields,
@@ -32,7 +31,8 @@ import {
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
-import { Button, IconButton } from '../common/Button';
+import { Button } from '../common/Button';
+import { ColumnName } from './ColumnName';
 import { useToast } from '../common/toasts';
 
 /**
@@ -163,35 +163,11 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                 return (
                   <tr key={field.id} className={off ? 'excluded' : ''}>
                     <td>
-                      <div className="sql-name">
-                        {sql.primaryKey && !off && <KeyRound size={12} aria-label="Clave primaria" />}
-                        <code>{field.key || field.label}</code>
-                        {column.origin.kind === 'library' && <span className="badge accent">Preforma</span>}
-                        {column.origin.kind === 'inherited' && (
-                          <span className="badge">De «{column.origin.from.name}»</span>
-                        )}
-                        {field.isTitle && <span className="badge accent">Título</span>}
-                        {(() => {
-                          const owner =
-                            column.origin.kind === 'own' ? undefined : sqlOverrideOwner(project, schema.id, field.id);
-                          if (!owner) return null;
-                          return owner.id === schema.id ? (
-                            <>
-                              <span className="badge warning">Ajustado en este tipo</span>
-                              <IconButton
-                                icon={RotateCcw}
-                                size="sm"
-                                label="Volver a los ajustes heredados"
-                                onClick={() =>
-                                  dispatch({ type: 'set-column-sql', typeId: schema.id, fieldId: field.id, sql: null })
-                                }
-                              />
-                            </>
-                          ) : (
-                            <span className="badge">Ajustado en «{owner.name}»</span>
-                          );
-                        })()}
-                      </div>
+                      <ColumnName
+                        typeId={schema.id}
+                        column={column}
+                        before={sql.primaryKey && !off && <KeyRound size={12} aria-label="Clave primaria" />}
+                      />
                       {field.type === 'nodeRef' && (
                         <small>
                           {target
