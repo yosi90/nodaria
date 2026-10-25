@@ -1,3 +1,4 @@
+import { GUID } from '../auth/platform.ts';
 import { loadConfig } from '../config.ts';
 import { connectDatabase } from '../db/pool.ts';
 import { ANNOUNCEMENT_KINDS, announceToYosiftware, type AnnouncementKind } from '../platform/news.ts';
@@ -15,7 +16,6 @@ import { linkAccount } from '../users/repository.ts';
  * mismo idExterno corrige el anuncio en vez de repetirlo.
  */
 
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const [command, ...args] = process.argv.slice(2);
 const config = loadConfig();
 

@@ -36,18 +36,21 @@ export function authenticatedUser(request: FastifyRequest) {
   return request.user;
 }
 
+/** El token de `Authorization: Bearer <token>`, o `null` si no viene así. */
+export const bearerToken = (header: string | undefined) => /^Bearer\s+(\S+)$/i.exec(header ?? '')?.[1] ?? null;
+
 /** Rutas que no exigen haber aceptado las normas de la web (para poder consultar el estado). */
 const WITHOUT_RULES = new Set(['/api/me']);
 
 // Hook onRequest de las rutas privadas: Authorization: Bearer <token de la plataforma>.
 export function createAuthenticate(auth: AuthProvider, users: UserStore) {
   return async function authenticate(request: FastifyRequest) {
-    const match = /^Bearer\s+(\S+)$/i.exec(request.headers.authorization ?? '');
-    if (!match) throw new HttpError(401, 'no_autenticado', TOKEN_MESSAGES.invalid_token);
+    const token = bearerToken(request.headers.authorization);
+    if (!token) throw new HttpError(401, 'no_autenticado', TOKEN_MESSAGES.invalid_token);
 
     let identity: PlatformIdentity;
     try {
-      identity = await auth.verify(match[1]);
+      identity = await auth.verify(token);
     } catch (error) {
       if (!(error instanceof AuthTokenError)) throw error;
       throw new HttpError(
@@ -74,10 +77,12 @@ export function createAuthenticate(auth: AuthProvider, users: UserStore) {
   };
 }
 
-/** Con `creacion` limitada por moderación no se crea contenido nuevo (`ecosistema-kit/MODERACION.md`). */
-export function assertCanCreate(user: AuthenticatedUser) {
-  if (!user.identity.restrictions.includes('creacion')) return;
-  throw new HttpError(403, 'creacion_limitada', 'Tu cuenta tiene limitado crear contenido nuevo.', {
-    hasta: user.identity.restrictionsUntil?.toISOString() ?? null,
-  });
+/** Con alguno de esos alcances limitado por moderación (`ecosistema-kit/MODERACION.md`), 403 con `hasta`. */
+export function assertUnrestricted(user: AuthenticatedUser, scopes: readonly string[], code: string, message: string) {
+  if (!user.identity.restrictions.some(r => scopes.includes(r))) return;
+  throw new HttpError(403, code, message, { hasta: user.identity.restrictionsUntil?.toISOString() ?? null });
 }
+
+/** Con `creacion` limitada no se crea contenido nuevo. */
+export const assertCanCreate = (user: AuthenticatedUser) =>
+  assertUnrestricted(user, ['creacion'], 'creacion_limitada', 'Tu cuenta tiene limitado crear contenido nuevo.');

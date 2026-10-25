@@ -2,7 +2,8 @@ import { timingSafeEqual } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppDependencies } from '../app.ts';
-import { authenticatedUser, HttpError } from '../auth/plugin.ts';
+import { GUID } from '../auth/platform.ts';
+import { assertUnrestricted, authenticatedUser, bearerToken, HttpError } from '../auth/plugin.ts';
 import {
   countsOf,
   isReportReason,
@@ -22,8 +23,6 @@ import { assertDocumentId, documentSchema, PROJECT_ID, serializeDocument } from 
  * API nunca deja cambiar a nadie más; leerla no pide sesión. Las novedades salen por la cola de salida
  * después de confirmar la transacción.
  */
-
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const projectParams = z.object({ id: z.string().regex(PROJECT_ID, 'Identificador de proyecto no válido') });
 const publicParams = z.object({ publicId: z.string().regex(PUBLIC_ID, 'Identificador público no válido') });
@@ -126,12 +125,7 @@ export const communityRoutes: FastifyPluginAsync<
     const user = authenticatedUser(request);
     const body = publishSchema.parse(request.body);
     assertDocumentId(body.document, id);
-    const blocked = user.identity.restrictions.filter(r => PUBLISH_BLOCKING.includes(r));
-    if (blocked.length) {
-      throw new HttpError(403, 'publicacion_limitada', 'Tu cuenta tiene limitado publicar contenido.', {
-        hasta: user.identity.restrictionsUntil?.toISOString() ?? null,
-      });
-    }
+    assertUnrestricted(user, PUBLISH_BLOCKING, 'publicacion_limitada', 'Tu cuenta tiene limitado publicar contenido.');
     // Un proyecto de grupo es del grupo: solo lo publica su propiedad. Uno propio, la persona dueña.
     const groupId = await groups.projectGroup(id);
     if (groupId) {
@@ -345,8 +339,7 @@ export const notificappRoutes: FastifyPluginAsync<
 > = async (app, { community, communityClient, config }) => {
   app.addHook('onRequest', async (request: FastifyRequest) => {
     const secret = await readToken(config.notificapp.upstreamTokenFile);
-    const match = /^Bearer\s+(\S+)$/i.exec(request.headers.authorization ?? '');
-    const given = Buffer.from(match?.[1] ?? '');
+    const given = Buffer.from(bearerToken(request.headers.authorization) ?? '');
     const expected = Buffer.from(secret ?? '');
     if (!secret || given.length !== expected.length || !timingSafeEqual(given, expected)) {
       throw new HttpError(401, 'no_autorizado', 'Credencial de Notificapp no válida.');

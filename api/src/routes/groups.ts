@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import type { AppDependencies } from '../app.ts';
+import { GUID } from '../auth/platform.ts';
 import { assertCanCreate, type AuthenticatedUser, authenticatedUser, HttpError } from '../auth/plugin.ts';
 import {
   capabilitiesOf,
@@ -42,8 +43,6 @@ const createSchema = z.object({
 
 const putSchema = z.object({ document: documentSchema, baseVersion: z.number().int().min(1) });
 
-// Los identificadores de las cuentas son GUID de SQL Server, no UUID del RFC 4122.
-const GLOBAL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const commentParams = projectParams.extend({ comment: z.coerce.number().int().positive() });
 const suggestionValue = z.union([
   z.string().max(4000),
@@ -69,7 +68,7 @@ const labelsSchema = z.object({
   labels: z.partialRecord(z.enum(['responsable', 'editor', 'revisor', 'lector']), z.string().trim().max(40)).nullable(),
 });
 
-const deleteQuery = z.object({ recipient: z.string().regex(GLOBAL_ID, 'Cuenta no válida') });
+const deleteQuery = z.object({ recipient: z.string().regex(GUID, 'Cuenta no válida') });
 
 const NOT_FOUND = () => new HttpError(404, 'grupo_no_encontrado', 'El grupo no existe o no eres miembro.');
 const FORBIDDEN = () => new HttpError(403, 'sin_permiso_en_el_grupo', 'Tu rol en el grupo no te deja hacer eso.');
