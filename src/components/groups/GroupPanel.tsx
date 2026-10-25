@@ -1,4 +1,4 @@
-import { AppWindow, Check, MessageSquareText, MessagesSquare, RotateCcw, Trash2, X } from 'lucide-react';
+import { AppWindow, Check, MessageSquareText, MessagesSquare, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { visibleFields } from '../../domain/conditions';
 import { nodeLabel } from '../../domain/selectors';
@@ -20,9 +20,9 @@ import { usePreferences } from '../../state/preferences';
 import { Button, IconButton } from '../common/Button';
 import { Splitter } from '../common/Splitter';
 import { openFloatingChat } from '../community/communityHelpers';
+import { CommentItem } from './CommentItem';
 import { useGroupComments } from './useGroupComments';
 import { useGroupMembers } from './useGroupMembers';
-import { dateTimeText } from '../common/dates';
 
 declare module 'react' {
   // eslint-disable-next-line @typescript-eslint/no-namespace -- así declara React los elementos propios
@@ -232,40 +232,44 @@ function GroupComments({ group }: { group: GroupInfo }) {
           const entry = comment.nodeId && !node ? project.agenda.find(e => e.id === comment.nodeId) : undefined;
           const current = node && comment.suggestion ? node.values[comment.suggestion.fieldId] : undefined;
           return (
-            <li key={comment.id} className={`group-comment ${comment.state}`}>
-              <div className="group-comment-meta">
-                <strong>{mine ? 'Tú' : nameOf(comment.author)}</strong>
-                <span>{dateTimeText(comment.createdAt, 'short')}</span>
-                {comment.state !== 'abierto' && <span className="badge">{STATE_LABELS[comment.state]}</span>}
-              </div>
-              {entry && (
-                <button
-                  type="button"
-                  className="link-button group-comment-node"
-                  onClick={() => openAgendaEntry(entry.id)}
-                >
-                  Agenda: {entry.title.trim() || 'Sin título'}
-                </button>
-              )}
-              {comment.nodeId && !entry && (
-                <button
-                  type="button"
-                  className="link-button group-comment-node"
-                  disabled={!node}
-                  onClick={() => node && select({ kind: 'node', id: node.id })}
-                >
-                  {node ? nodeLabel(project, node) : 'Nodo borrado'}
-                </button>
-              )}
-              <p className="group-comment-body">{comment.body}</p>
-              {comment.suggestion && (
-                <p className="group-comment-suggestion">
-                  Sugiere {fieldName(comment.nodeId, comment.suggestion.fieldId)}: <s>{valueText(current)}</s> →{' '}
-                  <strong>{valueText(comment.suggestion.value)}</strong>
-                </p>
-              )}
-              <div className="group-comment-actions">
-                {comment.suggestion && comment.state === 'abierto' && caps.edit && (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              author={mine ? 'Tú' : nameOf(comment.author)}
+              stateLabel={STATE_LABELS[comment.state]}
+              resolvable={!comment.suggestion}
+              canChange={caps.edit || mine}
+              canDelete={mine || group.isOwner}
+              busy={busy}
+              onState={state => void decide(comment, state)}
+              onDelete={() => void act(token => deleteComment(token, group.id, project.id, comment.id))}
+              header={
+                <>
+                  {entry && (
+                    <button
+                      type="button"
+                      className="link-button group-comment-node"
+                      onClick={() => openAgendaEntry(entry.id)}
+                    >
+                      Agenda: {entry.title.trim() || 'Sin título'}
+                    </button>
+                  )}
+                  {comment.nodeId && !entry && (
+                    <button
+                      type="button"
+                      className="link-button group-comment-node"
+                      disabled={!node}
+                      onClick={() => node && select({ kind: 'node', id: node.id })}
+                    >
+                      {node ? nodeLabel(project, node) : 'Nodo borrado'}
+                    </button>
+                  )}
+                </>
+              }
+              actions={
+                comment.suggestion &&
+                comment.state === 'abierto' &&
+                caps.edit && (
                   <>
                     <Button
                       size="sm"
@@ -286,40 +290,16 @@ function GroupComments({ group }: { group: GroupInfo }) {
                       Rechazar
                     </Button>
                   </>
-                )}
-                {!comment.suggestion && comment.state === 'abierto' && (caps.edit || mine) && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={Check}
-                    disabled={busy}
-                    onClick={() => void decide(comment, 'resuelto')}
-                  >
-                    Resolver
-                  </Button>
-                )}
-                {comment.state === 'resuelto' && (caps.edit || mine) && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={RotateCcw}
-                    disabled={busy}
-                    onClick={() => void decide(comment, 'abierto')}
-                  >
-                    Reabrir
-                  </Button>
-                )}
-                {(mine || group.isOwner) && (
-                  <IconButton
-                    icon={Trash2}
-                    size="sm"
-                    label="Borrar el comentario"
-                    disabled={busy}
-                    onClick={() => void act(token => deleteComment(token, group.id, project.id, comment.id))}
-                  />
-                )}
-              </div>
-            </li>
+                )
+              }
+            >
+              {comment.suggestion && (
+                <p className="group-comment-suggestion">
+                  Sugiere {fieldName(comment.nodeId, comment.suggestion.fieldId)}: <s>{valueText(current)}</s> →{' '}
+                  <strong>{valueText(comment.suggestion.value)}</strong>
+                </p>
+              )}
+            </CommentItem>
           );
         })}
       </ul>

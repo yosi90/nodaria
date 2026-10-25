@@ -1,4 +1,4 @@
-import { AtSign, Check, MessageSquare, RotateCcw, Trash2, X } from 'lucide-react';
+import { AtSign, MessageSquare, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AGENDA_KINDS,
@@ -25,9 +25,9 @@ import { OptionList } from '../common/OptionList';
 import { nodeOption } from '../common/options';
 import { Popover } from '../common/Popover';
 import { MultiSelect } from '../common/Select';
+import { CommentItem } from '../groups/CommentItem';
 import { useGroupComments } from '../groups/useGroupComments';
 import { KindIcon } from './agendaParts';
-import { dateTimeText } from '../common/dates';
 
 interface EntryPanelProps {
   entry: AgendaEntry;
@@ -338,51 +338,17 @@ function EntryComments({
         {comments?.map(comment => {
           const mine = comment.author === user?.id;
           return (
-            <li key={comment.id} className={`group-comment ${comment.state}`}>
-              <div className="group-comment-meta">
-                <strong>{mine ? 'Tú' : nameOf(comment.author)}</strong>
-                <span>{dateTimeText(comment.createdAt, 'short')}</span>
-                {comment.state !== 'abierto' && <span className="badge">resuelto</span>}
-              </div>
-              <p className="group-comment-body">{comment.body}</p>
-              <div className="group-comment-actions">
-                {comment.state === 'abierto' && (caps.edit || mine) && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={Check}
-                    disabled={busy}
-                    onClick={() =>
-                      void act(token => setCommentState(token, group.id, project.id, comment.id, 'resuelto'))
-                    }
-                  >
-                    Resolver
-                  </Button>
-                )}
-                {comment.state === 'resuelto' && (caps.edit || mine) && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={RotateCcw}
-                    disabled={busy}
-                    onClick={() =>
-                      void act(token => setCommentState(token, group.id, project.id, comment.id, 'abierto'))
-                    }
-                  >
-                    Reabrir
-                  </Button>
-                )}
-                {(mine || group.isOwner) && (
-                  <IconButton
-                    icon={Trash2}
-                    size="sm"
-                    label="Borrar el comentario"
-                    disabled={busy}
-                    onClick={() => void act(token => deleteComment(token, group.id, project.id, comment.id))}
-                  />
-                )}
-              </div>
-            </li>
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              author={mine ? 'Tú' : nameOf(comment.author)}
+              stateLabel="resuelto"
+              canChange={caps.edit || mine}
+              canDelete={mine || group.isOwner}
+              busy={busy}
+              onState={state => void act(token => setCommentState(token, group.id, project.id, comment.id, state))}
+              onDelete={() => void act(token => deleteComment(token, group.id, project.id, comment.id))}
+            />
           );
         })}
       </ul>
