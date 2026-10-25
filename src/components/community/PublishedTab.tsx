@@ -5,29 +5,21 @@ import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
 import { useNavigation } from '../../state/navigation';
 import { Button } from '../common/Button';
-import { useToast } from '../common/toasts';
-import { openPublic, useLoad, when } from './communityHelpers';
+import { openPublic, useCopyLink, useLoad } from './communityHelpers';
+import { dateTimeText } from '../common/dates';
 
 /** «Tus publicados»: lo que has hecho público, con su enlace, el de la vista previa y el proyecto del que sale. */
 export function PublishedTab() {
   const { getToken } = useAuth();
   const { state, dispatch } = useApp();
   const { setView } = useNavigation();
-  const toast = useToast();
   const load = useCallback(async () => {
     const token = await getToken();
     return token ? myPublications(token) : [];
   }, [getToken]);
   const { value, error } = useLoad<OwnPublication[]>(load);
 
-  const copy = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast({ message: 'Enlace copiado' });
-    } catch {
-      toast({ message: url });
-    }
-  };
+  const copy = useCopyLink();
   const openProject = (projectId: string) => {
     dispatch({ type: 'set-project', id: projectId });
     setView('map');
@@ -58,7 +50,7 @@ export function PublishedTab() {
               {p.state === 'retirado' && <span className="badge">Retirado por moderación</span>}
             </header>
             <p className="muted">
-              {p.nodeCount} nodos · {p.relationCount} relaciones · actualizado el {when(p.updatedAt)}
+              {p.nodeCount} nodos · {p.relationCount} relaciones · actualizado el {dateTimeText(p.updatedAt)}
             </p>
             <div className="public-card-actions">
               {p.state === 'publico' && (

@@ -21,6 +21,7 @@ import { Button, IconButton } from '../common/Button';
 import { Splitter } from '../common/Splitter';
 import { openFloatingChat } from '../community/communityHelpers';
 import { useGroupComments } from './useGroupComments';
+import { dateTimeText } from '../common/dates';
 
 declare module 'react' {
   // eslint-disable-next-line @typescript-eslint/no-namespace -- así declara React los elementos propios
@@ -239,9 +240,7 @@ function GroupComments({ group }: { group: GroupInfo }) {
             <li key={comment.id} className={`group-comment ${comment.state}`}>
               <div className="group-comment-meta">
                 <strong>{mine ? 'Tú' : (names[comment.author] ?? 'Antiguo miembro')}</strong>
-                <span>
-                  {new Date(comment.createdAt).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' })}
-                </span>
+                <span>{dateTimeText(comment.createdAt, 'short')}</span>
                 {comment.state !== 'abierto' && <span className="badge">{STATE_LABELS[comment.state]}</span>}
               </div>
               {entry && (

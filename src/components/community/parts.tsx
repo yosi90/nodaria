@@ -16,7 +16,8 @@ import {
 import { useNavigation } from '../../state/navigation';
 import { Button, IconButton } from '../common/Button';
 import { useToast } from '../common/toasts';
-import { openPublic, report, when } from './communityHelpers';
+import { openPublic, report } from './communityHelpers';
+import { dateTimeText } from '../common/dates';
 
 /*
  * Piezas de la sección «Comunidad» (docs/roadmaps/ROADMAP_COMUNIDAD.md): tarjetas de novedad y de proyecto
@@ -66,7 +67,7 @@ export function PublicCard({ publication, showAuthor = true }: { publication: Pu
       </header>
       {publication.description && <p className="public-card-description">{publication.description}</p>}
       <p className="muted">
-        {publication.nodeCount} nodos · {publication.relationCount} relaciones · {when(publication.updatedAt)}
+        {publication.nodeCount} nodos · {publication.relationCount} relaciones · {dateTimeText(publication.updatedAt)}
       </p>
       <div className="public-card-actions">
         <Button size="sm" icon={ExternalLink} onClick={() => openPublic(publication.id)}>
@@ -146,7 +147,7 @@ export function NewsCard({ item: initial }: { item: NewsItem }) {
     <article className="news-card">
       <header>
         <PersonChip person={item.persona} own={own} />
-        <span className="muted">{when(item.creada)}</span>
+        <span className="muted">{dateTimeText(item.creada)}</span>
       </header>
       <p>
         {own ? 'Tú' : personName(item.persona)} {item.texto}
@@ -211,7 +212,7 @@ export function NewsCard({ item: initial }: { item: NewsItem }) {
               <Avatar person={comment.persona} size={24} />
               <div>
                 <strong>{comment.propio ? 'Tú' : personName(comment.persona)}</strong>{' '}
-                <span className="muted">{when(comment.creado)}</span>
+                <span className="muted">{dateTimeText(comment.creado)}</span>
                 <p>{comment.texto}</p>
               </div>
               {(comment.propio || own) && (

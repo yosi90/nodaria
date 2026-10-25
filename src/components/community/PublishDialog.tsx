@@ -25,11 +25,11 @@ import { schemaOption } from '../common/options';
 import { MultiSelect } from '../common/Select';
 import { useToast } from '../common/toasts';
 import { YosiSymbol } from '../common/YosiSymbol';
+import { useCopyLink } from './communityHelpers';
 import { thumbnailPng } from './mapThumbnail';
+import { dateTimeText } from '../common/dates';
 
 const SOCIAL_NEWS = 'https://social.yosiftware.es/?vista=novedades';
-
-const when = (iso: string) => new Date(iso).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
 
 /**
  * Hacer público el proyecto abierto (docs/roadmaps/ROADMAP_COMUNIDAD.md): se publica una copia de solo
@@ -132,14 +132,7 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const copyLink = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast({ message: 'Enlace copiado' });
-    } catch {
-      toast({ message: url });
-    }
-  };
+  const copyLink = useCopyLink();
 
   if (!signedIn || blockedByGroup) {
     return (
@@ -195,9 +188,9 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
                 <>
                   <strong>Es público</strong>
                   <p>
-                    Publicado el {when(current.publishedAt)}
-                    {current.version > 1 ? ` · última actualización el ${when(current.updatedAt)}` : ''}. Lo que cambies
-                    ahora no se ve hasta «Publicar los cambios».
+                    Publicado el {dateTimeText(current.publishedAt, 'long')}
+                    {current.version > 1 ? ` · última actualización el ${dateTimeText(current.updatedAt, 'long')}` : ''}
+                    . Lo que cambies ahora no se ve hasta «Publicar los cambios».
                   </p>
                   <div className="publish-link">
                     <code>{current.url}</code>

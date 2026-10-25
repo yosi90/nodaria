@@ -1,14 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import { publicPath, socialErrorMessage } from '../../services/community';
 import { sdk, type YosiftwareSdk } from '../../services/yosiftware';
+import { useToast } from '../common/toasts';
 
-/* Ayudas de la sección «Comunidad» (docs/roadmaps/ROADMAP_COMUNIDAD.md): fechas, la página pública, las
- * denuncias de lo que es de la plataforma y la carga de datos. */
-
-export const when = (iso: string) => new Date(iso).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+/* Ayudas de la sección «Comunidad» (docs/roadmaps/ROADMAP_COMUNIDAD.md): la página pública, copiar sus
+ * enlaces, las denuncias de lo que es de la plataforma y la carga de datos. */
 
 /** Abre la página pública en otra pestaña, para no dejar a medias lo que se está editando. */
 export const openPublic = (publicId: string) => window.open(publicPath(publicId), '_blank', 'noopener');
+
+/** Copia un enlace y lo confirma con un aviso; si el navegador no deja copiar, el aviso enseña el enlace. */
+export function useCopyLink() {
+  const toast = useToast();
+  return async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ message: 'Enlace copiado' });
+    } catch {
+      toast({ message: url });
+    }
+  };
+}
 
 /** Lo de la plataforma se denuncia con su ventana (`ecosistema-kit/MODERACION.md`). */
 export const report = (options: Parameters<NonNullable<YosiftwareSdk['denunciar']>>[0]) =>

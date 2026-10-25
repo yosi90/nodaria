@@ -13,9 +13,10 @@ import {
 } from '../../services/community';
 import { Button } from '../common/Button';
 import { useToast } from '../common/toasts';
-import { useLoad, when } from './communityHelpers';
+import { useLoad } from './communityHelpers';
 import { PersonChip } from './parts';
 import { RelationActions } from './RelationActions';
+import { dateTimeText } from '../common/dates';
 
 type Section = 'solicitudes' | PeopleList;
 
@@ -143,7 +144,7 @@ function PeopleListView({ list }: { list: PeopleList }) {
           <PersonRow
             key={link.persona.id}
             person={link.persona}
-            detail={`Desde el ${when(link.desde)}`}
+            detail={`Desde el ${dateTimeText(link.desde)}`}
             onChange={list === 'bloqueos' ? reload : undefined}
           />
         ))}
@@ -185,7 +186,7 @@ function Requests() {
           {received.value?.map(request => (
             <li key={request.id} className="person-row">
               <PersonChip person={request.persona} size={40} />
-              <span className="muted person-row-detail">{when(request.creada)}</span>
+              <span className="muted person-row-detail">{dateTimeText(request.creada)}</span>
               <div className="relation-actions">
                 <Button
                   size="sm"
@@ -226,7 +227,7 @@ function Requests() {
           {sent.value?.map(request => (
             <li key={request.id} className="person-row">
               <PersonChip person={request.persona} size={40} />
-              <span className="muted person-row-detail">Caduca el {when(request.caduca)}</span>
+              <span className="muted person-row-detail">Caduca el {dateTimeText(request.caduca)}</span>
               <Button
                 size="sm"
                 variant="ghost"

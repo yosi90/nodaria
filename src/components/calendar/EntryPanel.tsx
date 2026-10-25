@@ -27,6 +27,7 @@ import { Popover } from '../common/Popover';
 import { MultiSelect } from '../common/Select';
 import { useGroupComments } from '../groups/useGroupComments';
 import { KindIcon } from './agendaParts';
+import { dateTimeText } from '../common/dates';
 
 interface EntryPanelProps {
   entry: AgendaEntry;
@@ -340,9 +341,7 @@ function EntryComments({
             <li key={comment.id} className={`group-comment ${comment.state}`}>
               <div className="group-comment-meta">
                 <strong>{mine ? 'Tú' : nameOf(comment.author)}</strong>
-                <span>
-                  {new Date(comment.createdAt).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' })}
-                </span>
+                <span>{dateTimeText(comment.createdAt, 'short')}</span>
                 {comment.state !== 'abierto' && <span className="badge">resuelto</span>}
               </div>
               <p className="group-comment-body">{comment.body}</p>

@@ -5,8 +5,7 @@ import { useApp } from '../../state/AppContext';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
-
-const when = (iso: string) => new Date(iso).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' });
+import { dateTimeText } from '../common/dates';
 
 /**
  * Copias automáticas del navegador (PENDIENTES.md, Fase 7): la versión anterior a los cambios de cada
@@ -39,7 +38,7 @@ export function SnapshotsDialog({ onClose }: { onClose: () => void }) {
       toast({ message: 'No se ha podido leer esa copia.' });
       return;
     }
-    const name = `${loaded.project.name} (copia del ${when(snapshot.savedAt)})`;
+    const name = `${loaded.project.name} (copia del ${dateTimeText(snapshot.savedAt)})`;
     dispatch({ type: 'import-project', project: { ...loaded.project, id: uid('project'), name } });
     if (loaded.issues.length) reportRepairs({ projectName: name, issues: loaded.issues });
     toast({ message: `Restaurada como «${name}».` });
@@ -72,7 +71,7 @@ export function SnapshotsDialog({ onClose }: { onClose: () => void }) {
                 <ul className="snapshot-list">
                   {list.map(snapshot => (
                     <li key={snapshot.key}>
-                      <span>{when(snapshot.savedAt)}</span>
+                      <span>{dateTimeText(snapshot.savedAt)}</span>
                       <span className="field-hint">
                         {snapshot.nodes} nodos · {snapshot.relations} relaciones
                       </span>
