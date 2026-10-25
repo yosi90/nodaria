@@ -108,6 +108,30 @@ function nonNegativeOf(f: Partial<FieldDefinition> & { computedNonNegative?: boo
   return typeof f.nonNegative === 'boolean' ? f.nonNegative : f.computedNonNegative === true;
 }
 
+/** Un atributo, de un tipo o de la biblioteca, con lo que las versiones antiguas podían omitir. */
+function normalizeField(f: FieldDefinition): FieldDefinition {
+  return {
+    ...f,
+    description: f.description || '',
+    options: f.options || [],
+    referenceTypeIds: f.referenceTypeIds || [],
+    formula: f.formula || '',
+    nonNegative: nonNegativeOf(f),
+    icon: f.icon ?? null,
+    optionIcons: f.optionIcons ?? {},
+    nodeDisplay: nodeDisplayOf(f),
+    optionDisplay: f.optionDisplay ?? {},
+    imageShape: f.imageShape ?? 'rounded',
+    imageBorder: f.imageBorder ?? true,
+    // Antes, cualquier imagen hacía de retrato: se conserva ese comportamiento.
+    portrait: f.portrait ?? f.type === 'image',
+    visibleWhen: f.visibleWhen ?? null,
+    referenceWithin: f.referenceWithin ?? null,
+    maxItemsBy: f.maxItemsBy ?? null,
+    sql: readSqlColumn(f.sql),
+  };
+}
+
 /** Rellena los campos opcionales que las versiones antiguas podían omitir. */
 function normalizeProject(project: RawProject): Project {
   const stamp = new Date().toISOString();
@@ -123,30 +147,7 @@ function normalizeProject(project: RawProject): Project {
       icon: s.icon || (s.kind === 'relationship' ? 'link' : 'circle'),
       parentTypeId: s.parentTypeId || null,
       description: s.description || '',
-      fields: (s.fields || []).map(f =>
-        'ref' in f
-          ? f
-          : {
-              ...f,
-              description: f.description || '',
-              options: f.options || [],
-              referenceTypeIds: f.referenceTypeIds || [],
-              formula: f.formula || '',
-              nonNegative: nonNegativeOf(f),
-              icon: f.icon ?? null,
-              optionIcons: f.optionIcons ?? {},
-              nodeDisplay: nodeDisplayOf(f),
-              optionDisplay: f.optionDisplay ?? {},
-              imageShape: f.imageShape ?? 'rounded',
-              imageBorder: f.imageBorder ?? true,
-              // Antes, cualquier imagen hacía de retrato: se conserva ese comportamiento.
-              portrait: f.portrait ?? f.type === 'image',
-              visibleWhen: f.visibleWhen ?? null,
-              referenceWithin: f.referenceWithin ?? null,
-              maxItemsBy: f.maxItemsBy ?? null,
-              sql: readSqlColumn(f.sql),
-            },
-      ),
+      fields: (s.fields || []).map(f => ('ref' in f ? f : normalizeField(f))),
       allowedChildTypeIds: s.allowedChildTypeIds || [],
       sourceTypeIds: s.sourceTypeIds || [],
       targetTypeIds: s.targetTypeIds || [],
@@ -167,26 +168,7 @@ function normalizeProject(project: RawProject): Project {
       dbEngine: DB_ENGINES.some(e => e.id === s.dbEngine) ? s.dbEngine! : null,
       embedded: s.kind === 'entity' && s.embedded === true,
     })),
-    fieldLibrary: (project.fieldLibrary || []).map(f => ({
-      ...f,
-      description: f.description || '',
-      options: f.options || [],
-      referenceTypeIds: f.referenceTypeIds || [],
-      formula: f.formula || '',
-      nonNegative: nonNegativeOf(f),
-      icon: f.icon ?? null,
-      optionIcons: f.optionIcons ?? {},
-      nodeDisplay: nodeDisplayOf(f),
-      optionDisplay: f.optionDisplay ?? {},
-      imageShape: f.imageShape ?? 'rounded',
-      imageBorder: f.imageBorder ?? true,
-      // Antes, cualquier imagen hacía de retrato: se conserva ese comportamiento.
-      portrait: f.portrait ?? f.type === 'image',
-      visibleWhen: f.visibleWhen ?? null,
-      referenceWithin: f.referenceWithin ?? null,
-      maxItemsBy: f.maxItemsBy ?? null,
-      sql: readSqlColumn(f.sql),
-    })),
+    fieldLibrary: (project.fieldLibrary || []).map(normalizeField),
     nodes: (project.nodes || []).map(n => ({
       ...n,
       parentId: n.parentId || null,
