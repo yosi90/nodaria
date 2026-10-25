@@ -1,12 +1,11 @@
 import { AppWindow, Check, MessageSquareText, MessagesSquare, RotateCcw, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { visibleFields } from '../../domain/conditions';
 import { nodeLabel } from '../../domain/selectors';
 import type { FieldValue } from '../../domain/types';
 import {
   createComment,
   deleteComment,
-  listComments,
   setCommentState,
   SUGGESTIBLE,
   suggestedValue,
@@ -16,12 +15,12 @@ import {
 import { groupConversation, groupErrorMessage, spaceMembers, type GroupInfo } from '../../services/groups';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
-import { useGroups } from '../../state/groups';
 import { useNavigation } from '../../state/navigation';
 import { usePreferences } from '../../state/preferences';
 import { Button, IconButton } from '../common/Button';
 import { Splitter } from '../common/Splitter';
 import { openFloatingChat } from '../community/communityHelpers';
+import { useGroupComments } from './useGroupComments';
 
 declare module 'react' {
   // eslint-disable-next-line @typescript-eslint/no-namespace -- así declara React los elementos propios
@@ -140,13 +139,10 @@ const valueText = (value: FieldValue | undefined) =>
  */
 function GroupComments({ group }: { group: GroupInfo }) {
   const { project, dispatch } = useApp();
-  const { getToken, user } = useAuth();
-  const { commentsTick } = useGroups();
+  const { user } = useAuth();
   const { selection, select, openAgendaEntry } = useNavigation();
-  const [comments, setComments] = useState<GroupComment[] | null>(null);
+  const { comments, error, busy, act } = useGroupComments(group);
   const [names, setNames] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [onlyNode, setOnlyNode] = useState(true);
   const [showClosed, setShowClosed] = useState(false);
   const [body, setBody] = useState('');
@@ -156,18 +152,6 @@ function GroupComments({ group }: { group: GroupInfo }) {
   const selectedNode = selection?.kind === 'node' ? (project.nodes.find(n => n.id === selection.id) ?? null) : null;
   const caps = group.capabilities;
 
-  const load = useCallback(async () => {
-    try {
-      const token = await getToken();
-      if (!token) return;
-      setComments(await listComments(token, group.id, project.id));
-      setError(null);
-    } catch (failure) {
-      setError(groupErrorMessage(failure));
-    }
-  }, [getToken, group.id, project.id]);
-  // Se recargan al abrir, y cuando el canal del grupo avisa de cambios en los comentarios.
-  useEffect(() => void load(), [load, commentsTick]);
   useEffect(() => {
     void spaceMembers(group.spaceId)
       .then(members => setNames(Object.fromEntries(members.map(m => [m.cuenta.toLowerCase(), m.nombre ?? m.alias]))))
@@ -185,21 +169,6 @@ function GroupComments({ group }: { group: GroupInfo }) {
     c => (showClosed || c.state === 'abierto') && (!onlyNode || !selectedNode || c.nodeId === selectedNode.id),
   );
   const openCount = (comments ?? []).filter(c => c.state === 'abierto').length;
-
-  const act = async (work: (token: string) => Promise<unknown>) => {
-    setBusy(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Entra con tu cuenta de Yosiftware.');
-      await work(token);
-      await load();
-    } catch (failure) {
-      setError(groupErrorMessage(failure));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const send = () =>
     act(async token => {

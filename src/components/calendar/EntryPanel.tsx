@@ -13,17 +13,10 @@ import {
 } from '../../domain/agenda';
 import { mentionIndex, segmentNotes } from '../../domain/notes';
 import { getNode, nodeLabel } from '../../domain/selectors';
-import {
-  createComment,
-  deleteComment,
-  listComments,
-  setCommentState,
-  type GroupComment,
-} from '../../services/comments';
-import { groupErrorMessage, type GroupInfo, type SpaceMember } from '../../services/groups';
+import { createComment, deleteComment, setCommentState } from '../../services/comments';
+import type { GroupInfo, SpaceMember } from '../../services/groups';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
-import { useGroups } from '../../state/groups';
 import { useNavigation } from '../../state/navigation';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { Button, IconButton } from '../common/Button';
@@ -32,6 +25,7 @@ import { OptionList } from '../common/OptionList';
 import { nodeOption } from '../common/options';
 import { Popover } from '../common/Popover';
 import { MultiSelect } from '../common/Select';
+import { useGroupComments } from '../groups/useGroupComments';
 import { KindIcon } from './agendaParts';
 
 interface EntryPanelProps {
@@ -321,41 +315,11 @@ function EntryComments({
   nameOf: (account: string) => string;
 }) {
   const { project } = useApp();
-  const { getToken, user } = useAuth();
-  const { commentsTick } = useGroups();
-  const [comments, setComments] = useState<GroupComment[] | null>(null);
+  const { user } = useAuth();
+  const { comments: all, error, busy, act } = useGroupComments(group);
+  const comments = all && all.filter(c => c.nodeId === entryId);
   const [body, setBody] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const caps = group.capabilities;
-
-  const load = useCallback(async () => {
-    try {
-      const token = await getToken();
-      if (!token) return;
-      const all = await listComments(token, group.id, project.id);
-      setComments(all.filter(c => c.nodeId === entryId));
-      setError(null);
-    } catch (failure) {
-      setError(groupErrorMessage(failure));
-    }
-  }, [getToken, group.id, project.id, entryId]);
-  useEffect(() => void load(), [load, commentsTick]);
-
-  const act = async (work: (token: string) => Promise<unknown>) => {
-    setBusy(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Entra con tu cuenta de Yosiftware.');
-      await work(token);
-      await load();
-    } catch (failure) {
-      setError(groupErrorMessage(failure));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <section className="agenda-comments">
