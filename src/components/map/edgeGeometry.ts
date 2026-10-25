@@ -160,24 +160,6 @@ export function bendFor(index: number, count: number, distance: number) {
 const SAMPLES = 16;
 const CLEARANCE = 6;
 
-/** Indica si la curva atraviesa alguna tarjeta (los extremos ya quedan fuera por construcción). */
-function crosses(start: Point, control: Point, end: Point, obstacles: Box[]) {
-  for (let i = 1; i < SAMPLES; i++) {
-    const t = i / SAMPLES;
-    const u = 1 - t;
-    const x = u * u * start.x + 2 * u * t * control.x + t * t * end.x;
-    const y = u * u * start.y + 2 * u * t * control.y + t * t * end.y;
-    if (
-      obstacles.some(
-        o =>
-          x > o.x - CLEARANCE && x < o.x + o.width + CLEARANCE && y > o.y - CLEARANCE && y < o.y + o.height + CLEARANCE,
-      )
-    )
-      return true;
-  }
-  return false;
-}
-
 const BEND_STEP = 45;
 const MAX_STEPS = 7;
 
@@ -201,7 +183,8 @@ export function routeRelation(a: Box, b: Box, baseBend: number, obstacles: Box[]
   let chosen = relationPath(a, b, baseBend, normalFrom, normalTo);
   for (const bend of candidates) {
     const path = relationPath(a, b, bend, normalFrom, normalTo);
-    if (!crosses(path.start, path.control, path.end, nearby)) {
+    // Los extremos ya quedan fuera de las tarjetas por construcción.
+    if (!crossesBoxes(path.pointAt, nearby)) {
       chosen = path;
       break;
     }
