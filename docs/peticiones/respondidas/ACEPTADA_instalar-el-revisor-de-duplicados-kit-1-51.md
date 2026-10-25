@@ -77,13 +77,32 @@ Cuenta con que una auditoría así es larga: en la plataforma, una sola ejecuci�
 
 Pendiente de cada destinatario.
 
-### Respuesta de Nodaria (2026-10-25, parcial)
+### Respuesta de Nodaria (2026-10-25)
 
-Puntos 1 a 3 hechos; los puntos 4 y 5 esperan a que el propietario lance la auditoría.
+**Aceptada y hecha.** El propietario lanzó la auditoría el mismo día. Las dos ramas están unidas a `main` y publicadas en producción: la API recompilada y reiniciada, y la web con el bundle `main-BjrNaXp1.js`, que tiene el mismo SHA-256 en los dos dominios.
+
+- **Revisión en que quedó instalado el revisor:** `2bf37ba`.
+- **Auditoría de la web:** base `b63bff0` y rama `revisor/auditoria-completa-web-2026-10-25`, con 27 commits y 26 duplicados unificados. Entre ellos están un solo cliente de la plataforma en la web, quitar acentos y hacer claves (13 copias), los nombres de archivo de las descargas (8), «id o lista de ids» (10), los diálogos que se abren con un evento, las piezas de los diálogos de bases de datos, el arrastre para reordenar, los comentarios del grupo, las fechas con hora, el CSV y el JSON en `localStorage`.
+- **Auditoría de la API (la última, que también busca lo que se repite entre partes):** base `c4b5466` y rama `revisor/auditoria-completa-api-2026-10-25`, con 11 commits y 9 grupos de duplicados unificados. Entre ellos están un solo cliente HTTP de la plataforma y de Notificapp (4 copias), el trabajo periódico (3), la comprobación del documento de un proyecto, el GUID y el Bearer, el aviso por el canal del grupo, las piezas SQL comunes y los tipos de la IA. Además arregló 3 divergencias reales entre la web y la API, cada una con su prueba:
+  - la API descartaba las referencias de los subdocumentos;
+  - el historial no describía `embed`;
+  - la web no recortaba la fecha del mundo al tope de la API, y un mes de nombre largo hacía fallar toda pregunta con un 400.
+- **Propuestas, en `bugs.md`:**
+  - de la web, D-01 a D-09;
+  - entre la API y la web, E-01 a E-07, empezando por una prueba cruzada de los contratos;
+  - de la API, A-01 y A-02.
+- **Pruebas:**
+  - **Web:** lint, build y 467 pruebas.
+  - **API:** tipos y 114 pruebas, también contra SQL Server, en una base desechable que crea la propia prueba.
+  - **Edge en local:** los 6 guiones de bases de datos, con 73 comprobaciones bien y 1 mal. La mala es una expectativa antigua del guion de Db2: las etiquetas «packed (P)» ya estaban en la base.
+  - **Edge en local y en producción:** una prueba de humo de 18 comprobaciones (vistas, arrastre de atributos y preformas, etiquetas, nombre de la descarga y Comunidad sin sesión).
+  - **Pendiente:** probar con cuentas reales los comentarios del grupo, publicar y los chats.
+
+Lo que sigue se escribió antes de la auditoría.
 
 1. **Kit:** se ha copiado el 1.58, que incluye el 1.51.
 2. **`AGENTS.md`:** puesto al día con el bloque de `BLOQUE_AGENTS.md`, adaptado: dos partes, la web y la API, y el contexto en `docs/codex/PROJECT_CONTEXT.md`.
 3. **Revisor:** instalado en `.claude/agents/revisor-de-duplicados.md` en la revisión `2bf37ba`, con los huecos rellenados. Dice dónde están las normas y lo común de la web (`src/domain`, `src/services`, `src/state`, `src/components/common`) y de la API (`api/src/auth`, `platform`, `db` y un módulo por área). Recoge las pruebas de cada parte, con la advertencia de no compilar `api/dist`, que es producción. Señala los contratos de la IA copiados a propósito entre la web y la API, que no comparten paquete.
-4. **Auditoría completa:** pendiente de que la lance el propietario. Serán dos ejecuciones: la web y la API.
+4. **Auditoría completa:** hecha el 2026-10-25 (ver arriba).
 
 **Lo que no encaja con la plantilla:** el proyecto no usa `CONTEXTO_PROYECTO.md` ni roadmaps `ACTIVO_*`; está adaptado en el archivo.

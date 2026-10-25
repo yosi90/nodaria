@@ -152,6 +152,13 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-25, tarde (auditoría de duplicados, web y API):** las dos ramas del revisor, unidas a `main` sin crear commit de fusión.
+  - API recompilada y reiniciada, sin migraciones: salud correcta, `401` sin token en la IA y `200` en `/api/publicos`. El proceso nuevo declaró los roles y los tipos de novedad sin errores.
+  - Web: bundle `main-BjrNaXp1.js`, con el SHA-256 idéntico en los dos dominios.
+  - Web con lint, build y 467 pruebas; API con tipos y 114 pruebas, también contra SQL Server.
+  - Edge: prueba de humo de 18 comprobaciones en local y en producción, y los guiones de bases de datos en local.
+  - Sin novedad: son cambios internos.
+
 - **Publicación del 2026-10-25 (kit 1.58: límites de la IA y proveedor preferido):** commit `2bf37ba`, la API y la web.
   - API recompilada y reiniciada (`ops\restart-api.ps1`, sin migraciones): salud correcta y `401` sin token en `/api/ia/preguntas` y `/api/ia/propuestas`.
   - Web: bundle `main-CooG1mWZ.js`, con el SHA-256 idéntico al local en los dos dominios.
@@ -256,7 +263,7 @@ Las filas no se publican ni las recibe la IA. Queda pendiente la prueba en el AS
 - **Segunda tanda** (2026-10-23, formato 11; detalle en el roadmap): «Comunidad» es una vista (`View = 'community'`, `CommunityView`, ruta en `navigation.community` y en `#comunidad/…`, `communityHash.ts`) con su botón en la barra y contador (`CommunityButton`, `CommunityPendingProvider`): Inicio (feed completo), Descubrir, Personas (buscar, solicitudes, amistades, seguidos, seguidores, bloqueos; `RelationActions`), el perfil de cada persona, Chats (bandeja y conversación del SDK) y Tus publicados. Imagen del mapa al publicar (`mapThumbnail.ts`, servida por la API), enlace con vista previa (`/compartir/<id>` en la API), proyectos de grupo publicados por su propiedad y autoría de las copias (`Project.origin`).
 - Moderación: plugin de Notificapp `nodaria-api` 2.0.0 en `notificapp-plugin/` (aviso `nodaria_report`, retirar o desestimar), pendiente de que el propietario lo instale. Normas propias en `docs/normas/NORMAS_NODARIA.md`, pendientes de publicar. Política de privacidad con «Proyectos públicos y comunidad» (23 de octubre de 2026).
 
-**Kit 1.58 adoptado (2026-10-25)**, con las peticiones de los kits 1.54 y 1.58 respondidas en `docs/peticiones/respondidas/`:
+**Kit 1.58 adoptado (2026-10-25)**, con las peticiones de los kits 1.51, 1.54 y 1.58 respondidas en `docs/peticiones/respondidas/`:
 - **Límites de lo que va a la IA (1.58, obligatorio):**
   - la API rechaza con 413 `contexto_demasiado_grande`, sin llamar, el contexto de más de 400 000 caracteres (`AI_CONTEXT_BUDGET`, igual que `WORLD_BUDGET`);
   - cuerpo hasta 640 KiB y 300 llamadas al día por cuenta, además de las 10 por minuto;
@@ -265,7 +272,12 @@ Las filas no se publican ni las recibe la IA. Queda pendiente la prueba en el AS
   - Detalle en `docs/backend/README.md`, «Asistencia de IA».
 - **Clave de IA del grupo (decisión del propietario, 2026-10-25):** las preguntas con ella exigen `comment` y las propuestas, `editSchema`. El lector, o un rol desconocido, recibe `403 clave_del_grupo_no_permitida`, y la web le hace usar su propia clave.
 - **Proveedor preferido (1.54):** el asistente lee `GET /v1/ia/estado` (`preferidos`). Si la persona no ha escogido un modelo, sale el equilibrado de su proveedor preferido cuando está `lista` (`preferredModel`).
-- **Revisor de duplicados (1.51):** instalado en `.claude/agents/revisor-de-duplicados.md`, con su norma en `AGENTS.md`. **La auditoría completa** (una ejecución para la web y otra para la API, cada una en su rama) **está pendiente de que la lance el propietario**. La petición sigue en `docs/peticiones/`, con una respuesta parcial.
+- **Revisor de duplicados (1.51):** instalado en `.claude/agents/revisor-de-duplicados.md`, con su norma en `AGENTS.md`. **Auditoría completa hecha el 2026-10-25**, lanzada por el propietario:
+  - **Web:** base `b63bff0`, 26 duplicados unificados.
+  - **API:** base `c4b5466`, 9 grupos unificados y 3 divergencias entre la web y la API arregladas.
+  - **Veredicto: «Quedan duplicados»,** como propuestas en `bugs.md` (web D-01 a D-09, entre partes E-01 a E-07, API A-01 y A-02). Ninguna impedía unir.
+  - **Piezas comunes nuevas:** en la web, `src/domain/text.ts`, `references.ts` (`referenceIds`), `common/DialogHost`, `Chip`, `ErrorNote`, `sets.ts`, `services/csv.ts` y `localJson.ts`, y `platformRequest` en `yosiftware.ts`. En la API, `platform/http.ts`, `periodic.ts` y `db/pool.ts` (`guid`, `prefixed`); la lista está en `docs/backend/README.md`.
+  - A partir de ahora, el revisor se pasa en modo `corregir` solo sobre lo nuevo cuando se reparta trabajo entre agentes.
 
 **Kit 1.50 adoptado (2026-10-23):** sin requisitos nuevos. `GET /v1/ia/modelos` trae `usos` y `precio` (1.48) y ahora también ElevenLabs: `reachableModels` (`src/services/ai.ts`) solo ofrece modelos de texto con precio en la tabla de la plataforma.
 
