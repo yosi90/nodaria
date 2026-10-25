@@ -1,10 +1,9 @@
 import { Ban, Flag, MessageSquare, MoreHorizontal, UserCheck, UserMinus, UserPlus, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   answerFriendRequest,
   directConversation,
   personName,
-  relationship,
   removeFriend,
   requestFriendship,
   setBlocked,
@@ -20,8 +19,7 @@ import { Button, IconButton } from '../common/Button';
 import { useDialogs } from '../common/dialogs';
 import { Menu, type MenuEntry } from '../common/Menu';
 import { useToast } from '../common/toasts';
-import { report } from './communityHelpers';
-import { openFloatingChat } from './communityHelpers';
+import { openFloatingChat, report, useRelationship } from './communityHelpers';
 
 /**
  * Lo que se puede hacer con una persona, con las rutas de la plataforma (`ecosistema-kit/SOCIAL.md`):
@@ -41,20 +39,9 @@ export function RelationActions({
   const toast = useToast();
   const { confirm } = useDialogs();
   const { openCommunity } = useNavigation();
-  const [relation, setRelation] = useState<Relationship | null | undefined>(undefined);
+  const [relation, setRelation] = useRelationship(person.id);
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<Anchor | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    relationship(person.id).then(
-      found => alive && setRelation(found),
-      () => alive && setRelation(null),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [person.id]);
 
   if (!relation) return null;
   const name = personName(person);

@@ -1,8 +1,9 @@
 import { UserCheck, UserPlus } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { relationship, setFollowing, type Relationship } from '../../services/community';
+import { useState } from 'react';
+import { setFollowing } from '../../services/community';
 import { Button } from '../common/Button';
 import { useToast } from '../common/toasts';
+import { useRelationship } from './communityHelpers';
 
 /**
  * Seguir a una persona, con las rutas de la plataforma (`ecosistema-kit/SOCIAL.md`): Nodaria no guarda
@@ -10,19 +11,8 @@ import { useToast } from '../common/toasts';
  */
 export function FollowButton({ personId }: { personId: string }) {
   const toast = useToast();
-  const [relation, setRelation] = useState<Relationship | null>(null);
+  const [relation, setRelation] = useRelationship(personId);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    relationship(personId).then(
-      found => alive && setRelation(found),
-      () => alive && setRelation(null),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [personId]);
 
   if (!relation || relation.bloqueada) return null;
   const toggle = async () => {

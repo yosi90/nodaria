@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { publicPath, socialErrorMessage } from '../../services/community';
+import { publicPath, relationship, socialErrorMessage, type Relationship } from '../../services/community';
 import { sdk, type YosiftwareSdk } from '../../services/yosiftware';
 import { useToast } from '../common/toasts';
 
@@ -46,6 +46,25 @@ export function useLoad<T>(load: () => Promise<T>) {
     };
   }, [load, tick]);
   return { value, setValue, error, reload: () => setTick(t => t + 1) };
+}
+
+/**
+ * La relación de la cuenta con una persona (seguir, amistad, bloqueo): `undefined` mientras se pide y `null`
+ * si no se ha podido. El setter deja reflejar al momento lo que se acaba de cambiar.
+ */
+export function useRelationship(personId: string) {
+  const [relation, setRelation] = useState<Relationship | null | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    relationship(personId).then(
+      found => alive && setRelation(found),
+      () => alive && setRelation(null),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [personId]);
+  return [relation, setRelation] as const;
 }
 
 /** Llama a `onVisible` cuando el elemento entra en pantalla: para cargar más al llegar al final. */
