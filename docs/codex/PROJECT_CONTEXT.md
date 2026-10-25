@@ -152,13 +152,20 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-25 (kit 1.58: límites de la IA y proveedor preferido):** commit `2bf37ba`, la API y la web.
+  - API recompilada y reiniciada (`ops\restart-api.ps1`, sin migraciones): salud correcta y `401` sin token en `/api/ia/preguntas` y `/api/ia/propuestas`.
+  - Web: bundle `main-CooG1mWZ.js`, con el SHA-256 idéntico al local en los dos dominios.
+  - Lint, build y 465 pruebas de la web. Tipos y 103 pruebas de la API, también contra SQL Server.
+  - Edge en local con una sesión simulada: el modelo por defecto según el proveedor preferido, 6 comprobaciones. La clave del grupo según el rol solo se ha probado en las pruebas de la API.
+  - Anunciadas: `2026-10-24-bases-de-documentos` (la que quedó pendiente del 23 por el límite diario) y `2026-10-25-ia-proveedor-preferido`.
+
 - **Publicación del 2026-10-23, noche (el asistente de IA diseña colecciones):** commit `83eeb58`, la API y la web.
   - API recompilada y reiniciada (`opsestart-api.ps1`, sin migraciones): `/api/health` correcto y `/api/ia/propuestas` responde `401` sin token.
   - Web: bundle `main-DA4f2_5s.js`, con el SHA-256 idéntico en los dos dominios.
   - Edge en producción: `check-records` (25), `check-docs` (9), `check-tables` (9), `check-doc-import` (8) y `check-import` (11), sin errores. `check-import` falló una vez de cada cuatro porque escribía antes de que la hoja llevara el foco a la fila nueva; ahora espera.
   - 462 pruebas de la web y 100 de la API.
   - Falta probarlo con un modelo de verdad (lo hará el propietario con su clave).
-  - **Novedades pendientes por el límite diario:** anunciar el 2026-10-24, en una sola novedad (`2026-10-24-bases-de-documentos`): pasar documentos a tablas, importar colecciones desde JSON y el asistente de IA para colecciones.
+  - **Novedades que quedaron pendientes por el límite diario:** pasar documentos a tablas, importar colecciones desde JSON y el asistente de IA para colecciones. Se anunciaron juntas el 2026-10-25 como `2026-10-24-bases-de-documentos`.
 - **Publicación del 2026-10-23, noche (importar colecciones desde JSON):** solo la web. `documentImport.ts` (ROADMAP_NOSQL.md, «Importar colecciones que ya existen»). Bundle `main-CEZczB68.js`, con el SHA-256 idéntico en los dos dominios. Edge en producción: 8 comprobaciones, sin errores. Lint, build y 460 pruebas. **Sin anunciar** por el límite de 10 novedades al día. Se anunciará junto con «pasar documentos a tablas» en una sola novedad.
 - **Publicación del 2026-10-23, noche (pasar documentos a tablas):** commit `1f1bed5`, solo la web. `tableConversion.ts` (ROADMAP_NOSQL.md, «Pasar documentos a tablas»). Bundle `main-BxAnJtEa.js`, con el SHA-256 idéntico en los dos dominios. Edge en producción: 9 comprobaciones, sin errores. Lint, build y 457 pruebas. **Sin anunciar todavía:** la plataforma admite 10 novedades al día por web (`demasiadas_novedades`) y Nodaria ya había publicado 10 el 2026-10-23. Queda pendiente anunciarlo otro día con el mismo `idExterno` (`2026-10-23-documentos-a-tablas`).
 - **Publicación del 2026-10-23, noche (pasar tablas a documentos):** solo la web. `documentConversion.ts` (ROADMAP_NOSQL.md, «Pasar tablas a documentos»). Bundle `main-B0kiDIx_.js` en los dos dominios. El dominio propio sirvió unos segundos la página anterior por caché. Edge en producción: 9 comprobaciones, sin errores. Lint, build y 453 pruebas. Anunciado: `2026-10-23-tablas-a-documentos`.
@@ -248,6 +255,17 @@ Las filas no se publican ni las recibe la IA. Queda pendiente la prueba en el AS
 - Web: página pública `/p/<id>` (`PublicApp`, elegida en `main.tsx`; `StaticAppProvider` en `AppContext.tsx` monta el proyecto sin leer ni guardar nada y con un filtro fijo de acciones; `ReadOnlyProject` en `groups.tsx` hace que `useProjectAccess` diga solo lectura). Los controles de edición del inspector, las relaciones, las notas, el árbol, el lienzo (`nodesDraggable`/`nodesConnectable`) y la Tabla se esconden con `canEdit`, también para los lectores de un grupo. «Publicar…» en el engranaje (`PublishDialog`), «Hacer una copia» con `/?copiar=<id>` (`PublicCopy`). Estilos en `src/styles/community.css`.
 - **Segunda tanda** (2026-10-23, formato 11; detalle en el roadmap): «Comunidad» es una vista (`View = 'community'`, `CommunityView`, ruta en `navigation.community` y en `#comunidad/…`, `communityHash.ts`) con su botón en la barra y contador (`CommunityButton`, `CommunityPendingProvider`): Inicio (feed completo), Descubrir, Personas (buscar, solicitudes, amistades, seguidos, seguidores, bloqueos; `RelationActions`), el perfil de cada persona, Chats (bandeja y conversación del SDK) y Tus publicados. Imagen del mapa al publicar (`mapThumbnail.ts`, servida por la API), enlace con vista previa (`/compartir/<id>` en la API), proyectos de grupo publicados por su propiedad y autoría de las copias (`Project.origin`).
 - Moderación: plugin de Notificapp `nodaria-api` 2.0.0 en `notificapp-plugin/` (aviso `nodaria_report`, retirar o desestimar), pendiente de que el propietario lo instale. Normas propias en `docs/normas/NORMAS_NODARIA.md`, pendientes de publicar. Política de privacidad con «Proyectos públicos y comunidad» (23 de octubre de 2026).
+
+**Kit 1.58 adoptado (2026-10-25)**, con las peticiones de los kits 1.54 y 1.58 respondidas en `docs/peticiones/respondidas/`:
+- **Límites de lo que va a la IA (1.58, obligatorio):**
+  - la API rechaza con 413 `contexto_demasiado_grande`, sin llamar, el contexto de más de 400 000 caracteres (`AI_CONTEXT_BUDGET`, igual que `WORLD_BUDGET`);
+  - cuerpo hasta 640 KiB y 300 llamadas al día por cuenta, además de las 10 por minuto;
+  - `<` escapado en el JSON del contexto (`contextJson`);
+  - la web recorta cada campo del mundo a los topes de la API y solo manda las referencias de los nodos que van.
+  - Detalle en `docs/backend/README.md`, «Asistencia de IA».
+- **Clave de IA del grupo (decisión del propietario, 2026-10-25):** las preguntas con ella exigen `comment` y las propuestas, `editSchema`. El lector, o un rol desconocido, recibe `403 clave_del_grupo_no_permitida`, y la web le hace usar su propia clave.
+- **Proveedor preferido (1.54):** el asistente lee `GET /v1/ia/estado` (`preferidos`). Si la persona no ha escogido un modelo, sale el equilibrado de su proveedor preferido cuando está `lista` (`preferredModel`).
+- **Revisor de duplicados (1.51):** instalado en `.claude/agents/revisor-de-duplicados.md`, con su norma en `AGENTS.md`. **La auditoría completa** (una ejecución para la web y otra para la API, cada una en su rama) **está pendiente de que la lance el propietario**. La petición sigue en `docs/peticiones/`, con una respuesta parcial.
 
 **Kit 1.50 adoptado (2026-10-23):** sin requisitos nuevos. `GET /v1/ia/modelos` trae `usos` y `precio` (1.48) y ahora también ElevenLabs: `reachableModels` (`src/services/ai.ts`) solo ofrece modelos de texto con precio en la tabla de la plataforma.
 
