@@ -14,7 +14,7 @@ import {
   reportEvent,
   updateNews,
 } from '../community/model.ts';
-import { PUBLIC_ID, type Publication, type ReportView } from '../community/repository.ts';
+import { omit, PUBLIC_ID, type Publication, type ReportView } from '../community/repository.ts';
 import { PlatformError, readToken } from '../platform/http.ts';
 import { assertDocumentId, documentSchema, PROJECT_ID, serializeDocument } from './projects.ts';
 
@@ -92,19 +92,16 @@ const ownView = (publication: Publication, config: { webUrl: string; apiUrl: str
 });
 
 /** Lo que cualquiera ve de un público: nunca el proyecto privado ni el grupo del que sale. */
-function publicSummary(publication: Publication, apiUrl: string) {
-  const summary: Partial<Publication> & { imageUrl?: string | null } = {
-    ...publication,
-    imageUrl: imageUrl(publication, apiUrl),
-  };
-  delete summary.projectId;
-  delete summary.options;
-  delete summary.retiredReason;
-  delete summary.groupId;
-  return summary;
-}
+const publicSummary = <T extends Publication>(publication: T, apiUrl: string) =>
+  omit({ ...publication, imageUrl: imageUrl(publication, apiUrl) }, [
+    'projectId',
+    'options',
+    'retiredReason',
+    'groupId',
+  ]);
 
 const notFound = () => new HttpError(404, 'publico_no_encontrado', 'Este proyecto ya no es público o no existe.');
+const reportNotFound = () => new HttpError(404, 'denuncia_no_encontrada', 'La denuncia no existe.');
 
 export const communityRoutes: FastifyPluginAsync<
   Pick<AppDependencies, 'community' | 'projects' | 'groups' | 'config'>
@@ -252,9 +249,7 @@ export const publicRoutes: FastifyPluginAsync<Pick<AppDependencies, 'community' 
     const stored = await community.get(publicId);
     if (!stored || stored.state !== 'publico' || !stored.authorActive) throw notFound();
     reply.header('cache-control', 'no-store');
-    const summary: Partial<typeof stored> = publicSummary(stored, config.apiUrl);
-    delete summary.document;
-    delete summary.authorActive;
+    const summary = omit(publicSummary(stored, config.apiUrl), ['document', 'authorActive']);
     return { ...summary, document: JSON.parse(stored.document) };
   });
 
@@ -357,7 +352,7 @@ export const notificappRoutes: FastifyPluginAsync<
   app.get('/reports/:id', async request => {
     const { id } = reportParams.parse(request.params);
     const report = await community.getReport(id);
-    if (!report) throw new HttpError(404, 'denuncia_no_encontrada', 'La denuncia no existe.');
+    if (!report) throw reportNotFound();
     return { report: describe(report) };
   });
 
@@ -375,7 +370,7 @@ export const notificappRoutes: FastifyPluginAsync<
     const { id } = reportParams.parse(request.params);
     const { note, caso, mensaje } = resolveSchema.parse(request.body ?? {});
     const result = await community.resolveReport(id, 'retirar', note ?? null);
-    if (!result) throw new HttpError(404, 'denuncia_no_encontrada', 'La denuncia no existe.');
+    if (!result) throw reportNotFound();
     // El aviso a la cuenta es opcional y va después de retirar: si la plataforma falla, lo retirado se queda.
     let incident: string | null = null;
     if (caso && mensaje) {
@@ -399,7 +394,7 @@ export const notificappRoutes: FastifyPluginAsync<
     const { id } = reportParams.parse(request.params);
     const { note } = resolveSchema.parse(request.body ?? {});
     const result = await community.resolveReport(id, 'desestimar', note ?? null);
-    if (!result) throw new HttpError(404, 'denuncia_no_encontrada', 'La denuncia no existe.');
+    if (!result) throw reportNotFound();
     return { changed: result.changed, report: describe(result.report) };
   });
 };

@@ -387,10 +387,13 @@ describe('community routes', () => {
       allowCopy: true,
       document: doc('p1'),
     });
-    // Nunca se enseña el proyecto privado del que sale.
-    expect(read.json()).not.toHaveProperty('projectId');
+    // Nunca se enseña el proyecto privado del que sale, ni lo que solo ve quien lo publicó.
+    const hidden = ['projectId', 'options', 'retiredReason', 'groupId', 'authorActive'];
+    for (const key of hidden) expect(read.json()).not.toHaveProperty(key);
     expect((await call('GET', `/api/publicos?cuenta=${OWNER}`, undefined, 'none')).json().publicos).toHaveLength(1);
-    expect((await call('GET', '/api/publicos', undefined, 'none')).json().publicos[0]).not.toHaveProperty('document');
+    const listed = (await call('GET', '/api/publicos', undefined, 'none')).json().publicos[0];
+    for (const key of [...hidden, 'document']) expect(listed).not.toHaveProperty(key);
+    expect(listed).toHaveProperty('imageUrl');
     expect((await call('GET', '/api/publicos/noexiste1234', undefined, 'none')).statusCode).toBe(404);
   });
 
