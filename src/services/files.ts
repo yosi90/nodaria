@@ -1,3 +1,4 @@
+import { fileSafeName } from '../domain/text';
 import type { Project } from '../domain/types';
 import { serializeProject } from './storage';
 
@@ -21,5 +22,5 @@ export function downloadBytes(fileName: string, bytes: Uint8Array, type = 'appli
 
 /** Exporta un proyecto como `<nombre>.nodaria.json`. */
 export function downloadProject(project: Project) {
-  downloadText(`${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.nodaria.json`, serializeProject(project));
+  downloadText(`${fileSafeName(project.name, 'proyecto')}.nodaria.json`, serializeProject(project));
 }

@@ -84,6 +84,7 @@ import { CsvImportDialog } from './CsvImportDialog';
 import { ImportProjectDialog } from './ImportProjectDialog';
 import type { Project } from '../../domain/types';
 import { parseCsv, type CsvTable } from '../../domain/csvImport';
+import { fileSafeName } from '../../domain/text';
 import { NewProjectDialog } from '../onboarding/NewProjectDialog';
 import { GroupDialog, type GroupDialogMode } from '../groups/GroupDialog';
 import { ShareDialog } from '../groups/ShareDialog';
@@ -359,7 +360,7 @@ export function Topbar({
     { label: 'Copias de seguridad…', icon: History, onSelect: () => setSnapshotsOpen(true) },
   ];
   const engines = projectEngines(project);
-  const fileBase = project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_') || 'proyecto';
+  const fileBase = fileSafeName(project.name, 'proyecto');
   const settingsEntries: MenuEntry[] = [
     { section: project.name },
     { label: 'Renombrar', icon: Pencil, onSelect: rename },
@@ -412,7 +413,7 @@ export function Topbar({
     {
       label: 'Exportar ZIP (notas Markdown, CSV e imágenes)',
       icon: FileArchive,
-      onSelect: () => downloadBytes(`${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.zip`, exportZip(project)),
+      onSelect: () => downloadBytes(`${fileBase}.zip`, exportZip(project)),
     },
     ...(tableTypes(project, 'db2i').length
       ? [
@@ -428,12 +429,7 @@ export function Topbar({
           {
             label: 'Exportar SQL Server (.sql)',
             icon: Database,
-            onSelect: () =>
-              downloadText(
-                `${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.sql`,
-                sqlScript(project),
-                'application/sql',
-              ),
+            onSelect: () => downloadText(`${fileBase}.sql`, sqlScript(project), 'application/sql'),
           },
         ]
       : []),

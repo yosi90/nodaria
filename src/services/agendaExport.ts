@@ -1,6 +1,7 @@
 import { addDays, fieldDatesInRange, kindLabel, lastDay, mentionedInEntry, type AgendaEntry } from '../domain/agenda';
 import { mentionIndex } from '../domain/notes';
 import { getNode, nodeLabel } from '../domain/selectors';
+import { fileSafeName } from '../domain/text';
 import type { Project } from '../domain/types';
 
 /*
@@ -131,4 +132,4 @@ export function agendaCsv(p: Project): string {
   return rows.map(r => r.map(csvCell).join(';')).join('\r\n') + '\r\n';
 }
 
-export const agendaFileName = (p: Project) => `${p.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_') || 'agenda'}.ics`;
+export const agendaFileName = (p: Project) => `${fileSafeName(p.name, 'agenda')}.ics`;

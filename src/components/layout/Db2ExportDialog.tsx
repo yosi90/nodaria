@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db2Library, db2Model, db2Script, db2Sources, isSystemName } from '../../domain/db2Script';
 import { rowCount } from '../../domain/rowsScript';
+import { fileSafeName } from '../../domain/text';
 import { downloadBytes, downloadText } from '../../services/files';
 import { createZip } from '../../services/zip';
 import { useApp } from '../../state/AppContext';
@@ -39,7 +40,7 @@ export function Db2ExportDialog({ onClose }: { onClose: () => void }) {
 
   const libraryOk = isSystemName(library);
   const anything = script || sqlMembers || ddsMembers;
-  const base = project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_') || 'proyecto';
+  const base = fileSafeName(project.name, 'proyecto');
   const toggle = (id: string, on: boolean) =>
     setChosen(current => {
       const next = new Set(current);

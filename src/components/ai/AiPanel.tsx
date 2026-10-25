@@ -7,6 +7,7 @@ import { answerParts, WORLD_BUDGET, worldContext } from '../../domain/aiWorld';
 import { defaultSelection, resumeRefs, reviewProposal } from '../../domain/aiProposal';
 import { tableTypes } from '../../domain/database';
 import { getNode, nodeLabel } from '../../domain/selectors';
+import { fileSafeName } from '../../domain/text';
 import { ApiError, OfflineError } from '../../services/api';
 import {
   AI_GROUP_KEY_ERRORS,
@@ -333,7 +334,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const download = () => {
     const title = conversations.find(c => c.id === activeId)?.title ?? 'conversacion';
     downloadText(
-      `${title.replace(/[^a-z0-9áéíóúüñ]+/gi, '_').slice(0, 60)}.json`,
+      `${fileSafeName(title, 'conversacion').slice(0, 60)}.json`,
       JSON.stringify({ project: project.name, title, messages }, null, 2),
       'application/json',
     );

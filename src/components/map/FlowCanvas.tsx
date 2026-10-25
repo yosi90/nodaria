@@ -98,6 +98,7 @@ import { tableCardColumns, tableHeight, tableWidth } from './tableCard';
 import { sqlScript } from '../../domain/sqlScript';
 import { openDb2Export } from '../layout/openDb2Export';
 import { vocabulary } from '../../domain/projectKinds';
+import { fileSafeName } from '../../domain/text';
 import { downloadText } from '../../services/files';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
 import { BulkBar } from '../table/BulkBar';
@@ -1363,7 +1364,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                           label: 'Script SQL Server (.sql)',
                           onSelect: () =>
                             downloadText(
-                              `${project.name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_')}.sql`,
+                              `${fileSafeName(project.name, 'proyecto')}.sql`,
                               sqlScript(project),
                               'application/sql',
                             ),
