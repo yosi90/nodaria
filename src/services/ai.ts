@@ -2,7 +2,7 @@ import type { AiContextRefs, AiDatabaseContext } from '../domain/aiContext';
 import type { AiWorldContext, AiWorldRefs } from '../domain/aiWorld';
 import type { AiProposal } from '../domain/aiProposal';
 import { apiRequest } from './api';
-import { PLATFORM_API_URL, sdk, type PlatformModels } from './yosiftware';
+import { PLATFORM_API_URL, sdk, type PlatformAiState, type PlatformModels } from './yosiftware';
 
 /*
  * Asistencia de IA de la API (`api/src/routes/ai.ts`). La API llama al proveedor a través de la
@@ -85,20 +85,40 @@ export const fetchAiModels = (token: string) => apiRequest<AiModelsResponse>('GE
 /**
  * Los modelos que alcanza la clave de la persona (o, con `space`, los que permite la organización), de la
  * plataforma: `GET /v1/ia/modelos` con su token (`ecosistema-kit/CLAVES_DE_IA.md`, «Elegir el modelo»).
- * `null` si no se puede preguntar (sin SDK o sin conexión con la plataforma).
+ * `null` si no se puede preguntar (sin SDK o sin conexión con la plataforma), como `fetchAiState`.
  */
-export async function fetchPlatformModels(space: number | null): Promise<PlatformModels | null> {
+export const fetchPlatformModels = (space: number | null) => platformGet<PlatformModels>('/v1/ia/modelos', space);
+
+/**
+ * Si cada proveedor está `lista` para la clave que se va a usar y el proveedor preferido de la persona
+ * para el texto (kit 1.54; con `space`, sus claves, pero la preferencia sigue siendo de la persona).
+ */
+export const fetchAiState = (space: number | null) => platformGet<PlatformAiState>('/v1/ia/estado', space);
+
+async function platformGet<T>(path: string, space: number | null): Promise<T | null> {
   const token = await sdk()?.tokenPlataforma?.();
   if (!token) return null;
   const query = space === null ? '' : `?espacio=${space}`;
   try {
-    const response = await fetch(`${PLATFORM_API_URL}/v1/ia/modelos${query}`, {
+    const response = await fetch(`${PLATFORM_API_URL}${path}${query}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return response.ok ? ((await response.json()) as PlatformModels) : null;
+    return response.ok ? ((await response.json()) as T) : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * El modelo que sale elegido por defecto: el equilibrado del proveedor preferido de la persona para el
+ * texto, si está `lista` (`ecosistema-kit/CLAVES_DE_IA.md`, «El proveedor preferido de la persona»). Sin
+ * preferencia, o si su proveedor no está listo, `undefined` (decide Nodaria). La persona puede escoger otro.
+ */
+export function preferredModel(models: AiModelInfo[], state: PlatformAiState | null): AiModelInfo | undefined {
+  const provider = state?.preferidos?.texto;
+  if (!provider || !state.proveedores.some(p => p.proveedor === provider && p.estado === 'lista')) return undefined;
+  const own = models.filter(m => m.provider === provider);
+  return own.find(m => m.tier === 'equilibrado') ?? own[0];
 }
 
 /** Por qué un proveedor no tiene modelos (el `error` de `GET /v1/ia/modelos`), para la persona. */

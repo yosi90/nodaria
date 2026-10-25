@@ -75,6 +75,15 @@ export interface PlatformModels {
   }[];
 }
 
+/**
+ * `GET /v1/ia/estado` (`ecosistema-kit/CLAVES_DE_IA.md`, «Saber antes de llamar»): si cada proveedor está
+ * `lista` y, desde el kit 1.54, el proveedor preferido de la persona para cada uso (`null`: sin elegir).
+ */
+export interface PlatformAiState {
+  proveedores: { proveedor: string; estado: string }[];
+  preferidos?: { texto?: string | null } | null;
+}
+
 /** Lo que lanza el SDK al cerrar su ventana de invitaciones (`yosiftware:espacio`). */
 export type SpaceEvent =
   { tipo: 'aceptada'; espacio: PlatformSpace | null } | { tipo: 'rechazada'; invitacion: number };

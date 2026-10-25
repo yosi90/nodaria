@@ -8,6 +8,7 @@ import { conversationTurns } from '../ai/history.ts';
 import { AI_MODELS, AI_PROVIDERS, findModel, type AiModel } from '../ai/models.ts';
 import { AI_MAX_OPERATIONS, contextSchema } from '../ai/schema.ts';
 import { worldContextSchema, worldRefsSchema } from '../ai/world.ts';
+import { capabilitiesOf } from '../groups/model.ts';
 import { PROJECT_ID } from './projects.ts';
 
 /*
@@ -22,9 +23,15 @@ import { PROJECT_ID } from './projects.ts';
 
 // Además del límite general por cuenta, la pasarela admite 30 llamadas por minuto y cuenta.
 export const AI_RATE_LIMIT = 10;
-export const AI_BODY_LIMIT = 1024 * 1024;
-/** Una pregunta lleva el mundo entero (nodos, valores y notas): el navegador lo recorta antes. */
-export const AI_QUESTION_BODY_LIMIT = 2 * 1024 * 1024;
+/** Tope diario por cuenta (kit 1.58), aparte del tope de gasto de cada clave. */
+export const AI_DAILY_LIMIT = 300;
+/**
+ * Presupuesto del contexto, en caracteres de su JSON (unos 100 000 tokens): el mismo que usa la web para
+ * recortar el mundo (`WORLD_BUDGET` en `src/domain/aiWorld.ts`). Lo que pasa de él no se manda a la IA.
+ */
+export const AI_CONTEXT_BUDGET = 400_000;
+/** El contexto dentro del presupuesto, más la petición y las referencias. */
+export const AI_BODY_LIMIT = 640 * 1024;
 const TITLE_LENGTH = 80;
 
 const refsSchema = z.object({
@@ -79,13 +86,32 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
   /**
    * El espacio cuya clave de IA se usa: el del grupo del proyecto, si la cuenta es miembro activo y no ha
    * pedido usar la suya (decisión del propietario, 2026-10-17: la clave del grupo, solo en sus proyectos).
+   * Las preguntas con la clave del grupo exigen poder comentar (no el lector, ni un rol que Nodaria no
+   * conozca) y las propuestas, cambiar el esquema, porque solo así se pueden aplicar (decisión del
+   * propietario, 2026-10-25). Sin ese permiso se rechaza sin llamar: nunca se pasa a la clave de la persona
+   * sin que ella lo pida.
    */
-  async function groupSpace(projectId: string, globalId: string, keySource: 'grupo' | 'personal' | undefined) {
+  async function groupSpace(
+    projectId: string,
+    globalId: string,
+    keySource: 'grupo' | 'personal' | undefined,
+    use: 'pregunta' | 'propuesta',
+  ) {
     if (keySource === 'personal') return undefined;
     const externalId = await groups.projectGroup(projectId);
     if (!externalId) return undefined;
     const [group, member] = await Promise.all([groups.find(externalId), groups.member(externalId, globalId)]);
-    return group?.state === 'activo' && group.spaceId && member?.state === 'activo' ? group.spaceId : undefined;
+    if (group?.state !== 'activo' || !group.spaceId || member?.state !== 'activo') return undefined;
+    const can = capabilitiesOf({ ...member, owner: group.owner === globalId });
+    if (!(use === 'propuesta' ? can.editSchema : can.comment))
+      throw new HttpError(
+        403,
+        'clave_del_grupo_no_permitida',
+        use === 'propuesta'
+          ? 'Tu rol en el grupo no puede pedir propuestas con la clave de IA del grupo. Puedes usar la tuya.'
+          : 'Tu rol en el grupo no puede usar su clave de IA. Puedes usar la tuya.',
+      );
+    return group.spaceId;
   }
 
   const manageUrl = MANAGE_KEYS_URL[config.platform.env];
@@ -93,6 +119,11 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
     max: AI_RATE_LIMIT,
     timeWindow: '1 minute',
     keyGenerator: request => `ai:${request.user?.id}`,
+  });
+  const dailyLimiter = app.createRateLimit({
+    max: AI_DAILY_LIMIT,
+    timeWindow: '1 day',
+    keyGenerator: request => `ai-dia:${request.user?.id}`,
   });
 
   /**
@@ -102,8 +133,8 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
   async function turn<T extends { usage: { inputTokens: number; outputTokens: number } }>(
     request: FastifyRequest,
     reply: FastifyReply,
-    body: z.infer<typeof callSchema>,
-    asked: { text: string; content: Record<string, unknown>; log: string },
+    body: z.infer<typeof callSchema> & { context: object },
+    asked: { use: 'pregunta' | 'propuesta'; text: string; content: Record<string, unknown>; log: string },
     run: (call: AiCall) => Promise<T>,
     saved: (result: T, model: AiModel) => Record<string, unknown>,
   ) {
@@ -114,8 +145,22 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
       reply.header('retry-after', limit.ttlInSeconds);
       throw new HttpError(429, 'demasiadas_peticiones', 'Demasiadas peticiones a la IA. Espera un momento.');
     }
+    const daily = await dailyLimiter(request);
+    if (!daily.isAllowed && daily.isExceeded) {
+      reply.header('retry-after', daily.ttlInSeconds);
+      throw new HttpError(429, 'demasiadas_peticiones', 'Has llegado al máximo de peticiones a la IA de hoy.');
+    }
     const model = findModel(body.provider, body.model);
     if (!model) throw new HttpError(400, 'modelo_no_admitido', 'Nodaria no ofrece ese modelo.');
+    if (JSON.stringify(body.context).length > AI_CONTEXT_BUDGET)
+      throw new HttpError(
+        413,
+        'contexto_demasiado_grande',
+        asked.use === 'propuesta'
+          ? 'El esquema es demasiado grande para enviarlo entero. Elige una tabla.'
+          : 'El proyecto es demasiado grande para enviarlo entero.',
+      );
+    const space = await groupSpace(body.projectId, user.globalId, body.keySource, asked.use);
 
     let conversation = body.conversationId ? await conversations.get(user.id, body.conversationId) : null;
     if (body.conversationId && (!conversation || conversation.projectId !== body.projectId))
@@ -137,7 +182,6 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
     });
 
     const started = Date.now();
-    const space = await groupSpace(body.projectId, user.globalId, body.keySource);
     try {
       const result = await run({ space, model, account: user.globalId, history, signal: controller.signal });
       request.log.info(
@@ -209,7 +253,12 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
       request,
       reply,
       body,
-      { text: body.instruction, content: { instruction: body.instruction }, log: 'propuesta de IA' },
+      {
+        use: 'propuesta',
+        text: body.instruction,
+        content: { instruction: body.instruction },
+        log: 'propuesta de IA',
+      },
       call => ai.propose({ ...call, instruction: body.instruction, context: body.context }),
       (result, model) => ({
         proposal: result.proposal,
@@ -222,14 +271,19 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
     return { ...rest, proposal: content.proposal, model: content.model, usage: content.usage };
   });
 
-  app.post('/ia/preguntas', { bodyLimit: AI_QUESTION_BODY_LIMIT }, async (request, reply) => {
+  app.post('/ia/preguntas', { bodyLimit: AI_BODY_LIMIT }, async (request, reply) => {
     authenticatedUser(request);
     const body = questionSchema.parse(request.body);
     const { content, ...rest } = await turn(
       request,
       reply,
       body,
-      { text: body.question, content: { instruction: body.question, kind: 'pregunta' }, log: 'pregunta a la IA' },
+      {
+        use: 'pregunta',
+        text: body.question,
+        content: { instruction: body.question, kind: 'pregunta' },
+        log: 'pregunta a la IA',
+      },
       call => ai.ask({ ...call, question: body.question, context: body.context }),
       (result, model) => ({
         answer: result.answer,

@@ -1,9 +1,9 @@
 import { Download, ExternalLink, Plus, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { YosiSymbol } from '../common/YosiSymbol';
-import type { PlatformModels } from '../../services/yosiftware';
+import type { PlatformAiState, PlatformModels } from '../../services/yosiftware';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { databaseContext, isAiTable } from '../../domain/aiContext';
-import { answerParts, worldContext } from '../../domain/aiWorld';
+import { answerParts, WORLD_BUDGET, worldContext } from '../../domain/aiWorld';
 import { defaultSelection, resumeRefs, reviewProposal } from '../../domain/aiProposal';
 import { tableTypes } from '../../domain/database';
 import { getNode, nodeLabel } from '../../domain/selectors';
@@ -13,8 +13,10 @@ import {
   AI_KEY_ERRORS,
   deleteConversation,
   fetchAiModels,
+  fetchAiState,
   fetchPlatformModels,
   PLATFORM_MODEL_ERRORS,
+  preferredModel,
   reachableModels,
   getConversation,
   isWorldReply,
@@ -105,9 +107,17 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const [mode, setMode] = useState<'question' | 'database'>(() => (hasTables ? 'database' : 'question'));
   const [waiting, setWaiting] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
-  // En un proyecto de un grupo se usa la clave de IA del grupo; la de la persona, solo si ella lo elige.
+  // En un proyecto de un grupo se usa la clave de IA del grupo; la de la persona, solo si ella lo elige o
+  // si su rol no puede usar la del grupo (decisión del propietario, 2026-10-25): las preguntas, quien puede
+  // comentar (no el lector), y las propuestas, quien puede cambiar el esquema, que es quien las aplica.
   const { group: sharedGroup } = useProjectAccess();
   const [personalKey, setPersonalKey] = useState(false);
+  const groupKeyAllowed = sharedGroup
+    ? mode === 'database'
+      ? sharedGroup.capabilities.editSchema
+      : sharedGroup.capabilities.comment
+    : false;
+  const usePersonalKey = personalKey || !groupKeyAllowed;
   const abort = useRef<AbortController | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const { selection } = useNavigation();
@@ -122,11 +132,14 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   }, [getToken]);
 
   // Qué modelos alcanza la clave que se va a usar: la de la organización del grupo o la de la persona.
-  const space = sharedGroup && !personalKey ? sharedGroup.spaceId : null;
+  // También si está lista y cuál es el proveedor preferido de la persona, para el modelo por defecto.
+  const space = sharedGroup && !usePersonalKey ? sharedGroup.spaceId : null;
+  const [aiState, setAiState] = useState<PlatformAiState | null>(null);
   useEffect(() => {
     if (status !== 'signed-in') return;
     let live = true;
     void fetchPlatformModels(space).then(found => live && setReach(found));
+    void fetchAiState(space).then(found => live && setAiState(found));
     return () => {
       live = false;
     };
@@ -181,7 +194,8 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
   const providerProblems = (reach?.proveedores ?? [])
     .filter(p => p.error && p.proveedor in PROVIDERS)
     .map(p => `${PROVIDERS[p.proveedor as AiModelInfo['provider']]}: ${PLATFORM_MODEL_ERRORS[p.error!] ?? p.error}`);
-  const model = models.find(m => modelKey(m) === preferences.aiModel) ?? models[0];
+  // El que eligió la persona en el panel; si no, el equilibrado de su proveedor preferido (kit 1.54).
+  const model = models.find(m => modelKey(m) === preferences.aiModel) ?? preferredModel(models, aiState) ?? models[0];
   const selected = selection?.kind === 'node' ? getNode(project, selection.id) : undefined;
   const selectedTable = selected && isAiTable(project, selected.typeId) ? selected : null;
   const focusId = onlySelected && selectedTable ? selectedTable.id : null;
@@ -190,6 +204,11 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
     [project, focusId],
   );
   const columnCount = context.tables.reduce((sum, t) => sum + t.columns.length, 0);
+  // La API no manda a la IA un esquema que pase del presupuesto: se avisa antes de pedirlo.
+  const schemaTooBig = useMemo(
+    () => mode === 'database' && JSON.stringify(context).length > WORLD_BUDGET,
+    [mode, context],
+  );
   // La agenda solo va al modelo si la persona lo permite en este proyecto (por defecto, no).
   const agendaAllowed = preferences.aiAgendaProjects.includes(project.id);
   const setAgendaAllowed = (allowed: boolean) =>
@@ -206,7 +225,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
 
   const ask = async () => {
     const text = instruction.trim();
-    if (!model || !text || waiting) return;
+    if (!model || !text || waiting || schemaTooBig) return;
     setFailure(null);
     setWaiting(true);
     const controller = new AbortController();
@@ -221,7 +240,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
         model: model.id,
         projectId: project.id,
         conversationId: activeId,
-        ...(sharedGroup ? { keySource: personalKey ? ('personal' as const) : ('grupo' as const) } : {}),
+        ...(sharedGroup ? { keySource: usePersonalKey ? ('personal' as const) : ('grupo' as const) } : {}),
       };
       const token = await withToken();
       let response: { conversationId: number; userMessageId: number | null; messageId: number | null };
@@ -455,7 +474,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 </Button>
               </div>
             )}
-            {failure?.groupKey && !personalKey && (
+            {failure?.groupKey && !usePersonalKey && (
               <p className="ai-error">
                 <button
                   type="button"
@@ -482,10 +501,14 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
 
           {sharedGroup && (
             <p className="ai-key-source">
-              {personalKey
-                ? 'Usa tu clave de IA en este proyecto.'
-                : `Usa la clave de IA del grupo «${sharedGroup.name}».`}{' '}
-              {personalKey && (
+              {!groupKeyAllowed
+                ? mode === 'database'
+                  ? 'Usa tu clave de IA: con la del grupo, las propuestas son para quien puede cambiar el esquema.'
+                  : 'Usa tu clave de IA: tu rol en el grupo no puede usar la del grupo.'
+                : personalKey
+                  ? 'Usa tu clave de IA en este proyecto.'
+                  : `Usa la clave de IA del grupo «${sharedGroup.name}».`}{' '}
+              {personalKey && groupKeyAllowed && (
                 <button type="button" className="link-button" onClick={() => setPersonalKey(false)}>
                   Volver a la del grupo
                 </button>
@@ -545,7 +568,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 type="submit"
                 variant="primary"
                 size="sm"
-                disabled={waiting || !model || !instruction.trim()}
+                disabled={waiting || !model || !instruction.trim() || schemaTooBig}
                 aria-label="Enviar"
               >
                 <Send size={14} aria-hidden /> Enviar
@@ -560,6 +583,11 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 />
                 Solo «{nodeLabel(project, selectedTable)}» (del resto, sus claves)
               </label>
+            )}
+            {schemaTooBig && (
+              <p className="ai-error">
+                El esquema es demasiado grande para enviarlo entero. Selecciona una tabla y marca «Solo …».
+              </p>
             )}
             {providerProblems.length > 0 && (
               <p className="ai-privacy-line">Sin modelos de {providerProblems.join(' · ')}.</p>

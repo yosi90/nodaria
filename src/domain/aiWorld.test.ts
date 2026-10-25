@@ -56,6 +56,41 @@ describe('worldContext', () => {
     expect(tiny.nodes.length).toBeLessThan(3);
     expect(tiny.nodes[0].title).toBe('Ana');
     expect(JSON.stringify(tiny).length).toBeLessThanOrEqual(520);
+    // Las referencias, solo de los nodos que van.
+    expect(Object.keys(worldContext(p, 520).refs.nodes)).toEqual(tiny.nodes.map(n => n.id));
+  });
+
+  it('nunca pasa de los topes de cada campo de la API', () => {
+    const big = project({
+      name: 'N'.repeat(300),
+      schemas: [
+        schema('persona', {
+          name: 'Persona',
+          fields: [
+            field('nombre', { label: 'Nombre', isTitle: true }),
+            field('alias', { label: 'Alias', type: 'tags' }),
+            field('pasos', { label: 'Pasos', type: 'list' }),
+          ],
+        }),
+      ],
+      nodes: [
+        {
+          ...node('ana', 'persona', null, {
+            nombre: 'Ana',
+            alias: Array.from({ length: 900 }, (_, i) => `alias${i}`),
+            pasos: Array.from({ length: 900 }, (_, i) => `paso ${i}`),
+          }),
+          notes: 'x'.repeat(9000),
+        },
+      ],
+    });
+    const { context } = worldContext(big);
+    const [ana] = context.nodes;
+    expect(context.projectName).toHaveLength(200);
+    expect(ana.notes).toHaveLength(8000);
+    expect(context.partial).toBe(true);
+    expect(ana.values.Alias.length).toBeLessThanOrEqual(1000);
+    expect(ana.values.Pasos.length).toBeLessThanOrEqual(4000);
   });
 });
 

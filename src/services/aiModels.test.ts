@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reachableModels, type AiModelInfo } from './ai';
+import { preferredModel, reachableModels, type AiModelInfo } from './ai';
 
 const own: AiModelInfo[] = [
   { provider: 'anthropic', id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', tier: 'equilibrado' },
@@ -41,5 +41,29 @@ describe('reachableModels', () => {
 
   it('sin respuesta de la plataforma, los de Nodaria (nunca texto libre)', () => {
     expect(reachableModels(own, null)).toEqual(own);
+  });
+});
+
+describe('preferredModel', () => {
+  const state = (texto: string | null, openai = 'lista') => ({
+    proveedores: [
+      { proveedor: 'anthropic', estado: 'lista' },
+      { proveedor: 'openai', estado: openai },
+    ],
+    preferidos: { texto },
+  });
+
+  it('propone el equilibrado del proveedor preferido para el texto, si está listo', () => {
+    expect(preferredModel(own, state('openai'))?.id).toBe('gpt-5.6-terra');
+    expect(preferredModel(own, state('anthropic'))?.id).toBe('claude-sonnet-5-5');
+    // Sin el equilibrado entre los que alcanza la clave, otro del mismo proveedor.
+    expect(preferredModel(own.slice(1), state('anthropic'))?.id).toBe('claude-opus-5-5');
+  });
+
+  it('sin preferencia, con su proveedor sin clave o sin respuesta, decide Nodaria', () => {
+    expect(preferredModel(own, state(null))).toBeUndefined();
+    expect(preferredModel(own, state('openai', 'sin_clave_de_ia'))).toBeUndefined();
+    expect(preferredModel(own, { proveedores: state(null).proveedores })).toBeUndefined();
+    expect(preferredModel(own, null)).toBeUndefined();
   });
 });
