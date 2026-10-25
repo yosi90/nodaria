@@ -170,6 +170,16 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
         : { key: row.key, zone, ok },
     );
   };
+  /** Mueve en la estructura el nodo que se arrastra, bajo `parentId` y antes de `beforeId` (o al final). */
+  const moveDragged = (moved: NonNullable<typeof dragging>, parentId: string | null, beforeId: string | null) =>
+    dispatch({
+      type: 'move-in-structure',
+      structureId: structure.id,
+      nodeId: moved.nodeId,
+      fromParentId: moved.parentId,
+      parentId,
+      beforeId,
+    });
   const onRowDrop = (event: DragEvent, row: Row) => {
     event.preventDefault();
     event.stopPropagation();
@@ -183,14 +193,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
       const index = siblings.findIndex(n => n.id === row.node.id);
       beforeId = siblings[index + 1]?.id ?? null;
     }
-    dispatch({
-      type: 'move-in-structure',
-      structureId: structure.id,
-      nodeId: dragging.nodeId,
-      fromParentId: dragging.parentId,
-      parentId,
-      beforeId,
-    });
+    moveDragged(dragging, parentId, beforeId);
     // Carpetas: como hermano de un nodo raíz adopta su carpeta (o ninguna); dentro de un nodo, sale de la suya.
     if (structure.id === null) {
       const folder = parentId === null ? (folderOf(project, row.node.id) ?? null) : null;
@@ -229,15 +232,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
     event.preventDefault();
     event.stopPropagation();
     if (!dragging || dropFolder !== folder.id) return cleanupDrag();
-    if (dragging.parentId !== null)
-      dispatch({
-        type: 'move-in-structure',
-        structureId: structure.id,
-        nodeId: dragging.nodeId,
-        fromParentId: dragging.parentId,
-        parentId: null,
-        beforeId: null,
-      });
+    if (dragging.parentId !== null) moveDragged(dragging, null, null);
     dispatch({ type: 'set-node-folder', nodeId: dragging.nodeId, folderId: folder.id });
     toggle(`folder:${folder.id}`, true);
     toast({ message: `Nodo guardado en la carpeta «${folder.name}»`, undoable: true });
@@ -402,14 +397,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
         onDrop={event => {
           event.preventDefault();
           if (!dragging || !dropRoot) return cleanupDrag();
-          dispatch({
-            type: 'move-in-structure',
-            structureId: structure.id,
-            nodeId: dragging.nodeId,
-            fromParentId: dragging.parentId,
-            parentId: null,
-            beforeId: null,
-          });
+          moveDragged(dragging, null, null);
           if (structure.id === null) dispatch({ type: 'set-node-folder', nodeId: dragging.nodeId, folderId: null });
           toast({ message: 'Nodo movido a la raíz', undoable: true });
           cleanupDrag();
