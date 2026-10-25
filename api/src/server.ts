@@ -13,7 +13,7 @@ import { createOutboxWorker } from './community/outbox.ts';
 import { createSqlCommunityStore } from './community/repository.ts';
 import { createCommunityClient } from './platform/community.ts';
 import { createFeedClient, createFeedReader, createSqlFeedStore } from './platform/feed.ts';
-import { createPlatformSpacesClient } from './platform/spaces.ts';
+import { announceInChannel, createPlatformSpacesClient } from './platform/spaces.ts';
 import { createSqlProjectStore } from './projects/repository.ts';
 import { createSqlUserStore } from './users/repository.ts';
 
@@ -54,9 +54,7 @@ feed = config.platform.feedEnabled
       // Un miembro que entra, sale o cambia de rol: quien tiene el grupo abierto relee sus permisos.
       onSpaces: changed => {
         for (const { externalId, changeId } of changed)
-          void spaces
-            .publish(externalId, `miembros-${changeId}`, { tipo: 'grupo' })
-            .catch(error => app.log.warn({ err: error, group: externalId }, 'No se pudo avisar al canal del grupo'));
+          announceInChannel(spaces, app.log, externalId, `miembros-${changeId}`, { tipo: 'grupo' });
       },
     })
   : null;

@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppDependencies } from '../app.ts';
 import { GUID } from '../auth/platform.ts';
@@ -13,6 +13,7 @@ import {
 } from '../groups/model.ts';
 import type { GroupRecord, GroupView } from '../groups/repository.ts';
 import { PlatformError } from '../platform/http.ts';
+import { announceInChannel } from '../platform/spaces.ts';
 import { MAX_COMMENTS, type CommentState } from '../groups/comments.ts';
 import { assertDocumentId, documentSchema, PROJECT_ID, serializeDocument } from './projects.ts';
 
@@ -210,9 +211,12 @@ export const groupRoutes: FastifyPluginAsync<
     }
     // Ya guardado: se avisa por el canal del espacio a quien lo tiene abierto (hito 3). Solo la
     // referencia, que el frontend baja de esta API; si falla, lo recogen al sondear.
-    spaces
-      .publish(group, `${id}-v${result.version}`, { tipo: 'proyecto', id, version: result.version, por: user.globalId })
-      .catch(error => request.log.warn({ err: error, group }, 'No se pudo publicar en el canal del grupo'));
+    announceInChannel(spaces, request.log, group, `${id}-v${result.version}`, {
+      tipo: 'proyecto',
+      id,
+      version: result.version,
+      por: user.globalId,
+    });
     return { id, version: result.version, serverUpdatedAt: result.serverUpdatedAt };
   });
 
@@ -227,9 +231,7 @@ export const groupRoutes: FastifyPluginAsync<
     const { labels } = labelsSchema.parse(request.body);
     const clean = labels ? Object.fromEntries(Object.entries(labels).filter(([, name]) => name)) : null;
     await groups.setRoleLabels(group, clean && Object.keys(clean).length ? clean : null);
-    void spaces
-      .publish(group, `nombres-de-rol-${Date.now()}`, { tipo: 'grupo' })
-      .catch(error => request.log.warn({ err: error, group }, 'No se pudo avisar al canal del grupo'));
+    announceInChannel(spaces, request.log, group, `nombres-de-rol-${Date.now()}`, { tipo: 'grupo' });
     return { roleLabels: clean && Object.keys(clean).length ? clean : null };
   });
 
@@ -243,15 +245,8 @@ export const groupRoutes: FastifyPluginAsync<
   }
 
   /** Avisa por el canal de que los comentarios del proyecto cambiaron (solo la referencia). */
-  const announce = (
-    request: { log: { warn: (o: object, m: string) => void } },
-    group: string,
-    id: string,
-    key: string,
-  ) =>
-    void spaces
-      .publish(group, `comentarios-${id}-${key}`, { tipo: 'comentarios', id })
-      .catch(error => request.log.warn({ err: error, group }, 'No se pudo publicar en el canal del grupo'));
+  const announce = (request: FastifyRequest, group: string, id: string, key: string) =>
+    announceInChannel(spaces, request.log, group, `comentarios-${id}-${key}`, { tipo: 'comentarios', id });
 
   app.get('/grupos/:group/proyectos/:id/comentarios', async request => {
     const user = authenticatedUser(request);

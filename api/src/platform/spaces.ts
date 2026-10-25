@@ -1,3 +1,4 @@
+import type { FastifyBaseLogger } from 'fastify';
 import type { AppConfig } from '../config.ts';
 import { type PlatformSpace, ROLES } from '../groups/model.ts';
 import { PlatformError, platformRequest } from './http.ts';
@@ -30,6 +31,22 @@ export interface SpacesClient {
    * Sus participantes los pone la plataforma según el permiso de chat de cada rol.
    */
   conversation(externalId: string): Promise<number>;
+}
+
+/**
+ * Avisa por el canal del espacio de algo ya guardado, sin esperar ni fallar: si el aviso no llega, lo
+ * recoge el sondeo del frontend y solo queda en el registro.
+ */
+export function announceInChannel(
+  spaces: Pick<SpacesClient, 'publish'>,
+  log: Pick<FastifyBaseLogger, 'warn'>,
+  externalId: string,
+  idExterno: string,
+  datos: Record<string, unknown>,
+) {
+  void spaces
+    .publish(externalId, idExterno, datos)
+    .catch(error => log.warn({ err: error, group: externalId }, 'No se pudo publicar en el canal del grupo'));
 }
 
 export function createPlatformSpacesClient(config: AppConfig['platform']): SpacesClient {
