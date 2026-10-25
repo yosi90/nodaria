@@ -86,14 +86,20 @@ export interface AiTurn {
   text: string;
 }
 
+/** Tokens de entrada y de salida de una llamada, según el proveedor. */
+export interface AiUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export interface AiResult {
   proposal: AiProposal;
-  usage: { inputTokens: number; outputTokens: number };
+  usage: AiUsage;
 }
 
 export interface AiAnswerResult {
   answer: AiWorldAnswer;
-  usage: { inputTokens: number; outputTokens: number };
+  usage: AiUsage;
 }
 
 export interface AiAssistant {
@@ -337,7 +343,7 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
   }
   interface Output {
     text: string;
-    usage: { inputTokens: number; outputTokens: number };
+    usage: AiUsage;
   }
 
   async function anthropic(request: AiCall, prompt: Prompt, apiKey: string): Promise<Output> {

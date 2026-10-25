@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ALL_DOC_TYPES, SQL_TYPES, type AiProposal } from './schema.ts';
+import { ALL_DOC_TYPES, SQL_TYPES, type AiProposal, type SqlDataType } from './schema.ts';
 
 /*
  * Formato que se pide al modelo. Es plano a propósito: una sola forma de operación con todos sus
@@ -73,12 +73,6 @@ export const wireProposalSchema = z.object({
 });
 export type WireProposal = z.infer<typeof wireProposalSchema>;
 type WireOperation = WireProposal['operations'][number];
-type SqlType = {
-  name: (typeof SQL_TYPES)[number];
-  length: number | 'max' | null;
-  precision: number | null;
-  scale: number | null;
-};
 type Operation = AiProposal['operations'][number];
 
 const LENGTH = new Set(['char', 'varchar', 'nchar', 'nvarchar', 'varbinary']);
@@ -86,13 +80,13 @@ const PRECISION = new Set(['decimal', 'numeric']);
 const TIME_SCALE = new Set(['time', 'datetime2']);
 
 /** Tipo SQL Server escrito como texto, o `null` si no lo es. La web comprueba después los rangos. */
-export function parseSqlType(text: string): SqlType | null {
+export function parseSqlType(text: string): SqlDataType | null {
   const match = text
     .trim()
     .toLowerCase()
     .match(/^([a-z][a-z0-9]*)\s*(?:\(\s*(max|\d+)\s*(?:,\s*(\d+)\s*)?\))?$/);
   if (!match || !(SQL_TYPES as readonly string[]).includes(match[1])) return null;
-  const name = match[1] as SqlType['name'];
+  const name = match[1] as SqlDataType['name'];
   const first = match[2];
   const second = match[3] === undefined ? null : Number(match[3]);
   if (LENGTH.has(name)) {
@@ -122,11 +116,24 @@ const documentEngine = (text: string) => {
 
 class Untranslatable extends Error {}
 
-function sqlType(text: string): SqlType {
+function sqlType(text: string): SqlDataType {
   const type = parseSqlType(text);
   if (!type) throw new Untranslatable(`el tipo «${text}» no es de SQL Server`);
   return type;
 }
+
+/**
+ * El tipo de una columna escrito como texto: el de SQL Server o, en una colección o un subdocumento, el de
+ * documento (y entonces `type` va vacío; la web comprueba que vale en su base). «int» o «date» valen en
+ * los dos: el tipo SQL va si lo es. Si no es de ninguno, la columna no se puede traducir.
+ */
+function typesOf(text: string): { type: SqlDataType | null; docType: string | null } {
+  const sql = parseSqlType(text);
+  const docType = sql ? null : parseDocType(text);
+  return { type: sql ?? (docType ? null : sqlType(text)), docType };
+}
+
+const NO_TYPE = { type: null, docType: null };
 
 function flagValue(value: string): boolean | null {
   const clean = value.trim().toLowerCase();
@@ -139,13 +146,11 @@ type WireColumn = WireOperation['columns'][number];
 
 const column = (c: WireColumn) => {
   const preform = c.preform.trim() || null;
-  // En una colección o un subdocumento, el tipo es de documento: la web comprueba que vale en su base.
-  const docType = parseSqlType(c.type) ? null : parseDocType(c.type);
+  // Una columna de preforma toma el tipo de la preforma: el modelo suele dejarlo vacío.
+  const { type, docType } = preform && !c.type.trim() ? NO_TYPE : typesOf(c.type);
   return {
     name: c.name,
-    // Una columna de preforma toma el tipo de la preforma: el modelo suele dejarlo vacío.
-    // «int» o «date» valen en los dos: el tipo SQL va si lo es, y el de documento, aparte.
-    type: preform && !c.type.trim() ? null : (parseSqlType(c.type) ?? (docType ? null : sqlType(c.type))),
+    type,
     docType,
     primaryKey: c.primaryKey,
     nullable: c.nullable,
@@ -205,10 +210,8 @@ function translate(o: WireOperation, fks: Set<string>, advice: string[]): Operat
         table,
         column: o.column,
         changes: {
-          type: o.changes.type.trim()
-            ? (parseSqlType(o.changes.type) ?? (parseDocType(o.changes.type) ? null : sqlType(o.changes.type)))
-            : null,
-          docType: parseSqlType(o.changes.type) ? null : parseDocType(o.changes.type),
+          // Vacío: el tipo no cambia.
+          ...(o.changes.type.trim() ? typesOf(o.changes.type) : NO_TYPE),
           primaryKey: flagValue(o.changes.primaryKey),
           nullable: flagValue(o.changes.nullable),
           unique: flagValue(o.changes.unique),

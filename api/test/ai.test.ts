@@ -1077,6 +1077,32 @@ describe('colecciones de documentos en la propuesta', () => {
     });
   });
 
+  it('al cambiar una columna, el tipo nuevo es de SQL Server o de documento, como al crearla', () => {
+    const change = (type: string) => ({
+      ...blank,
+      op: 'update-column' as const,
+      table: 't1',
+      column: 'estado',
+      changes: { ...noChanges, type },
+      reason: '',
+    });
+    const result = fromWire({
+      summary: '',
+      operations: [change('objectId'), change('nvarchar(20)'), change(''), change('blob')],
+      advice: [],
+    });
+    expect(result.operations.map(o => (o.op === 'update-column' ? [o.changes.type, o.changes.docType] : null))).toEqual(
+      [
+        [null, 'objectId'],
+        [{ name: 'nvarchar', length: 20, precision: null, scale: null }, null],
+        [null, null],
+      ],
+    );
+    expect(result.advice).toEqual([
+      'Se ha descartado la operación 4 (update-column): el tipo «blob» no es de SQL Server.',
+    ]);
+  });
+
   it('el contexto admite colecciones y subdocumentos, y el de antes sigue valiendo', async () => {
     const { contextSchema } = await import('../src/ai/schema.ts');
     expect(contextSchema.safeParse(context).success).toBe(true);

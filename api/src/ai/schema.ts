@@ -139,6 +139,7 @@ const sqlDataType = z.object({
   precision: z.number().nullable(),
   scale: z.number().nullable(),
 });
+export type SqlDataType = z.infer<typeof sqlDataType>;
 
 const columnSpec = z.object({
   name: z.string(),

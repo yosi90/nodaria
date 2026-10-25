@@ -2,7 +2,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppDependencies } from '../app.ts';
 import { assertCanCreate, authenticatedUser, HttpError, type AuthenticatedUser } from '../auth/plugin.ts';
-import { AiError, KEY_ERRORS, MANAGE_KEYS_URL, type AiCall } from '../ai/assistant.ts';
+import { AiError, KEY_ERRORS, MANAGE_KEYS_URL, type AiCall, type AiUsage } from '../ai/assistant.ts';
 import { MAX_MESSAGES } from '../ai/conversations.ts';
 import { conversationTurns } from '../ai/history.ts';
 import { AI_MODELS, AI_PROVIDERS, findModel, type AiModel } from '../ai/models.ts';
@@ -69,6 +69,7 @@ const questionSchema = callSchema.extend({
 });
 
 const idParams = z.object({ id: z.coerce.number().int().positive() });
+const CONVERSATION_NOT_FOUND = () => new HttpError(404, 'conversacion_no_encontrada', 'La conversación no existe.');
 const listQuery = z.object({ proyecto: z.string().regex(PROJECT_ID) });
 const appliedSchema = z.object({
   applied: z.array(z.number().int().min(0).max(AI_MAX_OPERATIONS)).max(AI_MAX_OPERATIONS),
@@ -130,7 +131,7 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
    * Un turno de la conversación, igual para propuestas y preguntas: comprueba la cuenta, el límite y el
    * modelo, guarda la petición, llama a la IA con el historial y guarda la respuesta o el error.
    */
-  async function turn<T extends { usage: { inputTokens: number; outputTokens: number } }>(
+  async function turn<T extends { usage: AiUsage }>(
     request: FastifyRequest,
     reply: FastifyReply,
     body: z.infer<typeof callSchema> & { context: object },
@@ -164,7 +165,7 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
 
     let conversation = body.conversationId ? await conversations.get(user.id, body.conversationId) : null;
     if (body.conversationId && (!conversation || conversation.projectId !== body.projectId))
-      throw new HttpError(404, 'conversacion_no_encontrada', 'La conversación no existe.');
+      throw CONVERSATION_NOT_FOUND();
     if (conversation && conversation.messages.length >= MAX_MESSAGES - 1)
       throw new HttpError(409, 'conversacion_llena', 'Esta conversación es muy larga: empieza una nueva.');
     const history = conversation ? conversationTurns(conversation.messages) : [];
@@ -224,14 +225,13 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
   app.get('/ia/conversaciones/:id', async request => {
     const { id } = idParams.parse(request.params);
     const found = await conversations.get(authenticatedUser(request).id, id);
-    if (!found) throw new HttpError(404, 'conversacion_no_encontrada', 'La conversación no existe.');
+    if (!found) throw CONVERSATION_NOT_FOUND();
     return found;
   });
 
   app.delete('/ia/conversaciones/:id', async request => {
     const { id } = idParams.parse(request.params);
-    if (!(await conversations.delete(authenticatedUser(request).id, id)))
-      throw new HttpError(404, 'conversacion_no_encontrada', 'La conversación no existe.');
+    if (!(await conversations.delete(authenticatedUser(request).id, id))) throw CONVERSATION_NOT_FOUND();
     return { id };
   });
 
