@@ -1,5 +1,5 @@
 import { Copy, Eye, EyeOff, GitBranch, Library, Link2, Plus, Unlink, TriangleAlert } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { isTypingTarget } from '../common/keyboard';
 import { FIELD_TYPES } from '../../domain/constants';
 import { isFieldLink, usersOfLibraryField } from '../../domain/library';
@@ -15,7 +15,8 @@ import { useToast } from '../common/toasts';
 import { Menu } from '../common/Menu';
 import { OptionList } from '../common/OptionList';
 import { Popover } from '../common/Popover';
-import { FieldEditor } from './FieldEditor';
+import { dropTarget, useDragReorder } from './dragReorder';
+import { DragHandle, FieldEditor } from './FieldEditor';
 
 const entryId = (f: FieldDefinition | FieldLink) => (isFieldLink(f) ? f.ref : f.id);
 
@@ -54,9 +55,6 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   const { setView } = useNavigation();
   const onOpenLibrary = () => setView('properties');
   const toast = useToast();
-  const [dragged, setDragged] = useState<string | null>(null);
-  // Mientras se arrastra, la lista se enseña ya reordenada y el elemento movido va como fantasma.
-  const [preview, setPreview] = useState<{ targetId: string; after: boolean } | null>(null);
   // Filas de la lista: todos los atributos del tipo, heredados incluidos, en su orden (`fieldOrder`). Los
   // heredados que este tipo oculta siguen en la lista, atenuados, para poder recuperarlos.
   const visible = new Set(allFields(project, schema.id).map(f => f.id));
@@ -69,25 +67,7 @@ export function AttributesCard({ schema }: { schema: Schema }) {
       ...ownIds,
     ]),
   ];
-  const reordered = (ids: string[], moving: string, targetId: string, after: boolean) => {
-    if (moving === targetId || !ids.includes(moving)) return ids;
-    const rest = ids.filter(id => id !== moving);
-    const index = rest.indexOf(targetId);
-    if (index < 0) return ids;
-    rest.splice(index + (after ? 1 : 0), 0, moving);
-    return rest;
-  };
-  const shownIds = dragged && preview ? reordered(rowIds, dragged, preview.targetId, preview.after) : rowIds;
-  const hover = (targetId: string, after: boolean) => {
-    if (!dragged || targetId === dragged) return;
-    setPreview(current =>
-      current && current.targetId === targetId && current.after === after ? current : { targetId, after },
-    );
-  };
-  const endDrag = () => {
-    setDragged(null);
-    setPreview(null);
-  };
+  const { dragged, start: setDragged, hover, end: endDrag, shown: shownIds, dropped } = useDragReorder(rowIds);
   const [addAnchor, setAddAnchor] = useState<Anchor | null>(null);
   const [linkAnchor, setLinkAnchor] = useState<Anchor | null>(null);
   const closeAdd = useCallback(() => setAddAnchor(null), []);
@@ -176,8 +156,8 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   const reorder = () => {
     // Al soltar se confirma lo que ya se veía en la previsualización: el orden de todos los atributos del
     // tipo (`fieldOrder`) y, con él, el de sus propios atributos y vínculos.
-    if (dragged && preview) {
-      const fieldOrder = reordered(rowIds, dragged, preview.targetId, preview.after);
+    if (dropped) {
+      const fieldOrder = dropped;
       const fields = [...schema.fields].sort((a, b) => fieldOrder.indexOf(entryId(a)) - fieldOrder.indexOf(entryId(b)));
       dispatch({ type: 'update-schema', schema: { ...schema, fields, fieldOrder } });
     }
@@ -426,34 +406,10 @@ function LinkedFieldRow({
   onUnlink: () => void;
   note?: ReactNode;
 }) {
-  const over = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    onDragHover(field.id, event.clientY > bounds.top + bounds.height / 2);
-  };
   return (
-    <div
-      className={`field-def linked ${dragging ? 'dragging' : ''}`}
-      onDragOver={over}
-      onDrop={event => {
-        event.preventDefault();
-        onDrop();
-      }}
-    >
+    <div className={`field-def linked ${dragging ? 'dragging' : ''}`} {...dropTarget(field.id, onDragHover, onDrop)}>
       <div className="field-def-head">
-        <button
-          type="button"
-          className="drag-handle"
-          draggable
-          aria-label={`Reordenar ${field.label}`}
-          onDragStart={event => {
-            event.dataTransfer.effectAllowed = 'move';
-            onDragStart();
-          }}
-          onDragEnd={onDragEnd}
-        >
-          <Link2 size={14} aria-hidden />
-        </button>
+        <DragHandle label={field.label} icon={Link2} size={14} onDragStart={onDragStart} onDragEnd={onDragEnd} />
         <button type="button" className="field-def-toggle" onClick={onEdit} title="Editar en la biblioteca">
           <strong>{field.label}</strong>
           <span className="badge accent">Preforma · {users}</span>
@@ -497,30 +453,10 @@ function InheritedFieldRow({
   return (
     <div
       className={`field-def linked inherited ${hidden ? 'hidden-field' : ''} ${dragging ? 'dragging' : ''}`}
-      onDragOver={event => {
-        event.preventDefault();
-        const bounds = event.currentTarget.getBoundingClientRect();
-        onDragHover(field.id, event.clientY > bounds.top + bounds.height / 2);
-      }}
-      onDrop={event => {
-        event.preventDefault();
-        onDrop();
-      }}
+      {...dropTarget(field.id, onDragHover, onDrop)}
     >
       <div className="field-def-head">
-        <button
-          type="button"
-          className="drag-handle"
-          draggable
-          aria-label={`Reordenar ${field.label}`}
-          onDragStart={event => {
-            event.dataTransfer.effectAllowed = 'move';
-            onDragStart();
-          }}
-          onDragEnd={onDragEnd}
-        >
-          <GitBranch size={14} aria-hidden />
-        </button>
+        <DragHandle label={field.label} icon={GitBranch} size={14} onDragStart={onDragStart} onDragEnd={onDragEnd} />
         <button type="button" className="field-def-toggle" onClick={onOpen} title={`Editar en «${from.name}»`}>
           <strong>{field.label}</strong>
           <span className="badge">De «{from.name}»</span>

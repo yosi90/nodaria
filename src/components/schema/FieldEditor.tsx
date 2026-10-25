@@ -1,5 +1,15 @@
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Lock, Trash2, X } from 'lucide-react';
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  GripVertical,
+  Lock,
+  Trash2,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
 import { slugify } from '../../domain/text';
 import { IMAGE_SHAPES, type ImageShape } from '../../domain/portrait';
@@ -18,6 +28,7 @@ import { supportsNonNegative } from '../../domain/valueConstraints';
 import { vocabulary } from '../../domain/projectKinds';
 import { conversionPreview } from '../../domain/valueConversion';
 import { useDialogs } from '../common/dialogs';
+import { dropTarget } from './dragReorder';
 
 interface FieldEditorProps {
   field: FieldDefinition;
@@ -39,6 +50,40 @@ interface FieldEditorProps {
   /** Los demás atributos del mismo tipo (o de la biblioteca), para las condiciones entre atributos. */
   siblings?: FieldDefinition[];
   schemaId?: string;
+}
+
+/** El asa para arrastrar una fila de atributo y reordenarla. */
+export function DragHandle({
+  label,
+  icon: Icon,
+  size,
+  title,
+  onDragStart,
+  onDragEnd,
+}: {
+  label: string;
+  icon: LucideIcon;
+  size: number;
+  title?: string;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="drag-handle"
+      draggable
+      aria-label={`Reordenar ${label}`}
+      title={title}
+      onDragStart={event => {
+        event.dataTransfer.effectAllowed = 'move';
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+    >
+      <Icon size={size} aria-hidden />
+    </button>
+  );
 }
 
 /** Edición de un atributo, propio de un tipo o de la biblioteca compartida. */
@@ -83,37 +128,20 @@ export function FieldEditor({
   const defaultSet = typedDefault(field) !== undefined;
   const missing = hasDefault && defaultSet ? nodesMissingValue(project, field.id).length : 0;
 
-  const over = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    onDragHover?.(field.id, event.clientY > bounds.top + bounds.height / 2);
-  };
-  const drop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    onDrop();
-  };
-
   return (
     <div
       className={`field-def ${dragging ? 'dragging' : ''} ${system ? 'system' : ''}`}
-      onDragOver={over}
-      onDrop={drop}
+      {...dropTarget(field.id, onDragHover, onDrop)}
     >
       <div className="field-def-head">
-        <button
-          type="button"
-          className="drag-handle"
-          draggable
-          aria-label={`Reordenar ${field.label}`}
+        <DragHandle
+          label={field.label}
+          icon={GripVertical}
+          size={16}
           title="Arrastrar para reordenar"
-          onDragStart={event => {
-            event.dataTransfer.effectAllowed = 'move';
-            onDragStart(field.id);
-          }}
+          onDragStart={() => onDragStart(field.id)}
           onDragEnd={onDragEnd}
-        >
-          <GripVertical size={16} aria-hidden />
-        </button>
+        />
         {system ? (
           <div className="field-def-toggle system-row">
             <span className="field-chevron" title="Atributo de sistema: no se edita">

@@ -1,5 +1,4 @@
 import { Library, Plus } from 'lucide-react';
-import { useState } from 'react';
 import { uid } from '../../domain/factories';
 import { usersOfLibraryField } from '../../domain/library';
 import type { FieldDefinition } from '../../domain/types';
@@ -9,6 +8,7 @@ import { useDialogs } from '../common/dialogs';
 import { schemaOption } from '../common/options';
 import { MultiSelect } from '../common/Select';
 import { useToast } from '../common/toasts';
+import { useDragReorder } from './dragReorder';
 import { FieldEditor } from './FieldEditor';
 
 /** Vista «Propiedades»: preformas de atributo que se definen una vez y se vinculan a varios tipos. */
@@ -16,37 +16,14 @@ export function LibraryEditor() {
   const { project, dispatch } = useApp();
   const { confirm } = useDialogs();
   const toast = useToast();
-  const [dragged, setDragged] = useState<string | null>(null);
   const library = project.fieldLibrary;
+  const { dragged, start, hover, end, shown: shownIds, dropped } = useDragReorder(library.map(f => f.id));
+  const shown = shownIds.map(id => library.find(f => f.id === id)!);
 
   const add = () => dispatch({ type: 'add-library-field', id: uid('field') });
-  // Mientras se arrastra, la lista se enseña ya reordenada y el elemento movido va como fantasma.
-  const [preview, setPreview] = useState<{ targetId: string; after: boolean } | null>(null);
-  const reordered = (targetId: string, after: boolean) => {
-    const moving = library.find(f => f.id === dragged);
-    if (!moving || dragged === targetId) return library;
-    const rest = library.filter(f => f.id !== dragged);
-    const index = rest.findIndex(f => f.id === targetId);
-    if (index < 0) return library;
-    rest.splice(index + (after ? 1 : 0), 0, moving);
-    return rest;
-  };
-  const shown = dragged && preview ? reordered(preview.targetId, preview.after) : library;
-  const hover = (targetId: string, after: boolean) => {
-    if (!dragged || targetId === dragged) return;
-    setPreview(current =>
-      current && current.targetId === targetId && current.after === after ? current : { targetId, after },
-    );
-  };
-  const endDrag = () => {
-    setDragged(null);
-    setPreview(null);
-  };
   const reorder = () => {
-    if (dragged && preview) {
-      dispatch({ type: 'reorder-library', ids: reordered(preview.targetId, preview.after).map(f => f.id) });
-    }
-    endDrag();
+    if (dropped) dispatch({ type: 'reorder-library', ids: dropped });
+    end();
   };
 
   const remove = async (field: FieldDefinition) => {
@@ -101,8 +78,8 @@ export function LibraryEditor() {
                 field={field}
                 siblings={project.fieldLibrary}
                 dragging={dragged === field.id}
-                onDragStart={setDragged}
-                onDragEnd={endDrag}
+                onDragStart={start}
+                onDragEnd={end}
                 onDragHover={hover}
                 onDrop={reorder}
                 onChange={changed => dispatch({ type: 'update-library-field', field: changed })}
