@@ -26,16 +26,31 @@ export function FollowButton({ personId }: { personId: string }) {
       setBusy(false);
     }
   };
+  return <FollowToggle following={relation.sigo} followsMe={relation.meSigue} busy={busy} onToggle={toggle} />;
+}
+
+/** El botón «Seguir / Seguir también / Siguiendo», aquí y en las acciones de una persona (`RelationActions`). */
+export function FollowToggle({
+  following,
+  followsMe,
+  busy,
+  onToggle,
+}: {
+  following: boolean;
+  followsMe: boolean;
+  busy: boolean;
+  onToggle: () => unknown;
+}) {
   return (
     <Button
       size="sm"
-      variant={relation.sigo ? 'secondary' : 'primary'}
-      icon={relation.sigo ? UserCheck : UserPlus}
+      variant={following ? 'secondary' : 'primary'}
+      icon={following ? UserCheck : UserPlus}
       disabled={busy}
-      aria-pressed={relation.sigo}
-      onClick={() => void toggle()}
+      aria-pressed={following}
+      onClick={() => void onToggle()}
     >
-      {relation.sigo ? 'Siguiendo' : relation.meSigue ? 'Seguir también' : 'Seguir'}
+      {following ? 'Siguiendo' : followsMe ? 'Seguir también' : 'Seguir'}
     </Button>
   );
 }

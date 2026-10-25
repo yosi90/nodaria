@@ -20,6 +20,7 @@ import { useDialogs } from '../common/dialogs';
 import { Menu, type MenuEntry } from '../common/Menu';
 import { useToast } from '../common/toasts';
 import { openFloatingChat, report, useRelationship } from './communityHelpers';
+import { FollowToggle } from './FollowButton';
 
 /**
  * Lo que se puede hacer con una persona, con las rutas de la plataforma (`ecosistema-kit/SOCIAL.md`):
@@ -177,16 +178,7 @@ export function RelationActions({
 
   return (
     <div className="relation-actions">
-      <Button
-        size="sm"
-        variant={relation.sigo ? 'secondary' : 'primary'}
-        icon={relation.sigo ? UserCheck : UserPlus}
-        disabled={busy}
-        aria-pressed={relation.sigo}
-        onClick={() => void follow()}
-      >
-        {relation.sigo ? 'Siguiendo' : relation.meSigue ? 'Seguir también' : 'Seguir'}
-      </Button>
+      <FollowToggle following={relation.sigo} followsMe={relation.meSigue} busy={busy} onToggle={follow} />
       {friendship}
       {relation.amistad === 'amistades' && (
         <Button size="sm" icon={MessageSquare} disabled={busy} onClick={() => void write()}>
