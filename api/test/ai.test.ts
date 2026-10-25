@@ -715,6 +715,37 @@ describe('historial de conversaciones', () => {
     });
   });
 
+  it('guarda las referencias de los subdocumentos, para resolver la propuesta al volver a abrirla', async () => {
+    const t = await setup();
+    const refs = { tables: { t1: 'node_cliente' }, bases: {}, subdocuments: { s1: 'schema_linea' } };
+    const first = (await t.inject('POST', '/api/ia/propuestas', t.owner, body({ refs }))).json();
+    const full = (await t.inject('GET', `/api/ia/conversaciones/${first.conversationId}`)).json();
+    expect(full.messages[1].content.refs).toEqual(refs);
+  });
+
+  it('recuerda en el historial también las operaciones que llevan un subdocumento dentro', () => {
+    const embed = {
+      op: 'embed' as const,
+      table: 't1',
+      column: 'lineas',
+      references: 's1',
+      many: true,
+      nullable: false,
+      reason: '',
+    };
+    const turns = conversationTurns([
+      { id: 1, role: 'user', content: { instruction: 'Mete las líneas en el pedido' }, createdAt: '' },
+      {
+        id: 2,
+        role: 'assistant',
+        content: { proposal: { summary: 'Líneas dentro.', operations: [embed], advice: [] }, applied: null },
+        createdAt: '',
+      },
+    ]);
+    expect(turns[1].text).toContain('1. llevar s1 dentro de t1.lineas (lista)');
+    expect(turns[1].text).not.toContain('undefined');
+  });
+
   it('guarda los errores y no los manda al modelo como turnos', async () => {
     const t = await setup();
     t.failNext();

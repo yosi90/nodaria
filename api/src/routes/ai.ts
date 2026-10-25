@@ -34,9 +34,11 @@ export const AI_CONTEXT_BUDGET = 400_000;
 export const AI_BODY_LIMIT = 640 * 1024;
 const TITLE_LENGTH = 80;
 
+/** Lo que manda la web (`AiContextRefs` en `src/domain/aiContext.ts`): tablas, bases y subdocumentos. */
 const refsSchema = z.object({
   tables: z.record(z.string().max(16), z.string().max(200)),
   bases: z.record(z.string().max(16), z.string().max(200)).optional(),
+  subdocuments: z.record(z.string().max(16), z.string().max(200)).optional(),
 });
 
 /** Lo común a propuestas y preguntas: modelo, proyecto, conversación y clave. */

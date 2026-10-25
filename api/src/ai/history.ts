@@ -32,6 +32,8 @@ function describeOperation(o: AiProposal['operations'][number]) {
       return `quitar ${o.table}.${o.column}`;
     case 'add-foreign-key':
       return `FK ${o.table}.${o.column} → ${o.references}`;
+    case 'embed':
+      return `llevar ${o.references} dentro de ${o.table}.${o.column}${o.many ? ' (lista)' : ''}`;
   }
 }
 
