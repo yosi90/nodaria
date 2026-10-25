@@ -4,12 +4,17 @@ import { defaultKinship } from './kinship';
 import type { AppState, FieldDefinition, Project, ProjectView, Schema, SchemaKind } from './types';
 export const uid = (prefix = 'id') => `${prefix}_${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
 export const now = () => new Date().toISOString();
+/** Largo máximo del nombre de un proyecto: el que admite la API al guardarlo (`api/src/routes/projects.ts`). */
+export const PROJECT_NAME_MAX = 200;
+/** El nombre de un proyecto recortado a `PROJECT_NAME_MAX`, para que siempre se pueda sincronizar. */
+export const projectName = (name: string) => name.trim().slice(0, PROJECT_NAME_MAX).trim();
+
 export function createProject(name = 'Mi primer mapa'): Project {
   const stamp = now();
   return {
     formatVersion: PROJECT_FORMAT_VERSION,
     id: uid('project'),
-    name,
+    name: projectName(name) || 'Mi primer mapa',
     createdAt: stamp,
     updatedAt: stamp,
     schemas: [],

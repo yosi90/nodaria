@@ -56,7 +56,7 @@ import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
 import { ProjectKindDialog } from './ProjectKindDialog';
 import { parseProject } from '../../services/storage';
-import { uid } from '../../domain/factories';
+import { PROJECT_NAME_MAX, uid } from '../../domain/factories';
 import { useApp } from '../../state/AppContext';
 import { usePreferences, type Preferences } from '../../state/preferences';
 import { IconButton } from '../common/Button';
@@ -294,6 +294,7 @@ export function Topbar({
       label: 'Nombre',
       initialValue: project.name,
       confirmLabel: 'Renombrar',
+      maxLength: PROJECT_NAME_MAX,
     });
     if (name) dispatch({ type: 'rename-project', name });
   };

@@ -15,6 +15,7 @@ interface PromptOptions {
   initialValue?: string;
   placeholder?: string;
   confirmLabel?: string;
+  maxLength?: number;
 }
 
 type Pending =
@@ -96,6 +97,7 @@ function PromptModal({ options, onDone }: { options: PromptOptions; onDone: (val
           ref={input}
           value={value}
           placeholder={options.placeholder}
+          maxLength={options.maxLength}
           onFocus={event => event.currentTarget.select()}
           onChange={event => setValue(event.target.value)}
         />

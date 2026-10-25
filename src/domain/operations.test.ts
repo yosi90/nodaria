@@ -11,6 +11,7 @@ import {
   updateNode,
   updateSchema,
 } from './operations';
+import { createProject, PROJECT_NAME_MAX, projectName } from './factories';
 import type { FieldDefinition } from './types';
 
 const world = () =>
@@ -224,5 +225,14 @@ describe('addRelation (D-04)', () => {
     expect(added.relations[0]).toMatchObject({ id: 'r1', kinshipId: 'hijo', kinshipNeutral: true });
     expect(added.relations[0].createdAt).not.toBe('');
     expect(addRelation(p, 'familia', 'a', 'b').relations[0].kinshipNeutral).toBe(false);
+  });
+});
+
+describe('nombre del proyecto (E-02)', () => {
+  it('nunca pasa del largo que admite la API', () => {
+    const long = 'N'.repeat(250);
+    expect(projectName(long)).toHaveLength(PROJECT_NAME_MAX);
+    expect(projectName('  Novela  ')).toBe('Novela');
+    expect(createProject(long).name).toHaveLength(PROJECT_NAME_MAX);
   });
 });

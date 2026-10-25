@@ -1,5 +1,5 @@
 import { PROJECT_FORMAT_VERSION } from '../domain/constants';
-import { createView, uid } from '../domain/factories';
+import { createView, projectName, uid } from '../domain/factories';
 import { normalizeCalendar } from '../domain/calendar';
 import { normalizeAgenda } from '../domain/agenda';
 import { DEFAULT_DERIVED, defaultKinship } from '../domain/kinship';
@@ -138,7 +138,7 @@ function normalizeProject(project: RawProject): Project {
   return {
     formatVersion: project.formatVersion ?? 2,
     id: project.id || uid('project'),
-    name: project.name || 'Proyecto importado',
+    name: projectName(project.name || '') || 'Proyecto importado',
     createdAt: project.createdAt || stamp,
     updatedAt: project.updatedAt || stamp,
     schemas: (project.schemas || []).map(s => ({

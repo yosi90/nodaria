@@ -4,6 +4,7 @@ import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { Modal } from '../common/Modal';
 import { Select } from '../common/Select';
+import { PROJECT_NAME_MAX } from '../../domain/factories';
 
 /** La plantilla establece un punto de partida editable; el proyecto sigue siendo generalista. */
 export function NewProjectDialog({ onClose }: { onClose: () => void }) {
@@ -34,6 +35,7 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Por ejemplo: Mi próximo proyecto"
+            maxLength={PROJECT_NAME_MAX}
           />
         </label>
         <div className="field">

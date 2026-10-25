@@ -1,4 +1,4 @@
-import { createInitialState, createProject, now, uid } from '../domain/factories';
+import { createInitialState, createProject, now, projectName, uid } from '../domain/factories';
 import * as lib from '../domain/library';
 import { reorderSchema, type DropZone } from '../domain/inheritance';
 import * as ops from '../domain/operations';
@@ -199,7 +199,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       const copy = {
         ...active,
         id: uid('project'),
-        name: `${active.name} (copia)`,
+        name: projectName(`${active.name} (copia)`),
         createdAt: stamp,
         updatedAt: stamp,
       };
@@ -239,7 +239,7 @@ export function appReducer(state: AppState, action: Action): AppState {
 function projectReducer(p: Project, action: Action): Project {
   switch (action.type) {
     case 'rename-project':
-      return { ...p, name: action.name };
+      return { ...p, name: projectName(action.name) || p.name };
     case 'set-project-kind':
       return { ...p, kind: action.kind };
     case 'merge-template':
