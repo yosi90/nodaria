@@ -1,5 +1,6 @@
 import type { Project } from '../domain/types';
 import type { RemoteProjectSummary } from './api';
+import { readLocalJson, writeLocalJson } from './localJson';
 
 /**
  * Reglas de sincronización entre los proyectos locales (localStorage) y los de la cuenta.
@@ -55,30 +56,23 @@ export const emptyMeta = (uid: string | null = null): SyncMeta => ({ uid, projec
  * El recuerdo de otra cuenta no se usa: se parte de cero, como en un navegador nuevo.
  */
 export function loadSyncMeta(uid: string, legacyUid: string | null = null): SyncMeta {
-  try {
-    const stored = JSON.parse(localStorage.getItem(SYNC_META_KEY) ?? 'null') as SyncMeta | null;
-    if (stored && stored.projects && typeof stored.projects === 'object') {
-      if (stored.uid === uid) return stored;
-      if (legacyUid && stored.uid === legacyUid) {
-        const adopted = { uid, projects: stored.projects };
-        saveSyncMeta(adopted);
-        return adopted;
-      }
+  const stored = readLocalJson(SYNC_META_KEY) as SyncMeta | null;
+  if (stored && stored.projects && typeof stored.projects === 'object') {
+    if (stored.uid === uid) return stored;
+    if (legacyUid && stored.uid === legacyUid) {
+      const adopted = { uid, projects: stored.projects };
+      saveSyncMeta(adopted);
+      return adopted;
     }
-  } catch {
-    // Sin recuerdo válido: se parte de cero para esta cuenta.
   }
+  // Sin recuerdo válido: se parte de cero para esta cuenta.
   return emptyMeta(uid);
 }
 
 /** Cuenta cuyo recuerdo guarda el navegador, o `null`: si la hay, los proyectos de aquí son suyos. */
 export function storedSyncAccount(): string | null {
-  try {
-    const stored = JSON.parse(localStorage.getItem(SYNC_META_KEY) ?? 'null') as SyncMeta | null;
-    return typeof stored?.uid === 'string' ? stored.uid : null;
-  } catch {
-    return null;
-  }
+  const stored = readLocalJson(SYNC_META_KEY) as SyncMeta | null;
+  return typeof stored?.uid === 'string' ? stored.uid : null;
 }
 
 /**
@@ -90,14 +84,7 @@ export function unsyncedProjects(local: Project[], meta: SyncMeta): Project[] {
   return local.filter(p => !isBlankProject(p) && meta.projects[p.id]?.updatedAt !== p.updatedAt);
 }
 
-export function saveSyncMeta(meta: SyncMeta | null) {
-  try {
-    if (meta) localStorage.setItem(SYNC_META_KEY, JSON.stringify(meta));
-    else localStorage.removeItem(SYNC_META_KEY);
-  } catch {
-    // Sin almacenamiento: el recuerdo dura lo que la sesión.
-  }
-}
+export const saveSyncMeta = (meta: SyncMeta | null) => writeLocalJson(SYNC_META_KEY, meta);
 
 /** Un proyecto recién creado y sin contenido; no merece ocupar la cuenta. */
 export function isBlankProject(p: Project) {

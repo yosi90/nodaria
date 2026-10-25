@@ -1,5 +1,6 @@
 import type { Project, ProjectKind } from '../domain/types';
 import { ApiError, apiRequest, OfflineError, type WriteResult } from './api';
+import { readLocalJson, writeLocalJson } from './localJson';
 import { platformRequest, sdk } from './yosiftware';
 
 /*
@@ -253,32 +254,18 @@ export interface SharedMeta {
 export const emptySharedMeta = (uid: string | null = null): SharedMeta => ({ uid, projects: {} });
 
 export function loadSharedMeta(uid: string): SharedMeta {
-  try {
-    const stored = JSON.parse(localStorage.getItem(SHARED_META_KEY) ?? 'null') as SharedMeta | null;
-    if (stored?.uid === uid && stored.projects && typeof stored.projects === 'object') return stored;
-  } catch {
-    // Sin recuerdo válido: se parte de cero.
-  }
+  const stored = readLocalJson(SHARED_META_KEY) as SharedMeta | null;
+  if (stored?.uid === uid && stored.projects && typeof stored.projects === 'object') return stored;
+  // Sin recuerdo válido: se parte de cero.
   return emptySharedMeta(uid);
 }
 
-export function saveSharedMeta(meta: SharedMeta | null) {
-  try {
-    if (meta) localStorage.setItem(SHARED_META_KEY, JSON.stringify(meta));
-    else localStorage.removeItem(SHARED_META_KEY);
-  } catch {
-    // Sin almacenamiento: el recuerdo dura lo que la sesión.
-  }
-}
+export const saveSharedMeta = (meta: SharedMeta | null) => writeLocalJson(SHARED_META_KEY, meta);
 
 /** Ids de los compartidos que recuerda el navegador, aunque aún no se haya leído la lista de grupos. */
 export function storedSharedIds(): Set<string> {
-  try {
-    const stored = JSON.parse(localStorage.getItem(SHARED_META_KEY) ?? 'null') as SharedMeta | null;
-    return new Set(Object.keys(stored?.projects ?? {}));
-  } catch {
-    return new Set();
-  }
+  const stored = readLocalJson(SHARED_META_KEY) as SharedMeta | null;
+  return new Set(Object.keys(stored?.projects ?? {}));
 }
 
 /** Huella del contenido del proyecto: todo salvo la vista de cada persona y la fecha de cambio. */
