@@ -2,14 +2,18 @@ import { useCallback, useState } from 'react';
 import { followingFeed, socialErrorMessage, type NewsItem } from '../../services/community';
 import { useNavigation } from '../../state/navigation';
 import { Button } from '../common/Button';
-import { useLoad, useSentinel } from './communityHelpers';
+import { useSentinel } from './communityHelpers';
+import { useLoad } from '../common/useLoad';
 import { NewsCard } from './parts';
 
 /** «Inicio»: las novedades de Nodaria de tus amistades y de quienes sigues, cargando más al llegar al final. */
 export function FeedTab() {
   const { openCommunity } = useNavigation();
   const load = useCallback(() => followingFeed(), []);
-  const { value, setValue, error, reload } = useLoad<{ novedades: NewsItem[]; cursor: string | null }>(load);
+  const { value, setValue, error, reload } = useLoad<{ novedades: NewsItem[]; cursor: string | null }>(
+    load,
+    socialErrorMessage,
+  );
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState<string | null>(null);
 

@@ -1,5 +1,6 @@
 import { AppWindow, Check, MessageSquareText, MessagesSquare, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useLoad } from '../common/useLoad';
 import { visibleFields } from '../../domain/conditions';
 import { nodeLabel } from '../../domain/selectors';
 import type { FieldValue } from '../../domain/types';
@@ -80,27 +81,11 @@ export function GroupPanel({ group, onClose }: { group: GroupInfo; onClose: () =
 /** La conversación del espacio en el chat de la plataforma, incrustada. Los mensajes no pasan por Nodaria. */
 function GroupChat({ group }: { group: GroupInfo }) {
   const { requireToken } = useAuth();
-  const [conversation, setConversation] = useState<{ group: string; id: number } | null>(null);
-  const [failure, setFailure] = useState<{ group: string; message: string } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const token = await requireToken('chatear');
-        const { id } = await groupConversation(token, group.id);
-        if (!cancelled) setConversation({ group: group.id, id });
-      } catch (error) {
-        if (!cancelled) setFailure({ group: group.id, message: groupErrorMessage(error) });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [group.id, requireToken]);
-
-  const id = conversation?.group === group.id ? conversation.id : null;
-  const error = failure?.group === group.id ? failure.message : null;
+  const load = useCallback(
+    async () => (await groupConversation(await requireToken('chatear'), group.id)).id,
+    [group.id, requireToken],
+  );
+  const { value: id, error } = useLoad(load, groupErrorMessage);
   if (error)
     return (
       <p className="group-error group-chat-message" role="alert">

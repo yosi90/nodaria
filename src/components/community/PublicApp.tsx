@@ -1,15 +1,9 @@
 import { CalendarRange, Copy, Flag, Network, Table2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLoad } from '../common/useLoad';
 import type { Project } from '../../domain/types';
 import { ApiError, OfflineError } from '../../services/api';
-import {
-  fetchPublic,
-  personName,
-  personProfile,
-  publicPath,
-  type Person,
-  type PublicProject,
-} from '../../services/community';
+import { fetchPublic, personName, personProfile, publicPath, type PublicProject } from '../../services/community';
 import { parseProject } from '../../services/storage';
 import { StaticAppProvider, type ActionGuard } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
@@ -215,17 +209,8 @@ function PublicWorkspace({ publication }: { publication: PublicProject }) {
 
 /** Quién lo publicó, con «Seguir». Si no hay nadie (cuenta cerrada o un bloqueo), no se enseña nada. */
 function Author({ id, own }: { id: string; own: boolean }) {
-  const [person, setPerson] = useState<Person | null | undefined>(undefined);
-  useEffect(() => {
-    let alive = true;
-    personProfile(id).then(
-      found => alive && setPerson(found),
-      () => alive && setPerson(null),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [id]);
+  const load = useCallback(() => personProfile(id), [id]);
+  const person = useLoad(load).value;
   if (!person) return null;
   return (
     <span className="public-author">

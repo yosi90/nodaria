@@ -1,11 +1,18 @@
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { listPublic, personName, personNews, personProfile, type NewsItem } from '../../services/community';
+import {
+  listPublic,
+  personName,
+  personNews,
+  personProfile,
+  socialErrorMessage,
+  type NewsItem,
+} from '../../services/community';
 import { PlatformRequestError } from '../../services/yosiftware';
 import { useAuth } from '../../state/auth';
 import { useNavigation } from '../../state/navigation';
 import { Button } from '../common/Button';
-import { useLoad } from './communityHelpers';
+import { useLoad } from '../common/useLoad';
 import { Avatar, NewsCard, PublicCard } from './parts';
 import { RelationActions } from './RelationActions';
 
@@ -19,9 +26,9 @@ export function PersonTab({ id }: { id: string }) {
   const { openCommunity } = useNavigation();
   const own = user?.id === id.toLowerCase();
   const loadProfile = useCallback(() => personProfile(id).then(found => ({ found })), [id]);
-  const profile = useLoad(loadProfile);
+  const profile = useLoad(loadProfile, socialErrorMessage);
   const loadProjects = useCallback(() => listPublic(id), [id]);
-  const projects = useLoad(loadProjects);
+  const projects = useLoad(loadProjects, socialErrorMessage);
   const loadNews = useCallback(
     () =>
       personNews(id).catch((error: unknown) => {
@@ -31,7 +38,7 @@ export function PersonTab({ id }: { id: string }) {
       }),
     [id],
   );
-  const news = useLoad(loadNews);
+  const news = useLoad(loadNews, socialErrorMessage);
   const [more, setMore] = useState(false);
   const person = profile.value?.found ?? null;
 

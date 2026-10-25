@@ -1,8 +1,8 @@
 import { Search } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { foldText } from '../../domain/text';
-import { discoverFeed, listPublic, type NewsItem } from '../../services/community';
-import { useLoad } from './communityHelpers';
+import { discoverFeed, listPublic, socialErrorMessage, type NewsItem } from '../../services/community';
+import { useLoad } from '../common/useLoad';
 import { NewsCard, PublicCard } from './parts';
 
 /**
@@ -11,12 +11,12 @@ import { NewsCard, PublicCard } from './parts';
  */
 export function DiscoverTab({ signedIn }: { signedIn: boolean }) {
   const loadProjects = useCallback(() => listPublic(), []);
-  const projects = useLoad(loadProjects);
+  const projects = useLoad(loadProjects, socialErrorMessage);
   const loadNews = useCallback(
     () => (signedIn ? discoverFeed().then(r => r.novedades) : Promise.resolve([] as NewsItem[])),
     [signedIn],
   );
-  const news = useLoad(loadNews);
+  const news = useLoad(loadNews, socialErrorMessage);
   const [query, setQuery] = useState('');
   const shown = useMemo(() => {
     const q = foldText(query.trim());

@@ -1,11 +1,12 @@
 import { Copy, ExternalLink, FolderOpen, Globe, Share2 } from 'lucide-react';
 import { useCallback } from 'react';
-import { myPublications, type OwnPublication } from '../../services/community';
+import { myPublications, socialErrorMessage, type OwnPublication } from '../../services/community';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
 import { useNavigation } from '../../state/navigation';
 import { Button } from '../common/Button';
-import { openPublic, useCopyLink, useLoad } from './communityHelpers';
+import { openPublic, useCopyLink } from './communityHelpers';
+import { useLoad } from '../common/useLoad';
 import { dateTimeText } from '../common/dates';
 
 /** «Tus publicados»: lo que has hecho público, con su enlace, el de la vista previa y el proyecto del que sale. */
@@ -17,7 +18,7 @@ export function PublishedTab() {
     const token = await getToken();
     return token ? myPublications(token) : [];
   }, [getToken]);
-  const { value, error } = useLoad<OwnPublication[]>(load);
+  const { value, error } = useLoad<OwnPublication[]>(load, socialErrorMessage);
 
   const copy = useCopyLink();
   const openProject = (projectId: string) => {

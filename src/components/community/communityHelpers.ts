@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { publicPath, relationship, socialErrorMessage, type Relationship } from '../../services/community';
+import { publicPath, relationship, type Relationship } from '../../services/community';
 import { sdk, type YosiftwareSdk } from '../../services/yosiftware';
 import { useToast } from '../common/toasts';
 
 /* Ayudas de la sección «Comunidad» (docs/roadmaps/ROADMAP_COMUNIDAD.md): la página pública, copiar sus
- * enlaces, las denuncias de lo que es de la plataforma y la carga de datos. */
+ * enlaces y las denuncias de lo que es de la plataforma. La carga de datos va con `useLoad` (`common/`),
+ * con `socialErrorMessage` como traductor de errores. */
 
 /** Abre la página pública en otra pestaña, para no dejar a medias lo que se está editando. */
 export const openPublic = (publicId: string) => window.open(publicPath(publicId), '_blank', 'noopener');
@@ -25,28 +26,6 @@ export function useCopyLink() {
 /** Lo de la plataforma se denuncia con su ventana (`ecosistema-kit/MODERACION.md`). */
 export const report = (options: Parameters<NonNullable<YosiftwareSdk['denunciar']>>[0]) =>
   void sdk()?.denunciar?.(options);
-
-/** Carga algo al montar (y al cambiar `load`); `reload` lo vuelve a pedir. */
-export function useLoad<T>(load: () => Promise<T>) {
-  const [value, setValue] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    let alive = true;
-    load().then(
-      result => {
-        if (!alive) return;
-        setValue(result);
-        setError(null);
-      },
-      (failure: unknown) => alive && setError(socialErrorMessage(failure)),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [load, tick]);
-  return { value, setValue, error, reload: () => setTick(t => t + 1) };
-}
 
 /**
  * La relación de la cuenta con una persona (seguir, amistad, bloqueo): `undefined` mientras se pide y `null`

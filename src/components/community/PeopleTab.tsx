@@ -13,7 +13,7 @@ import {
 } from '../../services/community';
 import { Button } from '../common/Button';
 import { useToast } from '../common/toasts';
-import { useLoad } from './communityHelpers';
+import { useLoad } from '../common/useLoad';
 import { PersonChip } from './parts';
 import { RelationActions } from './RelationActions';
 import { dateTimeText } from '../common/dates';
@@ -96,7 +96,7 @@ function SearchResults({ query }: { query: string }) {
     return () => window.clearTimeout(timer);
   }, [query]);
   const load = useCallback(() => searchPeople(debounced), [debounced]);
-  const { value, error } = useLoad(load);
+  const { value, error } = useLoad(load, socialErrorMessage);
   if (error) return <p className="group-error">{error}</p>;
   if (!value) return <p className="muted-note">Buscando…</p>;
   if (!value.length)
@@ -112,7 +112,7 @@ function SearchResults({ query }: { query: string }) {
 
 function PeopleListView({ list }: { list: PeopleList }) {
   const load = useCallback(() => peopleList(list), [list]);
-  const { value, setValue, error, reload } = useLoad(load);
+  const { value, setValue, error, reload } = useLoad(load, socialErrorMessage);
   const [more, setMore] = useState(false);
   if (error) return <p className="group-error">{error}</p>;
   if (!value) return <p className="muted-note">Cargando…</p>;
@@ -161,9 +161,9 @@ function PeopleListView({ list }: { list: PeopleList }) {
 function Requests() {
   const toast = useToast();
   const loadReceived = useCallback(() => friendRequests('recibidas'), []);
-  const received = useLoad(loadReceived);
+  const received = useLoad(loadReceived, socialErrorMessage);
   const loadSent = useCallback(() => friendRequests('enviadas'), []);
-  const sent = useLoad(loadSent);
+  const sent = useLoad(loadSent, socialErrorMessage);
   const act = async (work: () => Promise<void>, done: () => void, message: string) => {
     try {
       await work();
