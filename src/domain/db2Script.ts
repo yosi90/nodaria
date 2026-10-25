@@ -1,7 +1,7 @@
 import { columnDescription, foreignKeyLinks, sqlDefaultError, sqlTypeText, type FkAction } from './database';
 import { db2Inserts } from './rowsScript';
 import { nodeLabel } from './selectors';
-import { scriptTables, type ScriptColumn, type ScriptTable } from './sqlScript';
+import { foreignKeyTargets, scriptTables, type ScriptColumn, type ScriptTable } from './sqlScript';
 import { stripAccents } from './text';
 import type { Project } from './types';
 
@@ -191,23 +191,12 @@ export function db2Model(p: Project, options: Db2Options = {}): Db2Table[] {
     const columns = source ? source.columns.filter(c => c.field.id === k.fieldId) : [];
     if (!source || !target || !columns.length) return;
     const label = `${source.name}.${columns[0].name} → ${target.name}`;
-    let targetKeys: Db2Column[];
-    if (columns[0].targetKey) {
-      targetKeys = columns.map(c => target.columns.find(t => t.name === c.targetKey)!).filter(Boolean);
-    } else {
-      const targetKey = target.columns.find(c => c.field.id === k.targetFieldId);
-      if (!targetKey) {
-        source.skipped.push(`${label}: la tabla destino no tiene clave primaria.`);
-        return;
-      }
-      if (sqlTypeText(targetKey.type) !== sqlTypeText(columns[0].type)) {
-        source.skipped.push(
-          `${label}: la columna es ${sqlTypeText(columns[0].type)} y la clave ${sqlTypeText(targetKey.type)}.`,
-        );
-        return;
-      }
-      targetKeys = [targetKey];
+    const found = foreignKeyTargets(columns, target, k.targetFieldId);
+    if ('problem' in found) {
+      source.skipped.push(`${label}: ${found.problem}`);
+      return;
     }
+    const targetKeys = found.keys;
     const field = columns[0];
     const stem = field.targetKey ? db2Name(field.field.key || field.name) : field.name;
     let name = db2Name(`FK_${source.name}_${stem}`);

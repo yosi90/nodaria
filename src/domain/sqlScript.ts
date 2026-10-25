@@ -94,6 +94,25 @@ export function scriptTables(
 /** Las columnas de un atributo en la tabla (una, o varias si es una referencia a una clave compuesta). */
 export const columnsOf = (table: ScriptTable, fieldId: string) => table.columns.filter(c => c.field.id === fieldId);
 
+/**
+ * Las columnas de la tabla `target` a las que apunta una clave foránea (`columns`, las de su referencia), o
+ * por qué no se puede crear: la tabla destino no tiene clave primaria o su tipo no es el de la columna. Lo
+ * comparten el script de SQL Server y el de Db2 for i.
+ */
+export function foreignKeyTargets<C extends ScriptColumn>(
+  columns: C[],
+  target: { columns: C[] },
+  targetFieldId: string | null,
+): { keys: C[] } | { problem: string } {
+  if (columns[0].targetKey)
+    return { keys: columns.map(c => target.columns.find(t => t.name === c.targetKey)!).filter(Boolean) };
+  const targetKey = target.columns.find(c => c.field.id === targetFieldId);
+  if (!targetKey) return { problem: 'la tabla destino no tiene clave primaria.' };
+  if (sqlTypeText(targetKey.type) !== sqlTypeText(columns[0].type))
+    return { problem: `la columna es ${sqlTypeText(columns[0].type)} y la clave ${sqlTypeText(targetKey.type)}.` };
+  return { keys: [targetKey] };
+}
+
 export function sqlScript(p: Project, generatedAt = new Date()): string {
   const tables = scriptTables(p);
   const byNode = new Map(tables.map(t => [t.node.id, t]));
@@ -166,23 +185,12 @@ export function sqlScript(p: Project, generatedAt = new Date()): string {
     const columns = source ? columnsOf(source, k.fieldId) : [];
     if (!source || !target || !columns.length) return;
     const label = `[dbo].${quoteName(source.name)}.${quoteName(columns[0].name)} → [dbo].${quoteName(target.name)}`;
-    let targetKeys: ScriptColumn[];
-    if (columns[0].targetKey) {
-      targetKeys = columns.map(c => target.columns.find(t => t.name === c.targetKey)!).filter(Boolean);
-    } else {
-      const targetKey = target.columns.find(c => c.field.id === k.targetFieldId);
-      if (!targetKey) {
-        out.push(`-- Omitida ${label}: la tabla destino no tiene clave primaria.`);
-        return;
-      }
-      if (sqlTypeText(targetKey.type) !== sqlTypeText(columns[0].type)) {
-        out.push(
-          `-- Omitida ${label}: la columna es ${sqlTypeText(columns[0].type)} y la clave ${sqlTypeText(targetKey.type)}.`,
-        );
-        return;
-      }
-      targetKeys = [targetKey];
+    const found = foreignKeyTargets(columns, target, k.targetFieldId);
+    if ('problem' in found) {
+      out.push(`-- Omitida ${label}: ${found.problem}`);
+      return;
     }
+    const targetKeys = found.keys;
     const field = columns[0];
     const stem = field.targetKey ? field.field.key || field.name : field.name;
     let name = `FK_${source.name}_${stem}`;
