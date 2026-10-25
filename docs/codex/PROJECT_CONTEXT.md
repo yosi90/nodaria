@@ -276,6 +276,16 @@ Las filas no se publican ni las recibe la IA. Queda pendiente la prueba en el AS
   - **Web:** base `b63bff0`, 26 duplicados unificados.
   - **API:** base `c4b5466`, 9 grupos unificados y 3 divergencias entre la web y la API arregladas.
   - **Veredicto: «Quedan duplicados»,** como propuestas en `bugs.md` (web D-01 a D-09, entre partes E-01 a E-07, API A-01 y A-02). Ninguna impedía unir.
+  - **Propuestas resueltas el mismo día** (el propietario las dejó a mi criterio). Se hicieron todas menos dos, que quedan decididas sin código: D-05 es una convención de las notas de trabajo y E-07 se cubre con la prueba cruzada. El detalle de cada una está en `bugs.md`.
+    - `requireToken` en `useAuth`, una sola lista de exportaciones de bases de datos, `FollowToggle`, `add-relation` con el parentesco neutro, `useLoad` común, `useRecurringSync` y `foreignKeyLinks` desde `databaseLinks`.
+    - **Prueba cruzada de contratos entre la web y la API:** `contracts/contracts.test.ts`, en `npm test` y en `tsc -b`. Al escribirla salió un fallo: la agenda permitida podía pasar del presupuesto; ahora tiene una cuarta parte.
+    - Nombre de proyecto hasta 200 caracteres.
+    - La web mide en bytes lo que manda a la IA (`AI_BODY_BUDGET`) y avisa del esquema que no cabe (`databaseContextProblem`).
+    - Los cambios de esquema se bloquean por lo que cambian (`changesSchema`).
+    - Las constantes compartidas tienen nombre en las dos partes.
+    - En la API, `overLimit` y `selectPublications`.
+- **Guardarraíles de la IA** (2026-10-25, diseñados a criterio de Nodaria por encargo del propietario), además de los límites del 1.58: el asistente solo ayuda con el proyecto y no revela sus instrucciones, se guardan como mucho 100 conversaciones por cuenta y proyecto, y el panel dice con qué clave se manda (la tuya o la del grupo). La política de privacidad recoge el tope de conversaciones (25 de octubre de 2026). Lista completa en `docs/backend/README.md`, «Asistencia de IA».
+- **Kit 1.59 copiado (2026-10-25):** solo cambia `NOVEDADES.md` (el tipo `contenido` agrupado una vez al día, y que cada persona puede dejar de ver los anuncios de un servicio). Nodaria no publica contenido, así que no cambia nada. La 1.60 está en desarrollo en la plataforma, sin publicar.
   - **Piezas comunes nuevas:** en la web, `src/domain/text.ts`, `references.ts` (`referenceIds`), `common/DialogHost`, `Chip`, `ErrorNote`, `sets.ts`, `services/csv.ts` y `localJson.ts`, y `platformRequest` en `yosiftware.ts`. En la API, `platform/http.ts`, `periodic.ts` y `db/pool.ts` (`guid`, `prefixed`); la lista está en `docs/backend/README.md`.
   - A partir de ahora, el revisor se pasa en modo `corregir` solo sobre lo nuevo cuando se reparta trabajo entre agentes.
 

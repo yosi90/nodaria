@@ -27,6 +27,9 @@ Este archivo describe cómo se espera que Codex trabaje. El contexto del product
 - Mantener TypeScript en modo estricto. No introducir `any` para evitar modelar un dato salvo que exista una razón documentada.
 - Las reglas que determinan herencia, compatibilidad entre tipos, relaciones, descendencia o valores calculados deben implementarse como lógica de dominio comprobable, no como condiciones dispersas en la UI.
 - Los textos visibles de la aplicación están en español mientras no se adopte un sistema de internacionalización.
+- Para buscar un nodo o un tipo por id se usan `getNode` y `getSchema` (`src/domain/selectors.ts`). Al tocar un archivo que todavía lo hace a mano (`p.nodes.find(n => n.id === …)`), se cambia ahí, sin reordenamientos masivos.
+- La web y la API no comparten paquete: lo que copia una de la otra (contratos de la IA, topes de los formularios, motivos de denuncia, roles, claves del esquema) lleva el mismo nombre en las dos y se comprueba en `contracts/contracts.test.ts`. Si cambias una copia, cambia la otra en el mismo commit.
+- Cuando varios agentes se reparten el trabajo, se sigue la norma del revisor de duplicados de `AGENTS.md` (`.claude/agents/revisor-de-duplicados.md`).
 
 ## Documentación viva y roadmaps
 
