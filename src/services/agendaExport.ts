@@ -3,6 +3,7 @@ import { mentionIndex } from '../domain/notes';
 import { getNode, nodeLabel } from '../domain/selectors';
 import { fileSafeName } from '../domain/text';
 import type { Project } from '../domain/types';
+import { csvRow } from './csv';
 
 /*
  * Exportar la agenda (docs/roadmaps/ROADMAP_CALENDARIO.md, fase 4): un `.ics` (iCalendar, RFC 5545) que
@@ -107,8 +108,6 @@ export function agendaIcs(p: Project, options: { fieldDates?: boolean } = {}, no
   return lines.map(fold).join(CRLF) + CRLF;
 }
 
-const csvCell = (text: string) => (/[;"\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
-
 /** La agenda en CSV (separado por «;», como lo abre Excel en español). Sin BOM: lo añade quien lo empaqueta. */
 export function agendaCsv(p: Project): string {
   const index = mentionIndex(p);
@@ -129,7 +128,7 @@ export function agendaCsv(p: Project): string {
       linked.join(', '),
     ]);
   }
-  return rows.map(r => r.map(csvCell).join(';')).join('\r\n') + '\r\n';
+  return rows.map(csvRow).join('\r\n') + '\r\n';
 }
 
 export const agendaFileName = (p: Project) => `${fileSafeName(p.name, 'agenda')}.ics`;

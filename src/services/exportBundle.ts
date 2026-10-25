@@ -4,6 +4,7 @@ import { allFields, fieldValue, getSchema, nodeLabel, relationRole } from '../do
 import type { FieldDefinition, FieldValue, Node, Project } from '../domain/types';
 import { serializeProject } from './storage';
 import { agendaCsv, agendaIcs } from './agendaExport';
+import { csvRow } from './csv';
 import { createZip, dataUrlBytes, type ZipEntry } from './zip';
 
 /*
@@ -34,8 +35,6 @@ function fileNames(items: { id: string; title: string }[]) {
 
 /** Marca de orden de bytes: Excel la necesita para leer el CSV como UTF-8. */
 const BOM = String.fromCharCode(0xfeff);
-const csvCell = (text: string) => (/[;"\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
-const csvRow = (cells: string[]) => cells.map(csvCell).join(';');
 const yamlValue = (text: string) =>
   text === '' || /[:#\-[\]{}"'\n,&*!|>%@`]|^\s|\s$/.test(text) ? JSON.stringify(text) : text;
 
