@@ -74,7 +74,16 @@ export interface AiWorldRefs {
  */
 export const WORLD_BUDGET = 400_000;
 /** Los topes de cada campo en la API (`worldContextSchema`): por encima, la petición no valdría. */
-const LIMITS = { name: 200, note: 8000, value: 4000, types: 1000, attributes: 300, nodes: 5000, relations: 20_000 };
+const LIMITS = {
+  name: 200,
+  today: 100,
+  note: 8000,
+  value: 4000,
+  types: 1000,
+  attributes: 300,
+  nodes: 5000,
+  relations: 20_000,
+};
 const NOTE_STEPS = [LIMITS.note, 2000, 600, 0];
 /** Un texto libre; las listas y las referencias pueden llegar hasta `LIMITS.value`. */
 const MAX_VALUE = 1000;
@@ -191,7 +200,8 @@ export function worldContext(
     const relations = allRelations.filter(r => kept.has(r.from) && kept.has(r.to));
     return {
       projectName: name(p.name),
-      today: formatDate(p.calendar, todayOf(p.calendar)),
+      // Los nombres de los meses son libres: una fecha con uno muy largo no puede invalidar la pregunta.
+      today: clip(formatDate(p.calendar, todayOf(p.calendar)), LIMITS.today),
       partial:
         nodeCount < allNodes.length ||
         relations.length > LIMITS.relations ||

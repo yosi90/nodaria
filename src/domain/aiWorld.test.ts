@@ -84,9 +84,14 @@ describe('worldContext', () => {
         },
       ],
     });
+    big.calendar = {
+      ...big.calendar,
+      months: big.calendar.months.map(m => ({ ...m, name: 'M'.repeat(150) })),
+    };
     const { context } = worldContext(big);
     const [ana] = context.nodes;
     expect(context.projectName).toHaveLength(200);
+    expect(context.today.length).toBeLessThanOrEqual(100);
     expect(ana.notes).toHaveLength(8000);
     expect(context.partial).toBe(true);
     expect(ana.values.Alias.length).toBeLessThanOrEqual(1000);
