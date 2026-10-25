@@ -23,9 +23,9 @@ export interface ProjectWrite {
   updatedAt: string;
 }
 
-export type WriteResult =
-  | { status: 'applied'; version: number; serverUpdatedAt: string }
-  | { status: 'conflict'; current: ProjectSummary | null };
+/** Resultado de escribir con control de versión; `current` es lo vigente si no se escribió. */
+export type WriteResult<Current = ProjectSummary> =
+  { status: 'applied'; version: number; serverUpdatedAt: string } | { status: 'conflict'; current: Current | null };
 
 export interface ProjectStore {
   list(userId: number): Promise<ProjectSummary[]>;
@@ -61,6 +61,17 @@ const toSummary = (row: ProjectRow): ProjectSummary => ({
 });
 
 const SUMMARY_COLUMNS = 'project_id, name, version, size_bytes, updated_at, server_updated_at, deleted_at';
+
+/** Lo que devuelve `OUTPUT inserted.version, inserted.server_updated_at` al escribir. */
+export const appliedWrite = (row: { version: number; server_updated_at: Date }) => ({
+  status: 'applied' as const,
+  version: row.version,
+  serverUpdatedAt: row.server_updated_at.toISOString(),
+});
+
+/** Borrado lógico de un proyecto propio (`SET …`): sin documento, con fecha de borrado y una versión más. */
+export const SOFT_DELETE_SET = `document = NULL, size_bytes = 0, deleted_at = SYSUTCDATETIME(),
+               server_updated_at = SYSUTCDATETIME(), version = version + 1`;
 
 export function createSqlProjectStore(db: Database): ProjectStore {
   const keyed = (transaction: sql.Transaction, userId: number, projectId: string) =>
@@ -118,8 +129,7 @@ export function createSqlProjectStore(db: Database): ProjectStore {
                OUTPUT inserted.version, inserted.server_updated_at
                VALUES (@userId, @id, @name, @document, @size, @updatedAt)`,
         );
-        const row = written.recordset[0];
-        return { status: 'applied', version: row.version, serverUpdatedAt: row.server_updated_at.toISOString() };
+        return appliedWrite(written.recordset[0]);
       });
     },
 
@@ -133,13 +143,11 @@ export function createSqlProjectStore(db: Database): ProjectStore {
 
         const written = await keyed(transaction, userId, projectId).query<{ version: number; server_updated_at: Date }>(
           `UPDATE dbo.projects
-           SET document = NULL, size_bytes = 0, deleted_at = SYSUTCDATETIME(),
-               server_updated_at = SYSUTCDATETIME(), version = version + 1
+           SET ${SOFT_DELETE_SET}
            OUTPUT inserted.version, inserted.server_updated_at
            WHERE user_id = @userId AND project_id = @id`,
         );
-        const row = written.recordset[0];
-        return { status: 'applied', version: row.version, serverUpdatedAt: row.server_updated_at.toISOString() };
+        return appliedWrite(written.recordset[0]);
       });
     },
   };

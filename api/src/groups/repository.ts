@@ -1,4 +1,5 @@
-import { type Database, sql, withTransaction } from '../db/pool.ts';
+import { type Database, guid, prefixed, sql, withTransaction } from '../db/pool.ts';
+import { appliedWrite, SOFT_DELETE_SET, type WriteResult } from '../projects/repository.ts';
 import type { PlatformSpace, SpaceEffect } from './model.ts';
 
 /*
@@ -53,10 +54,6 @@ export interface SharedWrite {
   by: string;
 }
 
-export type SharedWriteResult =
-  | { status: 'applied'; version: number; serverUpdatedAt: string }
-  | { status: 'conflict'; current: SharedProjectSummary | null };
-
 export type BeginCreateResult = { status: 'created' | 'existing'; group: GroupRecord } | { status: 'taken' };
 
 export type AttachResult = { status: 'attached'; project: SharedProjectSummary } | { status: 'already_shared' };
@@ -84,7 +81,7 @@ export interface GroupStore {
     projectId: string,
     write: SharedWrite,
     baseVersion: number,
-  ): Promise<SharedWriteResult>;
+  ): Promise<WriteResult<SharedProjectSummary>>;
   /**
    * Empieza a borrar el grupo: sus proyectos pasan a ser proyectos propios de la cuenta elegida y el
    * grupo queda `borrando` hasta que la plataforma borre el espacio (`finishDelete`).
@@ -120,8 +117,6 @@ interface SharedRow {
   updated_by: string | null;
   document?: string;
 }
-
-const guid = (value: string | null) => (value === null ? null : String(value).toLowerCase());
 
 const toGroup = (row: GroupRow): GroupRecord => ({
   externalId: row.external_id,
@@ -235,9 +230,7 @@ export function createSqlGroupStore(db: Database): GroupStore {
       const projects = await db.request().input('globalId', sql.UniqueIdentifier, globalId).query<
         SharedRow & { group_id: number | string }
       >(`
-        SELECT p.group_id, ${SHARED_COLUMNS.split(', ')
-          .map(column => `p.${column}`)
-          .join(', ')}
+        SELECT p.group_id, ${prefixed(SHARED_COLUMNS, 'p')}
         FROM dbo.group_projects p JOIN dbo.group_members m ON m.group_id = p.group_id
         WHERE m.global_id = @globalId`);
       return groups.recordset.map(row => ({
@@ -343,8 +336,7 @@ export function createSqlGroupStore(db: Database): GroupStore {
           .input('userId', sql.BigInt, userId)
           .input('projectId', sql.VarChar(100), write.projectId).query(`
             UPDATE dbo.projects
-            SET document = NULL, size_bytes = 0, deleted_at = SYSUTCDATETIME(),
-                server_updated_at = SYSUTCDATETIME(), version = version + 1
+            SET ${SOFT_DELETE_SET}
             WHERE user_id = @userId AND project_id = @projectId AND deleted_at IS NULL`);
         return { status: 'attached', project: toShared(inserted.recordset[0]) };
       });
@@ -362,9 +354,7 @@ export function createSqlGroupStore(db: Database): GroupStore {
         .request()
         .input('externalId', sql.VarChar(120), externalId)
         .input('projectId', sql.VarChar(100), projectId).query<SharedRow>(`
-          SELECT ${SHARED_COLUMNS.split(', ')
-            .map(column => `p.${column}`)
-            .join(', ')}, p.document
+          SELECT ${prefixed(SHARED_COLUMNS, 'p')}, p.document
           FROM dbo.group_projects p JOIN dbo.groups g ON g.id = p.group_id
           WHERE g.external_id = @externalId AND g.state = 'activo' AND p.project_id = @projectId`);
       const row = result.recordset[0];
@@ -395,8 +385,7 @@ export function createSqlGroupStore(db: Database): GroupStore {
                 server_updated_at = SYSUTCDATETIME(), version = version + 1
             OUTPUT inserted.version, inserted.server_updated_at
             WHERE group_id = @groupId AND project_id = @projectId`);
-        const row = written.recordset[0];
-        return { status: 'applied', version: row.version, serverUpdatedAt: row.server_updated_at.toISOString() };
+        return appliedWrite(written.recordset[0]);
       });
     },
 

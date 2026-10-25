@@ -33,6 +33,16 @@ export async function connectDatabase(target: AppConfig['db']): Promise<Database
   return pool.connect();
 }
 
+/** Un GUID de SQL Server como texto en minúsculas (el driver lo da en mayúsculas). */
+export const guid = (value: string | null) => (value === null ? null : String(value).toLowerCase());
+
+/** Una lista de columnas («a, b») con el prefijo de su tabla o de `inserted` («p.a, p.b»). */
+export const prefixed = (columns: string, prefix: string) =>
+  columns
+    .split(', ')
+    .map(column => `${prefix}.${column}`)
+    .join(', ');
+
 export async function withTransaction<T>(db: Database, work: (transaction: sql.Transaction) => Promise<T>): Promise<T> {
   const transaction = new sql.Transaction(db);
   await transaction.begin();

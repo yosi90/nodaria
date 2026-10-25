@@ -1,4 +1,4 @@
-import { type Database, sql } from '../db/pool.ts';
+import { type Database, guid, prefixed, sql } from '../db/pool.ts';
 
 /*
  * Comentarios y sugerencias de los proyectos de grupo (migración 0010, hito 5). Van aparte del
@@ -58,8 +58,6 @@ interface CommentRow {
   updated_at: Date;
 }
 
-const guid = (value: string | null) => (value === null ? null : String(value).toLowerCase());
-
 const toComment = (row: CommentRow): GroupComment => ({
   id: Number(row.id),
   projectId: row.project_id,
@@ -104,9 +102,7 @@ export function createSqlCommentStore(db: Database): CommentStore {
         .input('suggestion', sql.NVarChar(sql.MAX), comment.suggestion ? JSON.stringify(comment.suggestion) : null)
         .query<CommentRow>(`
           INSERT INTO dbo.group_comments (project_id, node_id, author, body, suggestion)
-          OUTPUT ${COLUMNS.split(', ')
-            .map(column => `inserted.${column}`)
-            .join(', ')}
+          OUTPUT ${prefixed(COLUMNS, 'inserted')}
           VALUES (@projectId, @nodeId, @author, @body, @suggestion)`);
       return toComment(result.recordset[0]);
     },
@@ -118,9 +114,7 @@ export function createSqlCommentStore(db: Database): CommentStore {
         .input('state', sql.VarChar(20), state)
         .input('by', sql.UniqueIdentifier, state === 'abierto' ? null : by).query<CommentRow>(`
           UPDATE dbo.group_comments SET state = @state, resolved_by = @by, updated_at = SYSUTCDATETIME()
-          OUTPUT ${COLUMNS.split(', ')
-            .map(column => `inserted.${column}`)
-            .join(', ')}
+          OUTPUT ${prefixed(COLUMNS, 'inserted')}
           WHERE project_id = @projectId AND id = @id`);
       return result.recordset[0] ? toComment(result.recordset[0]) : null;
     },
