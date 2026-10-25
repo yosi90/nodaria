@@ -24,4 +24,5 @@ export const slugify = (value: string) =>
  * Nombre de archivo a partir de un nombre («Mi novela: borrador» → Mi_novela_borrador), con `fallback` si
  * no queda nada.
  */
-export const fileSafeName = (name: string, fallback: string) => name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_') || fallback;
+export const fileSafeName = (name: string, fallback: string) =>
+  name.replace(/[^a-z0-9áéíóúüñ]+/gi, '_').replace(/^_+|_+$/g, '') || fallback;
