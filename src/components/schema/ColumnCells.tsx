@@ -4,6 +4,8 @@ import { sqlOverrideOwner, type TableColumn } from '../../domain/database';
 import { useApp } from '../../state/AppContext';
 import { IconButton } from '../common/Button';
 
+/* Celdas comunes de las tablas de «Columnas SQL» (`SqlColumnsCard`) y de campos de documento (`DocumentFieldsCard`). */
+
 /**
  * El nombre de una columna (`SqlColumnsCard`) o de un campo (`DocumentFieldsCard`) con de dónde viene el
  * atributo y dónde están sus ajustes: en este tipo (con el botón para volver a los heredados) o en otro.
@@ -33,5 +35,30 @@ export function ColumnName({ typeId, column, before }: { typeId: string; column:
       )}
       {owner && owner.id !== typeId && <span className="badge">Ajustado en «{owner.name}»</span>}
     </div>
+  );
+}
+
+/** Una casilla de la tabla de columnas o de campos (obligatorio, único, índice…). */
+export function CheckCell({
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <td>
+      <input
+        type="checkbox"
+        aria-label={label}
+        checked={checked}
+        disabled={disabled}
+        onChange={event => onChange(event.target.checked)}
+      />
+    </td>
   );
 }

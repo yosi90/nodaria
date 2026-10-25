@@ -12,7 +12,7 @@ import {
 import { DOC_TYPES } from '../../domain/dbEngines';
 import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
-import { ColumnName } from './ColumnName';
+import { CheckCell, ColumnName } from './ColumnCells';
 
 /**
  * Campos de un tipo de MongoDB, Firestore o Neo4j (docs/roadmaps/ROADMAP_NOSQL.md), como «Columnas SQL»
@@ -130,41 +130,29 @@ export function DocumentFieldsCard({ schema }: { schema: Schema }) {
                         onChange={event => set(column, { description: event.target.value })}
                       />
                     </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: obligatorio`}
-                        checked={!sql.nullable}
-                        disabled={off}
-                        onChange={event => set(column, { nullable: !event.target.checked })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: único`}
-                        checked={sql.unique}
-                        disabled={off || column.refKind === 'embedded'}
-                        onChange={event => set(column, { unique: event.target.checked })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: índice`}
-                        checked={Boolean(sql.indexed)}
-                        disabled={off || column.refKind === 'embedded'}
-                        onChange={event => set(column, { indexed: event.target.checked })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: ${inLabel.toLowerCase()}`}
-                        checked={!off}
-                        onChange={event => set(column, { excluded: !event.target.checked })}
-                      />
-                    </td>
+                    <CheckCell
+                      label={`${field.label}: obligatorio`}
+                      checked={!sql.nullable}
+                      disabled={off}
+                      onChange={checked => set(column, { nullable: !checked })}
+                    />
+                    <CheckCell
+                      label={`${field.label}: único`}
+                      checked={sql.unique}
+                      disabled={off || column.refKind === 'embedded'}
+                      onChange={checked => set(column, { unique: checked })}
+                    />
+                    <CheckCell
+                      label={`${field.label}: índice`}
+                      checked={Boolean(sql.indexed)}
+                      disabled={off || column.refKind === 'embedded'}
+                      onChange={checked => set(column, { indexed: checked })}
+                    />
+                    <CheckCell
+                      label={`${field.label}: ${inLabel.toLowerCase()}`}
+                      checked={!off}
+                      onChange={checked => set(column, { excluded: !checked })}
+                    />
                   </tr>
                 );
               })}

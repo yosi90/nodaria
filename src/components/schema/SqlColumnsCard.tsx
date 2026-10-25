@@ -32,7 +32,7 @@ import type { Schema } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { Button } from '../common/Button';
-import { ColumnName } from './ColumnName';
+import { CheckCell, ColumnName } from './ColumnCells';
 import { useToast } from '../common/toasts';
 
 /**
@@ -230,33 +230,24 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                         onChange={event => set(column, { description: event.target.value })}
                       />
                     </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: clave primaria`}
-                        checked={sql.primaryKey}
-                        disabled={off}
-                        onChange={event => set(column, { primaryKey: event.target.checked })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: admite nulos`}
-                        checked={sql.nullable}
-                        disabled={off || sql.primaryKey}
-                        onChange={event => set(column, { nullable: event.target.checked })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: único`}
-                        checked={sql.unique}
-                        disabled={off}
-                        onChange={event => set(column, { unique: event.target.checked })}
-                      />
-                    </td>
+                    <CheckCell
+                      label={`${field.label}: clave primaria`}
+                      checked={sql.primaryKey}
+                      disabled={off}
+                      onChange={checked => set(column, { primaryKey: checked })}
+                    />
+                    <CheckCell
+                      label={`${field.label}: admite nulos`}
+                      checked={sql.nullable}
+                      disabled={off || sql.primaryKey}
+                      onChange={checked => set(column, { nullable: checked })}
+                    />
+                    <CheckCell
+                      label={`${field.label}: único`}
+                      checked={sql.unique}
+                      disabled={off}
+                      onChange={checked => set(column, { unique: checked })}
+                    />
                     <td>
                       <input
                         className="sql-default"
@@ -268,15 +259,12 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                         onChange={event => set(column, { uniqueGroup: event.target.value || null })}
                       />
                     </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: identity`}
-                        checked={sql.identity}
-                        disabled={off || (!sql.identity && !allowsIdentity(column.type.name))}
-                        onChange={event => set(column, { identity: event.target.checked })}
-                      />
-                    </td>
+                    <CheckCell
+                      label={`${field.label}: identity`}
+                      checked={sql.identity}
+                      disabled={off || (!sql.identity && !allowsIdentity(column.type.name))}
+                      onChange={checked => set(column, { identity: checked })}
+                    />
                     <td>
                       <input
                         className="sql-default"
@@ -287,23 +275,17 @@ export function SqlColumnsCard({ schema }: { schema: Schema }) {
                         onChange={event => set(column, { defaultValue: event.target.value || null })}
                       />
                     </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: índice`}
-                        checked={Boolean(sql.indexed)}
-                        disabled={off}
-                        onChange={event => set(column, { indexed: event.target.checked })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${field.label}: forma parte de la tabla`}
-                        checked={!off}
-                        onChange={event => set(column, { excluded: !event.target.checked })}
-                      />
-                    </td>
+                    <CheckCell
+                      label={`${field.label}: índice`}
+                      checked={Boolean(sql.indexed)}
+                      disabled={off}
+                      onChange={checked => set(column, { indexed: checked })}
+                    />
+                    <CheckCell
+                      label={`${field.label}: forma parte de la tabla`}
+                      checked={!off}
+                      onChange={checked => set(column, { excluded: !checked })}
+                    />
                   </tr>
                 );
               })}
