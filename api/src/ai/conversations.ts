@@ -47,6 +47,11 @@ export interface ConversationStore {
 /** Conversaciones que se listan por proyecto (las más recientes) y mensajes por conversación. */
 export const MAX_CONVERSATIONS_LISTED = 50;
 export const MAX_MESSAGES = 200;
+/**
+ * Conversaciones que se guardan por cuenta y proyecto (guardarraíl del almacenamiento): al crear una más,
+ * se borra la que lleva más tiempo sin usarse, con sus mensajes.
+ */
+export const MAX_CONVERSATIONS_PER_PROJECT = 100;
 
 interface ConversationRow {
   id: number | string;
@@ -121,10 +126,15 @@ export function createSqlConversationStore(db: Database): ConversationStore {
         .input('userId', sql.BigInt, userId)
         .input('projectId', sql.VarChar(100), projectId)
         .input('title', sql.NVarChar(200), title)
+        .input('keep', sql.Int, MAX_CONVERSATIONS_PER_PROJECT)
         .query<ConversationRow>(
           `INSERT INTO dbo.ai_conversations (user_id, project_id, title)
            OUTPUT inserted.id, inserted.project_id, inserted.title, inserted.created_at, inserted.updated_at
-           VALUES (@userId, @projectId, @title)`,
+           VALUES (@userId, @projectId, @title);
+           WITH ranked AS (
+             SELECT id, ROW_NUMBER() OVER (ORDER BY updated_at DESC, id DESC) AS n
+             FROM dbo.ai_conversations WHERE user_id = @userId AND project_id = @projectId)
+           DELETE c FROM dbo.ai_conversations c JOIN ranked r ON r.id = c.id WHERE r.n > @keep;`,
         );
       return toSummary(result.recordset[0]);
     },
@@ -231,6 +241,11 @@ export function createMemoryConversationStore(clock: () => Date = () => new Date
       const now = clock().toISOString();
       const created = { id: nextConversation++, userId, projectId, title, createdAt: now, updatedAt: now };
       conversations.set(created.id, created);
+      const old = [...conversations.values()]
+        .filter(c => c.userId === userId && c.projectId === projectId)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.id - a.id)
+        .slice(MAX_CONVERSATIONS_PER_PROJECT);
+      for (const c of old) await this.delete(userId, c.id);
       return strip(created);
     },
     async addMessage(userId, conversationId, role, content) {

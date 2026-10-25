@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createMemoryConversationStore,
   createSqlConversationStore,
+  MAX_CONVERSATIONS_PER_PROJECT,
   type ConversationStore,
 } from '../src/ai/conversations.ts';
 import { readMigrations, runMigrations } from '../src/db/migrations.ts';
@@ -15,6 +16,22 @@ function storeContract(
   make: () => Promise<{ store: ConversationStore; userId: number; otherId: number }>,
 ) {
   describe(`${name} conversation store`, () => {
+    it('guarda como mucho MAX_CONVERSATIONS_PER_PROJECT por proyecto: se va la más antigua', async () => {
+      const { store, userId } = await make();
+      const first = await store.create(userId, 'tope', 'Primera');
+      await store.addMessage(userId, first.id, 'user', { instruction: 'Hola' });
+      const second = await store.create(userId, 'tope', 'Segunda');
+      // Usar la primera la pone por delante: la más antigua pasa a ser la segunda.
+      await store.addMessage(userId, first.id, 'user', { instruction: 'Sigo' });
+      const other = await store.create(userId, 'otro-tope', 'De otro proyecto');
+      for (let i = 0; i < MAX_CONVERSATIONS_PER_PROJECT - 1; i++) await store.create(userId, 'tope', `N${i}`);
+      expect(await store.get(userId, second.id)).toBeNull();
+      expect(await store.get(userId, first.id)).not.toBeNull();
+      expect(await store.get(userId, other.id)).not.toBeNull();
+      await store.deleteForProject(userId, 'tope');
+      await store.deleteForProject(userId, 'otro-tope');
+    });
+
     it('crea, lista, guarda mensajes, marca lo aplicado y borra', async () => {
       const { store, userId, otherId } = await make();
       const a = await store.create(userId, 'p1', 'Primera');

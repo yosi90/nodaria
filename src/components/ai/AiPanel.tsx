@@ -118,6 +118,8 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
       : sharedGroup.capabilities.comment
     : false;
   const usePersonalKey = personalKey || !groupKeyAllowed;
+  // Con qué clave se manda de verdad (guardarraíl de transparencia): la persona sabe quién paga.
+  const keyText = sharedGroup && !usePersonalKey ? `con la clave del grupo «${sharedGroup.name}»` : 'con tu clave';
   const abort = useRef<AbortController | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const { selection } = useNavigation();
@@ -594,7 +596,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
             )}
             {mode === 'question' && world ? (
               <p className="ai-privacy-line">
-                Se envía {model ? `a ${PROVIDERS[model.provider]}` : 'al proveedor'}, con tu clave, el proyecto:{' '}
+                Se envía {model ? `a ${PROVIDERS[model.provider]}` : 'al proveedor'}, {keyText}, el proyecto:{' '}
                 {plural(world.context.nodes.length, 'nodo', 'nodos')} con sus atributos y notas y{' '}
                 {plural(world.context.relations.length, 'relación', 'relaciones')}
                 {world.context.agenda
@@ -609,7 +611,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
               </p>
             ) : (
               <p className="ai-privacy-line">
-                Se envía {model ? `a ${PROVIDERS[model.provider]}` : 'al proveedor'}, con tu clave:{' '}
+                Se envía {model ? `a ${PROVIDERS[model.provider]}` : 'al proveedor'}, {keyText}:{' '}
                 {plural(context.tables.length, 'tabla', 'tablas')} y {plural(columnCount, 'columna', 'columnas')}, bases
                 y preformas (sin notas ni datos de fichas). La conversación se guarda en tu cuenta. {manageLink}
               </p>
