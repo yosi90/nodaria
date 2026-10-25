@@ -3,6 +3,7 @@ import { GROUP_NAME_MAX, groupErrorMessage, type GroupInfo } from '../../service
 import { useApp } from '../../state/AppContext';
 import { useGroups } from '../../state/groups';
 import { Modal } from '../common/Modal';
+import { ErrorNote } from '../common/ErrorNote';
 
 /**
  * Compartir el proyecto abierto: crea un grupo de trabajo (un espacio de la plataforma) con él. El
@@ -47,11 +48,7 @@ export function ShareDialog({ onClose, onShared }: { onClose: () => void; onShar
           <input ref={input} value={name} maxLength={GROUP_NAME_MAX} onChange={e => setName(e.target.value)} />
           <small>Lo ven los miembros y aparece en sus invitaciones.</small>
         </label>
-        {error && (
-          <p className="group-error" role="alert">
-            {error}
-          </p>
-        )}
+        <ErrorNote message={error} />
       </div>
     </Modal>
   );

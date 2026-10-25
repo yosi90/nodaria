@@ -26,6 +26,7 @@ import { useDialogs } from '../common/dialogs';
 import { Modal } from '../common/Modal';
 import { Select } from '../common/Select';
 import { useToast } from '../common/toasts';
+import { ErrorNote } from '../common/ErrorNote';
 
 /** `invite`: solo invitar (al crear el grupo o desde su menú). `manage`: miembros, invitaciones y ajustes. */
 export type GroupDialogMode = 'invite' | 'manage';
@@ -194,12 +195,7 @@ function useGroupAdmin(group: GroupInfo) {
 }
 
 function Feedback({ admin }: { admin: GroupAdmin }) {
-  if (admin.error)
-    return (
-      <p className="group-error" role="alert">
-        {admin.error}
-      </p>
-    );
+  if (admin.error) return <ErrorNote message={admin.error} />;
   if (admin.notice)
     return (
       <p className="group-notice" role="status">

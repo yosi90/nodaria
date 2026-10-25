@@ -4,6 +4,7 @@ import { REPORT_REASONS, reportPublic, type ReportReason } from '../../services/
 import { useAuth } from '../../state/auth';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
+import { ErrorNote } from '../common/ErrorNote';
 
 /**
  * Denunciar un proyecto público: es contenido de Nodaria, así que la denuncia es suya y la atiende el
@@ -63,11 +64,7 @@ export function ReportDialog({ publicId, name, onClose }: { publicId: string; na
           Detalles (opcional)
           <textarea value={text} maxLength={500} rows={3} onChange={e => setText(e.target.value)} />
         </label>
-        {error && (
-          <p className="group-error" role="alert">
-            {error}
-          </p>
-        )}
+        <ErrorNote message={error} />
       </div>
     </Modal>
   );

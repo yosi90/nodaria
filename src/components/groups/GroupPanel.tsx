@@ -23,6 +23,7 @@ import { openFloatingChat } from '../community/communityHelpers';
 import { CommentItem } from './CommentItem';
 import { useGroupComments } from './useGroupComments';
 import { useGroupMembers } from './useGroupMembers';
+import { ErrorNote } from '../common/ErrorNote';
 
 declare module 'react' {
   // eslint-disable-next-line @typescript-eslint/no-namespace -- así declara React los elementos propios
@@ -213,11 +214,7 @@ function GroupComments({ group }: { group: GroupInfo }) {
         </label>
         <span className="field-hint">{openCount === 1 ? '1 abierto' : `${openCount} abiertos`}</span>
       </div>
-      {error && (
-        <p className="group-error" role="alert">
-          {error}
-        </p>
-      )}
+      <ErrorNote message={error} />
       <ul className="group-comment-list">
         {comments === null && <li className="muted-note">Cargando…</li>}
         {comments !== null && visible.length === 0 && (

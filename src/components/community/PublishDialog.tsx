@@ -28,6 +28,7 @@ import { YosiSymbol } from '../common/YosiSymbol';
 import { useCopyLink } from './communityHelpers';
 import { thumbnailPng } from './mapThumbnail';
 import { dateTimeText } from '../common/dates';
+import { ErrorNote } from '../common/ErrorNote';
 
 const SOCIAL_NEWS = 'https://social.yosiftware.es/?vista=novedades';
 
@@ -296,11 +297,7 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
             </Button>
           </div>
         )}
-        {error && (
-          <p className="group-error" role="alert">
-            {error}
-          </p>
-        )}
+        <ErrorNote message={error} />
       </div>
     </Modal>
   );

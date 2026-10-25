@@ -28,6 +28,7 @@ import { MultiSelect } from '../common/Select';
 import { CommentItem } from '../groups/CommentItem';
 import { useGroupComments } from '../groups/useGroupComments';
 import { KindIcon } from './agendaParts';
+import { ErrorNote } from '../common/ErrorNote';
 
 interface EntryPanelProps {
   entry: AgendaEntry;
@@ -327,11 +328,7 @@ function EntryComments({
       <h3>
         <MessageSquare size={14} aria-hidden /> Comentarios
       </h3>
-      {error && (
-        <p className="group-error" role="alert">
-          {error}
-        </p>
-      )}
+      <ErrorNote message={error} />
       <ul className="group-comment-list">
         {comments === null && <li className="muted-note">Cargando…</li>}
         {comments?.length === 0 && <li className="muted-note">Nadie ha comentado esta entrada.</li>}
