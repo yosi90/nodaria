@@ -48,15 +48,9 @@ import { hasDataTables } from '../../domain/tableData';
 import { PublishDialog } from '../community/PublishDialog';
 import { CommunityButton } from '../community/CommunityButton';
 import { Fragment, useCallback, useRef, useState } from 'react';
-import { downloadBytes, downloadProject, downloadSqlScript, downloadText } from '../../services/files';
+import { downloadBytes, downloadProject, downloadText } from '../../services/files';
 import { exportZip } from '../../services/exportBundle';
-import {
-  openDb2Export,
-  openDocumentConversion,
-  openDocumentImport,
-  openTableConversion,
-  openTablesImport,
-} from './openDialogs';
+import { openDocumentConversion, openDocumentImport, openTableConversion, openTablesImport } from './openDialogs';
 import { documentCollections } from '../../domain/tableConversion';
 import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';
@@ -75,10 +69,8 @@ import { Logo } from '../common/Logo';
 import { AccountButton } from '../account/AccountButton';
 import { sdk } from '../../services/yosiftware';
 import { CalendarDialog } from './CalendarDialog';
-import { projectEngines } from '../../domain/database';
-import { mongoScript } from '../../domain/mongoScript';
-import { firestoreRules } from '../../domain/firestoreRules';
-import { neo4jSchema, projectCypher } from '../../domain/neo4j';
+import { projectCypher } from '../../domain/neo4j';
+import { databaseExports } from './databaseExports';
 import { EcosystemWebs } from './EcosystemWebs';
 import { SnapshotsDialog } from './SnapshotsDialog';
 import { CsvImportDialog } from './CsvImportDialog';
@@ -360,7 +352,6 @@ export function Topbar({
       : []),
     { label: 'Copias de seguridad…', icon: History, onSelect: () => setSnapshotsOpen(true) },
   ];
-  const engines = projectEngines(project);
   const fileBase = fileSafeName(project.name, 'proyecto');
   const settingsEntries: MenuEntry[] = [
     { section: project.name },
@@ -416,52 +407,7 @@ export function Topbar({
       icon: FileArchive,
       onSelect: () => downloadBytes(`${fileBase}.zip`, exportZip(project)),
     },
-    ...(tableTypes(project, 'db2i').length
-      ? [
-          {
-            label: 'Exportar Db2 for i (IBM i)…',
-            icon: Database,
-            onSelect: openDb2Export,
-          },
-        ]
-      : []),
-    ...(tableTypes(project, 'sqlserver').length
-      ? [
-          {
-            label: 'Exportar SQL Server (.sql)',
-            icon: Database,
-            onSelect: () => downloadSqlScript(project),
-          },
-        ]
-      : []),
-    // Bases no relacionales (ROADMAP_NOSQL.md): cada exportación, si el proyecto usa ese motor.
-    ...(engines.has('mongodb')
-      ? [
-          {
-            label: 'Exportar MongoDB (.js para mongosh)',
-            icon: Database,
-            onSelect: () => downloadText(`${fileBase}.mongodb.js`, mongoScript(project), 'text/javascript'),
-          },
-        ]
-      : []),
-    ...(engines.has('firestore')
-      ? [
-          {
-            label: 'Exportar reglas de Firestore',
-            icon: Database,
-            onSelect: () => downloadText('firestore.rules', firestoreRules(project), 'text/plain'),
-          },
-        ]
-      : []),
-    ...(engines.has('neo4j')
-      ? [
-          {
-            label: 'Exportar esquema de Neo4j (.cypher)',
-            icon: Database,
-            onSelect: () => downloadText(`${fileBase}.esquema.cypher`, neo4jSchema(project), 'text/plain'),
-          },
-        ]
-      : []),
+    ...databaseExports(project).map(item => ({ ...item, icon: Database })),
     {
       label: 'Exportar el grafo a Neo4j (.cypher)',
       icon: Share2,

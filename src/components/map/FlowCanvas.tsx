@@ -85,7 +85,6 @@ import {
   isDatabaseType,
   isEmbeddedType,
   projectEngines,
-  tableTypes,
 } from '../../domain/database';
 
 /** Qué es el nodo en su base, para la cabecera de la tarjeta (solo si no es una tabla corriente). */
@@ -95,9 +94,8 @@ function containerOf(p: Project, typeId: string): string | undefined {
 }
 import { ForeignKeyEdge, type ForeignKeyEdgeType } from './ForeignKeyEdge';
 import { tableCardColumns, tableHeight, tableWidth } from './tableCard';
-import { openDb2Export } from '../layout/openDialogs';
+import { databaseExports } from '../layout/databaseExports';
 import { vocabulary } from '../../domain/projectKinds';
-import { downloadSqlScript } from '../../services/files';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
 import { BulkBar } from '../table/BulkBar';
 import { useRemoveNodes } from '../table/useRemoveNodes';
@@ -1352,28 +1350,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
           <Panel position="top-left" className="canvas-tools">
             <div className="canvas-tools-row">
               {view.layout === 'image' && <MapImageMenu />}
-              <ExportMenu
-                name={project.name}
-                container={() => container.current}
-                scripts={[
-                  ...(tableTypes(project, 'sqlserver').length
-                    ? [
-                        {
-                          label: 'Script SQL Server (.sql)',
-                          onSelect: () => downloadSqlScript(project),
-                        },
-                      ]
-                    : []),
-                  ...(tableTypes(project, 'db2i').length
-                    ? [
-                        {
-                          label: 'Db2 for i: script y fuentes…',
-                          onSelect: openDb2Export,
-                        },
-                      ]
-                    : []),
-                ]}
-              />
+              <ExportMenu name={project.name} container={() => container.current} scripts={databaseExports(project)} />
             </div>
             {pathQuery && (
               <PathPanel
