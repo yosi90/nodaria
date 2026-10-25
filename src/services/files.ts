@@ -1,3 +1,4 @@
+import { sqlScript } from '../domain/sqlScript';
 import { fileSafeName } from '../domain/text';
 import type { Project } from '../domain/types';
 import { serializeProject } from './storage';
@@ -23,4 +24,9 @@ export function downloadBytes(fileName: string, bytes: Uint8Array, type = 'appli
 /** Exporta un proyecto como `<nombre>.nodaria.json`. */
 export function downloadProject(project: Project) {
   downloadText(`${fileSafeName(project.name, 'proyecto')}.nodaria.json`, serializeProject(project));
+}
+
+/** Descarga el script de SQL Server de las tablas del proyecto (`<nombre>.sql`). */
+export function downloadSqlScript(project: Project) {
+  downloadText(`${fileSafeName(project.name, 'proyecto')}.sql`, sqlScript(project), 'application/sql');
 }

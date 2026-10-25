@@ -95,11 +95,9 @@ function containerOf(p: Project, typeId: string): string | undefined {
 }
 import { ForeignKeyEdge, type ForeignKeyEdgeType } from './ForeignKeyEdge';
 import { tableCardColumns, tableHeight, tableWidth } from './tableCard';
-import { sqlScript } from '../../domain/sqlScript';
 import { openDb2Export } from '../layout/openDialogs';
 import { vocabulary } from '../../domain/projectKinds';
-import { fileSafeName } from '../../domain/text';
-import { downloadText } from '../../services/files';
+import { downloadSqlScript } from '../../services/files';
 import { openSchemaDefinition } from '../layout/schemaNavigation';
 import { BulkBar } from '../table/BulkBar';
 import { useRemoveNodes } from '../table/useRemoveNodes';
@@ -1362,12 +1360,7 @@ function Canvas({ selection, onSelect, onAddNode, onConnectNodes, revealKey }: F
                     ? [
                         {
                           label: 'Script SQL Server (.sql)',
-                          onSelect: () =>
-                            downloadText(
-                              `${fileSafeName(project.name, 'proyecto')}.sql`,
-                              sqlScript(project),
-                              'application/sql',
-                            ),
+                          onSelect: () => downloadSqlScript(project),
                         },
                       ]
                     : []),

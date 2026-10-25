@@ -48,9 +48,8 @@ import { hasDataTables } from '../../domain/tableData';
 import { PublishDialog } from '../community/PublishDialog';
 import { CommunityButton } from '../community/CommunityButton';
 import { Fragment, useCallback, useRef, useState } from 'react';
-import { downloadBytes, downloadProject, downloadText } from '../../services/files';
+import { downloadBytes, downloadProject, downloadSqlScript, downloadText } from '../../services/files';
 import { exportZip } from '../../services/exportBundle';
-import { sqlScript } from '../../domain/sqlScript';
 import {
   openDb2Export,
   openDocumentConversion,
@@ -431,7 +430,7 @@ export function Topbar({
           {
             label: 'Exportar SQL Server (.sql)',
             icon: Database,
-            onSelect: () => downloadText(`${fileBase}.sql`, sqlScript(project), 'application/sql'),
+            onSelect: () => downloadSqlScript(project),
           },
         ]
       : []),
