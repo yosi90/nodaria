@@ -9,6 +9,7 @@ import { AI_MODELS, AI_PROVIDERS, findModel, type AiModel } from '../ai/models.t
 import { AI_MAX_OPERATIONS, contextSchema } from '../ai/schema.ts';
 import { worldContextSchema, worldRefsSchema } from '../ai/world.ts';
 import { capabilitiesOf } from '../groups/model.ts';
+import { overLimit } from '../rateLimit.ts';
 import { PROJECT_ID } from './projects.ts';
 
 /*
@@ -143,16 +144,10 @@ export const aiRoutes: FastifyPluginAsync<Pick<AppDependencies, 'ai' | 'config' 
   ) {
     const user: AuthenticatedUser = authenticatedUser(request);
     assertCanCreate(user);
-    const limit = await limiter(request);
-    if (!limit.isAllowed && limit.isExceeded) {
-      reply.header('retry-after', limit.ttlInSeconds);
+    if (overLimit(await limiter(request), reply))
       throw new HttpError(429, 'demasiadas_peticiones', 'Demasiadas peticiones a la IA. Espera un momento.');
-    }
-    const daily = await dailyLimiter(request);
-    if (!daily.isAllowed && daily.isExceeded) {
-      reply.header('retry-after', daily.ttlInSeconds);
+    if (overLimit(await dailyLimiter(request), reply))
       throw new HttpError(429, 'demasiadas_peticiones', 'Has llegado al máximo de peticiones a la IA de hoy.');
-    }
     const model = findModel(body.provider, body.model);
     if (!model) throw new HttpError(400, 'modelo_no_admitido', 'Nodaria no ofrece ese modelo.');
     if (JSON.stringify(body.context).length > AI_CONTEXT_BUDGET)

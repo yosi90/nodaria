@@ -197,6 +197,15 @@ const COLUMNS = `p.id, p.project_id, u.id_global AS author, p.name, p.descriptio
   CASE WHEN p.image IS NULL THEN 0 ELSE 1 END AS has_image, p.origin, p.group_id`;
 const ACTIVE = 'u.closed_at IS NULL AND u.disabled_at IS NULL';
 
+/**
+ * Las publicaciones con su autor: `SELECT <select> FROM dbo.public_projects p JOIN dbo.users u … <rest>`.
+ * `select` es por defecto `COLUMNS`; `lock` bloquea las filas leídas dentro de una transacción.
+ */
+const selectPublications = (rest: string, { select = COLUMNS, lock = false } = {}) =>
+  `SELECT ${select} FROM dbo.public_projects p${lock ? ' WITH (UPDLOCK, HOLDLOCK)' : ''}
+   JOIN dbo.users u ON u.id = p.user_id ${rest}`;
+const OWN_PROJECT = 'WHERE p.user_id = @userId AND p.project_id = @projectId';
+
 interface ReportRow {
   id: number | string;
   public_id: string;
@@ -280,10 +289,7 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
         .request()
         .input('userId', sql.BigInt, userId)
         .input('projectId', sql.VarChar(100), projectId)
-        .query<PublicationRow>(
-          `SELECT ${COLUMNS} FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id
-           WHERE p.user_id = @userId AND p.project_id = @projectId`,
-        );
+        .query<PublicationRow>(selectPublications(OWN_PROJECT));
       return result.recordset[0] ? toPublication(result.recordset[0]) : null;
     },
 
@@ -291,10 +297,7 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
       const result = await db
         .request()
         .input('userId', sql.BigInt, userId)
-        .query<PublicationRow>(
-          `SELECT ${COLUMNS} FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id
-           WHERE p.user_id = @userId ORDER BY p.updated_at DESC`,
-        );
+        .query<PublicationRow>(selectPublications('WHERE p.user_id = @userId ORDER BY p.updated_at DESC'));
       return result.recordset.map(toPublication);
     },
 
@@ -303,8 +306,9 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
         .request()
         .input('publicId', sql.VarChar(20), publicId)
         .query<PublicationRow>(
-          `SELECT ${COLUMNS}, p.document, CASE WHEN ${ACTIVE} THEN 1 ELSE 0 END AS author_active
-           FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id WHERE p.id = @publicId`,
+          selectPublications('WHERE p.id = @publicId', {
+            select: `${COLUMNS}, p.document, CASE WHEN ${ACTIVE} THEN 1 ELSE 0 END AS author_active`,
+          }),
         );
       const row = result.recordset[0];
       return row
@@ -317,8 +321,7 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
         .request()
         .input('publicId', sql.VarChar(20), publicId)
         .query<{ image: Buffer | null }>(
-          `SELECT p.image FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id
-           WHERE p.id = @publicId AND p.state = 'publico' AND ${ACTIVE}`,
+          selectPublications(`WHERE p.id = @publicId AND p.state = 'publico' AND ${ACTIVE}`, { select: 'p.image' }),
         );
       return result.recordset[0]?.image ?? null;
     },
@@ -327,9 +330,11 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
       const request = db.request().input('limit', sql.Int, limit);
       if (author) request.input('author', sql.UniqueIdentifier, author);
       const result = await request.query<PublicationRow>(
-        `SELECT TOP (@limit) ${COLUMNS} FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id
-         WHERE p.state = 'publico' AND ${ACTIVE} ${author ? 'AND u.id_global = @author' : ''}
-         ORDER BY p.updated_at DESC`,
+        selectPublications(
+          `WHERE p.state = 'publico' AND ${ACTIVE} ${author ? 'AND u.id_global = @author' : ''}
+           ORDER BY p.updated_at DESC`,
+          { select: `TOP (@limit) ${COLUMNS}` },
+        ),
       );
       return result.recordset.map(toPublication);
     },
@@ -340,10 +345,7 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
           new sql.Request(transaction)
             .input('userId', sql.BigInt, user.id)
             .input('projectId', sql.VarChar(100), projectId);
-        const existing = await keyed().query<PublicationRow>(
-          `SELECT ${COLUMNS} FROM dbo.public_projects p WITH (UPDLOCK, HOLDLOCK) JOIN dbo.users u ON u.id = p.user_id
-           WHERE p.user_id = @userId AND p.project_id = @projectId`,
-        );
+        const existing = await keyed().query<PublicationRow>(selectPublications(OWN_PROJECT, { lock: true }));
         const before = existing.recordset[0] ? toPublication(existing.recordset[0]) : null;
         if (before?.state === 'retirado') return { status: 'retired', publication: before };
 
@@ -374,10 +376,7 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
                  VALUES (@id, @userId, @projectId, @name, @description, @document, @size, @nodes, @relations,
                    @options, @allowCopy, @image, @origin, @groupId)`,
           );
-        const written = await keyed().query<PublicationRow>(
-          `SELECT ${COLUMNS} FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id
-           WHERE p.user_id = @userId AND p.project_id = @projectId`,
-        );
+        const written = await keyed().query<PublicationRow>(selectPublications(OWN_PROJECT));
         const publication = toPublication(written.recordset[0]);
         const message = news(publication, !before);
         await enqueue(transaction, [message]);
@@ -396,10 +395,7 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
         const found = await new sql.Request(transaction)
           .input('userId', sql.BigInt, userId)
           .input('projectId', sql.VarChar(100), projectId)
-          .query<PublicationRow>(
-            `SELECT ${COLUMNS} FROM dbo.public_projects p WITH (UPDLOCK, HOLDLOCK) JOIN dbo.users u ON u.id = p.user_id
-             WHERE p.user_id = @userId AND p.project_id = @projectId`,
-          );
+          .query<PublicationRow>(selectPublications(OWN_PROJECT, { lock: true }));
         const row = found.recordset[0];
         if (!row) return null;
         await retireNews(transaction, row.id);
@@ -414,10 +410,7 @@ export function createSqlCommunityStore(db: Database): CommunityStore {
       return withTransaction(db, async transaction => {
         const found = await new sql.Request(transaction)
           .input('publicId', sql.VarChar(20), publicId)
-          .query<PublicationRow>(
-            `SELECT ${COLUMNS} FROM dbo.public_projects p JOIN dbo.users u ON u.id = p.user_id
-             WHERE p.id = @publicId AND p.state = 'publico' AND ${ACTIVE}`,
-          );
+          .query<PublicationRow>(selectPublications(`WHERE p.id = @publicId AND p.state = 'publico' AND ${ACTIVE}`));
         const row = found.recordset[0];
         if (!row) return { status: 'not_found' };
         const publication = toPublication(row);

@@ -21,6 +21,7 @@ import { healthRoutes } from './routes/health.ts';
 import { meRoutes } from './routes/me.ts';
 import { projectRoutes } from './routes/projects.ts';
 import type { ProjectStore } from './projects/repository.ts';
+import { overLimit } from './rateLimit.ts';
 import type { UserStore } from './users/repository.ts';
 
 export interface AppDependencies {
@@ -168,9 +169,7 @@ export async function buildApp({
       });
       privateApp.addHook('preHandler', async (request, reply) => {
         const limit = await userLimiter(request);
-        if (limit.isAllowed || !limit.isExceeded) return;
-        reply.header('retry-after', limit.ttlInSeconds);
-        return reply.status(429).send(tooManyRequests(request, limit));
+        if (overLimit(limit, reply)) return reply.status(429).send(tooManyRequests(request, limit));
       });
       await privateApp.register(meRoutes, { users });
       await privateApp.register(projectRoutes, { projects, config, conversations, groups, community });
