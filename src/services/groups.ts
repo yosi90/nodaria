@@ -109,6 +109,9 @@ const ROLE_NAMES_BY_KIND: Partial<Record<ProjectKind, Record<string, string>>> =
 /** El nombre del rol: el propio del grupo, el del tipo de proyecto o el general, por ese orden. */
 /** Largo máximo del nombre de un grupo: el del nombre de un espacio en la plataforma (kit 1.39). */
 export const GROUP_NAME_MAX = 150;
+/** El nombre propio de un rol y un comentario (`api/src/groups/model.ts`). */
+export const ROLE_LABEL_MAX = 40;
+export const COMMENT_MAX = 4000;
 
 export const roleLabel = (role: string, kind?: ProjectKind, custom?: Record<string, string> | null) =>
   custom?.[role] || ((kind && ROLE_NAMES_BY_KIND[kind]?.[role]) ?? ROLE_LABELS[role] ?? role);

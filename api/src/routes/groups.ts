@@ -10,6 +10,8 @@ import {
   groupExternalId,
   GROUP_NAME_MAX,
   type PlatformSpace,
+  COMMENT_MAX,
+  ROLE_LABEL_MAX,
 } from '../groups/model.ts';
 import type { GroupRecord, GroupView } from '../groups/repository.ts';
 import { PlatformError } from '../platform/http.ts';
@@ -55,7 +57,7 @@ const suggestionValue = z.union([
 const commentSchema = z
   .object({
     nodeId: z.string().regex(PROJECT_ID).nullable().optional(),
-    body: z.string().trim().min(1, 'Escribe el comentario.').max(4000),
+    body: z.string().trim().min(1, 'Escribe el comentario.').max(COMMENT_MAX),
     suggestion: z
       .object({ fieldId: z.string().min(1).max(100), value: suggestionValue })
       .nullable()
@@ -66,7 +68,9 @@ const stateSchema = z.object({ state: z.enum(['abierto', 'resuelto', 'aceptado',
 
 /** Nombres propios de los roles: solo de los que declara Nodaria, hasta 40 caracteres. */
 const labelsSchema = z.object({
-  labels: z.partialRecord(z.enum(['responsable', 'editor', 'revisor', 'lector']), z.string().trim().max(40)).nullable(),
+  labels: z
+    .partialRecord(z.enum(['responsable', 'editor', 'revisor', 'lector']), z.string().trim().max(ROLE_LABEL_MAX))
+    .nullable(),
 });
 
 const deleteQuery = z.object({ recipient: z.string().regex(GUID, 'Cuenta no válida') });

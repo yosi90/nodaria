@@ -12,6 +12,7 @@ import {
   publishProject,
   unpublishProject,
   type OwnPublication,
+  PUBLIC_DESCRIPTION_MAX,
 } from '../../services/community';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
@@ -235,7 +236,7 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
               <textarea
                 ref={descriptionRef}
                 value={description}
-                maxLength={1000}
+                maxLength={PUBLIC_DESCRIPTION_MAX}
                 rows={3}
                 placeholder="De qué trata, para quien lo abra"
                 onChange={e => setDescription(e.target.value)}

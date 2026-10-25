@@ -24,6 +24,9 @@ export const groupExternalId = (id: string) => `grupo-${id}`;
 
 /** Largo máximo del nombre de un grupo: el del nombre de un espacio en la plataforma (kit 1.39). */
 export const GROUP_NAME_MAX = 150;
+/** El nombre propio de un rol en un grupo y un comentario (los mismos topes en la web). */
+export const ROLE_LABEL_MAX = 40;
+export const COMMENT_MAX = 4000;
 
 /** Lo que una cuenta puede hacer en un grupo dentro de Nodaria. */
 export interface GroupCapabilities {

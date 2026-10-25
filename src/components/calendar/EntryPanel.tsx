@@ -14,7 +14,7 @@ import {
 import { mentionIndex, segmentNotes } from '../../domain/notes';
 import { getNode, nodeLabel } from '../../domain/selectors';
 import { createComment, deleteComment, setCommentState } from '../../services/comments';
-import type { GroupInfo, SpaceMember } from '../../services/groups';
+import { COMMENT_MAX, type GroupInfo, type SpaceMember } from '../../services/groups';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
 import { useNavigation } from '../../state/navigation';
@@ -364,7 +364,7 @@ function EntryComments({
         >
           <textarea
             rows={2}
-            maxLength={4000}
+            maxLength={COMMENT_MAX}
             value={body}
             aria-label="Comentario sobre la entrada"
             placeholder="Comenta esta entrada…"

@@ -7,12 +7,15 @@ export const PROJECT_ID = /^[A-Za-z0-9_-]{1,100}$/;
 
 const paramsSchema = z.object({ id: z.string().regex(PROJECT_ID, 'Identificador de proyecto no válido') });
 
+/** Largo máximo del nombre de un proyecto (`PROJECT_NAME_MAX` en `src/domain/factories.ts`). */
+export const PROJECT_NAME_MAX = 200;
+
 // Validación mínima del documento: el front es quien migra y repara; aquí solo se comprueba
 // que sea un Project reconocible y coherente con la ruta.
 export const documentSchema = z
   .object({
     id: z.string(),
-    name: z.string().trim().min(1).max(200),
+    name: z.string().trim().min(1).max(PROJECT_NAME_MAX),
     updatedAt: z.string().refine(value => !Number.isNaN(Date.parse(value)), 'updatedAt no es una fecha'),
     schemas: z.array(z.unknown()),
     nodes: z.array(z.unknown()),

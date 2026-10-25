@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ApiError } from '../../services/api';
-import { REPORT_REASONS, reportPublic, type ReportReason } from '../../services/community';
+import { REPORT_REASONS, REPORT_TEXT_MAX, reportPublic, type ReportReason } from '../../services/community';
 import { useAuth } from '../../state/auth';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
@@ -61,7 +61,7 @@ export function ReportDialog({ publicId, name, onClose }: { publicId: string; na
         </fieldset>
         <label className="field">
           Detalles (opcional)
-          <textarea value={text} maxLength={500} rows={3} onChange={e => setText(e.target.value)} />
+          <textarea value={text} maxLength={REPORT_TEXT_MAX} rows={3} onChange={e => setText(e.target.value)} />
         </label>
         <ErrorNote message={error} />
       </div>

@@ -2,8 +2,8 @@ import { Download, ExternalLink, Plus, Send, Sparkles, Trash2, X } from 'lucide-
 import { YosiSymbol } from '../common/YosiSymbol';
 import type { PlatformAiState, PlatformModels } from '../../services/yosiftware';
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { databaseContext, isAiTable } from '../../domain/aiContext';
-import { answerParts, WORLD_BUDGET, worldContext } from '../../domain/aiWorld';
+import { AI_INSTRUCTION_MAX, databaseContext, databaseContextProblem, isAiTable } from '../../domain/aiContext';
+import { answerParts, worldContext } from '../../domain/aiWorld';
 import { defaultSelection, resumeRefs, reviewProposal } from '../../domain/aiProposal';
 import { tableTypes } from '../../domain/database';
 import { getNode, nodeLabel } from '../../domain/selectors';
@@ -59,7 +59,6 @@ const TIERS: Record<AiModelInfo['tier'], string> = {
   barato: 'más barato',
   calidad: 'máxima calidad',
 };
-const MAX_INSTRUCTION = 4000;
 
 interface Failure {
   message: string;
@@ -199,10 +198,10 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
     [project, focusId],
   );
   const columnCount = context.tables.reduce((sum, t) => sum + t.columns.length, 0);
-  // La API no manda a la IA un esquema que pase del presupuesto: se avisa antes de pedirlo.
-  const schemaTooBig = useMemo(
-    () => mode === 'database' && JSON.stringify(context).length > WORLD_BUDGET,
-    [mode, context],
+  // Lo que la API rechazaría sin llamar a la IA (tamaño, nombres, cuántas tablas): se avisa antes de pedirlo.
+  const schemaProblem = useMemo(
+    () => (mode === 'database' ? databaseContextProblem(context, refs) : null),
+    [mode, context, refs],
   );
   // La agenda solo va al modelo si la persona lo permite en este proyecto (por defecto, no).
   const agendaAllowed = preferences.aiAgendaProjects.includes(project.id);
@@ -220,7 +219,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
 
   const ask = async () => {
     const text = instruction.trim();
-    if (!model || !text || waiting || schemaTooBig) return;
+    if (!model || !text || waiting || schemaProblem) return;
     setFailure(null);
     setWaiting(true);
     const controller = new AbortController();
@@ -527,7 +526,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
             </div>
             <textarea
               rows={3}
-              maxLength={MAX_INSTRUCTION}
+              maxLength={AI_INSTRUCTION_MAX}
               value={instruction}
               disabled={!model}
               aria-label="Mensaje para la IA"
@@ -563,7 +562,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 type="submit"
                 variant="primary"
                 size="sm"
-                disabled={waiting || !model || !instruction.trim() || schemaTooBig}
+                disabled={waiting || !model || !instruction.trim() || Boolean(schemaProblem)}
                 aria-label="Enviar"
               >
                 <Send size={14} aria-hidden /> Enviar
@@ -579,11 +578,7 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
                 Solo «{nodeLabel(project, selectedTable)}» (del resto, sus claves)
               </label>
             )}
-            {schemaTooBig && (
-              <p className="ai-error">
-                El esquema es demasiado grande para enviarlo entero. Selecciona una tabla y marca «Solo …».
-              </p>
-            )}
+            {schemaProblem && <p className="ai-error">{schemaProblem}</p>}
             {providerProblems.length > 0 && (
               <p className="ai-privacy-line">Sin modelos de {providerProblems.join(' · ')}.</p>
             )}

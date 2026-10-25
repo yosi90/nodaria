@@ -17,6 +17,7 @@ import {
   type GroupInfo,
   type SpaceInvitation,
   type SpaceMember,
+  ROLE_LABEL_MAX,
 } from '../../services/groups';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
@@ -459,7 +460,7 @@ function SettingsSection({ admin, onClose }: { admin: GroupAdmin; onClose: () =>
                 {ROLE_LABELS[role]}
                 <input
                   value={labels[role] ?? ''}
-                  maxLength={40}
+                  maxLength={ROLE_LABEL_MAX}
                   placeholder={roleLabel(role, project.kind)}
                   onChange={e => setLabels(current => ({ ...current, [role]: e.target.value }))}
                 />

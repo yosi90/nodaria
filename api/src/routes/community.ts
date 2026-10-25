@@ -13,6 +13,8 @@ import {
   REPORT_REASONS,
   reportEvent,
   updateNews,
+  PUBLIC_DESCRIPTION_MAX,
+  REPORT_TEXT_MAX,
 } from '../community/model.ts';
 import { omit, PUBLIC_ID, type Publication, type ReportView } from '../community/repository.ts';
 import { PlatformError, readToken } from '../platform/http.ts';
@@ -56,7 +58,7 @@ const originSchema = z
 const publishSchema = z.object({
   document: documentSchema,
   image: z.string().max(1_500_000).optional(),
-  description: z.string().trim().max(1000).default(''),
+  description: z.string().trim().max(PUBLIC_DESCRIPTION_MAX).default(''),
   allowCopy: z.boolean().default(false),
   options: z
     .object({
@@ -69,7 +71,7 @@ const publishSchema = z.object({
 
 const reportSchema = z.object({
   motivo: z.string().refine(isReportReason, 'Motivo no válido'),
-  texto: z.string().trim().max(500).default(''),
+  texto: z.string().trim().max(REPORT_TEXT_MAX).default(''),
 });
 
 const listQuery = z.object({

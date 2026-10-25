@@ -18,6 +18,7 @@ import type { DbEngine } from './types';
 // que proponga se convierte al aplicarlo (`convertType`).
 const asSqlServer = (type: Parameters<typeof convertType>[0]) => sqlTypeText(convertType(type, 'sqlserver'));
 import { isFieldLink } from './library';
+import { AI_BODY_BUDGET, jsonBytes, WORLD_BUDGET } from './aiWorld';
 import { getSchema, nodeLabel } from './selectors';
 import type { Node, Project, Schema } from './types';
 
@@ -132,6 +133,54 @@ export const isAiTable = (p: Project, typeId: string) =>
   isDatabaseType(p, typeId) && !isEmbeddedType(p, typeId) && aiEngineOf(p, typeId) !== null;
 
 export const AI_CONTEXT_MAX_ISSUES = 50;
+/** Lo que escribe la persona en el asistente (`AI_INSTRUCTION_MAX` en `api/src/ai/schema.ts`). */
+export const AI_INSTRUCTION_MAX = 4000;
+
+/**
+ * Los topes de la API para el contexto del esquema (`contextSchema` en `api/src/ai/schema.ts`; `contracts/`
+ * comprueba que coinciden). Los textos libres se recortan; los nombres y las listas que el modelo necesita
+ * enteras no: si se pasan, `databaseContextProblem` lo dice antes de mandar nada.
+ */
+export const AI_DATABASE_LIMITS = {
+  name: 200,
+  columnName: 128,
+  type: 40,
+  description: 2000,
+  origin: 200,
+  issue: 500,
+  tables: 500,
+  columns: 300,
+  bases: 200,
+  preforms: 500,
+  subdocuments: 500,
+  shared: 500,
+};
+const L = AI_DATABASE_LIMITS;
+const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+/**
+ * Por qué este contexto no se puede mandar a la IA, o `null`: un nombre más largo de lo que admite la API, más
+ * tablas o columnas de las que admite, o más bytes de los que caben en la petición (`AI_BODY_BUDGET`).
+ */
+export function databaseContextProblem(context: AiDatabaseContext, refs: AiContextRefs): string | null {
+  const groups = [...context.tables, ...context.bases, ...(context.subdocuments ?? [])];
+  if (context.tables.length > L.tables) return `Tiene más de ${L.tables} tablas: elige una y marca «Solo …».`;
+  if (context.bases.length > L.bases || (context.subdocuments?.length ?? 0) > L.subdocuments)
+    return 'Tiene demasiadas bases o subdocumentos para enviarlo entero.';
+  const crowded = groups.find(g => g.columns.length > L.columns);
+  if (crowded) return `«${crowded.name}» tiene más de ${L.columns} columnas.`;
+  const longName = groups.find(g => g.name.length > L.name);
+  if (longName) return `El nombre «${clip(longName.name, 40)}» es demasiado largo (como mucho ${L.name} caracteres).`;
+  for (const g of groups)
+    for (const c of g.columns) {
+      if (c.name.length > L.columnName)
+        return `La columna «${clip(c.name, 40)}» de «${g.name}» tiene un nombre demasiado largo (como mucho ${L.columnName}).`;
+      if (c.type.length > L.type) return `El tipo de «${c.name}» en «${g.name}» es demasiado largo.`;
+    }
+  if (JSON.stringify(context).length > WORLD_BUDGET || jsonBytes({ context, refs }) > AI_BODY_BUDGET)
+    return 'El esquema es demasiado grande para enviarlo entero. Selecciona una tabla y marca «Solo …».';
+  return null;
+}
 
 function originText(c: TableColumn) {
   if (c.origin.kind === 'library') return `preforma ${c.field.key}`;
@@ -163,8 +212,8 @@ function columnContext(
     unique: c.sql.unique,
     identity: c.sql.identity,
     references: typeof target === 'string' ? (idOf.get(target) ?? null) : null,
-    origin: originText(c),
-    description: c.field.description,
+    origin: clip(originText(c), L.origin),
+    description: clip(c.field.description, L.description),
   };
 }
 
@@ -200,10 +249,13 @@ export function databaseContext(
     return {
       id: idOf.get(node.id)!,
       name: nodeLabel(p, node),
-      typeName: schema?.name ?? '',
+      typeName: clip(schema?.name ?? '', L.name),
       base: baseOf(schema),
-      description: schema?.description ?? '',
-      sharesColumnsWith: (byType.get(node.typeId) ?? []).filter(n => n.id !== node.id).map(n => idOf.get(n.id)!),
+      description: clip(schema?.description ?? '', L.description),
+      sharesColumnsWith: (byType.get(node.typeId) ?? [])
+        .filter(n => n.id !== node.id)
+        .slice(0, L.shared)
+        .map(n => idOf.get(n.id)!),
       partial,
       engine: aiEngineOf(p, node.typeId) ?? 'sqlserver',
       columns: tableColumns(p, node.typeId)
@@ -215,7 +267,8 @@ export function databaseContext(
   const usedLibrary = new Set(p.schemas.flatMap(s => s.fields.flatMap(f => (isFieldLink(f) ? [f.ref] : []))));
   // Primero las que ya usa alguna tabla: son las que siguen el estilo del proyecto.
   const preforms = [...p.fieldLibrary]
-    .filter(f => !f.isTitle && f.type !== 'computed')
+    // Una preforma con un nombre más largo del que admite la API no se ofrece: el modelo la nombraría por él.
+    .filter(f => !f.isTitle && f.type !== 'computed' && (f.key || f.label).length <= L.columnName)
     .sort((a, b) => Number(usedLibrary.has(b.id)) - Number(usedLibrary.has(a.id)))
     .map((f): AiPreformContext => {
       // Sus metadatos tal como los ve una tabla que la use (o los suyos, si ninguna la usa todavía).
@@ -228,13 +281,15 @@ export function databaseContext(
         reference: f.type === 'nodeRef',
         primaryKey: sql.primaryKey,
         nullable: sql.nullable,
-        description: f.description,
+        description: clip(f.description, L.description),
       };
-    });
+    })
+    .filter(f => f.type.length <= L.type)
+    .slice(0, L.preforms);
 
   return {
     context: {
-      projectName: p.name,
+      projectName: clip(p.name, L.name),
       tables,
       bases: bases.map(s => ({
         id: baseId.get(s.id)!,
@@ -257,12 +312,12 @@ export function databaseContext(
         id: subOf.get(s.id)!,
         name: s.name,
         engine: aiEngineOf(p, s.id) as 'mongodb' | 'firestore',
-        description: s.description,
+        description: clip(s.description, L.description),
         columns: tableColumns(p, s.id).map(c => columnContext(p, null, c, idOf, subOf, aiEngineOf(p, s.id)!)),
       })),
       issues: databaseLint(p)
         .slice(0, AI_CONTEXT_MAX_ISSUES)
-        .map(issue => issue.message),
+        .map(issue => clip(issue.message, L.issue)),
     },
     refs: {
       tables: Object.fromEntries([...idOf].map(([nodeId, id]) => [id, nodeId])),

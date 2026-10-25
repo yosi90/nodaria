@@ -21,6 +21,10 @@ export const NEWS_KINDS = [
 ] as const;
 
 /** Motivos de denuncia de un proyecto público. */
+/** La descripción de un proyecto público y el texto de una denuncia (los mismos topes en la web). */
+export const PUBLIC_DESCRIPTION_MAX = 1000;
+export const REPORT_TEXT_MAX = 500;
+
 export const REPORT_REASONS = {
   spam: 'Publicidad o spam',
   ofensivo: 'Contenido ofensivo o que incita al odio',

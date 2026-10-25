@@ -73,6 +73,13 @@ export interface AiWorldRefs {
  * IA, el que pase de él (`AI_CONTEXT_BUDGET` en `api/src/routes/ai.ts`).
  */
 export const WORLD_BUDGET = 400_000;
+/**
+ * Lo que pueden ocupar en bytes el contexto y sus referencias juntos: deja sitio a la pregunta dentro del
+ * cuerpo que admite la API (`AI_BODY_LIMIT`, 640 KiB, en `api/src/routes/ai.ts`). Un acento ocupa 2 bytes.
+ */
+export const AI_BODY_BUDGET = 600 * 1024;
+/** Los bytes que ocupa un valor como JSON en UTF-8, como lo cuenta la API. */
+export const jsonBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
 /** Los topes de cada campo en la API (`worldContextSchema`): por encima, la petición no valdría. */
 const LIMITS = {
   name: 200,
@@ -192,7 +199,8 @@ export function worldContext(
     ];
   });
 
-  const agenda = options.includeAgenda ? agendaContext(p, ids) : null;
+  // La agenda tiene su parte del presupuesto (una cuarta parte): el resto es para el mundo.
+  const agenda = options.includeAgenda ? agendaContext(p, ids, budget / 4) : null;
 
   const build = (noteLimit: number, nodeCount: number): AiWorldContext => {
     const nodes = allNodes.slice(0, nodeCount).map(n => ({ ...n, notes: noteLimit ? clip(n.notes, noteLimit) : '' }));
@@ -230,7 +238,8 @@ export function worldContext(
     };
     return { context, refs };
   };
-  const fits = (c: AiWorldContext) => JSON.stringify(c).length <= budget;
+  // Dentro del presupuesto en caracteres y, con las referencias, del cuerpo que admite la API en bytes.
+  const fits = (c: AiWorldContext) => JSON.stringify(c).length <= budget && jsonBytes(withRefs(c)) <= AI_BODY_BUDGET;
   const most = Math.min(allNodes.length, LIMITS.nodes);
   for (const limit of NOTE_STEPS) {
     const context = build(limit, most);
@@ -250,15 +259,13 @@ export function worldContext(
  * La agenda para el contexto: las `AGENDA_LIMIT` entradas más cercanas a hoy, en orden de fecha, con la
  * descripción recortada y los nodos (enlazados o mencionados) con su identificador corto.
  */
-function agendaContext(p: Project, ids: Map<string, string>) {
+function agendaContext(p: Project, ids: Map<string, string>, budget: number) {
   const today = todayText();
   const index = mentionIndex(p);
   const distance = (date: string) => Math.abs(Date.parse(date) - Date.parse(today));
-  const chosen = [...p.agenda]
-    .sort((a, b) => distance(a.date) - distance(b.date))
-    .slice(0, AGENDA_LIMIT)
-    .sort(compareEntries);
-  const entries: AiAgendaEntry[] = chosen.map(e => ({
+  // De la más cercana a hoy a la más lejana: si no cabe, se quitan primero las lejanas.
+  const closest = [...p.agenda].sort((a, b) => distance(a.date) - distance(b.date)).slice(0, AGENDA_LIMIT);
+  let entries: AiAgendaEntry[] = closest.map(e => ({
     kind: kindLabel(e.kind),
     title: clip(e.title.trim() || 'Sin título', 500),
     date: e.date,
@@ -268,9 +275,17 @@ function agendaContext(p: Project, ids: Map<string, string>) {
     description: clip(e.description.trim(), AGENDA_DESCRIPTION),
     nodes: [...new Set([...e.nodeIds, ...mentionedInEntry(p, e, index).map(n => n.id)])]
       .map(id => ids.get(id))
-      .filter((id): id is string => Boolean(id)),
+      .filter((id): id is string => Boolean(id))
+      .slice(0, AGENDA_NODES),
   }));
-  return { today, entries };
+  // Si no cabe en su parte del presupuesto: primero descripciones más cortas y después menos entradas.
+  const size = (list: AiAgendaEntry[]) => JSON.stringify(list).length;
+  if (size(entries) > budget) entries = entries.map(e => ({ ...e, description: clip(e.description, 200) }));
+  let count = entries.length;
+  while (count > 0 && size(entries.slice(0, count)) > budget) count = Math.floor(count * 0.75);
+  const kept = closest.slice(0, count).map((source, i) => ({ source, entry: entries[i] }));
+  kept.sort((a, b) => compareEntries(a.source, b.source));
+  return { today, entries: kept.map(k => k.entry) };
 }
 
 /** Partes de una respuesta: texto y menciones [[n12]] a nodos (para enlazarlos). */

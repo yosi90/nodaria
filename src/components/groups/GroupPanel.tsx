@@ -13,7 +13,7 @@ import {
   type CommentState,
   type GroupComment,
 } from '../../services/comments';
-import { groupConversation, groupErrorMessage, type GroupInfo } from '../../services/groups';
+import { COMMENT_MAX, groupConversation, groupErrorMessage, type GroupInfo } from '../../services/groups';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
 import { useNavigation } from '../../state/navigation';
@@ -294,7 +294,7 @@ function GroupComments({ group }: { group: GroupInfo }) {
         >
           <textarea
             rows={3}
-            maxLength={4000}
+            maxLength={COMMENT_MAX}
             value={body}
             aria-label="Comentario"
             placeholder={selectedNode ? `Comenta «${nodeLabel(project, selectedNode)}»…` : 'Comenta el proyecto…'}

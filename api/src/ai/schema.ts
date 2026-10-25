@@ -215,6 +215,23 @@ export const proposalSchema = z.object({
 });
 export type AiProposal = z.infer<typeof proposalSchema>;
 
+/**
+ * Presupuesto del contexto, en caracteres de su JSON (unos 100 000 tokens): el mismo que usa la web para
+ * recortar el mundo (`WORLD_BUDGET` en `src/domain/aiWorld.ts`). Lo que pasa de él no se manda a la IA.
+ */
+export const AI_CONTEXT_BUDGET = 400_000;
+/** El cuerpo de una petición a la IA: el contexto, sus referencias y la petición (la web deja 600 KiB). */
+export const AI_BODY_LIMIT = 640 * 1024;
+/** Lo que escribe la persona: una petición o una pregunta (`AI_INSTRUCTION_MAX` en la web). */
+export const AI_INSTRUCTION_MAX = 4000;
+
+/** Lo que manda la web para revisar la propuesta (`AiContextRefs` en `src/domain/aiContext.ts`). */
+export const refsSchema = z.object({
+  tables: z.record(z.string().max(16), z.string().max(200)),
+  bases: z.record(z.string().max(16), z.string().max(200)).optional(),
+  subdocuments: z.record(z.string().max(16), z.string().max(200)).optional(),
+});
+
 export const AI_MAX_OPERATIONS = 200;
 export const AI_MAX_COLUMNS = 150;
 const AI_MAX_TEXT = 4000;

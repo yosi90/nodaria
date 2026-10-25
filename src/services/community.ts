@@ -80,6 +80,12 @@ export const listPublic = (author?: string) =>
     r => r.publicos,
   );
 
+/** La descripción de un proyecto público y el texto de una denuncia (`api/src/community/model.ts`). */
+export const PUBLIC_DESCRIPTION_MAX = 1000;
+export const REPORT_TEXT_MAX = 500;
+/** El id de un proyecto público (`PUBLIC_ID` en `api/src/community/repository.ts`). */
+export const PUBLIC_ID = /^[A-Za-z0-9_-]{12}$/;
+
 export const REPORT_REASONS = {
   spam: 'Publicidad o spam',
   ofensivo: 'Contenido ofensivo o que incita al odio',
@@ -114,7 +120,8 @@ export const publicPath = (publicId: string) => `/p/${publicId}`;
 
 /** El id público de la dirección actual (`/p/<id>`), o `null` si no es una página pública. */
 export function publicIdFromPath(pathname: string) {
-  return /^\/p\/([A-Za-z0-9_-]{12})\/?$/.exec(pathname)?.[1] ?? null;
+  const id = /^\/p\/([^/]+)\/?$/.exec(pathname)?.[1];
+  return id && PUBLIC_ID.test(id) ? id : null;
 }
 
 // --- La plataforma: personas, novedades y relaciones ---

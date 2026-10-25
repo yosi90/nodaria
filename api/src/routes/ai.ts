@@ -6,7 +6,14 @@ import { AiError, KEY_ERRORS, MANAGE_KEYS_URL, type AiCall, type AiUsage } from 
 import { MAX_MESSAGES } from '../ai/conversations.ts';
 import { conversationTurns } from '../ai/history.ts';
 import { AI_MODELS, AI_PROVIDERS, findModel, type AiModel } from '../ai/models.ts';
-import { AI_MAX_OPERATIONS, contextSchema } from '../ai/schema.ts';
+import {
+  AI_BODY_LIMIT,
+  AI_CONTEXT_BUDGET,
+  AI_INSTRUCTION_MAX,
+  AI_MAX_OPERATIONS,
+  contextSchema,
+  refsSchema,
+} from '../ai/schema.ts';
 import { worldContextSchema, worldRefsSchema } from '../ai/world.ts';
 import { capabilitiesOf } from '../groups/model.ts';
 import { overLimit } from '../rateLimit.ts';
@@ -26,21 +33,7 @@ import { PROJECT_ID } from './projects.ts';
 export const AI_RATE_LIMIT = 10;
 /** Tope diario por cuenta (kit 1.58), aparte del tope de gasto de cada clave. */
 export const AI_DAILY_LIMIT = 300;
-/**
- * Presupuesto del contexto, en caracteres de su JSON (unos 100 000 tokens): el mismo que usa la web para
- * recortar el mundo (`WORLD_BUDGET` en `src/domain/aiWorld.ts`). Lo que pasa de él no se manda a la IA.
- */
-export const AI_CONTEXT_BUDGET = 400_000;
-/** El contexto dentro del presupuesto, más la petición y las referencias. */
-export const AI_BODY_LIMIT = 640 * 1024;
 const TITLE_LENGTH = 80;
-
-/** Lo que manda la web (`AiContextRefs` en `src/domain/aiContext.ts`): tablas, bases y subdocumentos. */
-const refsSchema = z.object({
-  tables: z.record(z.string().max(16), z.string().max(200)),
-  bases: z.record(z.string().max(16), z.string().max(200)).optional(),
-  subdocuments: z.record(z.string().max(16), z.string().max(200)).optional(),
-});
 
 /** Lo común a propuestas y preguntas: modelo, proyecto, conversación y clave. */
 const callSchema = z.object({
@@ -58,14 +51,14 @@ const callSchema = z.object({
 
 const proposeSchema = callSchema.extend({
   scope: z.literal('base-de-datos'),
-  instruction: z.string().trim().min(1, 'Escribe qué quieres hacer.').max(4000),
+  instruction: z.string().trim().min(1, 'Escribe qué quieres hacer.').max(AI_INSTRUCTION_MAX),
   context: contextSchema,
   /** Traducción de los identificadores del contexto, para revisar la propuesta más tarde. */
   refs: refsSchema,
 });
 
 const questionSchema = callSchema.extend({
-  question: z.string().trim().min(1, 'Escribe tu pregunta.').max(4000),
+  question: z.string().trim().min(1, 'Escribe tu pregunta.').max(AI_INSTRUCTION_MAX),
   context: worldContextSchema,
   /** Traducción de n1, n2… a los nodos, para enlazar los que cita la respuesta al volver a abrirla. */
   refs: worldRefsSchema,
