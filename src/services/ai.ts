@@ -2,7 +2,7 @@ import type { AiContextRefs, AiDatabaseContext } from '../domain/aiContext';
 import type { AiWorldContext, AiWorldRefs } from '../domain/aiWorld';
 import type { AiProposal } from '../domain/aiProposal';
 import { apiRequest } from './api';
-import { PLATFORM_API_URL, sdk, type PlatformAiState, type PlatformModels } from './yosiftware';
+import { platformRequest, type PlatformAiState, type PlatformModels } from './yosiftware';
 
 /*
  * Asistencia de IA de la API (`api/src/routes/ai.ts`). La API llama al proveedor a través de la
@@ -95,19 +95,12 @@ export const fetchPlatformModels = (space: number | null) => platformGet<Platfor
  */
 export const fetchAiState = (space: number | null) => platformGet<PlatformAiState>('/v1/ia/estado', space);
 
-async function platformGet<T>(path: string, space: number | null): Promise<T | null> {
-  const token = await sdk()?.tokenPlataforma?.();
-  if (!token) return null;
-  const query = space === null ? '' : `?espacio=${space}`;
-  try {
-    const response = await fetch(`${PLATFORM_API_URL}${path}${query}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.ok ? ((await response.json()) as T) : null;
-  } catch {
-    return null;
-  }
-}
+/** Lo que la plataforma dice de la IA de la persona; `null` si no se puede preguntar. */
+const platformGet = <T>(path: string, space: number | null): Promise<T | null> =>
+  platformRequest<T>('GET', `${path}${space === null ? '' : `?espacio=${space}`}`).then(
+    result => result ?? null,
+    () => null,
+  );
 
 /**
  * El modelo que sale elegido por defecto: el equilibrado del proveedor preferido de la persona para el

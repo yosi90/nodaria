@@ -1,13 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import {
-  listPublic,
-  personName,
-  personNews,
-  personProfile,
-  PlatformRequestError,
-  type NewsItem,
-} from '../../services/community';
+import { listPublic, personName, personNews, personProfile, type NewsItem } from '../../services/community';
+import { PlatformRequestError } from '../../services/yosiftware';
 import { useAuth } from '../../state/auth';
 import { useNavigation } from '../../state/navigation';
 import { Button } from '../common/Button';

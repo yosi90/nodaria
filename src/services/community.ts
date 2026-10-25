@@ -1,7 +1,7 @@
 import type { PublicationOptions } from '../domain/publication';
 import type { Project, ProjectOrigin } from '../domain/types';
 import { ApiError, apiRequest, OfflineError } from './api';
-import { PLATFORM_API_URL, sdk } from './yosiftware';
+import { PLATFORM_API_URL, platformRequest, PlatformRequestError } from './yosiftware';
 
 /*
  * La comunidad (docs/roadmaps/ROADMAP_COMUNIDAD.md). Los proyectos públicos son de Nodaria (su API); las
@@ -161,46 +161,6 @@ export interface Relationship {
   bloqueada: boolean;
 }
 
-/** Error de la plataforma en su formato común (`error`, `code`). `persona_no_encontrada` es «no hay nadie». */
-export class PlatformRequestError extends Error {
-  readonly status: number;
-  readonly code: string;
-  constructor(status: number, code: string, message: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
-
-async function platform<T>(method: 'GET' | 'PUT' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<T> {
-  const token = await sdk()?.tokenPlataforma?.();
-  if (!token) throw new PlatformRequestError(401, 'sin_sesion', 'Entra con tu cuenta de Yosiftware.');
-  let response: Response;
-  try {
-    response = await fetch(`${PLATFORM_API_URL}${path}`, {
-      method,
-      headers: {
-        authorization: `Bearer ${token}`,
-        accept: 'application/json',
-        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  } catch (error) {
-    throw new OfflineError(error instanceof Error ? error.message : String(error));
-  }
-  if (response.status === 204) return undefined as T;
-  const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!response.ok) {
-    throw new PlatformRequestError(
-      response.status,
-      typeof data?.code === 'string' ? data.code : 'error',
-      typeof data?.error === 'string' ? data.error : `La plataforma respondió ${response.status}.`,
-    );
-  }
-  return data as T;
-}
-
 const page = (cursor: string | null) => (cursor ? `?cursor=${encodeURIComponent(cursor)}` : '');
 
 function withAvatars<T extends { novedades: NewsItem[] }>(result: T): T {
@@ -215,41 +175,44 @@ function withAvatars<T extends { novedades: NewsItem[] }>(result: T): T {
 
 /** Las novedades de Nodaria de mis amistades y de quienes sigo. */
 export const followingFeed = (cursor: string | null = null) =>
-  platform<{ novedades: NewsItem[]; cursor: string | null }>('GET', `/v1/novedades${page(cursor)}`).then(withAvatars);
+  platformRequest<{ novedades: NewsItem[]; cursor: string | null }>('GET', `/v1/novedades${page(cursor)}`).then(
+    withAvatars,
+  );
 
 export const discoverFeed = () =>
-  platform<{ novedades: NewsItem[] }>('GET', '/v1/novedades/descubrir').then(withAvatars);
+  platformRequest<{ novedades: NewsItem[] }>('GET', '/v1/novedades/descubrir').then(withAvatars);
 
 export const personNews = (id: string, cursor: string | null = null) =>
-  platform<{ novedades: NewsItem[]; cursor: string | null; reservadas: boolean }>(
+  platformRequest<{ novedades: NewsItem[]; cursor: string | null; reservadas: boolean }>(
     'GET',
     `/v1/personas/${encodeURIComponent(id)}/novedades${page(cursor)}`,
   ).then(withAvatars);
 
 export const setLike = (newsId: number, like: boolean) =>
-  platform<void>(like ? 'PUT' : 'DELETE', `/v1/novedades/${newsId}/me-gusta`);
+  platformRequest<void>(like ? 'PUT' : 'DELETE', `/v1/novedades/${newsId}/me-gusta`);
 
 export const newsComments = (newsId: number) =>
-  platform<{ comentarios: NewsComment[]; cursor: string | null }>('GET', `/v1/novedades/${newsId}/comentarios`).then(
-    result => ({
-      ...result,
-      comentarios: result.comentarios.map(c => ({
-        ...c,
-        persona: { ...c.persona, avatar: absoluteAvatar(c.persona.avatar) },
-      })),
-    }),
-  );
+  platformRequest<{ comentarios: NewsComment[]; cursor: string | null }>(
+    'GET',
+    `/v1/novedades/${newsId}/comentarios`,
+  ).then(result => ({
+    ...result,
+    comentarios: result.comentarios.map(c => ({
+      ...c,
+      persona: { ...c.persona, avatar: absoluteAvatar(c.persona.avatar) },
+    })),
+  }));
 
 export const addComment = (newsId: number, texto: string) =>
-  platform<NewsComment>('POST', `/v1/novedades/${newsId}/comentarios`, { texto });
+  platformRequest<NewsComment>('POST', `/v1/novedades/${newsId}/comentarios`, { texto });
 
 export const deleteComment = (newsId: number, commentId: number) =>
-  platform<void>('DELETE', `/v1/novedades/${newsId}/comentarios/${commentId}`);
+  platformRequest<void>('DELETE', `/v1/novedades/${newsId}/comentarios/${commentId}`);
 
 /** El perfil público de una cuenta; `null` si no hay nadie (no existe, está suspendida o hay un bloqueo). */
 export async function personProfile(id: string): Promise<Person | null> {
   try {
-    const profile = await platform<Person>('GET', `/v1/perfiles/${encodeURIComponent(id)}`);
+    const profile = await platformRequest<Person>('GET', `/v1/perfiles/${encodeURIComponent(id)}`);
     return { ...profile, avatar: absoluteAvatar(profile.avatar) };
   } catch (error) {
     if (error instanceof PlatformRequestError && error.status === 404) return null;
@@ -259,7 +222,7 @@ export async function personProfile(id: string): Promise<Person | null> {
 
 export async function relationship(id: string): Promise<Relationship | null> {
   try {
-    return await platform<Relationship>('GET', `/v1/personas/${encodeURIComponent(id)}/relacion`);
+    return await platformRequest<Relationship>('GET', `/v1/personas/${encodeURIComponent(id)}/relacion`);
   } catch (error) {
     if (error instanceof PlatformRequestError && (error.status === 404 || error.code === 'relacion_consigo_mismo'))
       return null;
@@ -268,7 +231,7 @@ export async function relationship(id: string): Promise<Relationship | null> {
 }
 
 export const setFollowing = (id: string, follow: boolean) =>
-  platform<void>(follow ? 'PUT' : 'DELETE', `/v1/social/seguidos/${encodeURIComponent(id)}`);
+  platformRequest<void>(follow ? 'PUT' : 'DELETE', `/v1/social/seguidos/${encodeURIComponent(id)}`);
 
 /** Las direcciones del avatar llegan relativas a la API de la plataforma. */
 export function absoluteAvatar(avatar: Person['avatar']): Person['avatar'] {
@@ -300,7 +263,7 @@ const withPersonAvatar = <T extends { persona: Person }>(item: T): T => ({
 
 /** Busca personas por alias o nombre (los perfiles privados, solo por su alias exacto). */
 export const searchPeople = (text: string) =>
-  platform<{ personas: Person[] }>('GET', `/v1/personas?q=${encodeURIComponent(text)}`).then(r =>
+  platformRequest<{ personas: Person[] }>('GET', `/v1/personas?q=${encodeURIComponent(text)}`).then(r =>
     r.personas.map(p => ({ ...p, avatar: absoluteAvatar(p.avatar) })),
   );
 
@@ -314,10 +277,12 @@ export interface PersonLink {
 export type PeopleList = 'amistades' | 'seguidos' | 'seguidores' | 'bloqueos';
 
 export const peopleList = (list: PeopleList, cursor: string | null = null) =>
-  platform<{ vinculos: PersonLink[]; cursor: string | null }>('GET', `/v1/social/${list}${page(cursor)}`).then(r => ({
-    ...r,
-    vinculos: r.vinculos.map(withPersonAvatar),
-  }));
+  platformRequest<{ vinculos: PersonLink[]; cursor: string | null }>('GET', `/v1/social/${list}${page(cursor)}`).then(
+    r => ({
+      ...r,
+      vinculos: r.vinculos.map(withPersonAvatar),
+    }),
+  );
 
 export interface FriendRequest {
   id: number;
@@ -327,32 +292,33 @@ export interface FriendRequest {
 }
 
 export const friendRequests = (tipo: 'recibidas' | 'enviadas') =>
-  platform<{ solicitudes: FriendRequest[] }>('GET', `/v1/social/amistades/solicitudes?tipo=${tipo}`).then(r =>
+  platformRequest<{ solicitudes: FriendRequest[] }>('GET', `/v1/social/amistades/solicitudes?tipo=${tipo}`).then(r =>
     r.solicitudes.map(withPersonAvatar),
   );
 
 /** Pide amistad; si ella ya la había pedido, queda aceptada. */
 export const requestFriendship = (id: string) =>
-  platform<{ estado: 'solicitud_enviada' | 'amistades'; idSolicitud: number }>(
+  platformRequest<{ estado: 'solicitud_enviada' | 'amistades'; idSolicitud: number }>(
     'POST',
     '/v1/social/amistades/solicitudes',
     { idCuenta: id },
   );
 
 export const answerFriendRequest = (requestId: number, accept: boolean) =>
-  platform<void>('POST', `/v1/social/amistades/solicitudes/${requestId}/${accept ? 'aceptar' : 'rechazar'}`);
+  platformRequest<void>('POST', `/v1/social/amistades/solicitudes/${requestId}/${accept ? 'aceptar' : 'rechazar'}`);
 
 export const withdrawFriendRequest = (requestId: number) =>
-  platform<void>('DELETE', `/v1/social/amistades/solicitudes/${requestId}`);
+  platformRequest<void>('DELETE', `/v1/social/amistades/solicitudes/${requestId}`);
 
-export const removeFriend = (id: string) => platform<void>('DELETE', `/v1/social/amistades/${encodeURIComponent(id)}`);
+export const removeFriend = (id: string) =>
+  platformRequest<void>('DELETE', `/v1/social/amistades/${encodeURIComponent(id)}`);
 
 export const setBlocked = (id: string, block: boolean) =>
-  platform<void>(block ? 'PUT' : 'DELETE', `/v1/social/bloqueos/${encodeURIComponent(id)}`);
+  platformRequest<void>(block ? 'PUT' : 'DELETE', `/v1/social/bloqueos/${encodeURIComponent(id)}`);
 
 /** Los contadores de la barra: solicitudes recibidas, amistades, seguidos, seguidores… */
 export const socialSummary = () =>
-  platform<{
+  platformRequest<{
     solicitudesRecibidas: number;
     solicitudesEnviadas: number;
     amistades: number;
@@ -385,12 +351,12 @@ export function socialErrorMessage(error: unknown) {
 
 /** Abre (o crea) la conversación directa con una amistad y devuelve su id. */
 export const directConversation = (id: string) =>
-  platform<{ id: number }>('POST', '/v1/chat/conversaciones/directa', { idCuenta: id }).then(r => r.id);
+  platformRequest<{ id: number }>('POST', '/v1/chat/conversaciones/directa', { idCuenta: id }).then(r => r.id);
 
 /** Lo pendiente para el botón de Comunidad: mensajes sin leer y solicitudes de amistad recibidas. */
 export async function communityPending() {
   const [chats, summary] = await Promise.all([
-    platform<{ conversaciones: { noLeidos: number }[] }>('GET', '/v1/chat/conversaciones'),
+    platformRequest<{ conversaciones: { noLeidos: number }[] }>('GET', '/v1/chat/conversaciones'),
     socialSummary(),
   ]);
   return {

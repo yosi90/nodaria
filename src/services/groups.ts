@@ -1,6 +1,6 @@
 import type { Project, ProjectKind } from '../domain/types';
 import { ApiError, apiRequest, OfflineError, type WriteResult } from './api';
-import { PLATFORM_API_URL, sdk } from './yosiftware';
+import { platformRequest, sdk } from './yosiftware';
 
 /*
  * Grupos de trabajo (docs/roadmaps/ROADMAP_COLABORACION.md). Cada grupo es un espacio de la plataforma
@@ -174,35 +174,6 @@ export interface SpaceInvitation {
   correo: string | null;
   rol: string | null;
   caduca: string;
-}
-
-async function platformRequest<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) {
-  const token = await sdk()?.tokenPlataforma?.();
-  if (!token) throw new ApiError(401, 'no_autenticado', 'Tienes que entrar con tu cuenta de Yosiftware.');
-  let response: Response;
-  try {
-    response = await fetch(`${PLATFORM_API_URL}${path}`, {
-      method,
-      headers: {
-        authorization: `Bearer ${token}`,
-        accept: 'application/json',
-        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  } catch (error) {
-    throw new OfflineError(error instanceof Error ? error.message : String(error));
-  }
-  if (response.status === 204) return undefined as T;
-  const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      typeof payload?.code === 'string' ? payload.code : 'error',
-      typeof payload?.error === 'string' ? payload.error : `Error ${response.status} de la plataforma.`,
-    );
-  }
-  return payload as T;
 }
 
 export async function spaceMembers(spaceId: number): Promise<SpaceMember[]> {

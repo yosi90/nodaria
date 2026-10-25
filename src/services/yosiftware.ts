@@ -1,8 +1,11 @@
+import { OfflineError, type Method } from './api';
+
 /*
  * SDK de la plataforma Yosiftware (`ecosistema-kit/ACCESO.md`). Lo carga `index.html` desde la
  * plataforma del entorno (`VITE_YOSIFTWARE_SDK`), nunca empaquetado con la web, y deja la API en
- * `window.yosiftware`. Aquí solo se tipa la parte que usa Nodaria y se espera a que esté lista; los
- * tokens nunca se guardan: se piden al SDK cada vez.
+ * `window.yosiftware`. Aquí solo se tipa la parte que usa Nodaria y se espera a que esté lista, y está
+ * el único cliente de la API de la plataforma (`platformRequest`); los tokens nunca se guardan: se
+ * piden al SDK cada vez.
  */
 
 export interface PlatformAccount {
@@ -194,3 +197,47 @@ export function loadSdk(timeoutMs = 20_000): Promise<YosiftwareSdk | null> {
 
 /** El SDK ya cargado, o `null` (para acciones que el usuario pide después de cargar la página). */
 export const sdk = (): YosiftwareSdk | null => window.yosiftware ?? null;
+
+/** Error de la plataforma en su formato común (`error`, `code`). `persona_no_encontrada` es «no hay nadie». */
+export class PlatformRequestError extends Error {
+  readonly status: number;
+  readonly code: string;
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/**
+ * Llamada a la API de la plataforma con el token de la persona, pedido al SDK cada vez. Sin sesión,
+ * `PlatformRequestError` 401 (`sin_sesion`); sin conexión, `OfflineError`; un 204, `undefined`.
+ */
+export async function platformRequest<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  const token = await sdk()?.tokenPlataforma?.();
+  if (!token) throw new PlatformRequestError(401, 'sin_sesion', 'Entra con tu cuenta de Yosiftware.');
+  let response: Response;
+  try {
+    response = await fetch(`${PLATFORM_API_URL}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: 'application/json',
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    throw new OfflineError(error instanceof Error ? error.message : String(error));
+  }
+  if (response.status === 204) return undefined as T;
+  const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!response.ok) {
+    throw new PlatformRequestError(
+      response.status,
+      typeof data?.code === 'string' ? data.code : 'error',
+      typeof data?.error === 'string' ? data.error : `La plataforma respondió ${response.status}.`,
+    );
+  }
+  return data as T;
+}
