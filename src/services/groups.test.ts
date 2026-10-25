@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { createHistory, historyReducer } from '../state/history';
 import { project, schema } from '../test/fixtures';
-import { blockedReason, contentSignature, planShared, SCHEMA_ACTIONS, type GroupInfo, type SharedMeta } from './groups';
+import type { Project } from '../domain/types';
+import {
+  blockedReason,
+  changesSchema,
+  contentSignature,
+  planShared,
+  SCHEMA_ACTIONS,
+  type GroupInfo,
+  type SharedMeta,
+} from './groups';
 
 const caps = { read: true, edit: true, editSchema: true, comment: true, deleteGroup: false };
 const group = (id: string, projects: [string, number][], patch: Partial<GroupInfo> = {}): GroupInfo => ({
@@ -129,6 +138,16 @@ describe('blockedReason', () => {
     expect(blockedReason('add-node', editor)).toBeNull();
     for (const action of SCHEMA_ACTIONS) expect(blockedReason(action, editor)).toMatch(/esquema/);
     expect(blockedReason('add-schema', owner)).toBeNull();
+  });
+
+  it('una acción que no está en la lista pero cambiaría el esquema también se bloquea (E-05)', () => {
+    expect(blockedReason('update-node', editor, () => true)).toMatch(/esquema/);
+    expect(blockedReason('update-node', editor, () => false)).toBeNull();
+    expect(blockedReason('update-node', owner, () => true)).toBeNull();
+    const before = { schemas: [], kind: 'general' } as unknown as Project;
+    expect(changesSchema(before, { ...before })).toBe(false);
+    expect(changesSchema(before, { ...before, schemas: [] })).toBe(false);
+    expect(changesSchema(before, { ...before, kind: 'novel' } as unknown as Project)).toBe(true);
   });
 
   it('nadie elimina el proyecto del grupo como si fuera propio', () => {

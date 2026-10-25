@@ -16,6 +16,7 @@ import type { Project } from '../domain/types';
 import { ApiError, OfflineError } from '../services/api';
 import {
   blockedReason,
+  changesSchema,
   contentSignature,
   createGroup,
   deleteGroup,
@@ -33,6 +34,7 @@ import {
   type GroupInfo,
   type SharedMeta,
 } from '../services/groups';
+import { appReducer } from './reducer';
 import { mergeProjects } from '../services/merge';
 import { loadSharedBase, prepareProject, saveSharedBase } from '../services/storage';
 import { sdk } from '../services/yosiftware';
@@ -404,7 +406,12 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
       const id = appState.activeProjectId;
       const group = groupsRef.current.find(g => g.projects.some(p => p.id === id));
       if (!group) return true;
-      const reason = blockedReason(action.type, group);
+      // Si la acción no es de las de esquema, se mira lo que cambiaría, como hace la API al guardar.
+      const reason = blockedReason(action.type, group, () => {
+        const before = appState.projects.find(p => p.id === id);
+        const after = appReducer(appState, action).projects.find(p => p.id === id);
+        return Boolean(before && after && changesSchema(before, after));
+      });
       if (reason) toastRef.current({ message: reason, duration: 7000 });
       return reason === null;
     });

@@ -387,8 +387,21 @@ export const SCHEMA_ACTIONS = new Set([
   'create-junction-tables',
 ]);
 
-/** Por qué el rol no deja hacer la acción en el compartido, o `null` si la deja. */
-export function blockedReason(actionType: string, group: GroupInfo): string | null {
+/**
+ * Las partes del proyecto que son su esquema: las mismas que vigila la API para rechazar el guardado de quien
+ * no puede cambiarlo (`SCHEMA_KEYS` en `api/src/groups/model.ts`; `contracts/` comprueba que coinciden).
+ */
+export const SCHEMA_KEYS = ['schemas', 'fieldLibrary', 'kinship', 'calendar', 'kind', 'schemaFolders'] as const;
+
+/** Si alguna parte del esquema cambia entre dos versiones del proyecto. */
+export const changesSchema = (before: Project, after: Project) =>
+  SCHEMA_KEYS.some(key => before[key] !== after[key] && JSON.stringify(before[key]) !== JSON.stringify(after[key]));
+
+/**
+ * Por qué el rol no deja hacer la acción en el compartido, o `null` si la deja. `changes` dice si la acción
+ * cambiaría el esquema aunque no esté en `SCHEMA_ACTIONS`: así la web decide como la API, por lo que cambia.
+ */
+export function blockedReason(actionType: string, group: GroupInfo, changes?: () => boolean): string | null {
   if (FREE_ACTIONS.has(actionType)) return null;
   if (actionType === 'delete-project') {
     return group.isOwner
@@ -397,7 +410,7 @@ export function blockedReason(actionType: string, group: GroupInfo): string | nu
   }
   if (!group.capabilities.edit)
     return `Tu rol en el grupo (${roleLabel(group.role, undefined, group.roleLabels)}) solo te deja ver este proyecto. Duplícalo para tener tu propia copia.`;
-  if (!group.capabilities.editSchema && SCHEMA_ACTIONS.has(actionType))
+  if (!group.capabilities.editSchema && (SCHEMA_ACTIONS.has(actionType) || changes?.()))
     return `Tu rol en el grupo (${roleLabel(group.role, undefined, group.roleLabels)}) no te deja cambiar el esquema: tipos, atributos y preformas.`;
   return null;
 }
