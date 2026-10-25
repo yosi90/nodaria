@@ -42,9 +42,14 @@ export function referenceFields(p: Project): ReferenceField[] {
   );
 }
 
+/** Los ids guardados en un valor de referencia, tal cual: uno (`nodeRef`) o una lista (`nodeRefs`). */
+export function referenceIds(value: unknown): string[] {
+  return typeof value === 'string' ? [value] : Array.isArray(value) ? value : [];
+}
+
 /** Ids de nodo guardados en un valor de referencia, ignorando los que ya no existen. */
 export function referencedIds(p: Project, value: unknown): string[] {
-  const ids = typeof value === 'string' ? [value] : Array.isArray(value) ? value : [];
+  const ids = referenceIds(value);
   const existing = new Set(p.nodes.map(n => n.id));
   return ids.filter((id): id is string => typeof id === 'string' && existing.has(id));
 }

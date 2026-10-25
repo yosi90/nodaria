@@ -12,6 +12,7 @@ import {
 import { normalizeName } from './text';
 import { allFields, getNode, getSchema, nodeLabel } from './selectors';
 import type { FieldDefinition, FieldValue, Node, Project } from './types';
+import { referenceIds } from './references';
 
 /*
  * Fórmulas de los campos calculados. Una fórmula es texto libre con expresiones entre llaves:
@@ -82,7 +83,7 @@ function findField(p: Project, node: Node, key: string) {
 
 /** Nodos a los que apunta un atributo de referencia (uno o varios). */
 function referencedNodes(p: Project, value: FieldValue): Node[] {
-  const ids = typeof value === 'string' ? [value] : Array.isArray(value) ? value : [];
+  const ids = referenceIds(value);
   return ids.map(id => getNode(p, id)).filter((n): n is Node => Boolean(n));
 }
 

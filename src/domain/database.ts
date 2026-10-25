@@ -3,6 +3,7 @@ import { allFields, getSchema, inheritedSchemas } from './selectors';
 import { normalizeName } from './text';
 import type { DbEngine, FieldDefinition, Node, Project, Schema } from './types';
 import { deduceDocType, isDocType, isDocumentEngine, referenceTypeText, type ReferenceKind } from './dbEngines';
+import { referenceIds } from './references';
 
 export { DB_ENGINES, engineLabel, isDocumentEngine } from './dbEngines';
 
@@ -792,7 +793,7 @@ export function foreignKeyLinks(p: Project): ForeignKeyLink[] {
       .filter(c => c.reference)
       .forEach(c => {
         const raw = node.values[c.field.id];
-        const ids = typeof raw === 'string' ? [raw] : Array.isArray(raw) ? raw : [];
+        const ids = referenceIds(raw);
         ids.forEach(targetId => {
           const target = nodes.get(targetId);
           // Una clave foránea une tablas de la misma base: entre SQL Server y Db2 es una referencia entre motores.
@@ -836,7 +837,7 @@ export function databaseLinks(p: Project): DatabaseLink[] {
       .filter(c => c.reference && c.refKind !== 'embedded')
       .forEach(c => {
         const raw = node.values[c.field.id];
-        const ids = typeof raw === 'string' ? [raw] : Array.isArray(raw) ? raw : [];
+        const ids = referenceIds(raw);
         ids.forEach(targetId => {
           const target = nodes.get(targetId);
           if (!target || !isDatabaseType(p, target.typeId) || isEmbeddedType(p, target.typeId)) return;

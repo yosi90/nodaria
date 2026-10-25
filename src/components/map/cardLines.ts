@@ -6,6 +6,7 @@ import { allFields } from '../../domain/selectors';
 import type { FieldDefinition, Node, Project } from '../../domain/types';
 import { NODE_H } from './layout';
 import { columnDefinitions } from '../../domain/database';
+import { referenceIds } from '../../domain/references';
 
 /** Lo que un atributo aporta a la tarjeta: una insignia (solo icono) o una línea (icono y texto). */
 export interface CardBadge {
@@ -29,7 +30,7 @@ const isEmpty = (v: unknown) =>
 function describe(p: Project, f: FieldDefinition, v: unknown): string {
   if (f.type === 'boolean') return f.label;
   if (f.type === 'nodeRef' || f.type === 'nodeRefs') {
-    const ids = typeof v === 'string' ? [v] : Array.isArray(v) ? v : [];
+    const ids = referenceIds(v);
     const names = ids
       .map(id => p.nodes.find(n => n.id === id))
       .filter((n): n is Node => Boolean(n))

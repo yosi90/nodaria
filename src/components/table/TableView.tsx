@@ -24,6 +24,7 @@ import { isImageValue } from '../map/images';
 import { BulkBar } from './BulkBar';
 import { MatrixView } from './MatrixView';
 import { withMember } from '../common/sets';
+import { referenceIds } from '../../domain/references';
 
 /*
  * Vista «Tabla»: una hoja por tipo de entidad con una fila por nodo y una columna por atributo,
@@ -102,7 +103,7 @@ export function TableView() {
       const f = column.field!;
       const v = fieldValue(f, n.values, allFields(project, n.typeId), { project, node: n });
       if (f.type === 'nodeRef' || f.type === 'nodeRefs') {
-        const ids = typeof v === 'string' ? [v] : Array.isArray(v) ? v : [];
+        const ids = referenceIds(v);
         return ids
           .map(id => project.nodes.find(x => x.id === id))
           .filter((x): x is Node => Boolean(x))

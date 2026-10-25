@@ -1,6 +1,7 @@
 import { normalizeName } from './text';
 import { allFields, typeMatches } from './selectors';
 import type { FieldDefinition, Node, Project } from './types';
+import { referenceIds } from './references';
 
 /*
  * Consultas guardadas: «Personajes sin dios patrón», «Magos que no pertenecen a ninguna escuela».
@@ -37,7 +38,7 @@ const isEmpty = (v: unknown) => v === undefined || v === null || v === '' || (Ar
 
 function textOf(p: Project, field: FieldDefinition, value: unknown): string[] {
   if (field.type === 'nodeRef' || field.type === 'nodeRefs') {
-    const ids = typeof value === 'string' ? [value] : Array.isArray(value) ? value : [];
+    const ids = referenceIds(value);
     return ids.map(id => {
       const node = p.nodes.find(n => n.id === id);
       if (!node) return '';

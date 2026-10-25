@@ -4,7 +4,7 @@ import { referenceLimitIssues, visibleFields, type ReferenceLimitIssue } from '.
 import { nodeConnections } from './connections';
 import { extractMentions, mentionIndex } from './notes';
 import { normalizeName } from './text';
-import { isReferenceField } from './references';
+import { isReferenceField, referenceIds } from './references';
 import { allFields, getNode, typeMatches } from './selectors';
 import { columnDefinitions } from './database';
 import type { FieldDefinition, Node, Project, Schema } from './types';
@@ -70,7 +70,7 @@ export function brokenReferences(p: Project): BrokenReference[] {
       .filter(isReferenceField)
       .forEach(field => {
         const value = node.values[field.id];
-        const ids = typeof value === 'string' ? [value] : Array.isArray(value) ? value : [];
+        const ids = referenceIds(value);
         ids.forEach(targetId => {
           if (typeof targetId !== 'string' || !targetId) return;
           const target = getNode(p, targetId);

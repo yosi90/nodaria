@@ -5,6 +5,7 @@ import { GENDERS } from './constants';
 import { allFields, fieldValue, getSchema, inheritedSchemas, nodeLabel, relationRole } from './selectors';
 import { stripAccents } from './text';
 import type { FieldDefinition, FieldValue, Node, Project } from './types';
+import { referenceIds } from './references';
 
 /*
  * Neo4j (docs/roadmaps/ROADMAP_NOSQL.md). El modelo de Nodaria ya es un grafo: tipos de entidad = etiquetas,
@@ -71,7 +72,7 @@ export function neo4jSchema(p: Project, generatedAt = new Date()): string {
     const references = tableColumns(p, node.typeId).filter(c => c.reference && c.target);
     const targets = (c: (typeof references)[number]) => {
       const raw = node.values[c.field.id];
-      const ids = typeof raw === 'string' ? [raw] : Array.isArray(raw) ? raw : [];
+      const ids = referenceIds(raw);
       const named = ids.map(id => labelOf.get(id)).filter(Boolean);
       return named.length ? named : [c.target!.name];
     };
@@ -176,7 +177,7 @@ export function projectCypher(p: Project, generatedAt = new Date()): string {
     for (const field of allFields(p, node.typeId)) {
       if (field.type !== 'nodeRef' && field.type !== 'nodeRefs') continue;
       const raw = node.values[field.id];
-      const ids = typeof raw === 'string' ? [raw] : Array.isArray(raw) ? raw : [];
+      const ids = referenceIds(raw);
       for (const target of ids.filter(t => exists.has(t)))
         out.push(`${match(node.id, target)} MERGE (a)-[:${relationType(field.key || field.label)}]->(b);`);
     }
