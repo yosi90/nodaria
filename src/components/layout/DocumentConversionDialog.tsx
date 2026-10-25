@@ -6,6 +6,7 @@ import { useProjectAccess } from '../../state/groups';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
+import { ConversionWarnings, SchemaLockedNote } from './schemaDialogParts';
 
 /**
  * Pasar tablas a documentos (`documentConversion.ts`): se eligen el motor y las tablas, y para cada una si
@@ -132,18 +133,8 @@ export function DocumentConversionDialog({ onClose }: { onClose: () => void }) {
             })}
           </div>
         </fieldset>
-        {preview.warnings.length > 0 && (
-          <ul className="muted-note conversion-warnings">
-            {preview.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        )}
-        {!canEditSchema && (
-          <p className="muted-note" role="status">
-            Tu rol en el grupo no te deja cambiar el esquema.
-          </p>
-        )}
+        <ConversionWarnings warnings={preview.warnings} />
+        {!canEditSchema && <SchemaLockedNote />}
       </div>
     </Modal>
   );

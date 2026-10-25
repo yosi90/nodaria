@@ -1,13 +1,12 @@
-import { Upload } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { engineOf, sqlTypeText, type SqlDialect } from '../../domain/database';
 import { guessDialect, isDds, mergeResults, parseDds, parseSqlDdl } from '../../domain/schemaImport';
 import { importPreview } from '../../domain/tablesImport';
 import { useApp } from '../../state/AppContext';
 import { useProjectAccess } from '../../state/groups';
-import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
+import { BaseTypeField, ReadWarnings, SchemaLockedNote, SourceFiles, type SourceFile } from './schemaDialogParts';
 
 /** Hasta dónde se lee un archivo: un script de esquema no llega ni de lejos. */
 const MAX_FILE = 5 * 1024 * 1024;
@@ -27,10 +26,9 @@ export function TablesImportDialog({ onClose }: { onClose: () => void }) {
   const { project, dispatch } = useApp();
   const { canEditSchema } = useProjectAccess();
   const toast = useToast();
-  const fileInput = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
   const [ddsName, setDdsName] = useState('');
-  const [files, setFiles] = useState<{ name: string; text: string }[]>([]);
+  const [files, setFiles] = useState<SourceFile[]>([]);
   const [dialectChoice, setDialectChoice] = useState<SqlDialect | null>(null);
   const [unchecked, setUnchecked] = useState<Set<string>>(new Set());
   const pastedDds = isDds(text);
@@ -58,14 +56,6 @@ export function TablesImportDialog({ onClose }: { onClose: () => void }) {
   const baseTypeId = baseChoice === undefined ? (suggested?.id ?? null) : baseChoice;
   const chosen = preview.filter(x => !x.exists && !unchecked.has(x.table.name)).map(x => x.table.name);
   const warnings = [...result.warnings, ...result.tables.flatMap(t => t.warnings.map(w => `${t.name}.${w}`))];
-
-  const readFiles = async (list: FileList | null) => {
-    if (!list) return;
-    const read = await Promise.all(
-      [...list].filter(f => f.size <= MAX_FILE).map(async f => ({ name: f.name, text: await f.text() })),
-    );
-    setFiles(current => [...current.filter(c => !read.some(r => r.name === c.name)), ...read]);
-  };
 
   const submit = () => {
     dispatch({ type: 'import-tables', result, options: { tables: chosen, baseTypeId } });
@@ -117,35 +107,9 @@ export function TablesImportDialog({ onClose }: { onClose: () => void }) {
             <small>El fuente DDS no lo lleva: es el nombre del miembro.</small>
           </label>
         )}
-        <div className="tables-import-files">
-          <Button size="sm" icon={Upload} onClick={() => fileInput.current?.click()}>
-            Subir archivos
-          </Button>
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            hidden
-            accept=".sql,.ddl,.txt,.pf,.lf,.dds,.mbr"
-            onChange={e => {
-              void readFiles(e.target.files);
-              e.target.value = '';
-            }}
-          />
-          {files.map(f => (
-            <span key={f.name} className="chip">
-              {f.name}
-              <button
-                type="button"
-                aria-label={`Quitar ${f.name}`}
-                onClick={() => setFiles(current => current.filter(c => c.name !== f.name))}
-              >
-                ×
-              </button>
-            </span>
-          ))}
+        <SourceFiles files={files} onChange={setFiles} accept=".sql,.ddl,.txt,.pf,.lf,.dds,.mbr" maxBytes={MAX_FILE}>
           <small className="muted-note">El nombre de un fuente DDS es el del archivo (CLIENTES.pf → CLIENTES).</small>
-        </div>
+        </SourceFiles>
         <div className="db2-export-row">
           <label className="field">
             Base de datos
@@ -161,18 +125,12 @@ export function TablesImportDialog({ onClose }: { onClose: () => void }) {
               {dialectChoice ? 'Elegida a mano.' : 'Deducida de lo que has pegado; cámbiala si no es.'}
             </small>
           </label>
-          <label className="field">
-            Subtipo de
-            <select value={baseTypeId ?? ''} onChange={e => setBaseChoice(e.target.value || null)}>
-              <option value="">Ningún tipo (tipos sueltos)</option>
-              {bases.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name || 'Sin nombre'}
-                </option>
-              ))}
-            </select>
-            <small>Las tablas heredan sus atributos (como el título) y su base de datos.</small>
-          </label>
+          <BaseTypeField
+            bases={bases}
+            value={baseTypeId}
+            onChange={setBaseChoice}
+            hint="Las tablas heredan sus atributos (como el título) y su base de datos."
+          />
         </div>
         {preview.length > 0 && (
           <fieldset className="publish-options">
@@ -226,21 +184,8 @@ export function TablesImportDialog({ onClose }: { onClose: () => void }) {
             No se ha encontrado ninguna tabla. Comprueba que es un CREATE TABLE o el fuente DDS de un archivo físico.
           </p>
         )}
-        {warnings.length > 0 && (
-          <details className="tables-import-warnings">
-            <summary>{warnings.length === 1 ? '1 aviso' : `${warnings.length} avisos`} de lo que se ha leído</summary>
-            <ul>
-              {warnings.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-          </details>
-        )}
-        {!canEditSchema && (
-          <p className="muted-note" role="status">
-            Tu rol en el grupo no te deja cambiar el esquema.
-          </p>
-        )}
+        <ReadWarnings warnings={warnings} />
+        {!canEditSchema && <SchemaLockedNote />}
       </div>
     </Modal>
   );

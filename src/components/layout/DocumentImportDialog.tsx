@@ -1,5 +1,4 @@
-import { Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { engineOf } from '../../domain/database';
 import {
   documentImportPreview,
@@ -9,9 +8,9 @@ import {
 } from '../../domain/documentImport';
 import { useApp } from '../../state/AppContext';
 import { useProjectAccess } from '../../state/groups';
-import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
+import { BaseTypeField, ReadWarnings, SchemaLockedNote, SourceFiles, type SourceFile } from './schemaDialogParts';
 
 /** Hasta dónde se lee un archivo de muestra. */
 const MAX_FILE = 10 * 1024 * 1024;
@@ -27,10 +26,9 @@ export function DocumentImportDialog({ onClose }: { onClose: () => void }) {
   const { project, dispatch } = useApp();
   const { canEditSchema } = useProjectAccess();
   const toast = useToast();
-  const fileInput = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
   const [name, setName] = useState('');
-  const [files, setFiles] = useState<{ name: string; text: string }[]>([]);
+  const [files, setFiles] = useState<SourceFile[]>([]);
   const [engineChoice, setEngineChoice] = useState<'mongodb' | 'firestore' | null>(null);
   const [baseChoice, setBaseChoice] = useState<string | null | undefined>(undefined);
   const [unchecked, setUnchecked] = useState<Set<string>>(new Set());
@@ -63,14 +61,6 @@ export function DocumentImportDialog({ onClose }: { onClose: () => void }) {
   const chosen = preview.filter(x => !x.exists && !unchecked.has(x.collection.name)).map(x => x.collection);
   const warnings = [...errors, ...collections.flatMap(c => c.warnings)];
 
-  const readFiles = async (list: FileList | null) => {
-    if (!list) return;
-    const read = await Promise.all(
-      [...list].filter(f => f.size <= MAX_FILE).map(async f => ({ name: f.name, text: await f.text() })),
-    );
-    setFiles(current => [...current.filter(c => !read.some(r => r.name === c.name)), ...read]);
-  };
-
   const submit = () => {
     dispatch({ type: 'import-collections', collections: chosen, options: { engine, baseTypeId } });
     toast({
@@ -101,34 +91,7 @@ export function DocumentImportDialog({ onClose }: { onClose: () => void }) {
             <input value={name} spellCheck={false} placeholder="pedidos" onChange={e => setName(e.target.value)} />
             <small>El nombre de lo que pegas. Un archivo se llama como su colección (pedidos.json).</small>
           </label>
-          <div className="tables-import-files">
-            <Button size="sm" icon={Upload} onClick={() => fileInput.current?.click()}>
-              Subir archivos
-            </Button>
-            <input
-              ref={fileInput}
-              type="file"
-              multiple
-              hidden
-              accept=".json,.ndjson,.jsonl,.txt,.js"
-              onChange={e => {
-                void readFiles(e.target.files);
-                e.target.value = '';
-              }}
-            />
-            {files.map(f => (
-              <span key={f.name} className="chip">
-                {f.name}
-                <button
-                  type="button"
-                  aria-label={`Quitar ${f.name}`}
-                  onClick={() => setFiles(current => current.filter(c => c.name !== f.name))}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
+          <SourceFiles files={files} onChange={setFiles} accept=".json,.ndjson,.jsonl,.txt,.js" maxBytes={MAX_FILE} />
         </div>
         <label className="field">
           Documentos
@@ -151,17 +114,7 @@ export function DocumentImportDialog({ onClose }: { onClose: () => void }) {
             </select>
             <small>{engineChoice ? 'Elegida a mano.' : 'Deducida de los documentos; cámbiala si no es.'}</small>
           </label>
-          <label className="field">
-            Subtipo de
-            <select value={baseTypeId ?? ''} onChange={e => setBaseChoice(e.target.value || null)}>
-              <option value="">Ningún tipo (tipos sueltos)</option>
-              {bases.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name || 'Sin nombre'}
-                </option>
-              ))}
-            </select>
-          </label>
+          <BaseTypeField bases={bases} value={baseTypeId} onChange={setBaseChoice} />
         </div>
         {preview.length > 0 && (
           <fieldset className="publish-options">
@@ -211,21 +164,8 @@ export function DocumentImportDialog({ onClose }: { onClose: () => void }) {
             No hay documentos que leer.
           </p>
         )}
-        {warnings.length > 0 && (
-          <details className="tables-import-warnings" open={errors.length > 0}>
-            <summary>{warnings.length === 1 ? '1 aviso' : `${warnings.length} avisos`} de lo que se ha leído</summary>
-            <ul>
-              {warnings.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-          </details>
-        )}
-        {!canEditSchema && (
-          <p className="muted-note" role="status">
-            Tu rol en el grupo no te deja cambiar el esquema.
-          </p>
-        )}
+        <ReadWarnings warnings={warnings} open={errors.length > 0} />
+        {!canEditSchema && <SchemaLockedNote />}
       </div>
     </Modal>
   );

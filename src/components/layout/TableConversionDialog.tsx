@@ -7,6 +7,7 @@ import { useProjectAccess } from '../../state/groups';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
+import { ConversionWarnings, SchemaLockedNote } from './schemaDialogParts';
 
 /**
  * Pasar documentos a tablas (`tableConversion.ts`): se eligen la base y las colecciones, y para cada
@@ -134,18 +135,8 @@ export function TableConversionDialog({ onClose }: { onClose: () => void }) {
           <input type="checkbox" checked={junctions} onChange={e => setJunctions(e.target.checked)} />
           Crear las tablas intermedias de las listas de referencias (muchos a muchos)
         </label>
-        {preview.warnings.length > 0 && (
-          <ul className="muted-note conversion-warnings">
-            {preview.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        )}
-        {!canEditSchema && (
-          <p className="muted-note" role="status">
-            Tu rol en el grupo no te deja cambiar el esquema.
-          </p>
-        )}
+        <ConversionWarnings warnings={preview.warnings} />
+        {!canEditSchema && <SchemaLockedNote />}
       </div>
     </Modal>
   );
