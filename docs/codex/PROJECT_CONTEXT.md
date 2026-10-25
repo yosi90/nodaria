@@ -152,6 +152,13 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-25, noche (propuestas de la auditoría, guardarraíles de la IA y kit 1.59):** commits de `ca76eea` a `86d9c58`.
+  - API recompilada y reiniciada, sin migraciones: salud correcta, `401` sin token en la IA y `200` en `/api/publicos`; el proceso nuevo arranca sin avisos.
+  - Web: bundle `main-DvGRZ3lZ.js`, con el SHA-256 idéntico en los dos dominios, y `/privacidad` del 25 de octubre (tope de conversaciones).
+  - Pruebas: lint y tipos de las tres partes (web, API y `contracts/`); 476 pruebas de la web, incluidas las 5 cruzadas, y 117 de la API contra SQL Server.
+  - Edge en local: humo (18), modelo preferido (6), cambio de cuenta (15), los guiones de bases de datos (73 bien y la expectativa antigua de Db2) y el menú de exportar del lienzo (3). En producción, humo (18) y menú del lienzo (3).
+  - Sin novedad: son cambios internos y avisos pequeños.
+
 - **Publicación del 2026-10-25, tarde (auditoría de duplicados, web y API):** las dos ramas del revisor, unidas a `main` sin crear commit de fusión.
   - API recompilada y reiniciada, sin migraciones: salud correcta, `401` sin token en la IA y `200` en `/api/publicos`. El proceso nuevo declaró los roles y los tipos de novedad sin errores.
   - Web: bundle `main-BjrNaXp1.js`, con el SHA-256 idéntico en los dos dominios.
