@@ -585,6 +585,16 @@ describe('cliente de la pasarela', () => {
       statusCode: 424,
     });
   });
+
+  it('sin la credencial de servicio no llama y explica que la IA no está disponible', async () => {
+    const { impl, calls } = fakeFetch(() => anthropicStream(JSON.stringify(wire)));
+    const missing = path.join(mkdtempSync(path.join(tmpdir(), 'nodaria-ia-')), 'plataforma.token');
+    const ai = createGatewayAssistant({ platformApi, serviceTokenFile: missing, fetch: impl });
+    const error = await ai.propose(request('anthropic', 'claude-sonnet-5-5')).catch(e => e);
+    expect(error).toBeInstanceOf(AiError);
+    expect(error).toMatchObject({ statusCode: 424, code: 'ia_no_disponible', detail: '503 sin_credencial' });
+    expect(calls).toHaveLength(0);
+  });
 });
 
 describe('formato plano de la respuesta del modelo', () => {

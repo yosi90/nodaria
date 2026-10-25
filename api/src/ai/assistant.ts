@@ -1,10 +1,9 @@
-import { readFile } from 'node:fs/promises';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
 import type { AppConfig } from '../config.ts';
-import { USER_AGENT } from '../platform/http.ts';
+import { PlatformError, serviceToken, USER_AGENT } from '../platform/http.ts';
 import type { AiModel } from './models.ts';
 import { DATABASE_SYSTEM_PROMPT, databaseUserMessage } from './prompt.ts';
 import { checkProposalLimits, proposalSchema, type AiDatabaseContext, type AiProposal } from './schema.ts';
@@ -116,19 +115,6 @@ export class AiError extends Error {
   }
 }
 
-/** Respuesta de error con el formato común de la plataforma (`{ error, code, … }`), no la del proveedor. */
-class PlatformRejection extends Error {
-  readonly status: number;
-  readonly code: string;
-  readonly detail: string;
-  constructor(status: number, code: string, detail: string) {
-    super(code);
-    this.status = status;
-    this.code = code;
-    this.detail = detail;
-  }
-}
-
 const PLATFORM_ERRORS: Record<string, { status: number; message: string }> = {
   sin_clave_de_ia: {
     status: 409,
@@ -202,7 +188,8 @@ function gatewayHeaders(request: AiCall): Record<string, string> {
   };
 }
 
-function platformError(rejection: PlatformRejection, space?: number): AiError {
+/** Una respuesta de error de la plataforma (`{ code, error }`), no la del proveedor. */
+function platformError(rejection: PlatformError, space?: number): AiError {
   const group = space ? GROUP_ERRORS[rejection.code] : undefined;
   if (group) return new AiError(group.status, group.code, group.message);
   const known = PLATFORM_ERRORS[rejection.code];
@@ -229,7 +216,7 @@ export function gatewayFetch(base: typeof fetch = fetch): typeof fetch {
       .json()
       .catch(() => null)) as { error?: unknown; code?: unknown } | null;
     if (body && typeof body.code === 'string' && typeof body.error === 'string')
-      throw new PlatformRejection(response.status, body.code, body.error);
+      throw new PlatformError(response.status, body.code, body.error);
     return response;
   };
 }
@@ -237,7 +224,7 @@ export function gatewayFetch(base: typeof fetch = fetch): typeof fetch {
 function unwrap(error: unknown): unknown {
   let current = error;
   for (let i = 0; i < 5 && current instanceof Error; i++) {
-    if (current instanceof PlatformRejection) return current;
+    if (current instanceof PlatformError) return current;
     current = current.cause;
   }
   return error;
@@ -246,7 +233,7 @@ function unwrap(error: unknown): unknown {
 function translate(error: unknown, signal?: AbortSignal, space?: number): AiError {
   if (error instanceof AiError) return error;
   const cause = unwrap(error);
-  if (cause instanceof PlatformRejection) return platformError(cause, space);
+  if (cause instanceof PlatformError) return platformError(cause, space);
   if (signal?.aborted) return new AiError(499, 'ia_cancelada', 'Se canceló la petición.');
   if (error instanceof Anthropic.APIConnectionTimeoutError || error instanceof OpenAI.APIConnectionTimeoutError)
     return new AiError(
@@ -333,14 +320,13 @@ export function createGatewayAssistant(options: GatewayOptions): AiAssistant {
   const base = `${options.platformApi}/v1/servicio/ia`;
   const fetchImpl = gatewayFetch(options.fetch);
   let token: Promise<string> | null = null;
-  // La credencial se lee al usarla por primera vez; si falla, se vuelve a intentar en la siguiente.
+  // La credencial se lee al usarla por primera vez; si falta, se vuelve a intentar en la siguiente y la
+  // persona ve que la IA no está disponible (`PlatformError` 503 `sin_credencial`).
   const credential = () =>
-    (token ??= readFile(options.serviceTokenFile, 'utf8')
-      .then(t => t.trim())
-      .catch(error => {
-        token = null;
-        throw error;
-      }));
+    (token ??= serviceToken(options.serviceTokenFile).catch(error => {
+      token = null;
+      throw error;
+    }));
 
   /** Lo que cambia entre propuestas y preguntas: instrucciones, mensaje, formato y tope de salida. */
   interface Prompt {
