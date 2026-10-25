@@ -14,7 +14,7 @@ import {
 import { loadConfig } from '../src/config.ts';
 import { readMigrations, runMigrations } from '../src/db/migrations.ts';
 import type { Database } from '../src/db/pool.ts';
-import { PlatformError } from '../src/platform/spaces.ts';
+import { PlatformError } from '../src/platform/http.ts';
 import { createMemoryProjectStore } from '../src/projects/repository.ts';
 import { createSqlUserStore } from '../src/users/repository.ts';
 import {

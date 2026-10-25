@@ -1,6 +1,6 @@
 import type { FastifyBaseLogger } from 'fastify';
 import type { CommunityClient } from '../platform/community.ts';
-import { PlatformError } from '../platform/spaces.ts';
+import { PlatformError } from '../platform/http.ts';
 import type { CommunityStore, OutboxItem } from './repository.ts';
 
 /** Espera antes de cada reintento: 1 min, 5 min, 30 min y después cada 2 horas. */

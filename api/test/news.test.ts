@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { announceToYosiftware, announcementProblem } from '../src/platform/news.ts';
-import { PlatformError } from '../src/platform/spaces.ts';
+import { PlatformError } from '../src/platform/http.ts';
 
 const tokenFile = () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'nodaria-news-'));

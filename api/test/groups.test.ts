@@ -14,7 +14,7 @@ import {
 import { createSqlGroupStore, type GroupStore } from '../src/groups/repository.ts';
 import { createSqlCommentStore } from '../src/groups/comments.ts';
 import { createFeedReader, createSqlFeedStore } from '../src/platform/feed.ts';
-import { PlatformError } from '../src/platform/spaces.ts';
+import { PlatformError } from '../src/platform/http.ts';
 import { createMemoryProjectStore, createSqlProjectStore, type ProjectStore } from '../src/projects/repository.ts';
 import { createSqlUserStore } from '../src/users/repository.ts';
 import {

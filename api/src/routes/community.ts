@@ -1,5 +1,4 @@
 import { timingSafeEqual } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppDependencies } from '../app.ts';
@@ -15,7 +14,7 @@ import {
   updateNews,
 } from '../community/model.ts';
 import { PUBLIC_ID, type Publication, type ReportView } from '../community/repository.ts';
-import { PlatformError } from '../platform/spaces.ts';
+import { PlatformError, readToken } from '../platform/http.ts';
 import { documentSchema, PROJECT_ID } from './projects.ts';
 
 /*
@@ -343,14 +342,6 @@ const resolveSchema = z.object({
 
 const reportParams = z.object({ id: z.coerce.number().int().positive() });
 
-async function readSecret(file: string) {
-  try {
-    return (await readFile(file, 'utf8')).trim();
-  } catch {
-    return '';
-  }
-}
-
 /**
  * Panel de moderación del plugin de Notificapp (`notificapp-plugin/`). Notificapp llama con la credencial
  * externa que el propietario le configura (`plugin_cli set-upstream-token`); sin ella guardada aquí, no
@@ -360,10 +351,10 @@ export const notificappRoutes: FastifyPluginAsync<
   Pick<AppDependencies, 'community' | 'communityClient' | 'config'>
 > = async (app, { community, communityClient, config }) => {
   app.addHook('onRequest', async (request: FastifyRequest) => {
-    const secret = await readSecret(config.notificapp.upstreamTokenFile);
+    const secret = await readToken(config.notificapp.upstreamTokenFile);
     const match = /^Bearer\s+(\S+)$/i.exec(request.headers.authorization ?? '');
     const given = Buffer.from(match?.[1] ?? '');
-    const expected = Buffer.from(secret);
+    const expected = Buffer.from(secret ?? '');
     if (!secret || given.length !== expected.length || !timingSafeEqual(given, expected)) {
       throw new HttpError(401, 'no_autorizado', 'Credencial de Notificapp no válida.');
     }

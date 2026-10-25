@@ -4,7 +4,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
 import type { AppConfig } from '../config.ts';
-import { USER_AGENT } from '../platform/feed.ts';
+import { USER_AGENT } from '../platform/http.ts';
 import type { AiModel } from './models.ts';
 import { DATABASE_SYSTEM_PROMPT, databaseUserMessage } from './prompt.ts';
 import { checkProposalLimits, proposalSchema, type AiDatabaseContext, type AiProposal } from './schema.ts';

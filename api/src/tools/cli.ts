@@ -1,7 +1,7 @@
 import { loadConfig } from '../config.ts';
 import { connectDatabase } from '../db/pool.ts';
 import { ANNOUNCEMENT_KINDS, announceToYosiftware, type AnnouncementKind } from '../platform/news.ts';
-import { PlatformError } from '../platform/spaces.ts';
+import { PlatformError } from '../platform/http.ts';
 import { linkAccount } from '../users/repository.ts';
 
 /*

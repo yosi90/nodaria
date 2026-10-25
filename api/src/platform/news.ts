@@ -1,7 +1,5 @@
-import { readFile } from 'node:fs/promises';
 import type { AppConfig } from '../config.ts';
-import { USER_AGENT } from './feed.ts';
-import { PlatformError } from './spaces.ts';
+import { PlatformError, platformRequest } from './http.ts';
 
 /*
  * Las novedades de Yosiftware (`ecosistema-kit/NOVEDADES.md`, «Las novedades de Yosiftware», kit 1.45,
@@ -60,22 +58,8 @@ export async function announceToYosiftware(
 ): Promise<unknown> {
   const problem = announcementProblem(announcement);
   if (problem) throw new PlatformError(400, 'anuncio_no_valido', problem);
-  const token = (await readFile(config.serviceTokenFile, 'utf8')).trim();
-  const response = await fetchImpl(`${config.api}/v1/servicio/novedades/yosiftware`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-      accept: 'application/json',
-      'content-type': 'application/json',
-      'user-agent': USER_AGENT,
-    },
-    body: JSON.stringify({ ...announcement, texto: announcement.texto.trim() }),
+  return platformRequest(config, 'POST', '/v1/servicio/novedades/yosiftware', {
+    body: { ...announcement, texto: announcement.texto.trim() },
+    fetch: fetchImpl,
   });
-  const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!response.ok) {
-    const code = typeof data?.code === 'string' ? data.code : 'error';
-    const message = typeof data?.error === 'string' ? data.error : `La plataforma respondió ${response.status}.`;
-    throw new PlatformError(response.status, code, message);
-  }
-  return data;
 }

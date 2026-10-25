@@ -9,7 +9,8 @@ import { createMemoryCommentStore } from '../../src/groups/comments.ts';
 import { createMemoryCommunityStore } from '../../src/community/repository.ts';
 import type { CommunityClient } from '../../src/platform/community.ts';
 import type { PlatformSpace } from '../../src/groups/model.ts';
-import { PlatformError, type SpacesClient } from '../../src/platform/spaces.ts';
+import { PlatformError } from '../../src/platform/http.ts';
+import type { SpacesClient } from '../../src/platform/spaces.ts';
 import { createMemoryProjectStore, type ProjectStore } from '../../src/projects/repository.ts';
 import type { User, UserStore } from '../../src/users/repository.ts';
 

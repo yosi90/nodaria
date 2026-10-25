@@ -11,7 +11,7 @@ import {
   type PlatformSpace,
 } from '../groups/model.ts';
 import type { GroupRecord, GroupView } from '../groups/repository.ts';
-import { PlatformError } from '../platform/spaces.ts';
+import { PlatformError } from '../platform/http.ts';
 import { MAX_COMMENTS, type CommentState } from '../groups/comments.ts';
 import { documentSchema, PROJECT_ID } from './projects.ts';
 

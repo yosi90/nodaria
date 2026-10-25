@@ -1,10 +1,10 @@
-import { readFile } from 'node:fs/promises';
 import type { FastifyBaseLogger } from 'fastify';
 import type { AppConfig } from '../config.ts';
 import { type Database, sql, withTransaction } from '../db/pool.ts';
 import { spaceFeedEffect } from '../groups/model.ts';
 import { applySpaceEffectSql } from '../groups/repository.ts';
 import { DELETE_USER } from '../users/repository.ts';
+import { PlatformError, platformRequest } from './http.ts';
 
 /*
  * Feed de cambios de la plataforma (`ecosistema-kit/FEED_DE_CAMBIOS.md`). Nodaria no enseña perfiles
@@ -15,8 +15,6 @@ import { DELETE_USER } from '../users/repository.ts';
  * la que se autoriza (`ecosistema-kit/ESPACIOS.md`). El cursor se guarda en la misma transacción que los
  * cambios aplicados; repetir una lectura no cambia nada.
  */
-
-export const USER_AGENT = 'nodaria-api/1.0';
 
 export interface FeedChange {
   id: number;
@@ -99,12 +97,9 @@ export function createSqlFeedStore(db: Database): FeedStore {
 /** Lee una página del feed con la credencial de servicio, que se lee del archivo en cada llamada. */
 export function createFeedClient(config: AppConfig['platform']) {
   return async function fetchPage(since: number): Promise<FeedPage> {
-    const token = (await readFile(config.serviceTokenFile, 'utf8')).trim();
-    const response = await fetch(`${config.api}/v1/servicio/cambios?desde=${since}&limite=100`, {
-      headers: { authorization: `Bearer ${token}`, 'user-agent': USER_AGENT, accept: 'application/json' },
-    });
-    if (!response.ok) throw new Error(`El feed de la plataforma respondió ${response.status}.`);
-    return (await response.json()) as FeedPage;
+    const page = await platformRequest(config, 'GET', `/v1/servicio/cambios?desde=${since}&limite=100`);
+    if (!page) throw new PlatformError(502, 'feed_vacio', 'El feed de la plataforma no ha devuelto nada.');
+    return page as unknown as FeedPage;
   };
 }
 
