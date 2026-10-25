@@ -3,6 +3,7 @@ import { formatDateValue, isStandardCalendar } from './calendar';
 import { isRealDate } from './agenda';
 import { GENDERS } from './constants';
 import { allFields, fieldValue, getSchema, inheritedSchemas, nodeLabel, relationRole } from './selectors';
+import { stripAccents } from './text';
 import type { FieldDefinition, FieldValue, Node, Project } from './types';
 
 /*
@@ -20,9 +21,7 @@ import type { FieldDefinition, FieldValue, Node, Project } from './types';
 const name = (text: string) => `\`${text.replace(/`/g, '``')}\``;
 /** Nombre de restricción o índice: solo letras, números y guiones bajos. */
 const slug = (text: string) =>
-  text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+  stripAccents(text)
     .replace(/[^A-Za-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .toLowerCase() || 'x';

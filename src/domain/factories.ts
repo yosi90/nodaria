@@ -4,14 +4,6 @@ import { defaultKinship } from './kinship';
 import type { AppState, FieldDefinition, Project, ProjectView, Schema, SchemaKind } from './types';
 export const uid = (prefix = 'id') => `${prefix}_${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
 export const now = () => new Date().toISOString();
-export const slugify = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
 export function createProject(name = 'Mi primer mapa'): Project {
   const stamp = now();
   return {

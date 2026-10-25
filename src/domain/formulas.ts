@@ -9,7 +9,7 @@ import {
   yearsBetween,
   type WorldDate,
 } from './calendar';
-import { normalizeName } from './notes';
+import { normalizeName } from './text';
 import { allFields, getNode, getSchema, nodeLabel } from './selectors';
 import type { FieldDefinition, FieldValue, Node, Project } from './types';
 

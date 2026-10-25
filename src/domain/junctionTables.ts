@@ -1,5 +1,6 @@
 import { engineOf, isTableNode, type SqlColumn } from './database';
-import { createField, createSchema, now, slugify, uid } from './factories';
+import { createField, createSchema, now, uid } from './factories';
+import { slugify } from './text';
 import { allFields, nodeLabel } from './selectors';
 import type { FieldDefinition, Node, Project, Schema } from './types';
 

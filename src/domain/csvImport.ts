@@ -1,5 +1,5 @@
 import { createField, now, uid } from './factories';
-import { normalizeName } from './notes';
+import { normalizeName } from './text';
 import { defaultValues } from './operations';
 import { allFields, canContain, nodeLabel } from './selectors';
 import type { FieldDefinition, FieldValue, Node, Project } from './types';

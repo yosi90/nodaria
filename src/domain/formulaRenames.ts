@@ -1,7 +1,7 @@
 import { parseDate } from './calendar';
 import { formulaWarnings } from './formulaDiagnostics';
 import { declaredFields, isFieldLink, usersOfLibraryField } from './library';
-import { normalizeName } from './notes';
+import { normalizeName } from './text';
 import { allFields, getSchema, typeMatches } from './selectors';
 import type { FieldDefinition, Project, Schema } from './types';
 

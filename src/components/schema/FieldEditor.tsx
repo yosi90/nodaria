@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Lock, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { FIELD_TYPES } from '../../domain/constants';
-import { slugify } from '../../domain/factories';
+import { slugify } from '../../domain/text';
 import { IMAGE_SHAPES, type ImageShape } from '../../domain/portrait';
 import type { FieldDefinition, NodeDisplay } from '../../domain/types';
 import { useApp } from '../../state/AppContext';

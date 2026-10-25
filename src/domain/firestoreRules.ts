@@ -1,5 +1,6 @@
 import { engineOf, isEmbeddedType, tableColumns, type TableColumn } from './database';
 import { nodeLabel } from './selectors';
+import { stripAccents } from './text';
 import type { Node, Project } from './types';
 
 /*
@@ -26,9 +27,7 @@ const RULE_TYPES: Record<string, string> = {
 
 const quote = (text: string) => `'${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 const ident = (text: string) =>
-  text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+  stripAccents(text)
     .replace(/[^A-Za-z0-9]+(.)?/g, (_, c: string | undefined) => (c ? c.toUpperCase() : ''))
     .replace(/^[^A-Za-z]+/, '') || 'Documento';
 

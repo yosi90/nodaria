@@ -1,6 +1,7 @@
 import { engineOf, isDatabaseType, type SqlColumn } from './database';
 import { createField, createSchema, now, uid } from './factories';
 import { allFields, getSchema, nodeLabel } from './selectors';
+import { foldText } from './text';
 import type { FieldDefinition, FieldType, Node, Project, Schema } from './types';
 
 /*
@@ -193,12 +194,7 @@ export function sampleCollection(name: string, documents: unknown[]): SampleColl
 
 // --- Crear los tipos ---
 
-const simplify = (text: string) =>
-  text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
+const simplify = (text: string) => foldText(text).replace(/[^a-z0-9]/g, '');
 /** Las formas de nombrar una colección por su singular y su plural («clientes» → cliente, clientes). */
 function collectionNames(name: string) {
   const base = simplify(name);

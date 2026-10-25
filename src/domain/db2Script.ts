@@ -2,6 +2,7 @@ import { columnDescription, foreignKeyLinks, sqlDefaultError, sqlTypeText, type 
 import { db2Inserts } from './rowsScript';
 import { nodeLabel } from './selectors';
 import { scriptTables, type ScriptColumn, type ScriptTable } from './sqlScript';
+import { stripAccents } from './text';
 import type { Project } from './types';
 
 /*
@@ -45,9 +46,7 @@ const RESERVED = new Set(
 
 /** Un nombre como identificador ordinario de Db2: «Fecha de alta» → FECHA_DE_ALTA, «Año» → ANO. */
 export function db2Name(name: string) {
-  const ascii = name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+  const ascii = stripAccents(name)
     .toUpperCase()
     .replace(/[^A-Z0-9_]+/g, '_')
     .replace(/_+/g, '_')

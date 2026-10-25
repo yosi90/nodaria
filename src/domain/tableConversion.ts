@@ -4,6 +4,7 @@ import { createField, now, uid } from './factories';
 import { createJunctionTables, junctionProposals } from './junctionTables';
 import { isFieldLink } from './library';
 import { allFields, getSchema } from './selectors';
+import { slugify } from './text';
 import type { FieldDefinition, FieldValue, Node, Project, Schema } from './types';
 
 /*
@@ -99,13 +100,7 @@ export function suggestTables(p: Project, nodeIds: string[]): SubdocumentSuggest
   });
 }
 
-const slug = (text: string) =>
-  text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '') || 'campo';
+const slug = (text: string) => slugify(text) || 'campo';
 
 function freeKey(taken: Set<string>, base: string) {
   let key = base;

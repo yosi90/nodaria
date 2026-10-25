@@ -247,6 +247,7 @@ import {
   GitBranch,
   Table2,
 } from 'lucide-react';
+import { foldText } from '../../domain/text';
 import { GENERAL_ICONS, type CatalogIcon, type IconEntry } from './general-icons';
 
 /**
@@ -509,12 +510,7 @@ export const TYPE_ICONS: Record<string, IconEntry> = {
 
 /** Una elección por concepto, conservando la variante guardada y las búsquedas de todos sus alias. */
 export function iconChoices(query = '', family = 'all', value: string | null = null) {
-  const normalize = (text: string) =>
-    text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  const words = normalize(query.trim()).split(/\s+/).filter(Boolean);
+  const words = foldText(query.trim()).split(/\s+/).filter(Boolean);
   const groups = new Map<string, [string, IconEntry][]>();
   for (const [id, entry] of Object.entries(TYPE_ICONS)) {
     const canonical = entry.equivalentTo ?? id;
@@ -524,7 +520,7 @@ export function iconChoices(query = '', family = 'all', value: string | null = n
   for (const [canonical, aliases] of groups) {
     const eligible = aliases.filter(([, entry]) => family === 'all' || (entry.family ?? 'Lucide') === family);
     if (!eligible.length) continue;
-    const terms = normalize(aliases.map(([id, entry]) => `${id} ${entry.label} ${entry.keywords ?? ''}`).join(' '));
+    const terms = foldText(aliases.map(([id, entry]) => `${id} ${entry.label} ${entry.keywords ?? ''}`).join(' '));
     if (!words.every(word => terms.includes(word))) continue;
     result.push(eligible.find(([id]) => id === value) ?? eligible.find(([id]) => id === canonical) ?? eligible[0]);
   }

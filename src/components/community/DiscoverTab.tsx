@@ -1,10 +1,9 @@
 import { Search } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import { foldText } from '../../domain/text';
 import { discoverFeed, listPublic, type NewsItem } from '../../services/community';
 import { useLoad } from './communityHelpers';
 import { NewsCard, PublicCard } from './parts';
-
-const normalize = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /**
  * «Descubrir»: los proyectos públicos recientes de Nodaria (se ven también sin cuenta) y, con sesión, las
@@ -20,8 +19,8 @@ export function DiscoverTab({ signedIn }: { signedIn: boolean }) {
   const news = useLoad(loadNews);
   const [query, setQuery] = useState('');
   const shown = useMemo(() => {
-    const q = normalize(query.trim());
-    return (projects.value ?? []).filter(p => !q || normalize(`${p.name} ${p.description}`).includes(q));
+    const q = foldText(query.trim());
+    return (projects.value ?? []).filter(p => !q || foldText(`${p.name} ${p.description}`).includes(q));
   }, [projects.value, query]);
 
   return (

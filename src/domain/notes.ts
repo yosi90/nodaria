@@ -1,4 +1,5 @@
 import { nodeLabel } from './selectors';
+import { normalizeName } from './text';
 import type { Node, Project } from './types';
 
 /*
@@ -7,13 +8,6 @@ import type { Node, Project } from './types';
  */
 
 const MENTION = /\[\[([^\]\n]+)\]\]/g;
-
-export const normalizeName = (text: string) =>
-  text
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
 
 /** Nombres mencionados en un texto, sin repetir, en orden de aparición. */
 export function extractMentions(text: string): string[] {

@@ -1,5 +1,6 @@
 import { isFieldLink } from './library';
 import { allFields, getSchema, inheritedSchemas } from './selectors';
+import { normalizeName } from './text';
 import type { DbEngine, FieldDefinition, Node, Project, Schema } from './types';
 import { deduceDocType, isDocType, isDocumentEngine, referenceTypeText, type ReferenceKind } from './dbEngines';
 
@@ -371,7 +372,7 @@ const ALIASES: Record<string, SqlTypeName> = {
  */
 export function parseSqlAnnotation(text: unknown): SqlDataType | null {
   if (typeof text !== 'string') return null;
-  const clean = text.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const clean = normalizeName(text);
   if (/^si\s*\/\s*no$/.test(clean)) return sqlType('bit');
   const match = clean.match(/^([a-z][a-z0-9]*)\s*(?:\(\s*(max|\d+)\s*(?:,\s*(\d+)\s*)?\))?$/);
   const name = match && ALIASES[match[1]];

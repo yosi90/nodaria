@@ -1,5 +1,6 @@
 import { createField, createProject, createSchema, createView, uid } from '../factories';
 import { defaultKinship } from '../kinship';
+import { slugify } from '../text';
 import type { SavedQuery } from '../queries';
 import type {
   FieldDefinition,
@@ -24,7 +25,7 @@ import type {
 export type FieldSpec = Partial<Omit<FieldDefinition, 'id'>> & { id: string; label: string };
 
 export function field(spec: FieldSpec): FieldDefinition {
-  const key = spec.key ?? slug(spec.label);
+  const key = spec.key ?? slugify(spec.label);
   return { ...createField(), key, ...spec };
 }
 
@@ -123,14 +124,4 @@ export function buildProject(spec: ProjectSpec): Project {
     kinship: defaultKinship(),
     view,
   };
-}
-
-function slug(label: string) {
-  return label
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
 }

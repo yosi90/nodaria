@@ -1,4 +1,4 @@
-import { normalizeName } from './notes';
+import { normalizeName } from './text';
 import { allFields, typeMatches } from './selectors';
 import type { FieldDefinition, Node, Project } from './types';
 

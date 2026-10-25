@@ -32,6 +32,7 @@ import { openTablesImport } from './openTablesImport';
 import { openDocumentConversion } from './openDocumentConversion';
 import { openTableConversion } from './openTableConversion';
 import { openDocumentImport } from './openDocumentImport';
+import { foldText } from '../../domain/text';
 
 interface Command {
   id: string;
@@ -42,12 +43,6 @@ interface Command {
   keywords: string;
   run: () => void;
 }
-
-const normalize = (t: string) =>
-  t
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
 
 const MAX_RESULTS = 40;
 
@@ -285,13 +280,13 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   ]);
 
   const results = useMemo(() => {
-    const q = normalize(query.trim());
+    const q = foldText(query.trim());
     if (!q) return commands.filter(c => c.group === 'Nodos' || c.group === 'Acciones').slice(0, MAX_RESULTS);
     const terms = q.split(/\s+/);
     const scored = commands
       .map(c => {
-        const label = normalize(c.label);
-        const hay = `${label} ${normalize(c.hint ?? '')} ${normalize(c.keywords)}`;
+        const label = foldText(c.label);
+        const hay = `${label} ${foldText(c.hint ?? '')} ${foldText(c.keywords)}`;
         if (!terms.every(t => hay.includes(t))) return null;
         const score = label.startsWith(q) ? 0 : label.includes(q) ? 1 : 2;
         return { c, score };

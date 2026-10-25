@@ -1,6 +1,7 @@
 import { isStandardCalendar } from './calendar';
 export { defaultAgendaSettings, normalizeAgendaSettings } from './calendar';
-import { extractMentions, mentionIndex, normalizeName } from './notes';
+import { extractMentions, mentionIndex } from './notes';
+import { normalizeName } from './text';
 import { allFields, nodeLabel } from './selectors';
 import type { Node, Project } from './types';
 

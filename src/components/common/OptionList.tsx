@@ -1,5 +1,6 @@
 import { Check, Search } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { foldText } from '../../domain/text';
 
 export interface Option {
   value: string;
@@ -21,9 +22,6 @@ interface OptionListProps {
   multiple?: boolean;
 }
 
-const DIACRITICS = /[\u0300-\u036f]/g;
-const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(DIACRITICS, '');
-
 /** Lista de opciones navegable con teclado y filtro por texto (sin acentos ni mayúsculas). */
 export function OptionList({
   options,
@@ -38,8 +36,8 @@ export function OptionList({
   const [query, setQuery] = useState('');
   const showSearch = options.length > searchThreshold;
   const filtered = useMemo(() => {
-    const q = normalize(query.trim());
-    return q ? options.filter(o => normalize(`${o.label} ${o.hint ?? ''}`).includes(q)) : options;
+    const q = foldText(query.trim());
+    return q ? options.filter(o => foldText(`${o.label} ${o.hint ?? ''}`).includes(q)) : options;
   }, [options, query]);
   const firstSelected = filtered.findIndex(o => selected.includes(o.value));
   const [active, setActive] = useState(Math.max(0, firstSelected));

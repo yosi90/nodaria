@@ -1,6 +1,6 @@
 import { GENDERS } from './constants';
 import { isFieldLink } from './library';
-import { normalizeName } from './notes';
+import { normalizeName } from './text';
 import { nodeLabel } from './selectors';
 import type { FieldDefinition, FieldValue, Project } from './types';
 

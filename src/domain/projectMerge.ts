@@ -1,5 +1,5 @@
 import { repairProject } from './integrity';
-import { normalizeName } from './notes';
+import { normalizeName } from './text';
 import { allFields, getSchema, nodeLabel } from './selectors';
 import { mergeTemplate } from './templates';
 import type { FieldValue, Project, SchemaField } from './types';
