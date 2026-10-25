@@ -28,10 +28,7 @@ import { sdk } from '../../services/yosiftware';
 import { usePreferences } from '../../state/preferences';
 import { TypeIcon } from '../common/icons';
 import { NodeAvatar } from '../common/NodeAvatar';
-import { openTablesImport } from './openTablesImport';
-import { openDocumentConversion } from './openDocumentConversion';
-import { openTableConversion } from './openTableConversion';
-import { openDocumentImport } from './openDocumentImport';
+import { openDocumentConversion, openDocumentImport, openTableConversion, openTablesImport } from './openDialogs';
 import { foldText } from '../../domain/text';
 
 interface Command {

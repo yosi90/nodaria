@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { db2Library, db2Model, db2Script, db2Sources, isSystemName } from '../../domain/db2Script';
 import { rowCount } from '../../domain/rowsScript';
 import { fileSafeName } from '../../domain/text';
@@ -7,18 +7,6 @@ import { createZip } from '../../services/zip';
 import { useApp } from '../../state/AppContext';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
-import { OPEN_DB2_EXPORT_EVENT } from './openDb2Export';
-
-/** Monta el diálogo cuando lo pide el engranaje o el menú de exportar del lienzo. */
-export function Db2ExportHost() {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const show = () => setOpen(true);
-    window.addEventListener(OPEN_DB2_EXPORT_EVENT, show);
-    return () => window.removeEventListener(OPEN_DB2_EXPORT_EVENT, show);
-  }, []);
-  return open ? <Db2ExportDialog onClose={() => setOpen(false)} /> : null;
-}
 
 /**
  * Exportar las tablas de Db2 for i: el script único, los miembros fuente SQL (QSQLSRC) y los DDS (QDDSSRC),

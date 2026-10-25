@@ -1,5 +1,5 @@
 import { Upload } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { engineOf, sqlTypeText, type SqlDialect } from '../../domain/database';
 import { guessDialect, isDds, mergeResults, parseDds, parseSqlDdl } from '../../domain/schemaImport';
 import { importPreview } from '../../domain/tablesImport';
@@ -8,21 +8,9 @@ import { useProjectAccess } from '../../state/groups';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
-import { OPEN_TABLES_IMPORT_EVENT } from './openTablesImport';
 
 /** Hasta dónde se lee un archivo: un script de esquema no llega ni de lejos. */
 const MAX_FILE = 5 * 1024 * 1024;
-
-/** Monta el diálogo cuando lo pide el menú del proyecto, la paleta o «Registros». */
-export function TablesImportHost() {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const show = () => setOpen(true);
-    window.addEventListener(OPEN_TABLES_IMPORT_EVENT, show);
-    return () => window.removeEventListener(OPEN_TABLES_IMPORT_EVENT, show);
-  }, []);
-  return open ? <TablesImportDialog onClose={() => setOpen(false)} /> : null;
-}
 
 /** Índices y UNIQUE de una tabla leída (los de un archivo lógico se suman a su PFILE). */
 const indexCount = (t: { indexes: string[][]; uniques: string[][] }) => t.indexes.length + t.uniques.length;

@@ -10,7 +10,7 @@ import { usePreferences } from '../../state/preferences';
 import { Button, IconButton } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
 import { Splitter } from '../common/Splitter';
-import { openTablesImport } from '../layout/openTablesImport';
+import { openTablesImport } from '../layout/openDialogs';
 import { QueryPanel } from './QueryPanel';
 import { RecordsGrid } from './RecordsGrid';
 

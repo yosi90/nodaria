@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { SqlDialect } from '../../domain/database';
 import { nodeLabel } from '../../domain/selectors';
 import { convertToTables, documentCollections, suggestTables } from '../../domain/tableConversion';
@@ -7,18 +7,6 @@ import { useProjectAccess } from '../../state/groups';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
-import { OPEN_TABLE_CONVERSION_EVENT } from './openTableConversion';
-
-/** Monta el diálogo cuando lo pide el menú del proyecto o la paleta. */
-export function TableConversionHost() {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const show = () => setOpen(true);
-    window.addEventListener(OPEN_TABLE_CONVERSION_EVENT, show);
-    return () => window.removeEventListener(OPEN_TABLE_CONVERSION_EVENT, show);
-  }, []);
-  return open ? <TableConversionDialog onClose={() => setOpen(false)} /> : null;
-}
 
 /**
  * Pasar documentos a tablas (`tableConversion.ts`): se eligen la base y las colecciones, y para cada

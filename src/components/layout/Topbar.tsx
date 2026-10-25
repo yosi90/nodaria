@@ -51,11 +51,13 @@ import { Fragment, useCallback, useRef, useState } from 'react';
 import { downloadBytes, downloadProject, downloadText } from '../../services/files';
 import { exportZip } from '../../services/exportBundle';
 import { sqlScript } from '../../domain/sqlScript';
-import { openDb2Export } from './openDb2Export';
-import { openTablesImport } from './openTablesImport';
-import { openDocumentConversion } from './openDocumentConversion';
-import { openTableConversion } from './openTableConversion';
-import { openDocumentImport } from './openDocumentImport';
+import {
+  openDb2Export,
+  openDocumentConversion,
+  openDocumentImport,
+  openTableConversion,
+  openTablesImport,
+} from './openDialogs';
 import { documentCollections } from '../../domain/tableConversion';
 import { tableTypes } from '../../domain/database';
 import { kindLabel } from '../../domain/projectKinds';

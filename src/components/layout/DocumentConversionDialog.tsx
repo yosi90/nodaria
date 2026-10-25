@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { convertToDocuments, suggestConversion, type DocumentEngine } from '../../domain/documentConversion';
 import { dataTables } from '../../domain/tableData';
 import { useApp } from '../../state/AppContext';
@@ -6,18 +6,6 @@ import { useProjectAccess } from '../../state/groups';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
-import { OPEN_DOCUMENT_CONVERSION_EVENT } from './openDocumentConversion';
-
-/** Monta el diálogo cuando lo pide el menú del proyecto o la paleta. */
-export function DocumentConversionHost() {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const show = () => setOpen(true);
-    window.addEventListener(OPEN_DOCUMENT_CONVERSION_EVENT, show);
-    return () => window.removeEventListener(OPEN_DOCUMENT_CONVERSION_EVENT, show);
-  }, []);
-  return open ? <DocumentConversionDialog onClose={() => setOpen(false)} /> : null;
-}
 
 /**
  * Pasar tablas a documentos (`documentConversion.ts`): se eligen el motor y las tablas, y para cada una si

@@ -25,11 +25,19 @@ import { FloatingChat } from './components/community/FloatingChat';
 import { CommunityView } from './components/community/CommunityView';
 import { useCommunityHash } from './components/community/communityHash';
 import { PublicCopy } from './components/community/PublicCopy';
-import { Db2ExportHost } from './components/layout/Db2ExportDialog';
-import { TablesImportHost } from './components/layout/TablesImportDialog';
-import { DocumentConversionHost } from './components/layout/DocumentConversionDialog';
-import { TableConversionHost } from './components/layout/TableConversionDialog';
-import { DocumentImportHost } from './components/layout/DocumentImportDialog';
+import { Db2ExportDialog } from './components/layout/Db2ExportDialog';
+import { TablesImportDialog } from './components/layout/TablesImportDialog';
+import { DocumentConversionDialog } from './components/layout/DocumentConversionDialog';
+import { TableConversionDialog } from './components/layout/TableConversionDialog';
+import { DocumentImportDialog } from './components/layout/DocumentImportDialog';
+import {
+  OPEN_DB2_EXPORT_EVENT,
+  OPEN_DOCUMENT_CONVERSION_EVENT,
+  OPEN_DOCUMENT_IMPORT_EVENT,
+  OPEN_TABLE_CONVERSION_EVENT,
+  OPEN_TABLES_IMPORT_EVENT,
+} from './components/layout/openDialogs';
+import { DialogHost } from './components/common/DialogHost';
 import { useGroups } from './state/groups';
 import { useApp } from './state/AppContext';
 import { useAuth } from './state/auth';
@@ -131,11 +139,11 @@ export default function App() {
       <PublicCopy />
       {/* La ventana de chats es de la cuenta: se monta de nuevo con cada cuenta (CAMBIO_DE_CUENTA.md). */}
       {preferences.floatingChat && <FloatingChat key={`chat:${account}`} />}
-      <Db2ExportHost />
-      <TablesImportHost />
-      <DocumentConversionHost />
-      <TableConversionHost />
-      <DocumentImportHost />
+      <DialogHost event={OPEN_DB2_EXPORT_EVENT} dialog={Db2ExportDialog} />
+      <DialogHost event={OPEN_TABLES_IMPORT_EVENT} dialog={TablesImportDialog} />
+      <DialogHost event={OPEN_DOCUMENT_CONVERSION_EVENT} dialog={DocumentConversionDialog} />
+      <DialogHost event={OPEN_TABLE_CONVERSION_EVENT} dialog={TableConversionDialog} />
+      <DialogHost event={OPEN_DOCUMENT_IMPORT_EVENT} dialog={DocumentImportDialog} />
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );

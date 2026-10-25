@@ -96,7 +96,7 @@ function containerOf(p: Project, typeId: string): string | undefined {
 import { ForeignKeyEdge, type ForeignKeyEdgeType } from './ForeignKeyEdge';
 import { tableCardColumns, tableHeight, tableWidth } from './tableCard';
 import { sqlScript } from '../../domain/sqlScript';
-import { openDb2Export } from '../layout/openDb2Export';
+import { openDb2Export } from '../layout/openDialogs';
 import { vocabulary } from '../../domain/projectKinds';
 import { fileSafeName } from '../../domain/text';
 import { downloadText } from '../../services/files';
