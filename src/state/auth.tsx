@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- provider y hook forman una única API de contexto */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ApiError } from '../services/api';
 import { createIdentityTracker, type Identity } from '../services/identity';
 import { loadSdk, sdk, type PlatformState, type SavedAccount } from '../services/yosiftware';
 import { platformStyles } from '../services/yosiftwareStyles';
@@ -38,6 +39,11 @@ interface AuthContextValue {
   restrictions: AccountRestrictions | null;
   /** Token para la API de Nodaria, renovado por el SDK; `null` sin sesión. No se guarda. */
   getToken: () => Promise<string | null>;
+  /**
+   * El token, o un `ApiError` 401 `no_autenticado` («Entra con tu cuenta de Yosiftware para…») si no hay
+   * sesión: para lo que no se puede hacer sin ella. `purpose` completa el texto («publicar»).
+   */
+  requireToken: (purpose?: string) => Promise<string>;
   /** La identidad vigente (generación y cuenta), para atar a ella una operación larga. */
   identity: () => Identity;
   /** Si la identidad con la que empezó una operación sigue siendo la vigente. */
@@ -105,6 +111,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getToken = useCallback(async () => (await sdk()?.token()) ?? null, []);
+  const requireToken = useCallback(async (purpose?: string) => {
+    const token = (await sdk()?.token()) ?? null;
+    if (!token)
+      throw new ApiError(
+        401,
+        'no_autenticado',
+        `Entra con tu cuenta de Yosiftware${purpose ? ` para ${purpose}` : ''}.`,
+      );
+    return token;
+  }, []);
   const identity = useCallback(() => tracker.current.current(), []);
   const isCurrent = useCallback((id: Identity) => tracker.current.isCurrent(id), []);
   const tokenFor = useCallback(async (id: Identity) => {
@@ -133,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       ...snapshot,
       getToken,
+      requireToken,
       identity,
       isCurrent,
       tokenFor,
@@ -146,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       snapshot,
       getToken,
+      requireToken,
       identity,
       isCurrent,
       tokenFor,

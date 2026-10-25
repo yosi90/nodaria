@@ -79,7 +79,7 @@ export function GroupPanel({ group, onClose }: { group: GroupInfo; onClose: () =
 
 /** La conversación del espacio en el chat de la plataforma, incrustada. Los mensajes no pasan por Nodaria. */
 function GroupChat({ group }: { group: GroupInfo }) {
-  const { getToken } = useAuth();
+  const { requireToken } = useAuth();
   const [conversation, setConversation] = useState<{ group: string; id: number } | null>(null);
   const [failure, setFailure] = useState<{ group: string; message: string } | null>(null);
 
@@ -87,8 +87,7 @@ function GroupChat({ group }: { group: GroupInfo }) {
     let cancelled = false;
     void (async () => {
       try {
-        const token = await getToken();
-        if (!token) throw new Error('Entra con tu cuenta de Yosiftware para chatear.');
+        const token = await requireToken('chatear');
         const { id } = await groupConversation(token, group.id);
         if (!cancelled) setConversation({ group: group.id, id });
       } catch (error) {
@@ -98,7 +97,7 @@ function GroupChat({ group }: { group: GroupInfo }) {
     return () => {
       cancelled = true;
     };
-  }, [group.id, getToken]);
+  }, [group.id, requireToken]);
 
   const id = conversation?.group === group.id ? conversation.id : null;
   const error = failure?.group === group.id ? failure.message : null;

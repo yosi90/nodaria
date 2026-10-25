@@ -91,7 +91,7 @@ const localCopy = (project: Project): Project => {
 
 export function GroupsProvider({ children }: { children: ReactNode }) {
   const { state, dispatch, setActionGuard, reportRepairs } = useApp();
-  const { status, user, getToken, identity, isCurrent, tokenFor } = useAuth();
+  const { status, user, requireToken, identity, isCurrent, tokenFor } = useAuth();
   const toast = useToast();
   const toastRef = useRef(toast);
 
@@ -425,8 +425,9 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const share = useCallback(
     (project: Project, name: string) =>
       enqueue(async () => {
-        const token = await getToken();
-        if (!token || !uidRef.current) throw new ApiError(401, 'no_autenticado', 'Tienes que entrar con tu cuenta.');
+        const token = await requireToken();
+        // Con token pero sin cuenta todavía apuntada (justo al entrar): igual que sin sesión.
+        if (!uidRef.current) throw new ApiError(401, 'no_autenticado', 'Entra con tu cuenta de Yosiftware.');
         const signature = await contentSignature(project);
         const group = await createGroup(token, crypto.randomUUID(), name, project);
         const shared = group.projects.find(p => p.id === project.id);
@@ -441,19 +442,17 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         publish([...groupsRef.current.filter(g => g.id !== group.id), group]);
         return group;
       }),
-    [enqueue, getToken, saveMeta, publish],
+    [enqueue, requireToken, saveMeta, publish],
   );
 
   const removeGroup = useCallback(
     async (group: GroupInfo, recipient: string) => {
       await enqueue(async () => {
-        const token = await getToken();
-        if (!token) throw new ApiError(401, 'no_autenticado', 'Tienes que entrar con tu cuenta.');
-        await deleteGroup(token, group.id, recipient);
+        await deleteGroup(await requireToken(), group.id, recipient);
       });
       await syncShared();
     },
-    [enqueue, getToken, syncShared],
+    [enqueue, requireToken, syncShared],
   );
 
   const leave = useCallback(

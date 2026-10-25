@@ -1,7 +1,7 @@
 import { Download, ExternalLink, Plus, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { YosiSymbol } from '../common/YosiSymbol';
 import type { PlatformAiState, PlatformModels } from '../../services/yosiftware';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { databaseContext, isAiTable } from '../../domain/aiContext';
 import { answerParts, WORLD_BUDGET, worldContext } from '../../domain/aiWorld';
 import { defaultSelection, resumeRefs, reviewProposal } from '../../domain/aiProposal';
@@ -86,7 +86,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 export function AiPanel({ onClose }: { onClose: () => void }) {
   const { project } = useApp();
-  const { status, getToken, signIn } = useAuth();
+  const { status, requireToken: withToken, signIn } = useAuth();
   const { preferences, setPreference } = usePreferences();
   const { confirm } = useDialogs();
 
@@ -125,12 +125,6 @@ export function AiPanel({ onClose }: { onClose: () => void }) {
 
   // Cerrar el panel o cambiar de proyecto mientras se espera cancela la petición.
   useEffect(() => () => abort.current?.abort(), []);
-
-  const withToken = useCallback(async () => {
-    const token = await getToken();
-    if (!token) throw new ApiError(401, 'no_autenticado', 'Tienes que iniciar sesión con tu cuenta de Yosiftware.');
-    return token;
-  }, [getToken]);
 
   // Qué modelos alcanza la clave que se va a usar: la de la organización del grupo o la de la persona.
   // También si está lista y cuál es el proveedor preferido de la persona, para el modelo por defecto.

@@ -393,7 +393,7 @@ function MembersSection({ admin }: { admin: GroupAdmin }) {
 }
 
 function SettingsSection({ admin, onClose }: { admin: GroupAdmin; onClose: () => void }) {
-  const { user, getToken } = useAuth();
+  const { user, requireToken } = useAuth();
   const { project } = useApp();
   const { leave, removeGroup } = useGroups();
   const { confirm } = useDialogs();
@@ -476,8 +476,7 @@ function SettingsSection({ admin, onClose }: { admin: GroupAdmin; onClose: () =>
               disabled={busy}
               onClick={() =>
                 void act(async () => {
-                  const token = await getToken();
-                  if (!token) throw new Error('Entra con tu cuenta de Yosiftware.');
+                  const token = await requireToken();
                   const clean = Object.fromEntries(
                     Object.entries(labels)
                       .map(([role, name]) => [role, name.trim()])

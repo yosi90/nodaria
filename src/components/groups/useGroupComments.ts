@@ -12,7 +12,7 @@ import { useGroups } from '../../state/groups';
  */
 export function useGroupComments(group: GroupInfo) {
   const { project } = useApp();
-  const { getToken } = useAuth();
+  const { getToken, requireToken } = useAuth();
   const { commentsTick } = useGroups();
   const [comments, setComments] = useState<GroupComment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +34,7 @@ export function useGroupComments(group: GroupInfo) {
     setBusy(true);
     setError(null);
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Entra con tu cuenta de Yosiftware.');
-      await work(token);
+      await work(await requireToken());
       await load();
     } catch (failure) {
       setError(groupErrorMessage(failure));
