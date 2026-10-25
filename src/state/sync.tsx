@@ -27,6 +27,7 @@ import { useApp } from './AppContext';
 import { useAuth } from './auth';
 import { useGroups } from './groups';
 import { useToast } from '../components/common/toasts';
+import { PUSH_DELAY_MS, useRecurringSync } from './syncTriggers';
 
 /** `off`: sin sesión. `offline`: no se llega a la API. `error`: la API respondió con error. */
 export type SyncState = 'off' | 'idle' | 'syncing' | 'offline' | 'error';
@@ -50,8 +51,6 @@ interface SyncContextValue extends SyncStatus {
 
 const Context = createContext<SyncContextValue | null>(null);
 
-/** Retardo tras un cambio local antes de subirlo. */
-const PUSH_DELAY_MS = 2500;
 const PERIODIC_MS = 5 * 60 * 1000;
 /** Pasadas extra permitidas en una sincronización cuando la API responde 409. */
 const MAX_PASSES = 3;
@@ -284,19 +283,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [signedIn, state.projects, syncNow]);
 
   // Cada cierto tiempo, al recuperar la conexión y al volver a la pestaña.
-  useEffect(() => {
-    if (!signedIn) return;
-    const interval = window.setInterval(() => void syncNow(), PERIODIC_MS);
-    const online = () => void syncNow();
-    const visible = () => document.visibilityState === 'visible' && void syncNow();
-    window.addEventListener('online', online);
-    document.addEventListener('visibilitychange', visible);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener('online', online);
-      document.removeEventListener('visibilitychange', visible);
-    };
-  }, [signedIn, syncNow]);
+  useRecurringSync(syncNow, signedIn, { every: PERIODIC_MS });
 
   const forgetAccount = useCallback(() => {
     leaving.current = true;

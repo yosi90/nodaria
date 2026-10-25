@@ -39,6 +39,7 @@ import { sdk } from '../services/yosiftware';
 import { useToast } from '../components/common/toasts';
 import { useApp } from './AppContext';
 import { useAuth } from './auth';
+import { PUSH_DELAY_MS, useRecurringSync } from './syncTriggers';
 
 /*
  * Motor de los proyectos compartidos (docs/roadmaps/ROADMAP_COLABORACION.md). Lee los grupos de la
@@ -76,7 +77,6 @@ const Context = createContext<GroupsContextValue | null>(null);
 const ReadOnlyContext = createContext(false);
 export const ReadOnlyProject = ReadOnlyContext.Provider;
 
-const PUSH_DELAY_MS = 2500;
 const POLL_MS = 60 * 1000;
 /** Tras aceptar una invitación, la plataforma tarda un momento en dejar el cambio en el feed. */
 const REFRESH_RETRIES_MS = [0, 2000, 5000, 10000];
@@ -334,18 +334,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   }, [signedIn, state.projects, syncShared]);
 
   // Los cambios de otros: cada minuto con la pestaña visible, al volver a ella y al recuperar la conexión.
-  useEffect(() => {
-    if (!signedIn) return;
-    const tick = () => document.visibilityState === 'visible' && void syncShared();
-    const interval = window.setInterval(tick, POLL_MS);
-    window.addEventListener('online', tick);
-    document.addEventListener('visibilitychange', tick);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener('online', tick);
-      document.removeEventListener('visibilitychange', tick);
-    };
-  }, [signedIn, syncShared]);
+  useRecurringSync(syncShared, signedIn, { every: POLL_MS, onlyVisible: true });
 
   // Al aceptar una invitación en la ventana del SDK: la API lee el feed y el proyecto del grupo baja.
   useEffect(() => {
