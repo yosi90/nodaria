@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { field, node, project, relation, schema } from '../test/fixtures';
 import {
   addNode,
+  addRelation,
   deleteField,
   deleteNode,
   deleteSchema,
@@ -213,5 +214,15 @@ describe('duplicateField (R3-07)', () => {
       duplicateField(next, 't', 'nombre').project.schemas[0].fields.map(f => (f as FieldDefinition).key),
     ).toContain('nombre_copia_2');
     expect(duplicateField(p, 't', 'no-existe').fieldId).toBeNull();
+  });
+});
+
+describe('addRelation (D-04)', () => {
+  it('crea la relación con su parentesco neutro y su fecha, en un solo paso', () => {
+    const p = project({ schemas: [schema('familia', {}, 'relationship')], nodes: [node('a', 'x'), node('b', 'x')] });
+    const added = addRelation(p, 'familia', 'a', 'b', { id: 'r1', kinshipId: 'hijo', kinshipNeutral: true });
+    expect(added.relations[0]).toMatchObject({ id: 'r1', kinshipId: 'hijo', kinshipNeutral: true });
+    expect(added.relations[0].createdAt).not.toBe('');
+    expect(addRelation(p, 'familia', 'a', 'b').relations[0].kinshipNeutral).toBe(false);
   });
 });

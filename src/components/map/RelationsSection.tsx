@@ -460,23 +460,18 @@ function RelationForm({
     } else {
       const id = uid('rel');
       const warning = cardinalityWarning(project, schema.id, sourceId, targetId);
-      dispatch({ type: 'add-relation', typeId: schema.id, sourceId, targetId, id, values, reverseName, kinshipId });
+      dispatch({
+        type: 'add-relation',
+        typeId: schema.id,
+        sourceId,
+        targetId,
+        id,
+        values,
+        reverseName,
+        kinshipId,
+        kinshipNeutral,
+      });
       if (warning) toast({ message: `Límite superado: ${warning}` });
-      if (kinshipNeutral)
-        dispatch({
-          type: 'update-relation',
-          relation: {
-            id,
-            typeId: schema.id,
-            sourceId,
-            targetId,
-            values,
-            reverseName,
-            kinshipId,
-            kinshipNeutral,
-            createdAt: '',
-          },
-        });
       onDone(id);
     }
   };

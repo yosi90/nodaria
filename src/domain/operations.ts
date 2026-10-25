@@ -441,7 +441,13 @@ export function addRelation(
   typeId: string,
   sourceId: string,
   targetId: string,
-  extra: { id?: string; values?: Record<string, FieldValue>; reverseName?: string; kinshipId?: string | null } = {},
+  extra: {
+    id?: string;
+    values?: Record<string, FieldValue>;
+    reverseName?: string;
+    kinshipId?: string | null;
+    kinshipNeutral?: boolean;
+  } = {},
 ): Project {
   const relation: Relation = {
     id: extra.id ?? uid('rel'),
@@ -452,7 +458,7 @@ export function addRelation(
     createdAt: now(),
     reverseName: extra.reverseName ?? '',
     kinshipId: extra.kinshipId ?? null,
-    kinshipNeutral: false,
+    kinshipNeutral: extra.kinshipNeutral ?? false,
   };
   return { ...p, relations: [...p.relations, relation] };
 }

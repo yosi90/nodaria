@@ -171,6 +171,7 @@ export type Action =
       values?: Record<string, FieldValue>;
       reverseName?: string;
       kinshipId?: string | null;
+      kinshipNeutral?: boolean;
     }
   | { type: 'update-relation'; relation: Relation }
   | { type: 'delete-relation'; id: string };
@@ -405,6 +406,7 @@ function projectReducer(p: Project, action: Action): Project {
         values: action.values,
         reverseName: action.reverseName,
         kinshipId: action.kinshipId,
+        kinshipNeutral: action.kinshipNeutral,
       });
     case 'update-relation':
       return ops.updateRelation(p, action.relation);
