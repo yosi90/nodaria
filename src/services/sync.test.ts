@@ -11,9 +11,9 @@ import {
   storedSyncAccount,
   SYNC_META_KEY,
   unsyncedProjects,
-  type RemoteSummary,
   type SyncMeta,
 } from './sync';
+import type { RemoteProjectSummary } from './api';
 
 const T1 = '2026-10-04T10:00:00.000Z';
 const T2 = '2026-10-04T11:00:00.000Z';
@@ -21,7 +21,12 @@ const T3 = '2026-10-04T12:00:00.000Z';
 
 const local = (id: string, updatedAt = T1, blank = false) =>
   project({ id, name: id, updatedAt, schemas: blank ? [] : [schema('t')] });
-const remote = (id: string, version: number, updatedAt = T1, deletedAt: string | null = null): RemoteSummary => ({
+const remote = (
+  id: string,
+  version: number,
+  updatedAt = T1,
+  deletedAt: string | null = null,
+): RemoteProjectSummary => ({
   id,
   name: id,
   version,
@@ -155,7 +160,7 @@ describe('memoria al pasar a la cuenta de Yosiftware', () => {
 
   const OWNER = '7042db67-5cc3-f111-8c4b-002315ef7116';
   const local = project({ id: 'mapa', name: 'Munfamed', updatedAt: '2026-10-13T13:43:04.262Z' });
-  const remote: RemoteSummary[] = [
+  const remote: RemoteProjectSummary[] = [
     {
       id: 'mapa',
       name: 'Munfamed',

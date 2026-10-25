@@ -1,4 +1,5 @@
 import type { Project } from '../domain/types';
+import type { RemoteProjectSummary } from './api';
 
 /**
  * Reglas de sincronización entre los proyectos locales (localStorage) y los de la cuenta.
@@ -24,17 +25,6 @@ export interface SyncMeta {
   /** Cuenta a la que pertenece el recuerdo: el identificador global de Yosiftware (antes, el UID de Firebase). */
   uid: string | null;
   projects: Record<string, SyncedVersion>;
-}
-
-/** Resumen que devuelve `GET /api/projects`. */
-export interface RemoteSummary {
-  id: string;
-  name: string;
-  version: number;
-  updatedAt: string;
-  serverUpdatedAt: string;
-  deletedAt: string | null;
-  sizeBytes: number;
 }
 
 export interface SyncConflict {
@@ -134,7 +124,7 @@ export interface PlanOptions {
 
 export function planSync(
   local: Project[],
-  remote: RemoteSummary[],
+  remote: RemoteProjectSummary[],
   meta: SyncMeta,
   options: PlanOptions = {},
 ): SyncPlan {
