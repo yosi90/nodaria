@@ -3,6 +3,7 @@ import type { AppConfig } from '../config.ts';
 import { type Database, sql, withTransaction } from '../db/pool.ts';
 import { spaceFeedEffect } from '../groups/model.ts';
 import { applySpaceEffectSql } from '../groups/repository.ts';
+import { createPeriodicTask } from '../periodic.ts';
 import { DELETE_USER } from '../users/repository.ts';
 import { PlatformError, platformRequest } from './http.ts';
 
@@ -121,9 +122,6 @@ export function createFeedReader({
    */
   onSpaces?: (changed: { externalId: string; changeId: number }[]) => void;
 }) {
-  let timer: NodeJS.Timeout | null = null;
-  let running: Promise<number> | null = null;
-
   async function readAll() {
     let cursor = await store.cursor();
     let applied = 0;
@@ -147,26 +145,11 @@ export function createFeedReader({
     return applied;
   }
 
-  function readOnce() {
-    running ??= readAll().finally(() => {
-      running = null;
-    });
-    return running;
-  }
-
-  return {
-    readOnce,
-    start() {
-      const tick = () =>
-        void readOnce().catch(error => log.warn({ err: error }, 'No se pudo leer el feed de la plataforma'));
-      tick();
-      timer = setInterval(tick, intervalMs);
-      timer.unref();
-    },
-    async stop() {
-      if (timer) clearInterval(timer);
-      timer = null;
-      await running?.catch(() => undefined);
-    },
-  };
+  const task = createPeriodicTask({
+    run: readAll,
+    intervalMs,
+    log,
+    failure: 'No se pudo leer el feed de la plataforma',
+  });
+  return { readOnce: task.runOnce, start: task.start, stop: task.stop };
 }

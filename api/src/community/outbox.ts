@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger } from 'fastify';
+import { createPeriodicTask } from '../periodic.ts';
 import type { CommunityClient } from '../platform/community.ts';
 import { PlatformError } from '../platform/http.ts';
 import type { CommunityStore, OutboxItem } from './repository.ts';
@@ -41,8 +42,6 @@ export function createOutboxWorker({
   log: Pick<FastifyBaseLogger, 'info' | 'warn'>;
 }) {
   let kindsDeclared = false;
-  let timer: NodeJS.Timeout | null = null;
-  let running: Promise<number> | null = null;
 
   async function runAll() {
     if (!kindsDeclared) {
@@ -75,25 +74,5 @@ export function createOutboxWorker({
     return sent;
   }
 
-  function runOnce() {
-    running ??= runAll().finally(() => {
-      running = null;
-    });
-    return running;
-  }
-
-  return {
-    runOnce,
-    start() {
-      const tick = () => void runOnce().catch(error => log.warn({ err: error }, 'No se pudo vaciar la cola de salida'));
-      tick();
-      timer = setInterval(tick, intervalMs);
-      timer.unref();
-    },
-    async stop() {
-      if (timer) clearInterval(timer);
-      timer = null;
-      await running?.catch(() => undefined);
-    },
-  };
+  return createPeriodicTask({ run: runAll, intervalMs, log, failure: 'No se pudo vaciar la cola de salida' });
 }

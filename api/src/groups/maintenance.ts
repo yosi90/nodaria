@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger } from 'fastify';
+import { createPeriodicTask } from '../periodic.ts';
 import type { SpacesClient } from '../platform/spaces.ts';
 import type { GroupStore } from './repository.ts';
 
@@ -19,8 +20,6 @@ export function createGroupMaintenance({
   log: Pick<FastifyBaseLogger, 'info' | 'warn'>;
 }) {
   let rolesDeclared = false;
-  let timer: NodeJS.Timeout | null = null;
-  let running: Promise<void> | null = null;
 
   async function runAll() {
     if (!rolesDeclared) {
@@ -35,26 +34,10 @@ export function createGroupMaintenance({
     }
   }
 
-  function runOnce() {
-    running ??= runAll().finally(() => {
-      running = null;
-    });
-    return running;
-  }
-
-  return {
-    runOnce,
-    start() {
-      const tick = () =>
-        void runOnce().catch(error => log.warn({ err: error }, 'No se pudo poner al día los espacios de los grupos'));
-      tick();
-      timer = setInterval(tick, intervalMs);
-      timer.unref();
-    },
-    async stop() {
-      if (timer) clearInterval(timer);
-      timer = null;
-      await running?.catch(() => undefined);
-    },
-  };
+  return createPeriodicTask({
+    run: runAll,
+    intervalMs,
+    log,
+    failure: 'No se pudo poner al día los espacios de los grupos',
+  });
 }
