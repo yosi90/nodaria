@@ -7,6 +7,7 @@ import { useProjectAccess } from '../../state/groups';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
 import { BaseTypeField, ReadWarnings, SchemaLockedNote, SourceFiles, type SourceFile } from './schemaDialogParts';
+import { withMember } from '../common/sets';
 
 /** Hasta dónde se lee un archivo: un script de esquema no llega ni de lejos. */
 const MAX_FILE = 5 * 1024 * 1024;
@@ -144,14 +145,7 @@ export function TablesImportDialog({ onClose }: { onClose: () => void }) {
                       type="checkbox"
                       disabled={exists}
                       checked={!exists && !unchecked.has(table.name)}
-                      onChange={e =>
-                        setUnchecked(current => {
-                          const next = new Set(current);
-                          if (e.target.checked) next.delete(table.name);
-                          else next.add(table.name);
-                          return next;
-                        })
-                      }
+                      onChange={e => setUnchecked(current => withMember(current, table.name, !e.target.checked))}
                     />
                     <span>
                       <strong>{table.name}</strong>

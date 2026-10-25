@@ -8,6 +8,7 @@ import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
 import { ConversionWarnings, SchemaLockedNote } from './schemaDialogParts';
+import { withMember } from '../common/sets';
 
 /**
  * Pasar documentos a tablas (`tableConversion.ts`): se eligen la base y las colecciones, y para cada
@@ -86,14 +87,7 @@ export function TableConversionDialog({ onClose }: { onClose: () => void }) {
                 <input
                   type="checkbox"
                   checked={!unchecked.has(n.id)}
-                  onChange={e =>
-                    setUnchecked(current => {
-                      const next = new Set(current);
-                      if (e.target.checked) next.delete(n.id);
-                      else next.add(n.id);
-                      return next;
-                    })
-                  }
+                  onChange={e => setUnchecked(current => withMember(current, n.id, !e.target.checked))}
                 />
                 <strong>{nodeLabel(project, n)}</strong>
               </label>

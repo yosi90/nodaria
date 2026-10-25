@@ -17,6 +17,7 @@ import {
 import { useApp } from '../../state/AppContext';
 import { Button, IconButton } from '../common/Button';
 import { useToast } from '../common/toasts';
+import { withMember } from '../common/sets';
 
 /** Filas por página: la hoja edita en celda y miles de controles a la vez irían lentos. */
 const PAGE = 100;
@@ -201,12 +202,7 @@ export function RecordsGrid({ table, tables, issues, canEdit }: Props) {
                           type="checkbox"
                           aria-label={`Marcar la fila ${index + 1}`}
                           checked={checked.has(row.id)}
-                          onChange={e => {
-                            const next = new Set(checked);
-                            if (e.target.checked) next.add(row.id);
-                            else next.delete(row.id);
-                            setChecked(next);
-                          }}
+                          onChange={e => setChecked(withMember(checked, row.id, e.target.checked))}
                         />
                       </td>
                       <td className="records-number">{index + 1}</td>

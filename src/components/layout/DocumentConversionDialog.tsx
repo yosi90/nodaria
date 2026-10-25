@@ -7,6 +7,7 @@ import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
 import { ConversionWarnings, SchemaLockedNote } from './schemaDialogParts';
+import { withMember } from '../common/sets';
 
 /**
  * Pasar tablas a documentos (`documentConversion.ts`): se eligen el motor y las tablas, y para cada una si
@@ -93,14 +94,7 @@ export function DocumentConversionDialog({ onClose }: { onClose: () => void }) {
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={e =>
-                        setUnchecked(current => {
-                          const next = new Set(current);
-                          if (e.target.checked) next.delete(t.node.id);
-                          else next.add(t.node.id);
-                          return next;
-                        })
-                      }
+                      onChange={e => setUnchecked(current => withMember(current, t.node.id, !e.target.checked))}
                     />
                     <strong>{t.name}</strong>
                   </label>

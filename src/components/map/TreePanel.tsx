@@ -27,6 +27,7 @@ import { NodeAvatar } from '../common/NodeAvatar';
 import { schemaOption } from '../common/options';
 import { anchorOf, type Anchor } from '../common/anchor';
 import { Select } from '../common/Select';
+import { withMember } from '../common/sets';
 
 interface Row {
   /** Ruta de ids hasta el nodo; un nodo con varios superiores aparece una vez por ruta. */
@@ -280,13 +281,7 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
     setDropFolder(null);
   };
   const toggle = (id: string, open?: boolean) =>
-    setCollapsed(current => {
-      const next = new Set(current);
-      const shouldOpen = open ?? next.has(id);
-      if (shouldOpen) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setCollapsed(current => withMember(current, id, !(open ?? current.has(id))));
 
   const onKeyDown = (event: KeyboardEvent) => {
     const index = rows.findIndex(r => r.node.id === focused);

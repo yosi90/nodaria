@@ -31,6 +31,7 @@ import { Modal } from '../common/Modal';
 import { Splitter } from '../common/Splitter';
 import { useToast } from '../common/toasts';
 import { SchemaEditor } from './SchemaEditor';
+import { withMember } from '../common/sets';
 
 type Entry = { schema: Schema; depth: number };
 /** Sangría extra de los tipos que van dentro de una carpeta. */
@@ -64,12 +65,8 @@ export function SchemaView({ kind }: { kind: SchemaKind }) {
   const collapsed = new Set(preferences.collapsedRows[collapseKey] ?? []);
   const setCollapsed = (keys: string[]) =>
     setPreference('collapsedRows', { ...preferences.collapsedRows, [collapseKey]: keys });
-  const toggle = (key: string, open?: boolean) => {
-    const next = new Set(collapsed);
-    if (open ?? next.has(key)) next.delete(key);
-    else next.add(key);
-    setCollapsed([...next]);
-  };
+  const toggle = (key: string, open?: boolean) =>
+    setCollapsed([...withMember(collapsed, key, !(open ?? collapsed.has(key)))]);
 
   // Abrir un tipo desde otra vista: se despliegan sus ancestros y su carpeta para que se vea en la lista.
   useEffect(() => {

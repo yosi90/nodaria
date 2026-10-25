@@ -11,6 +11,7 @@ import { useProjectAccess } from '../../state/groups';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/toasts';
 import { BaseTypeField, ReadWarnings, SchemaLockedNote, SourceFiles, type SourceFile } from './schemaDialogParts';
+import { withMember } from '../common/sets';
 
 /** Hasta dónde se lee un archivo de muestra. */
 const MAX_FILE = 10 * 1024 * 1024;
@@ -131,14 +132,7 @@ export function DocumentImportDialog({ onClose }: { onClose: () => void }) {
                       type="checkbox"
                       disabled={exists}
                       checked={!exists && !unchecked.has(collection.name)}
-                      onChange={e =>
-                        setUnchecked(current => {
-                          const next = new Set(current);
-                          if (e.target.checked) next.delete(collection.name);
-                          else next.add(collection.name);
-                          return next;
-                        })
-                      }
+                      onChange={e => setUnchecked(current => withMember(current, collection.name, !e.target.checked))}
                     />
                     <span>
                       <strong>{collection.name}</strong>

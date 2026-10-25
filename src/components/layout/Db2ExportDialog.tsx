@@ -7,6 +7,7 @@ import { createZip } from '../../services/zip';
 import { useApp } from '../../state/AppContext';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
+import { withMember } from '../common/sets';
 
 /**
  * Exportar las tablas de Db2 for i: el script único, los miembros fuente SQL (QSQLSRC) y los DDS (QDDSSRC),
@@ -29,13 +30,7 @@ export function Db2ExportDialog({ onClose }: { onClose: () => void }) {
   const libraryOk = isSystemName(library);
   const anything = script || sqlMembers || ddsMembers;
   const base = fileSafeName(project.name, 'proyecto');
-  const toggle = (id: string, on: boolean) =>
-    setChosen(current => {
-      const next = new Set(current);
-      if (on) next.add(id);
-      else next.delete(id);
-      return next;
-    });
+  const toggle = (id: string, on: boolean) => setChosen(current => withMember(current, id, on));
 
   const download = () => {
     const now = new Date();

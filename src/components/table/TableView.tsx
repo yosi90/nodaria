@@ -23,6 +23,7 @@ import { columnDefinitions } from '../../domain/database';
 import { isImageValue } from '../map/images';
 import { BulkBar } from './BulkBar';
 import { MatrixView } from './MatrixView';
+import { withMember } from '../common/sets';
 
 /*
  * Vista «Tabla»: una hoja por tipo de entidad con una fila por nodo y una columna por atributo,
@@ -150,13 +151,7 @@ export function TableView() {
 
   const selectedIds = useMemo(() => rows.filter(n => checked.has(n.id)).map(n => n.id), [rows, checked]);
   const allChecked = rows.length > 0 && selectedIds.length === rows.length;
-  const toggleRow = (id: string, on: boolean) =>
-    setChecked(prev => {
-      const next = new Set(prev);
-      if (on) next.add(id);
-      else next.delete(id);
-      return next;
-    });
+  const toggleRow = (id: string, on: boolean) => setChecked(prev => withMember(prev, id, on));
   const toggleAll = () => setChecked(allChecked ? new Set() : new Set(rows.map(n => n.id)));
   const clearChecked = () => setChecked(new Set());
   const updateValue = (n: Node, fieldId: string, value: FieldValue) =>
