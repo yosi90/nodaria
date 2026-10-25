@@ -56,7 +56,7 @@ Hoy «Calendario del proyecto…» (engranaje) abre un editor de meses, días de
 
 ### Fase 3 — Vista «Calendario» (hecha el 2026-10-22)
 
-Código en `src/components/calendar/` (`CalendarView`, `EntryPanel`, `agendaParts`, `agendaUi`, `useGroupMembers`) y `src/styles/calendar.css`.
+Código en `src/components/calendar/` (`CalendarView`, `EntryPanel`, `agendaParts`, `agendaUi`), los miembros del grupo en `src/components/groups/useGroupMembers.ts` (desde la auditoría de duplicados del 2026-10-25, compartido con los comentarios del grupo) y `src/styles/calendar.css`.
 
 - [x] Vista nueva en «Datos» (`View: 'calendar'`, atajo Alt+8, también en la paleta Ctrl+K y en el menú de vistas compactado), con tres modos: **Mes** (rejilla con hasta tres entradas por día y «+N»), **Semana** (por horas solo si hay horas; si no, por días) y **Lista** (próximas, por días, con las vencidas arriba).
 - [x] Crear una entrada con doble clic en un día o con «Nueva», en un panel lateral como la ficha: tipo, título, fecha (o rango), hora opcional, descripción con menciones, nodos enlazados y «hecha».
