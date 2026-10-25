@@ -566,17 +566,14 @@
   color: var(--text-muted);
 }
 
-/* Chats: la bandeja y la conversación del SDK, con la paleta de Nodaria. */
-.community-chats {
-  display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  height: 100%;
-  min-height: 0;
-}
+/*
+ * Los elementos del chat del SDK con la paleta de Nodaria, que sigue el tema porque son las variables de la
+ * página: los de «Chats», la ventana flotante (FloatingChat.tsx) y la conversación del grupo (groups.css).
+ */
 .community-chats yosi-chat-bandeja,
-.community-chats yosi-chat-conversacion {
-  min-height: 0;
-  height: 100%;
+.community-chats yosi-chat-conversacion,
+yosi-chat.nodaria-chat,
+.group-chat-panel yosi-chat-conversacion {
   --yosi-color-principal: var(--accent);
   --yosi-color-principal-texto: var(--accent-contrast);
   --yosi-color-principal-suave: var(--accent-soft);
@@ -587,6 +584,19 @@
   --yosi-color-texto-suave: var(--text-muted);
   --yosi-color-borde: var(--border);
   --yosi-color-borde-fuerte: var(--border-strong);
+}
+
+/* Chats: la bandeja y la conversación del SDK. */
+.community-chats {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+.community-chats yosi-chat-bandeja,
+.community-chats yosi-chat-conversacion {
+  min-height: 0;
+  height: 100%;
 }
 .community-chats-tray {
   display: grid;
@@ -638,21 +648,8 @@
   }
 }
 
-/*
- * La ventana flotante de los chats (`<yosi-chat>`, FloatingChat.tsx): la del SDK con los colores de Nodaria,
- * que siguen el tema porque son las variables de la página.
- */
+/* La ventana flotante de los chats (`<yosi-chat>`, FloatingChat.tsx): además, acento, éxito, error y fuente. */
 yosi-chat.nodaria-chat {
-  --yosi-color-principal: var(--accent);
-  --yosi-color-principal-texto: var(--accent-contrast);
-  --yosi-color-principal-suave: var(--accent-soft);
-  --yosi-color-fondo: var(--surface-1);
-  --yosi-color-fondo-suave: var(--surface-2);
-  --yosi-color-fondo-pagina: var(--bg);
-  --yosi-color-texto: var(--text);
-  --yosi-color-texto-suave: var(--text-muted);
-  --yosi-color-borde: var(--border);
-  --yosi-color-borde-fuerte: var(--border-strong);
   --yosi-color-acento: var(--warning);
   --yosi-color-acento-suave: var(--warning-soft);
   --yosi-color-exito: var(--success);

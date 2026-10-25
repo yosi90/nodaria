@@ -182,20 +182,11 @@
  * El elemento se maqueta a sí mismo como columna (`:host { display: flex }` en el SDK), con los mensajes
  * creciendo y el campo de escribir abajo. Un `display` desde aquí manda sobre su `:host`: con `block`, el
  * campo subía hasta debajo de los mensajes cuando la conversación no llenaba el panel. Solo se le da el alto.
+ * La paleta común de los chats del SDK está en community.css.
  */
 .group-chat-panel yosi-chat-conversacion {
   flex: 1;
   min-height: 0;
-  --yosi-color-principal: var(--accent);
-  --yosi-color-principal-texto: var(--accent-contrast);
-  --yosi-color-principal-suave: var(--accent-soft);
-  --yosi-color-fondo: var(--surface-1);
-  --yosi-color-fondo-suave: var(--surface-2);
-  --yosi-color-fondo-pagina: var(--bg);
-  --yosi-color-texto: var(--text);
-  --yosi-color-texto-suave: var(--text-muted);
-  --yosi-color-borde: var(--border);
-  --yosi-color-borde-fuerte: var(--border-strong);
   --yosi-color-exito: var(--success);
   --yosi-color-error: var(--danger);
   --yosi-color-error-suave: var(--danger-soft);
