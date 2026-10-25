@@ -51,7 +51,7 @@ import { CalendarDialog } from '../layout/CalendarDialog';
 import { EntryChip } from './agendaParts';
 import { AGENDA_DRAG_TYPE, entryTitle, initials } from './agendaUi';
 import { EntryPanel } from './EntryPanel';
-import { useGroupMembers } from './useGroupMembers';
+import { useGroupMembers } from '../groups/useGroupMembers';
 
 const MODES: [AgendaMode, string][] = [
   ['month', 'Mes'],

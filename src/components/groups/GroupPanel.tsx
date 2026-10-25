@@ -12,7 +12,7 @@ import {
   type CommentState,
   type GroupComment,
 } from '../../services/comments';
-import { groupConversation, groupErrorMessage, spaceMembers, type GroupInfo } from '../../services/groups';
+import { groupConversation, groupErrorMessage, type GroupInfo } from '../../services/groups';
 import { useApp } from '../../state/AppContext';
 import { useAuth } from '../../state/auth';
 import { useNavigation } from '../../state/navigation';
@@ -21,6 +21,7 @@ import { Button, IconButton } from '../common/Button';
 import { Splitter } from '../common/Splitter';
 import { openFloatingChat } from '../community/communityHelpers';
 import { useGroupComments } from './useGroupComments';
+import { useGroupMembers } from './useGroupMembers';
 import { dateTimeText } from '../common/dates';
 
 declare module 'react' {
@@ -143,7 +144,7 @@ function GroupComments({ group }: { group: GroupInfo }) {
   const { user } = useAuth();
   const { selection, select, openAgendaEntry } = useNavigation();
   const { comments, error, busy, act } = useGroupComments(group);
-  const [names, setNames] = useState<Record<string, string>>({});
+  const { nameOf } = useGroupMembers(group);
   const [onlyNode, setOnlyNode] = useState(true);
   const [showClosed, setShowClosed] = useState(false);
   const [body, setBody] = useState('');
@@ -152,12 +153,6 @@ function GroupComments({ group }: { group: GroupInfo }) {
 
   const selectedNode = selection?.kind === 'node' ? (project.nodes.find(n => n.id === selection.id) ?? null) : null;
   const caps = group.capabilities;
-
-  useEffect(() => {
-    void spaceMembers(group.spaceId)
-      .then(members => setNames(Object.fromEntries(members.map(m => [m.cuenta.toLowerCase(), m.nombre ?? m.alias]))))
-      .catch(() => undefined);
-  }, [group.spaceId]);
 
   const fields = useMemo(
     () => (selectedNode ? visibleFields(project, selectedNode).filter(f => SUGGESTIBLE.has(f.type)) : []),
@@ -239,7 +234,7 @@ function GroupComments({ group }: { group: GroupInfo }) {
           return (
             <li key={comment.id} className={`group-comment ${comment.state}`}>
               <div className="group-comment-meta">
-                <strong>{mine ? 'Tú' : (names[comment.author] ?? 'Antiguo miembro')}</strong>
+                <strong>{mine ? 'Tú' : nameOf(comment.author)}</strong>
                 <span>{dateTimeText(comment.createdAt, 'short')}</span>
                 {comment.state !== 'abierto' && <span className="badge">{STATE_LABELS[comment.state]}</span>}
               </div>

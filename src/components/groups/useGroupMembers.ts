@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { spaceMembers, type GroupInfo, type SpaceMember } from '../../services/groups';
 
 /**
- * Miembros del grupo del proyecto abierto, para asignar entradas de la agenda y enseñar a quién. Se
- * piden a la plataforma al abrir la vista; sin grupo o sin conexión, la lista queda vacía.
+ * Miembros del grupo del proyecto abierto, para asignar entradas de la agenda y enseñar quién comenta o a
+ * quién se asigna. Se piden a la plataforma al abrir la vista; sin grupo o sin conexión, la lista queda vacía.
  */
 export function useGroupMembers(group: GroupInfo | null) {
   const [members, setMembers] = useState<SpaceMember[]>([]);
