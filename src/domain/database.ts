@@ -779,37 +779,16 @@ export interface ForeignKeyLink {
   targetFieldId: string | null;
 }
 
-/** Claves foráneas que se dibujan, a partir de los valores de las referencias de cada nodo tabla. */
+/**
+ * Claves foráneas que se dibujan: las referencias de `databaseLinks` entre dos nodos tabla de la misma base
+ * (entre SQL Server y Db2 es una referencia entre motores, no una clave foránea).
+ */
 export function foreignKeyLinks(p: Project): ForeignKeyLink[] {
-  const columns = new Map<string, TableColumn[]>();
-  const columnsFor = (typeId: string) => {
-    if (!columns.has(typeId)) columns.set(typeId, isTableType(p, typeId) ? tableColumns(p, typeId) : []);
-    return columns.get(typeId)!;
-  };
-  const nodes = new Map(p.nodes.map(n => [n.id, n]));
-  const result: ForeignKeyLink[] = [];
-  p.nodes.forEach(node => {
-    columnsFor(node.typeId)
-      .filter(c => c.reference)
-      .forEach(c => {
-        const raw = node.values[c.field.id];
-        const ids = referenceIds(raw);
-        ids.forEach(targetId => {
-          const target = nodes.get(targetId);
-          // Una clave foránea une tablas de la misma base: entre SQL Server y Db2 es una referencia entre motores.
-          if (!target || !isTableType(p, target.typeId) || engineOf(p, target.typeId) !== engineOf(p, node.typeId))
-            return;
-          const keys = columnsFor(target.typeId).filter(k => k.sql.primaryKey);
-          result.push({
-            sourceId: node.id,
-            fieldId: c.field.id,
-            targetId,
-            targetFieldId: keys.length === 1 ? keys[0].field.id : null,
-          });
-        });
-      });
-  });
-  return result;
+  const types = new Map(p.nodes.map(n => [n.id, n.typeId]));
+  const isTable = (nodeId: string) => isTableType(p, types.get(nodeId) ?? '');
+  return databaseLinks(p)
+    .filter(link => !link.crossEngine && isTable(link.sourceId) && isTable(link.targetId))
+    .map(({ sourceId, fieldId, targetId, targetFieldId }) => ({ sourceId, fieldId, targetId, targetFieldId }));
 }
 
 /** Una referencia dibujada entre nodos de base de datos de cualquier motor (también entre motores distintos). */
