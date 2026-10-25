@@ -1,17 +1,9 @@
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  useInternalNode,
-  useStore,
-  type Edge,
-  type EdgeProps,
-  type InternalNode,
-} from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, useInternalNode, useStore, type Edge, type EdgeProps } from '@xyflow/react';
 import { memo, useMemo } from 'react';
 import type { RelationStyle } from '../../domain/types';
-import { bendFor, routeRelation, type Box, crossesBoxes, sideRoute, type Side } from './edgeGeometry';
+import { bendFor, routeRelation, crossesBoxes, sideRoute, type Side } from './edgeGeometry';
 import { useCanvasSettings } from './canvasSettings';
-import { NODE_H, NODE_W } from './layout';
+import { boxOf, boxText, parseBoxes } from './nodeBoxes';
 
 export interface FloatingEdgeData extends Record<string, unknown> {
   kind: 'relation' | 'hierarchy' | 'reference';
@@ -35,13 +27,6 @@ export interface FloatingEdgeData extends Record<string, unknown> {
 }
 
 export type FloatingEdgeType = Edge<FloatingEdgeData, 'floating'>;
-
-const boxOf = (n: InternalNode): Box => ({
-  x: n.internals.positionAbsolute.x,
-  y: n.internals.positionAbsolute.y,
-  width: n.measured.width ?? NODE_W,
-  height: n.measured.height ?? NODE_H,
-});
 
 const REACH = 320;
 
@@ -74,33 +59,24 @@ export const FloatingEdge = memo(function FloatingEdge({
     s.nodeLookup.forEach(n => {
       if (n.id === source || n.id === target || n.hidden) return;
       const o = boxOf(n);
-      if (o.x < maxX && o.x + o.width > minX && o.y < maxY && o.y + o.height > minY)
-        parts.push(`${o.x},${o.y},${o.width},${o.height}`);
+      if (o.x < maxX && o.x + o.width > minX && o.y < maxY && o.y + o.height > minY) parts.push(boxText(o));
     });
     return parts.join(';');
   });
 
   const a = sourceNode ? boxOf(sourceNode) : null;
   const b = targetNode ? boxOf(targetNode) : null;
-  const key = a && b ? `${a.x},${a.y},${a.width},${a.height}|${b.x},${b.y},${b.width},${b.height}` : '';
+  const key = a && b ? `${boxText(a)};${boxText(b)}` : '';
   const index = data?.index ?? 0;
   const count = data?.count ?? 1;
   const ends = data?.ends;
   const endsKey = ends ? `${ends.sideSource},${ends.sideTarget},${ends.offsetSource},${ends.offsetTarget}` : '';
   const route = useMemo(() => {
     if (!key) return null;
-    const [ra, rb] = key.split('|').map(part => {
-      const [x, y, width, height] = part.split(',').map(Number);
-      return { x, y, width, height };
-    });
+    const [ra, rb] = parseBoxes(key);
     const forward = source < target;
     const distance = Math.hypot(rb.x - ra.x, rb.y - ra.y);
-    const obstacles: Box[] = nearby
-      ? nearby.split(';').map(part => {
-          const [x, y, width, height] = part.split(',').map(Number);
-          return { x, y, width, height };
-        })
-      : [];
+    const obstacles = parseBoxes(nearby);
     // Ruta preferida: por los lados enfrentados, en S. Si atraviesa alguna tarjeta, se esquiva en curva.
     // Si las tarjetas se solapan en el eje dominante (no hay hueco entre los lados enfrentados), la S
     // se retorcería: mejor la curva clásica.
