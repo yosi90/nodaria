@@ -20,6 +20,26 @@ export const documentSchema = z
   })
   .loose();
 
+/** El id del documento tiene que ser el de la ruta. */
+export function assertDocumentId(document: { id: string }, id: string) {
+  if (document.id !== id) {
+    throw new HttpError(400, 'project_id_mismatch', 'El identificador del documento no coincide con la ruta.');
+  }
+}
+
+/** El documento en JSON para guardarlo; 413 si pasa del tamaño máximo de un proyecto. */
+export function serializeDocument(document: object, maxBytes: number) {
+  const serialized = JSON.stringify(document);
+  if (Buffer.byteLength(serialized, 'utf8') > maxBytes) {
+    throw new HttpError(413, 'project_too_large', 'El proyecto supera el tamaño máximo admitido.', { maxBytes });
+  }
+  return serialized;
+}
+
+/** Otro dispositivo de la cuenta escribió antes: la versión vigente va en `current`. */
+const versionConflict = (current: unknown) =>
+  new HttpError(409, 'version_conflict', 'Otro dispositivo cambió este proyecto antes.', { current });
+
 const putSchema = z.object({
   document: documentSchema,
   baseVersion: z.number().int().min(0),
@@ -49,15 +69,8 @@ export const projectRoutes: FastifyPluginAsync<
   app.put('/projects/:id', async request => {
     const { id } = paramsSchema.parse(request.params);
     const { document, baseVersion } = putSchema.parse(request.body);
-    if (document.id !== id) {
-      throw new HttpError(400, 'project_id_mismatch', 'El identificador del documento no coincide con la ruta.');
-    }
-    const serialized = JSON.stringify(document);
-    if (Buffer.byteLength(serialized, 'utf8') > config.projectMaxBytes) {
-      throw new HttpError(413, 'project_too_large', 'El proyecto supera el tamaño máximo admitido.', {
-        maxBytes: config.projectMaxBytes,
-      });
-    }
+    assertDocumentId(document, id);
+    const serialized = serializeDocument(document, config.projectMaxBytes);
 
     // Un proyecto que la cuenta compartió (o el de un grupo suyo con el mismo id) ya no es suyo: otro
     // dispositivo con la copia de antes no lo resucita como proyecto propio.
@@ -74,11 +87,7 @@ export const projectRoutes: FastifyPluginAsync<
       { name: document.name, document: serialized, updatedAt: document.updatedAt },
       baseVersion,
     );
-    if (result.status === 'conflict') {
-      throw new HttpError(409, 'version_conflict', 'Otro dispositivo cambió este proyecto antes.', {
-        current: result.current,
-      });
-    }
+    if (result.status === 'conflict') throw versionConflict(result.current);
     return { id, version: result.version, serverUpdatedAt: result.serverUpdatedAt };
   });
 
@@ -88,11 +97,7 @@ export const projectRoutes: FastifyPluginAsync<
     const result = await projects.delete(authenticatedUser(request).id, id, baseVersion ?? null);
     if (result.status === 'not_found')
       throw new HttpError(404, 'project_not_found', 'El proyecto no existe en la cuenta.');
-    if (result.status === 'conflict') {
-      throw new HttpError(409, 'version_conflict', 'Otro dispositivo cambió este proyecto antes.', {
-        current: result.current,
-      });
-    }
+    if (result.status === 'conflict') throw versionConflict(result.current);
     // Las conversaciones con la IA de un proyecto borrado se borran con él, y deja de ser público.
     await conversations.deleteForProject(authenticatedUser(request).id, id);
     await community.unpublish(authenticatedUser(request).id, id);

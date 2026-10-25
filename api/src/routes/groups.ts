@@ -13,7 +13,7 @@ import {
 import type { GroupRecord, GroupView } from '../groups/repository.ts';
 import { PlatformError } from '../platform/http.ts';
 import { MAX_COMMENTS, type CommentState } from '../groups/comments.ts';
-import { documentSchema, PROJECT_ID } from './projects.ts';
+import { assertDocumentId, documentSchema, PROJECT_ID, serializeDocument } from './projects.ts';
 
 /*
  * Grupos de trabajo (docs/roadmaps/ROADMAP_COLABORACION.md). Cada grupo es un espacio de la plataforma
@@ -73,6 +73,8 @@ const deleteQuery = z.object({ recipient: z.string().regex(GLOBAL_ID, 'Cuenta no
 
 const NOT_FOUND = () => new HttpError(404, 'grupo_no_encontrado', 'El grupo no existe o no eres miembro.');
 const FORBIDDEN = () => new HttpError(403, 'sin_permiso_en_el_grupo', 'Tu rol en el grupo no te deja hacer eso.');
+const PROJECT_NOT_FOUND = () => new HttpError(404, 'project_not_found', 'El proyecto no existe en el grupo.');
+const ALREADY_SHARED = () => new HttpError(409, 'proyecto_ya_compartido', 'Ese proyecto ya es de otro grupo.');
 
 function serialize(view: GroupView, user: AuthenticatedUser) {
   const isOwner = view.owner === user.globalId;
@@ -150,17 +152,10 @@ export const groupRoutes: FastifyPluginAsync<
     const user = authenticatedUser(request);
     assertCanCreate(user);
     const { id, name, document } = createSchema.parse(request.body);
-    const serialized = JSON.stringify(document);
-    if (Buffer.byteLength(serialized, 'utf8') > config.projectMaxBytes) {
-      throw new HttpError(413, 'project_too_large', 'El proyecto supera el tamaño máximo admitido.', {
-        maxBytes: config.projectMaxBytes,
-      });
-    }
+    const serialized = serializeDocument(document, config.projectMaxBytes);
     const externalId = groupExternalId(id);
     const sharedIn = await groups.projectGroup(document.id);
-    if (sharedIn && sharedIn !== externalId) {
-      throw new HttpError(409, 'proyecto_ya_compartido', 'Ese proyecto ya es de otro grupo.');
-    }
+    if (sharedIn && sharedIn !== externalId) throw ALREADY_SHARED();
 
     const begun = await groups.beginCreate({ externalId, name, createdBy: user.globalId });
     if (begun.status === 'taken')
@@ -176,9 +171,7 @@ export const groupRoutes: FastifyPluginAsync<
       updatedAt: document.updatedAt,
       by: user.globalId,
     });
-    if (attached.status === 'already_shared') {
-      throw new HttpError(409, 'proyecto_ya_compartido', 'Ese proyecto ya es de otro grupo.');
-    }
+    if (attached.status === 'already_shared') throw ALREADY_SHARED();
     const view = (await groups.listForMember(user.globalId)).find(item => item.externalId === externalId);
     if (!view) throw NOT_FOUND();
     return serialize(view, user);
@@ -189,7 +182,7 @@ export const groupRoutes: FastifyPluginAsync<
     const { group, id } = projectParams.parse(request.params);
     await access(user, group);
     const stored = await groups.getProject(group, id);
-    if (!stored) throw new HttpError(404, 'project_not_found', 'El proyecto no existe en el grupo.');
+    if (!stored) throw PROJECT_NOT_FOUND();
     const { document, ...summary } = stored;
     return { ...summary, document: JSON.parse(document) };
   });
@@ -200,15 +193,8 @@ export const groupRoutes: FastifyPluginAsync<
     const { capabilities } = await access(user, group);
     if (!capabilities.edit) throw FORBIDDEN();
     const { document, baseVersion } = putSchema.parse(request.body);
-    if (document.id !== id) {
-      throw new HttpError(400, 'project_id_mismatch', 'El identificador del documento no coincide con la ruta.');
-    }
-    const serialized = JSON.stringify(document);
-    if (Buffer.byteLength(serialized, 'utf8') > config.projectMaxBytes) {
-      throw new HttpError(413, 'project_too_large', 'El proyecto supera el tamaño máximo admitido.', {
-        maxBytes: config.projectMaxBytes,
-      });
-    }
+    assertDocumentId(document, id);
+    const serialized = serializeDocument(document, config.projectMaxBytes);
     if (!capabilities.editSchema) await assertSchemaUnchanged(group, id, document, baseVersion);
 
     const result = await groups.putProject(
@@ -218,7 +204,7 @@ export const groupRoutes: FastifyPluginAsync<
       baseVersion,
     );
     if (result.status === 'conflict') {
-      if (!result.current) throw new HttpError(404, 'project_not_found', 'El proyecto no existe en el grupo.');
+      if (!result.current) throw PROJECT_NOT_FOUND();
       throw new HttpError(409, 'version_conflict', 'Otra persona cambió este proyecto antes.', {
         current: result.current,
       });
@@ -253,8 +239,7 @@ export const groupRoutes: FastifyPluginAsync<
   /** El proyecto tiene que ser de ese grupo; si no, no existe para esta ruta. */
   async function commentAccess(user: AuthenticatedUser, group: string, id: string) {
     const found = await access(user, group);
-    if ((await groups.projectGroup(id)) !== group)
-      throw new HttpError(404, 'project_not_found', 'El proyecto no existe en el grupo.');
+    if ((await groups.projectGroup(id)) !== group) throw PROJECT_NOT_FOUND();
     return found;
   }
 

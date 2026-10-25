@@ -15,7 +15,7 @@ import {
 } from '../community/model.ts';
 import { PUBLIC_ID, type Publication, type ReportView } from '../community/repository.ts';
 import { PlatformError, readToken } from '../platform/http.ts';
-import { documentSchema, PROJECT_ID } from './projects.ts';
+import { assertDocumentId, documentSchema, PROJECT_ID, serializeDocument } from './projects.ts';
 
 /*
  * Proyectos públicos (docs/roadmaps/ROADMAP_COMUNIDAD.md). Publicar sube una copia de solo lectura que la
@@ -125,9 +125,7 @@ export const communityRoutes: FastifyPluginAsync<
     const { id } = projectParams.parse(request.params);
     const user = authenticatedUser(request);
     const body = publishSchema.parse(request.body);
-    if (body.document.id !== id) {
-      throw new HttpError(400, 'project_id_mismatch', 'El identificador del documento no coincide con la ruta.');
-    }
+    assertDocumentId(body.document, id);
     const blocked = user.identity.restrictions.filter(r => PUBLISH_BLOCKING.includes(r));
     if (blocked.length) {
       throw new HttpError(403, 'publicacion_limitada', 'Tu cuenta tiene limitado publicar contenido.', {
@@ -156,12 +154,7 @@ export const communityRoutes: FastifyPluginAsync<
       image = bytes;
     }
     const origin = originSchema.parse((body.document as { origin?: unknown }).origin ?? null);
-    const serialized = JSON.stringify(body.document);
-    if (Buffer.byteLength(serialized, 'utf8') > config.projectMaxBytes) {
-      throw new HttpError(413, 'project_too_large', 'El proyecto supera el tamaño máximo admitido.', {
-        maxBytes: config.projectMaxBytes,
-      });
-    }
+    const serialized = serializeDocument(body.document, config.projectMaxBytes);
 
     const counts = countsOf(body.document);
     const result = await community.publish(

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.ts';
+import { loadConfig } from '../src/config.ts';
 import { readMigrations, runMigrations } from '../src/db/migrations.ts';
 import { sql, type Database } from '../src/db/pool.ts';
 import { createGroupMaintenance } from '../src/groups/maintenance.ts';
@@ -417,7 +418,7 @@ describe.runIf(dbTestsEnabled)('SQL Server', () => {
 });
 
 describe('group routes', () => {
-  async function setup() {
+  async function setup(env: Record<string, string> = {}) {
     const tokens = await platformTokens();
     const projects = createMemoryProjectStore();
     const groups = memoryGroups(projects);
@@ -426,6 +427,7 @@ describe('group routes', () => {
     let feedReads = 0;
     const app = await buildApp(
       testDependencies({
+        config: loadConfig({ NODE_ENV: 'test', ...env }),
         auth: tokens.provider,
         projects,
         groups,
@@ -569,6 +571,22 @@ describe('group routes', () => {
     expect(
       (await call('PUT', `/api/grupos/${EXTERNAL}/proyectos/p9`, { document: doc('p9'), baseVersion: 1 })).statusCode,
     ).toBe(404);
+  });
+
+  it('rechaza un documento con otro id o que pasa del tamaño máximo, al crear y al guardar', async () => {
+    const { call, create } = await setup({ PROJECT_MAX_BYTES: String(64 * 1024) });
+    const big = doc('p1', { notes: 'x'.repeat(70 * 1024) });
+    const oversized = await call('POST', '/api/grupos', { id: GROUP, name: 'Novela', document: big });
+    expect(oversized.statusCode).toBe(413);
+    expect(oversized.json()).toMatchObject({ error: 'project_too_large', maxBytes: 64 * 1024 });
+    await create();
+    const url = `/api/grupos/${EXTERNAL}/proyectos/p1`;
+    expect((await call('PUT', url, { document: doc('p2'), baseVersion: 1 })).json()).toMatchObject({
+      error: 'project_id_mismatch',
+    });
+    expect((await call('PUT', url, { document: big, baseVersion: 1 })).json()).toMatchObject({
+      error: 'project_too_large',
+    });
   });
 
   it('avisa por el canal del espacio de cada versión guardada, con solo la referencia', async () => {
