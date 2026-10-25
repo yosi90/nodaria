@@ -1,5 +1,6 @@
-import { ChevronsUpDown, Plus, X } from 'lucide-react';
+import { ChevronsUpDown, Plus } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
+import { Chip } from './Chip';
 import { OptionList, type Option } from './OptionList';
 import { Popover } from './Popover';
 import { anchorOf, type Anchor } from './anchor';
@@ -90,15 +91,12 @@ export function MultiSelect({ options, value, onChange, addLabel = 'Añadir', em
   return (
     <div className="chip-list">
       {chosen.map(option => (
-        <span className="chip" key={option.value}>
-          {option.leading}
-          <span>{option.label}</span>
-          {!disabled && (
-            <button type="button" aria-label={`Quitar ${option.label}`} onClick={() => toggle(option.value)}>
-              <X size={12} aria-hidden />
-            </button>
-          )}
-        </span>
+        <Chip
+          key={option.value}
+          label={option.label}
+          leading={option.leading}
+          onRemove={disabled ? undefined : () => toggle(option.value)}
+        />
       ))}
       {!chosen.length && emptyText && <span className="field-hint">{emptyText}</span>}
       {!disabled && (

@@ -1,5 +1,5 @@
-import { X } from 'lucide-react';
 import { useState, type KeyboardEvent } from 'react';
+import { Chip } from './Chip';
 
 /** Etiquetas libres: chips que se añaden con Intro o coma y se quitan con su botón o con retroceso. */
 export function TagsInput({
@@ -26,12 +26,7 @@ export function TagsInput({
   return (
     <div className="tags-input">
       {value.map(tag => (
-        <span className="chip" key={tag}>
-          <span>{tag}</span>
-          <button type="button" aria-label={`Quitar ${tag}`} onClick={() => onChange(value.filter(t => t !== tag))}>
-            <X size={12} aria-hidden />
-          </button>
-        </span>
+        <Chip key={tag} label={tag} onRemove={() => onChange(value.filter(t => t !== tag))} />
       ))}
       <input
         value={draft}
