@@ -155,7 +155,7 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 - **Publicación del 2026-10-29 (kit 1.65 y la paleta, web 2.1.0):** commits `023c734` y `c712d75`.
   - Web: bundle `main-Ccl_EfKe.js`, con el SHA-256 idéntico en los dos dominios. Edge en producción: las 12 comprobaciones de la paleta (atributos y preformas, salto a la fila, Escape), sin errores; en local, también en Firefox.
   - API recompilada, sin migraciones: llama a la pasarela de IA por `127.0.0.1:5006`. La pasarela local reconoce la credencial (`403 cuenta_no_disponible` con una cuenta inventada, sin gasto); salud correcta, `401` sin token en la IA y `200` en `/api/publicos`.
-  - **Incidente:** la tarea «Nodaria API» no estaba en marcha desde el 2026-10-25 (estado «Ready», resultado -1): la API corría sin vigilante y, al pedirle el reinicio, se cerró y nadie la levantó. Caída de unos 2 minutos (07:09–07:11 UTC+1) hasta `Start-ScheduledTask -TaskName 'Nodaria API'`. Antes de reiniciar, comprobar con `ops\status.ps1` que la tarea está «Running».
+  - **Incidente:** la tarea «Nodaria API» no estaba en marcha desde el 2026-10-25 (estado «Ready», resultado -1): la API corría sin vigilante y, al pedirle el reinicio, se cerró y nadie la levantó. Caída de unos 2 minutos (07:09–07:11 UTC) hasta `Start-ScheduledTask -TaskName 'Nodaria API'`. Antes de reiniciar, comprobar con `ops\status.ps1` que la tarea está «Running».
   - Pruebas: lint y build; 476 de la web y 117 de la API contra SQL Server.
   - Anunciada: `2026-10-29-buscador-atributos`. Las normas siguen sin publicar hasta que la plataforma encienda su publicación.
 
