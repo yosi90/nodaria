@@ -1,0 +1,8 @@
+{
+  "importante": false,
+  "cambios": [
+    "Las normas se ordenan con los apartados comunes de Yosiftware; no cambia lo que se pide.",
+    "Un apartado nuevo explica cómo funciona el asistente de inteligencia artificial."
+  ],
+  "versiones": { "web": "2.1.0" }
+}

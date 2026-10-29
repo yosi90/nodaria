@@ -33,7 +33,7 @@ const app = await buildApp({
   users: createSqlUserStore(db),
   projects: createSqlProjectStore(db),
   ai: createGatewayAssistant({
-    platformApi: config.platform.api,
+    platformApi: config.platform.aiApi,
     serviceTokenFile: config.platform.serviceTokenFile,
   }),
   conversations: createSqlConversationStore(db),

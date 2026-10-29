@@ -62,6 +62,17 @@ export const PLATFORM_API: Record<PlatformEnv, string> = {
   desarrollo: 'http://localhost:5206',
 };
 
+/**
+ * La pasarela de IA por la dirección local de la API de la plataforma (`ecosistema-kit/CLAVES_DE_IA.md`,
+ * «La dirección»): esta API corre en el servidor de Yosiftware y así no pasa por Cloudflare, que corta a los
+ * 100 segundos una llamada sin streaming (OpenAI) y esa llamada se cobra igual.
+ */
+export const PLATFORM_AI_API: Record<PlatformEnv, string> = {
+  produccion: 'http://127.0.0.1:5006',
+  qa: 'http://127.0.0.1:5106',
+  desarrollo: 'http://localhost:5206',
+};
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const parsed = envSchema.safeParse(env);
 
@@ -85,6 +96,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     platform: {
       env: value.PLATFORM_ENV,
       api: PLATFORM_API[value.PLATFORM_ENV],
+      aiApi: PLATFORM_AI_API[value.PLATFORM_ENV],
       audience: value.PLATFORM_AUDIENCE,
       serviceTokenFile: value.PLATFORM_SERVICE_TOKEN_FILE,
       feedIntervalMs: value.PLATFORM_FEED_INTERVAL_MS,

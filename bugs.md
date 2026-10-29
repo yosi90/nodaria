@@ -104,6 +104,14 @@ Comunicada por el propietario tras probar Tipos y Db2 for i. Numeración R3.
 - [x] **R3-07. Duplicar un atributo.** Un icono en cada atributo para duplicarlo, como se duplican los tipos. Hecho: cada atributo propio tiene «Duplicar el atributo»: la copia va justo debajo, con «(copia)» en el nombre y una clave nueva, y se puede deshacer. Comprobado en Edge el 2026-10-23.
 - [x] **R3-08. Confirmar el borrado de un tipo.** El diálogo de «¿Seguro?» abre con el foco en cerrar y no en «Eliminar» (Intro no borra), y al borrar un tipo de relación el botón dice «Eliminar tipo». Hecho: el diálogo abre con el foco en el botón de borrar (Intro borra) y dice «Eliminar relación» o «Eliminar tipo» según lo que se borra. Comprobado en Edge el 2026-10-23.
 
+## Cuarta ronda — 2026-10-29
+
+Comunicada por el propietario. Numeración R4.
+
+- [ ] **R4-01. Escape borra el tipo o la relación seleccionados**, o al menos abre el diálogo de borrar. **Sin reproducir:** en Edge y en Firefox, Escape no abre ningún diálogo con un tipo o un tipo de relación seleccionado en Tipos y Relaciones (con el foco en la lista, en el nombre o en la página), al abrirlos desde la paleta, con un nodo o una relación seleccionados en el mapa, ni con el diálogo de borrar abierto (lo cierra sin borrar). En el código ningún atajo de Escape borra. Faltan los pasos exactos del propietario.
+- [x] **R4-02. La paleta (Ctrl+K) no encuentra los atributos.** Hecho: grupo «Atributos» con los atributos propios de cada tipo (por nombre, clave o tipo) y las preformas de la biblioteca (también por los tipos que las usan). Al elegir uno se abre su tipo, o Propiedades, y la fila del atributo se centra y se resalta (`revealField`, `data-field-id` en `dropTarget`).
+- [x] **R4-03. La paleta no se cierra con Escape.** Pasaba al pinchar dentro de la paleta fuera del campo (un título de grupo, la barra de desplazamiento): el foco iba a la página y las teclas ya no le llegaban. Hecho: la paleta escucha las teclas en la ventana, sin dejarlas pasar a las vistas de debajo (Escape ya no quita también la selección del mapa), y un clic dentro deja el foco en el campo.
+
 ## Auditoría de duplicados de la web (2026-10-25)
 
 Auditoría completa del revisor de duplicados (`.claude/agents/revisor-de-duplicados.md`, modo `completo`) sobre la web (`src/`), con base `b63bff0` y rama `revisor/auditoria-completa-web-2026-10-25`. Lo seguro ya está unificado en esa rama, un commit por refactorización (cliente de la plataforma, textos sin acentos y claves, nombres de archivo, diálogos por evento, piezas de los diálogos de bases de datos, comentarios del grupo, arrastre de atributos, celdas de columnas, ids de referencias, CSV, recuerdos de `localStorage`, etc.). Aquí queda lo que pide una decisión o un cambio más amplio, de lo más barato y rentable a lo más caro. Las líneas son las de la base `b63bff0`. La API (`api/`) la audita otra ejecución.

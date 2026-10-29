@@ -1,6 +1,6 @@
 # Normas de Nodaria
 
-Borrador para publicar en la administración de la plataforma (`Webs registradas › Nodaria › Normas`), en Markdown. Lo redacta Nodaria y lo publica el propietario (`ecosistema-kit/MODERACION.md`). Se suman a las normas de uso comunes de Yosiftware.
+**Histórico: versión 1, publicada por el propietario en la administración el 2026-10-23.** Desde el kit 1.64 las normas vigentes siguen los apartados comunes y viven en [`nodaria/`](nodaria/), un archivo por apartado, y Nodaria las publica con `ecosistema-kit/herramientas/publicar_normas.py`.
 
 ---
 

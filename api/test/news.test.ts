@@ -14,6 +14,7 @@ const tokenFile = () => {
 const platform = (file: string) => ({
   env: 'qa' as const,
   api: 'https://qa-cuentas-api.yosiftware.es',
+  aiApi: 'http://127.0.0.1:5106',
   audience: 'nodaria-api',
   serviceTokenFile: file,
   feedIntervalMs: 300000,

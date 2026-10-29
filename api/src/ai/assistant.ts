@@ -316,7 +316,7 @@ const INCOMPLETE = new AiError(
 const REFUSED = new AiError(422, 'propuesta_rechazada', 'El modelo no ha querido responder a esta petición.');
 
 export interface GatewayOptions {
-  /** API de la plataforma del entorno (`config.platform.api`). */
+  /** API de la plataforma del entorno, por su dirección local (`config.platform.aiApi`). */
   platformApi: string;
   serviceTokenFile: string;
   fetch?: typeof fetch;

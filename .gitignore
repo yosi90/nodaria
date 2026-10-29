@@ -16,3 +16,6 @@ firebase-debug.log
 /ecosistema-kit/
 /dist-qa/
 /.claude/worktrees/
+
+# Vista previa de las normas (publicar_normas.py)
+/docs/normas/nodaria/vista-previa.md

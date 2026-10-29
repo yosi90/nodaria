@@ -9,6 +9,8 @@ describe('config', () => {
     expect(config.db.database).toBe('Nodaria');
     expect(config.platform).toMatchObject({ env: 'produccion', audience: 'nodaria-api', feedEnabled: false });
     expect(config.platform.api).toBe('https://cuentas-api.yosiftware.es');
+    expect(config.platform.aiApi).toBe('http://127.0.0.1:5006');
+    expect(loadConfig({ PLATFORM_ENV: 'qa' }).platform.aiApi).toBe('http://127.0.0.1:5106');
     expect(config.projectMaxBytes).toBe(20 * 1024 * 1024);
     expect(config.corsOrigins).toEqual(['https://nodaria.yosiftware.es', 'https://nodaria.dev.yosiftware.es']);
   });
