@@ -152,6 +152,13 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-29 (kit 1.65 y la paleta, web 2.1.0):** commits `023c734` y `c712d75`.
+  - Web: bundle `main-Ccl_EfKe.js`, con el SHA-256 idéntico en los dos dominios. Edge en producción: las 12 comprobaciones de la paleta (atributos y preformas, salto a la fila, Escape), sin errores; en local, también en Firefox.
+  - API recompilada, sin migraciones: llama a la pasarela de IA por `127.0.0.1:5006`. La pasarela local reconoce la credencial (`403 cuenta_no_disponible` con una cuenta inventada, sin gasto); salud correcta, `401` sin token en la IA y `200` en `/api/publicos`.
+  - **Incidente:** la tarea «Nodaria API» no estaba en marcha desde el 2026-10-25 (estado «Ready», resultado -1): la API corría sin vigilante y, al pedirle el reinicio, se cerró y nadie la levantó. Caída de unos 2 minutos (07:09–07:11 UTC+1) hasta `Start-ScheduledTask -TaskName 'Nodaria API'`. Antes de reiniciar, comprobar con `ops\status.ps1` que la tarea está «Running».
+  - Pruebas: lint y build; 476 de la web y 117 de la API contra SQL Server.
+  - Anunciada: `2026-10-29-buscador-atributos`. Las normas siguen sin publicar hasta que la plataforma encienda su publicación.
+
 - **Publicación del 2026-10-25, noche (propuestas de la auditoría, guardarraíles de la IA y kit 1.59):** commits de `ca76eea` a `86d9c58`.
   - API recompilada y reiniciada, sin migraciones: salud correcta, `401` sin token en la IA y `200` en `/api/publicos`; el proceso nuevo arranca sin avisos.
   - Web: bundle `main-DvGRZ3lZ.js`, con el SHA-256 idéntico en los dos dominios, y `/privacidad` del 25 de octubre (tope de conversaciones).
