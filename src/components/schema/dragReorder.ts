@@ -37,12 +37,16 @@ export function useDragReorder(ids: string[]) {
   return { dragged, start: setDragged, hover, end, shown: dropped ?? ids, dropped };
 }
 
-/** Lo que hace de una fila un destino del arrastre: según la mitad por la que se pasa, antes o después de ella. */
+/**
+ * Lo que hace de una fila un destino del arrastre: según la mitad por la que se pasa, antes o después de ella.
+ * `data-field-id` deja que el buscador (`revealField`) encuentre la fila.
+ */
 export const dropTarget = (
   id: string,
   onHover: ((id: string, after: boolean) => void) | undefined,
   onDrop: () => void,
 ) => ({
+  'data-field-id': id,
   onDragOver: (event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     const bounds = event.currentTarget.getBoundingClientRect();

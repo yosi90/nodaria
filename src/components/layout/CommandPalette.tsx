@@ -18,10 +18,11 @@ import {
   CalendarDays,
   Globe,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
+import { ownFields, usersOfLibraryField } from '../../domain/library';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
-import { openSchemaDefinition } from './schemaNavigation';
+import { openSchemaDefinition, revealField } from './schemaNavigation';
 import { useApp } from '../../state/AppContext';
 import { useNavigation } from '../../state/navigation';
 import { sdk } from '../../services/yosiftware';
@@ -35,7 +36,7 @@ interface Command {
   id: string;
   label: string;
   hint?: string;
-  group: 'Nodos' | 'Relaciones' | 'Tipos' | 'Acciones';
+  group: 'Nodos' | 'Relaciones' | 'Tipos' | 'Atributos' | 'Acciones';
   leading: ReactNode;
   keywords: string;
   run: () => void;
@@ -43,7 +44,7 @@ interface Command {
 
 const MAX_RESULTS = 40;
 
-/** Buscador global (Ctrl+K): salta a cualquier nodo, relación o tipo, o ejecuta una acción. */
+/** Buscador global (Ctrl+K): salta a cualquier nodo, relación, tipo o atributo, o ejecuta una acción. */
 export function CommandPalette({ onClose }: { onClose: () => void }) {
   const { project, dispatch } = useApp();
   const { select, setView, openCommunity, openHelp } = useNavigation();
@@ -98,6 +99,37 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       keywords: 'tipo esquema',
       run: () => openSchemaDefinition(s.id, s.kind, setView),
     }));
+    // Los atributos propios de cada tipo (los heredados se buscan en su tipo) y las preformas de la biblioteca.
+    const attributes: Command[] = [
+      ...project.schemas.flatMap(s =>
+        ownFields(s).map<Command>(f => ({
+          id: `field:${s.id}:${f.id}`,
+          label: f.label || f.key,
+          hint: `Atributo de «${s.name}»`,
+          group: 'Atributos',
+          leading: <TypeIcon icon={s.icon} color={s.color} size="sm" />,
+          keywords: `${f.key} ${s.name} atributo campo columna propiedad`,
+          run: () => {
+            openSchemaDefinition(s.id, s.kind, setView);
+            revealField(f.id);
+          },
+        })),
+      ),
+      ...project.fieldLibrary.map<Command>(f => ({
+        id: `library:${f.id}`,
+        label: f.label || f.key,
+        hint: 'Preforma',
+        group: 'Atributos',
+        leading: icon(Library),
+        keywords: `${f.key} ${usersOfLibraryField(project, f.id)
+          .map(s => s.name)
+          .join(' ')} preforma atributo campo columna propiedad compartida biblioteca`,
+        run: () => {
+          setView('properties');
+          revealField(f.id);
+        },
+      })),
+    ];
     const actions: Command[] = [
       ...project.schemas
         .filter(s => s.kind === 'entity' && !s.isAbstract)
@@ -263,7 +295,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         run: () => setPreference('theme', preferences.theme === 'dark' ? 'light' : 'dark'),
       },
     ];
-    return [...nodes, ...relations, ...types, ...actions];
+    return [...nodes, ...relations, ...types, ...attributes, ...actions];
   }, [
     project,
     select,
@@ -303,14 +335,23 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     command.run();
   };
 
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'ArrowDown') setActive(i => Math.min(results.length - 1, i + 1));
-    else if (event.key === 'ArrowUp') setActive(i => Math.max(0, i - 1));
-    else if (event.key === 'Enter' && results[activeIndex]) run(results[activeIndex]);
-    else if (event.key === 'Escape') onClose();
-    else return;
-    event.preventDefault();
-  };
+  // En la ventana y no en la paleta: un clic en una zona sin foco (un título, la barra de desplazamiento) dejaba
+  // el foco en la página y Escape ya no la cerraba. Las teclas que trata no llegan a las vistas de debajo.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowDown') setActive(i => Math.min(results.length - 1, i + 1));
+      else if (event.key === 'ArrowUp') setActive(i => Math.max(0, i - 1));
+      else if (event.key === 'Enter' && results[activeIndex]) {
+        onClose();
+        results[activeIndex].run();
+      } else if (event.key === 'Escape') onClose();
+      else return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [results, activeIndex, onClose]);
 
   return (
     <div className="palette-backdrop" onClick={onClose}>
@@ -319,7 +360,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-label="Buscar"
         onClick={e => e.stopPropagation()}
-        onKeyDown={onKeyDown}
+        // El foco se queda en el campo para seguir escribiendo después de pinchar dentro.
+        onMouseDown={e => e.target !== input.current && e.preventDefault()}
       >
         <div className="palette-input">
           <Search size={16} aria-hidden />

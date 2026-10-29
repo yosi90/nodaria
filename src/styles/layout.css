@@ -670,6 +670,17 @@
     opacity 0.15s var(--ease),
     border-color 0.15s var(--ease);
 }
+/* El atributo al que lleva el buscador (Ctrl+K). */
+.field-def.revealed {
+  animation: field-revealed 1.6s var(--ease);
+}
+@keyframes field-revealed {
+  0%,
+  40% {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+}
 .field-def.system {
   border-style: dashed;
   background: var(--surface-1);
