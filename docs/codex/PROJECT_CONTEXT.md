@@ -154,6 +154,12 @@ Este caso sirve para validar decisiones de producto y diseñar ejemplos, pero el
 
 ## Despliegue
 
+- **Publicación del 2026-10-30 (preformas repetidas y la paleta):** commit `43c67a6`, solo la web.
+  - Bundle `main-Bc2Vn1p8.js`, con el SHA-256 idéntico en los dos dominios.
+  - Edge en local y en producción, con «Caso Puerto Norte» («Clase» en Documento, Medio y Lugar): 20 comprobaciones (pregunta, orden, valores, opciones, deshacer, sin repetidos no pregunta y la paleta con «Fiabilidad» en sus tres tipos), sin errores.
+  - Lint, build y 483 pruebas.
+  - Anunciada: `2026-10-30-preformas`.
+
 - **Publicación del 2026-10-29 (kit 1.65 y la paleta, web 2.1.0):** commits `023c734` y `c712d75`.
   - Web: bundle `main-Ccl_EfKe.js`, con el SHA-256 idéntico en los dos dominios. Edge en producción: las 12 comprobaciones de la paleta (atributos y preformas, salto a la fila, Escape), sin errores; en local, también en Firefox.
   - API recompilada, sin migraciones: llama a la pasarela de IA por `127.0.0.1:5006`. La pasarela local reconoce la credencial (`403 cuenta_no_disponible` con una cuenta inventada, sin gasto); salud correcta, `401` sin token en la IA y `200` en `/api/publicos`.
