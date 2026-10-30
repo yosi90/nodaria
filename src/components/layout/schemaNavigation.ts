@@ -15,12 +15,15 @@ export function openSchemaDefinition(id: string, kind: SchemaKind, setView: (vie
 
 /**
  * Lleva a la fila de un atributo (de un tipo o de la biblioteca) y la resalta un momento. La vista y el tipo
- * se montan en los fotogramas siguientes, así que se busca la fila durante un segundo como mucho.
+ * se montan en los fotogramas siguientes, así que se busca la fila durante un segundo como mucho. Con
+ * `schemaId` se busca dentro de ese tipo: una preforma tiene el mismo id en todos los que la vinculan, y el
+ * tipo que estaba abierto podría tenerla también.
  */
-export function revealField(fieldId: string) {
+export function revealField(fieldId: string, schemaId?: string) {
   const started = performance.now();
+  const scope = schemaId ? `[data-schema-id="${CSS.escape(schemaId)}"] ` : '';
   const look = () => {
-    const row = document.querySelector<HTMLElement>(`.app-body [data-field-id="${CSS.escape(fieldId)}"]`);
+    const row = document.querySelector<HTMLElement>(`.app-body ${scope}[data-field-id="${CSS.escape(fieldId)}"]`);
     if (!row) {
       if (performance.now() - started < 1000) requestAnimationFrame(look);
       return;

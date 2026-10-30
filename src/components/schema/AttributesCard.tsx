@@ -17,6 +17,8 @@ import { OptionList } from '../common/OptionList';
 import { Popover } from '../common/Popover';
 import { dropTarget, useDragReorder } from './dragReorder';
 import { DragHandle, FieldEditor } from './FieldEditor';
+import { ShareFieldModal } from './ShareFieldModal';
+import { sameKeyFields } from '../../domain/preformAdoption';
 
 const entryId = (f: FieldDefinition | FieldLink) => (isFieldLink(f) ? f.ref : f.id);
 
@@ -178,7 +180,10 @@ export function AttributesCard({ schema }: { schema: Schema }) {
     toast({ message: `Atributo «${field.label}» eliminado`, undoable: true });
     dispatch({ type: 'delete-field', schemaId: schema.id, fieldId: field.id });
   };
+  const [sharing, setSharing] = useState<FieldDefinition | null>(null);
   const share = (field: FieldDefinition) => {
+    // Si otros tipos repiten su clave interna, se pregunta si pasan también a la preforma.
+    if (sameKeyFields(project, schema.id, field.id).length) return setSharing(field);
     toast({ message: `«${field.label}» ahora es una preforma`, undoable: true });
     dispatch({ type: 'share-field', schemaId: schema.id, fieldId: field.id });
   };
@@ -194,7 +199,8 @@ export function AttributesCard({ schema }: { schema: Schema }) {
   };
 
   return (
-    <div className="card attributes-card" data-tour="attributes" ref={cardRef}>
+    <div className="card attributes-card" data-tour="attributes" data-schema-id={schema.id} ref={cardRef}>
+      {sharing && <ShareFieldModal schema={schema} field={sharing} onClose={() => setSharing(null)} />}
       <div className="card-head">
         <h3>Atributos</h3>
         <Button

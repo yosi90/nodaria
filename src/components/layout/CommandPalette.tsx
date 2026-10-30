@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { uid } from '../../domain/factories';
-import { ownFields, usersOfLibraryField } from '../../domain/library';
+import { isFieldLink, libraryField, ownFields, usersOfLibraryField } from '../../domain/library';
 import { allFields, getSchema, nodeLabel } from '../../domain/selectors';
 import { openSchemaDefinition, revealField } from './schemaNavigation';
 import { useApp } from '../../state/AppContext';
@@ -99,7 +99,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       keywords: 'tipo esquema',
       run: () => openSchemaDefinition(s.id, s.kind, setView),
     }));
-    // Los atributos propios de cada tipo (los heredados se buscan en su tipo) y las preformas de la biblioteca.
+    // Los atributos propios de cada tipo (los heredados se buscan en su tipo) y las preformas de la biblioteca,
+    // que salen también en cada tipo que las vincula, como los propios.
     const attributes: Command[] = [
       ...project.schemas.flatMap(s =>
         ownFields(s).map<Command>(f => ({
@@ -111,14 +112,35 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           keywords: `${f.key} ${s.name} atributo campo columna propiedad`,
           run: () => {
             openSchemaDefinition(s.id, s.kind, setView);
-            revealField(f.id);
+            revealField(f.id, s.id);
           },
         })),
+      ),
+      ...project.schemas.flatMap(s =>
+        s.fields.filter(isFieldLink).flatMap(link => {
+          const f = libraryField(project, link.ref);
+          return f
+            ? [
+                {
+                  id: `linked:${s.id}:${f.id}`,
+                  label: f.label || f.key,
+                  hint: `Preforma en «${s.name}»`,
+                  group: 'Atributos' as const,
+                  leading: <TypeIcon icon={s.icon} color={s.color} size="sm" />,
+                  keywords: `${f.key} ${s.name} preforma atributo campo columna propiedad compartida`,
+                  run: () => {
+                    openSchemaDefinition(s.id, s.kind, setView);
+                    revealField(f.id, s.id);
+                  },
+                },
+              ]
+            : [];
+        }),
       ),
       ...project.fieldLibrary.map<Command>(f => ({
         id: `library:${f.id}`,
         label: f.label || f.key,
-        hint: 'Preforma',
+        hint: 'Preforma · en Propiedades',
         group: 'Atributos',
         leading: icon(Library),
         keywords: `${f.key} ${usersOfLibraryField(project, f.id)

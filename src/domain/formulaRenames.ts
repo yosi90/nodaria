@@ -119,10 +119,14 @@ function rewriteRelationFormula(formula: string, available: FieldDefinition[], r
 
 /**
  * El proyecto `after` con las fórmulas al día si el cambio desde `before` renombró atributos. Se resuelven
- * con los nombres de antes y se escriben con la clave nueva.
+ * con los nombres de antes y se escriben con la clave nueva. `renamed` (id de antes → clave nueva) sirve
+ * cuando el cambio también mueve atributos a otro id, como al pasar varios a una preforma.
  */
-export function withRenamedFields(before: Project, after: Project): Project {
-  const renamed = renamedFields(before, after);
+export function withRenamedFields(
+  before: Project,
+  after: Project,
+  renamed: Map<string, string> = renamedFields(before, after),
+): Project {
   if (!renamed.size) return after;
   let touched = false;
   const schemas = after.schemas.map(schema => {

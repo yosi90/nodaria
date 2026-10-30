@@ -587,6 +587,17 @@ label.check {
   gap: 8px;
   cursor: pointer;
 }
+.share-candidates label > span {
+  display: grid;
+  gap: 2px;
+}
+.share-candidates small {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.share-candidates small.share-loss {
+  color: var(--warning);
+}
 .validation-message {
   margin: 0;
   color: var(--warning);

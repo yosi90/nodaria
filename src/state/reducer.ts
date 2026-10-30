@@ -19,6 +19,7 @@ import type { SavedQuery } from '../domain/queries';
 import { applySqlAnnotations, setColumnSql, setFieldSql, type SqlColumn } from '../domain/database';
 import { applyProposal, type AiProposal } from '../domain/aiProposal';
 import { withRenamedFields } from '../domain/formulaRenames';
+import { shareFieldWith } from '../domain/preformAdoption';
 import { withConvertedValues } from '../domain/valueConversion';
 import { createJunctionTables, type JunctionProposal } from '../domain/junctionTables';
 import { mergeProject } from '../domain/projectMerge';
@@ -87,7 +88,8 @@ export type Action =
   | { type: 'reorder-library'; ids: string[] }
   | { type: 'link-field'; schemaId: string; libraryId: string }
   | { type: 'unlink-field'; schemaId: string; libraryId: string }
-  | { type: 'share-field'; schemaId: string; fieldId: string }
+  /** `others`: atributos de otros tipos con la misma clave que pasan a la misma preforma (`preformAdoption.ts`). */
+  | { type: 'share-field'; schemaId: string; fieldId: string; others?: string[] }
   | { type: 'delete-field'; schemaId: string; fieldId: string }
   | { type: 'duplicate-field'; schemaId: string; fieldId: string }
   | {
@@ -289,7 +291,7 @@ function projectReducer(p: Project, action: Action): Project {
     case 'unlink-field':
       return lib.unlinkField(p, action.schemaId, action.libraryId);
     case 'share-field':
-      return lib.shareField(p, action.schemaId, action.fieldId);
+      return shareFieldWith(p, action.schemaId, action.fieldId, action.others ?? []);
     case 'duplicate-field':
       return ops.duplicateField(p, action.schemaId, action.fieldId).project;
     case 'delete-field':
