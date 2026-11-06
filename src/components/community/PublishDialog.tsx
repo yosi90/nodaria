@@ -89,6 +89,8 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError(null);
     try {
+      // Con el correo sin confirmar se pide antes de subir nada (kit 1.80).
+      await requireSocialToken('publicar');
       // La API solo publica proyectos que ya tiene: primero se sube lo último (el propio o el del grupo).
       await (group ? syncShared() : syncNow());
       const token = await requireSocialToken('publicar');

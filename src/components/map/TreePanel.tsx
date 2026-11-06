@@ -233,8 +233,8 @@ export function TreePanel({ selection, onSelect, onAdd, onCollapse }: TreePanelP
     event.stopPropagation();
     if (!dragging || dropFolder !== folder.id) return cleanupDrag();
     if (dragging.parentId !== null) moveDragged(dragging, null, null);
+    // La carpeta se queda como estaba (plegada o abierta): guardar en ella no la abre.
     dispatch({ type: 'set-node-folder', nodeId: dragging.nodeId, folderId: folder.id });
-    toggle(`folder:${folder.id}`, true);
     toast({ message: `Nodo guardado en la carpeta «${folder.name}»`, undoable: true });
     cleanupDrag();
   };
