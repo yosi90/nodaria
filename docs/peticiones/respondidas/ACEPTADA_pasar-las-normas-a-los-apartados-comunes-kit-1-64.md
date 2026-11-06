@@ -62,5 +62,5 @@ Aceptada el 2026-10-29.
 2. **Normas pasadas a los apartados**, en `docs/normas/nodaria/`: `objeto` (nuevo, el que faltaba), `uso`, `contenido`, `ia` (Nodaria tiene un asistente de IA con la clave de la persona o la del grupo) y `moderacion`, con `publicacion.json` (`importante: false`, versión web `2.1.0`). Se ha quitado lo que ya dicen las normas de Yosiftware (acoso, spam y datos personales en general) y la nota interna que llevaba la cabecera de la versión 1. Lo que se pide no cambia.
 3. **Vista previa** en QA (versión 1) y en producción (versión 2): sin avisos.
 4. **Petición al propietario** para encender la publicación: `activar-la-publicacion-de-normas-de-nodaria.md` en las peticiones de la plataforma, con la vista previa de producción adjunta (copia en `docs/peticiones-enviadas/`).
-5. **Publicar en QA y en producción:** pendiente de que se encienda. Se publicarán con la siguiente versión de la web.
+5. **Publicadas el 2026-11-06** con la web 2.2.0: versión 1 en QA y versión 2 en producción (`publicar_normas.py publicar`). La publicación estaba encendida desde el 2026-10-26 (respuesta de la plataforma a `activar-la-publicacion-de-normas-de-nodaria.md`).
 6. **Párrafo de `BLOQUE_AGENTS.md`** añadido al `AGENTS.md`, con dónde están las normas de Nodaria.
