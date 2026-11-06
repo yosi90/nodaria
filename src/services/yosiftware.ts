@@ -13,6 +13,10 @@ export interface PlatformAccount {
   id: string;
   alias: string;
   correo?: string | null;
+  /** `false` mientras no confirma el correo de una cuenta creada con correo (SDK 1.32, kit 1.80). */
+  correoVerificado?: boolean;
+  /** Hasta cuándo puede confirmarlo antes de que la cuenta se borre (ISO UTC). */
+  confirmarCorreoAntesDe?: string | null;
   propietario?: boolean;
   estado?: string;
 }
@@ -110,6 +114,8 @@ export interface YosiftwareSdk {
   editarPerfil(): Promise<boolean>;
   perfil(): Promise<PlatformProfile | null>;
   reportar(options?: { tipo?: 'error' | 'propuesta' }): Promise<boolean>;
+  /** Pide el código del correo sin confirmar; `true` si se confirma, con la sesión ya renovada (SDK 1.32). */
+  confirmarCorreo?(): Promise<boolean>;
   privacidad(options?: { recorrido?: boolean }): Promise<void>;
   /**
    * Denuncia lo que es de la plataforma (una persona, una novedad, un comentario) con su ventana; `true` si
@@ -214,6 +220,17 @@ export class PlatformRequestError extends Error {
  * `PlatformRequestError` 401 (`sin_sesion`); sin conexión, `OfflineError`; un 204, `undefined`.
  */
 export async function platformRequest<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  try {
+    return await sendPlatformRequest<T>(method, path, body);
+  } catch (error) {
+    // Con el correo sin confirmar, lo social responde 403 (kit 1.80): se ofrece confirmarlo y se repite.
+    if (!(error instanceof PlatformRequestError) || error.code !== 'correo_sin_confirmar') throw error;
+    if (!(await sdk()?.confirmarCorreo?.())) throw error;
+    return sendPlatformRequest<T>(method, path, body);
+  }
+}
+
+async function sendPlatformRequest<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const token = await sdk()?.tokenPlataforma?.();
   if (!token) throw new PlatformRequestError(401, 'sin_sesion', 'Entra con tu cuenta de Yosiftware.');
   let response: Response;

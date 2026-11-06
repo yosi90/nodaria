@@ -226,6 +226,10 @@ export function groupErrorMessage(error: unknown): string {
       return 'No se puede ceder la propiedad a esa persona.';
     case 'creacion_limitada':
       return 'Tu cuenta tiene limitado crear contenido nuevo.';
+    case 'correo_sin_confirmar':
+      return error instanceof ApiError
+        ? error.message
+        : 'Confirma tu correo para usar los grupos. Hasta entonces, tu cuenta no puede usar lo social de Yosiftware.';
     case 'proyecto_ya_compartido':
       return 'Este proyecto ya es de otro grupo.';
     case 'plataforma_no_disponible':

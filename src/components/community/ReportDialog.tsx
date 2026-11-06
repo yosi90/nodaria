@@ -11,7 +11,7 @@ import { ErrorNote } from '../common/ErrorNote';
  * propietario desde Notificapp (`ecosistema-kit/MODERACION.md`). Nadie sabe quién denunció.
  */
 export function ReportDialog({ publicId, name, onClose }: { publicId: string; name: string; onClose: () => void }) {
-  const { requireToken } = useAuth();
+  const { requireSocialToken } = useAuth();
   const toast = useToast();
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [text, setText] = useState('');
@@ -23,7 +23,7 @@ export function ReportDialog({ publicId, name, onClose }: { publicId: string; na
     setBusy(true);
     setError(null);
     try {
-      const token = await requireToken('denunciar');
+      const token = await requireSocialToken('denunciar');
       await reportPublic(token, publicId, reason, text.trim());
       toast({ message: 'Denuncia enviada. La revisaremos; nadie sabrá que has sido tú.' });
       onClose();

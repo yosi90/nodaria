@@ -93,7 +93,7 @@ const localCopy = (project: Project): Project => {
 
 export function GroupsProvider({ children }: { children: ReactNode }) {
   const { state, dispatch, setActionGuard, reportRepairs } = useApp();
-  const { status, user, requireToken, identity, isCurrent, tokenFor } = useAuth();
+  const { status, user, requireToken, requireSocialToken, identity, isCurrent, tokenFor } = useAuth();
   const toast = useToast();
   const toastRef = useRef(toast);
 
@@ -421,7 +421,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const share = useCallback(
     (project: Project, name: string) =>
       enqueue(async () => {
-        const token = await requireToken();
+        const token = await requireSocialToken('crear un grupo');
         // Con token pero sin cuenta todavía apuntada (justo al entrar): igual que sin sesión.
         if (!uidRef.current) throw new ApiError(401, 'no_autenticado', 'Entra con tu cuenta de Yosiftware.');
         const signature = await contentSignature(project);
@@ -438,7 +438,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         publish([...groupsRef.current.filter(g => g.id !== group.id), group]);
         return group;
       }),
-    [enqueue, requireToken, saveMeta, publish],
+    [enqueue, requireSocialToken, saveMeta, publish],
   );
 
   const removeGroup = useCallback(

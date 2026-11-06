@@ -38,7 +38,7 @@ const SOCIAL_NEWS = 'https://social.yosiftware.es/?vista=novedades';
  */
 export function PublishDialog({ onClose }: { onClose: () => void }) {
   const { project } = useApp();
-  const { status, user, getToken, requireToken, signIn } = useAuth();
+  const { status, user, getToken, requireSocialToken, signIn } = useAuth();
   const { syncNow } = useSync();
   const { groupOf, syncShared } = useGroups();
   const toast = useToast();
@@ -91,7 +91,7 @@ export function PublishDialog({ onClose }: { onClose: () => void }) {
     try {
       // La API solo publica proyectos que ya tiene: primero se sube lo último (el propio o el del grupo).
       await (group ? syncShared() : syncNow());
-      const token = await requireToken('publicar');
+      const token = await requireSocialToken('publicar');
       const snapshot = publicationSnapshot(project, options);
       // La imagen del mapa para la novedad y la vista previa; si el navegador no la dibuja, se publica sin ella.
       const image = await thumbnailPng(snapshot);

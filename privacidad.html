@@ -22,7 +22,7 @@
       </header>
       <article>
         <h1>Política de privacidad</h1>
-        <p class="legal-meta">Última actualización: 25 de octubre de 2026</p>
+        <p class="legal-meta">Última actualización: 6 de noviembre de 2026</p>
 
         <p>
           Esta política explica qué datos trata Nodaria (<a href="https://nodaria.yosiftware.es"
@@ -205,17 +205,69 @@
           mensajes y solicitudes tienes pendientes para enseñarlo en su botón.
         </p>
 
-        <h2>Medición anónima de audiencia</h2>
+        <h2>Medición de audiencia</h2>
         <p>
-          Para saber cuántas personas usan Nodaria y cuánto tiempo, la web carga un script propio de Yosiftware
-          (<code>estadisticas.yosiftware.es</code>). No usa cookies ni identificadores. Tu navegador guarda solo la
-          fecha de tu última visita (<code>localStorage</code>) y un número aleatorio que dura lo que la pestaña
-          (<code>sessionStorage</code>). Lo que se envía es si la visita es la primera del día, la semana o el mes, y
-          cuántos segundos dura con la pestaña visible. No se envía la página, tu cuenta, tus proyectos ni ningún otro
-          dato. La dirección IP y el navegador se usan solo en el momento de recibir el aviso, sin guardarse. Las cifras
-          se agregan por día y web. Si no quieres que tu dispositivo cuente, abre la web una vez con
-          <a href="/?yt-ignorar">?yt-ignorar</a> al final de la dirección; con <a href="/?yt-incluir">?yt-incluir</a>
-          vuelves a contar.
+          Para saber si esta web se usa, Yosiftware mide su audiencia con Yosiftadísticas, una herramienta propia que
+          funciona en sus servidores. Solo obtiene estadísticas anónimas de esta web y del conjunto de las webs de
+          Yosiftware: cuántos navegadores las visitan cada día, semana y mes, cuántas visitas reciben y cuánto tiempo
+          permanecen a la vista. No recoge las páginas que visitas, de dónde vienes, tu cuenta ni los datos de tu
+          dispositivo. No te identifica ni te sigue entre webs, y no comparte nada con terceros.
+        </p>
+        <p>Para contarte una sola vez sin identificarte, guarda en tu navegador:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Dónde</th>
+              <th>Para qué</th>
+              <th>Duración</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>yosiftadisticas:ultima</code></td>
+              <td>Almacenamiento local de esta web</td>
+              <td>La fecha de tu última visita a esta web, para saber si es la primera del día, de la semana o del mes</td>
+              <td>Se sustituye en cada visita. Solo sirve durante el mes y la semana de esa visita (31 días como máximo) y después se borra</td>
+            </tr>
+            <tr>
+              <td><code>yosiftadisticas_ultima</code></td>
+              <td>Cookie de <code>yosiftware.es</code>, común a las webs de Yosiftware</td>
+              <td>La fecha de tu última visita a cualquiera de ellas, para no contarte varias veces en el total si pasas de una a otra. No guarda qué webs visitas</td>
+              <td>Se sustituye en cada visita y caduca al terminar el mes o la semana de esa visita (31 días como máximo)</td>
+            </tr>
+            <tr>
+              <td><code>yosiftadisticas:visita</code></td>
+              <td>Almacenamiento de sesión de esta web</td>
+              <td>Un código aleatorio de la visita en curso, para no contar una recarga como visita nueva</td>
+              <td>Se borra al cerrar la pestaña y deja de usarse tras 30 minutos fuera de ella</td>
+            </tr>
+            <tr>
+              <td><code>yosiftadisticas:excluir</code></td>
+              <td>Almacenamiento local de esta web</td>
+              <td>Solo si te opones: indica que este navegador no se mide</td>
+              <td>Hasta que la quites</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          Al recibir cada envío, el servidor de medición ve tu dirección IP y el tipo de navegador, como cualquier servidor
+          web. Solo los usa en ese momento, para descartar robots, evitar abusos y no contar las visitas de Yosiftware, y no
+          los guarda. Los datos de cada visita se borran al calcular las estadísticas del día, como mucho al día siguiente.
+          Desde entonces solo quedan totales anónimos por día, que se borran a los 25 meses.
+        </p>
+        <p>
+          Este almacenamiento no necesita tu consentimiento, porque solo sirve para medir la audiencia de las webs de
+          Yosiftware por su cuenta y produce estadísticas anónimas (artículo 22.2 de la LSSI y guía de la AEPD sobre
+          herramientas de medición de audiencia). El responsable es Yosiftware; para cualquier cuestión, escribe a
+          <a href="mailto:privacidad@yosiftware.es">privacidad@yosiftware.es</a>.
+        </p>
+        <p>
+          <strong>Cómo oponerte.</strong> Abre esta web añadiendo <code>?yt-ignorar</code> al final de su dirección (por
+          ejemplo, <code>https://libros.yosiftware.es/?yt-ignorar</code>). Desde ese momento, ese navegador no envía nada
+          desde esta web y borra los demás datos que la medición guardó en ella. La cookie común no se borra, porque la
+          usan las demás webs, y caduca sola. Para deshacerlo, ábrela con <code>?yt-incluir</code>. También puedes bloquear
+          con una extensión la carga de <code>https://estadisticas.yosiftware.es/s.js</code>.
         </p>
 
         <h2>Asistente de IA</h2>

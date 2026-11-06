@@ -5,7 +5,7 @@ import { createSqlConversationStore } from './ai/conversations.ts';
 import { buildApp } from './app.ts';
 import { createPlatformAuthProvider } from './auth/platform.ts';
 import { loadConfig } from './config.ts';
-import { connectDatabase } from './db/pool.ts';
+import { openDatabase } from './db/pool.ts';
 import { createGroupMaintenance } from './groups/maintenance.ts';
 import { createSqlGroupStore } from './groups/repository.ts';
 import { createSqlCommentStore } from './groups/comments.ts';
@@ -18,7 +18,17 @@ import { createSqlProjectStore } from './projects/repository.ts';
 import { createSqlUserStore } from './users/repository.ts';
 
 const config = loadConfig();
-const db = await connectDatabase(config.db);
+// La API arranca aunque SQL Server no esté listo (kit 1.81): el pool se conecta en cuanto pueda, y
+// hasta entonces la salud lo dice y las rutas que la usan responden 503. Registra con el log de la app.
+let log: { info(message: string): void; warn(details: object, message: string): void } = {
+  info: message => console.log(message),
+  warn: (details, message) => console.warn(message, details),
+};
+const database = openDatabase(config.db, {
+  info: message => log.info(message),
+  warn: (details, message) => log.warn(details, message),
+});
+const db = database.db;
 const groups = createSqlGroupStore(db);
 const spaces = createPlatformSpacesClient(config.platform);
 const community = createSqlCommunityStore(db);
@@ -29,6 +39,7 @@ let feed: ReturnType<typeof createFeedReader> | null = null;
 const app = await buildApp({
   config,
   db,
+  database,
   auth: createPlatformAuthProvider(config),
   users: createSqlUserStore(db),
   projects: createSqlProjectStore(db),
@@ -44,6 +55,12 @@ const app = await buildApp({
   communityClient,
   feed: { readOnce: () => feed?.readOnce() ?? Promise.resolve(0) },
 });
+
+log = {
+  info: message => app.log.info(message),
+  warn: (details, message) => app.log.warn(details, message),
+};
+database.start();
 
 feed = config.platform.feedEnabled
   ? createFeedReader({
@@ -81,7 +98,8 @@ const shutdown = async (signal: string) => {
   await feed?.stop();
   await maintenance?.stop();
   await outbox?.stop();
-  await db.close();
+  database.stop();
+  await db.close().catch(() => undefined);
   process.exit(0);
 };
 process.once('SIGINT', () => void shutdown('SIGINT'));

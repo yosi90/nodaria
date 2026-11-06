@@ -1,245 +1,308 @@
 <!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
-    <!-- Panel de moderación de los proyectos públicos de Nodaria dentro de Notificapp (docs/roadmaps/ROADMAP_COMUNIDAD.md). -->
-    <style>
-      :root {
-        font: 16px/1.5 system-ui, -apple-system, sans-serif;
-        color-scheme: light;
-        --background: #efebe2;
-        --surface: #ffffff;
-        --surface-soft: #f9f7f2;
-        --text: #1f1d1a;
-        --muted: #5c574e;
-        --border: #ddd6c8;
-        --accent: #5b45d6;
-        --accent-text: #ffffff;
-        --danger: #c3303d;
-        --danger-text: #ffffff;
+<html lang="es" data-style="claro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Panel de moderación de los proyectos públicos de Nodaria dentro de Notificapp (docs/roadmaps/ROADMAP_COMUNIDAD.md). -->
+  <style>
+    /* ---- Estética de Notificapp (kit, APK 0.4.6). Copiar tal cual; cambiar solo lo de debajo de «Panel». ----
+       Los colores, radios y tipos replican los estilos Terminal, Claro y Bento de la APK. */
+    :root, [data-style="claro"] {
+      color-scheme: light;
+      --bg: #F5F6FA; --surface: #FFFFFF; --surface2: #E8EAF1; --border: #D6D9E3;
+      --text: #14161C; --muted: #5B6170;
+      --accent: #2F54EB; --on-accent: #FFFFFF; --accent-soft: #EEF2FF;
+      --warn: #C2410C; --warn-bg: #FFF1E6; --warn-border: #F5C9A8;
+      --ok: #15803D; --ok-bg: #E6F4EA; --danger: #B42318; --danger-bg: #FDECEC;
+      --card-radius: 20px; --button-radius: 14px; --chip-radius: 17px; --card-border: transparent;
+      --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --font-display: var(--font); --font-label: var(--font);
+      --label-case: uppercase; --label-spacing: .08em;
+    }
+    [data-style="terminal"] {
+      color-scheme: dark;
+      --bg: #0D1117; --surface: #161B22; --surface2: #21262D; --border: #30363D;
+      --text: #E6EDF3; --muted: #8B949E;
+      --accent: #3FB950; --on-accent: #0D1117; --accent-soft: #0F2A17;
+      --warn: #E3B341; --warn-bg: #3B2E0A; --warn-border: #9E6A03;
+      --ok: #3FB950; --ok-bg: #0F2A17; --danger: #F78166; --danger-bg: #3A1D18;
+      --card-radius: 12px; --button-radius: 10px; --chip-radius: 16px; --card-border: var(--border);
+      --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --font-display: "JetBrains Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+      --font-label: var(--font-display); --label-case: lowercase; --label-spacing: .03em;
+    }
+    [data-style="bento"] {
+      color-scheme: dark;
+      --bg: #0B0B0C; --surface: #1C1C1F; --surface2: #2E2E33; --border: #3F3F46;
+      --text: #F2F0E9; --muted: #A1A1AA;
+      --accent: #C8F135; --on-accent: #0B0B0C; --accent-soft: #2A3310;
+      --warn: #C8F135; --warn-bg: #2A3310; --warn-border: #C8F135;
+      --ok: #C8F135; --ok-bg: #2A3310; --danger: #FF8A3D; --danger-bg: #2E1A0E;
+      --card-radius: 24px; --button-radius: 22px; --chip-radius: 20px; --card-border: transparent;
+      --font: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --font-display: var(--font); --font-label: var(--font);
+      --label-case: uppercase; --label-spacing: .08em;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 var(--font); }
+    body { padding: 16px; }
+    h1, h2, h3 { font-family: var(--font-display); margin: 0; }
+    h1 { font-size: 24px; letter-spacing: -.01em; }
+    h2 { font-size: 18px; }
+    .label { font: 700 12px var(--font-label); text-transform: var(--label-case);
+             letter-spacing: var(--label-spacing); color: var(--muted); }
+    .muted { color: var(--muted); }
+    .card { background: var(--surface); border: 1px solid var(--card-border); border-radius: var(--card-radius);
+            padding: 14px 16px; }
+    .card.warn { border-color: var(--warn-border); }
+    .stack { display: grid; gap: 10px; }
+    .row { display: flex; align-items: center; gap: 12px; }
+    .grow { flex: 1; min-width: 0; }
+    .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Símbolo del estado, como en la APK: ? pendiente, ✓ resuelto, • informativo. */
+    .kind { flex: none; width: 36px; height: 36px; display: grid; place-items: center; font-weight: 700;
+            border-radius: 8px; background: var(--surface2); color: var(--muted); }
+    [data-style="claro"] .kind { border-radius: 12px; }
+    [data-style="bento"] .kind { border-radius: 50%; }
+    .kind.warn { background: var(--warn-bg); color: var(--warn); }
+    .kind.ok { background: var(--ok-bg); color: var(--ok); }
+    .chip { display: inline-block; padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--chip-radius);
+            font: 700 13px var(--font-label); text-transform: var(--label-case); color: var(--muted); }
+    .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+    button { font: 700 15px var(--font); min-height: 46px; padding: 0 18px; border-radius: var(--button-radius);
+             border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+    button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+    button:disabled { opacity: .45; }
+    input, textarea { width: 100%; font: inherit; color: var(--text); background: var(--surface);
+                      border: 1px solid var(--border); border-radius: var(--button-radius); padding: 12px 14px; }
+    input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    textarea { min-height: 110px; resize: vertical; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: 14px/1.5 var(--font); }
+    .error { color: var(--danger); }
+
+    /* ---- Panel: estilos propios del proyecto ---- */
+    main { max-width: 680px; margin: 0 auto; }
+    h1 { font-size: 20px; }
+    h1, h2 { overflow-wrap: anywhere; }
+    #status { min-height: 1.45em; font-size: 14px; }
+    #status:empty { display: none; }
+    .meta { font-size: 14px; overflow-wrap: anywhere; }
+    .item { width: 100%; text-align: left; font: inherit; min-height: 0; }
+    .item:active { background: var(--surface2); }
+    .item .name { font-weight: 700; overflow-wrap: anywhere; }
+    .body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+    .detail-head { align-items: flex-start; }
+    .field { display: grid; gap: 6px; }
+    select { width: 100%; font: inherit; color: var(--text); background: var(--surface);
+             border: 1px solid var(--border); border-radius: var(--button-radius); padding: 12px 14px; }
+    select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    textarea { min-height: 80px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .actions button { flex: 1 1 160px; }
+  </style>
+  <script>
+    // Antes de pintar: estilo de la APK (0.4.6+), con respaldo a getTheme() y al tema del sistema.
+    (function () {
+      var style = null;
+      try { style = window.Notificapp && Notificapp.getStyle ? Notificapp.getStyle() : null; } catch (e) {}
+      if (style !== 'terminal' && style !== 'claro' && style !== 'bento') {
+        var theme = null;
+        try { theme = window.Notificapp && Notificapp.getTheme ? Notificapp.getTheme() : null; } catch (e) {}
+        var dark = theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        style = dark ? 'terminal' : 'claro';
       }
-      :root[data-theme='dark'] {
-        color-scheme: dark;
-        --background: #0d0f13;
-        --surface: #14171d;
-        --surface-soft: #1b1f27;
-        --text: #eceef3;
-        --muted: #a3abba;
-        --border: #282e39;
-        --accent: #a194ff;
-        --accent-text: #14112a;
-        --danger: #ff7c87;
-        --danger-text: #2a0c10;
+      document.documentElement.dataset.style = style;
+    })();
+  </script>
+</head>
+<body>
+  <main class="stack">
+    <header class="row">
+      <h1 class="grow">Denuncias de proyectos públicos</h1>
+      <button type="button" id="refresh">Actualizar</button>
+    </header>
+    <div id="status" class="muted" aria-live="polite"></div>
+    <section id="detail" class="card stack" hidden></section>
+    <section id="list" class="stack"></section>
+  </main>
+  <script>
+    const pending = new Map();
+    const statusEl = document.getElementById('status');
+    const listEl = document.getElementById('list');
+    const detailEl = document.getElementById('detail');
+    const STATES = { pendiente: 'Pendiente', retirado: 'Retirado', desestimado: 'Desestimada' };
+    let cases = null;
+
+    function el(tag, props = {}, children = []) {
+      const node = document.createElement(tag);
+      for (const [key, value] of Object.entries(props)) {
+        if (key === 'className') node.className = value;
+        else if (key === 'text') node.textContent = value;
+        else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+        else node.setAttribute(key, value);
       }
-      * { box-sizing: border-box; }
-      body { margin: 0; padding: 12px 12px 28px; background: var(--background); color: var(--text); }
-      main { max-width: 680px; margin: 0 auto; display: grid; gap: 12px; }
-      .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
-      h1 { font-size: 1.15rem; margin: 0; }
-      h2 { font-size: 1rem; margin: 0 0 4px; overflow-wrap: anywhere; }
-      .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-      .muted { color: var(--muted); font-size: 0.9rem; }
-      .badge { font-size: 0.8rem; padding: 2px 8px; border-radius: 999px; background: var(--surface-soft); border: 1px solid var(--border); }
-      .badge.pendiente { border-color: var(--accent); color: var(--accent); }
-      .body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
-      button { font: inherit; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-soft); color: var(--text); cursor: pointer; }
-      button.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; }
-      button.danger { background: var(--danger); color: var(--danger-text); border-color: transparent; }
-      button:disabled { opacity: 0.6; cursor: default; }
-      .list { display: grid; gap: 8px; }
-      .item { text-align: left; width: 100%; display: grid; gap: 2px; background: var(--surface); }
-      label { display: grid; gap: 4px; font-size: 0.9rem; margin-top: 10px; }
-      input, textarea, select { font: inherit; padding: 9px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-soft); color: var(--text); width: 100%; }
-      textarea { min-height: 80px; }
-      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-      #status { min-height: 1.5em; }
-      .error { color: var(--danger); }
-    </style>
-  </head>
-  <body>
-    <main>
-      <div class="card row">
-        <h1>Denuncias de proyectos públicos</h1>
-        <button type="button" id="refresh">Actualizar</button>
-      </div>
-      <div id="status" class="muted" aria-live="polite"></div>
-      <section id="detail" class="card" hidden></section>
-      <section id="list" class="list"></section>
-    </main>
-    <script>
+      for (const child of children) node.append(child);
+      return node;
+    }
+
+    // Símbolo del estado como en la APK: ? pendiente, ✓ resuelta (retirado o desestimada).
+    const stateKind = state =>
+      el('span', { className: `kind ${state === 'pendiente' ? 'warn' : 'ok'}`, 'aria-hidden': 'true', text: state === 'pendiente' ? '?' : '✓' });
+    const stateLabel = state => el('span', { className: 'label', text: STATES[state] || state });
+
+    function call(action, id = null, payload = {}, eventExternalId = null) {
+      return new Promise((resolve, reject) => {
+        const requestId = `${Date.now()}-${Math.random()}`;
+        pending.set(requestId, { resolve, reject });
+        const message = { requestId, action, id, payload };
+        if (eventExternalId) message.eventExternalId = eventExternalId;
+        Notificapp.request(JSON.stringify(message));
+      });
+    }
+
+    window.notificappReceive = (requestId, raw) => {
+      const waiting = pending.get(requestId);
+      if (!waiting) return;
+      pending.delete(requestId);
+      const response = JSON.parse(raw);
+      if (!response.ok) return waiting.reject(new Error(response.error || 'Error'));
+      const { status, data } = response.data;
+      if (status >= 400) return waiting.reject(new Error((data && data.message) || `Error ${status}`));
+      waiting.resolve(data);
+    };
+
+    const when = iso => new Date(iso).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+    const setStatus = (text, error = false) => {
+      statusEl.textContent = text;
+      statusEl.className = error ? 'error' : 'muted';
+    };
+
+    async function loadList() {
+      setStatus('Consultando…');
       try {
-        if (typeof Notificapp.getTheme === 'function') document.documentElement.dataset.theme = Notificapp.getTheme();
-        else if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.dataset.theme = 'dark';
-      } catch (_) {}
-
-      const pending = new Map();
-      const statusEl = document.getElementById('status');
-      const listEl = document.getElementById('list');
-      const detailEl = document.getElementById('detail');
-      const STATES = { pendiente: 'Pendiente', retirado: 'Retirado', desestimado: 'Desestimada' };
-      let cases = null;
-
-      function el(tag, props = {}, children = []) {
-        const node = document.createElement(tag);
-        for (const [key, value] of Object.entries(props)) {
-          if (key === 'className') node.className = value;
-          else if (key === 'text') node.textContent = value;
-          else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
-          else node.setAttribute(key, value);
-        }
-        for (const child of children) node.append(child);
-        return node;
-      }
-
-      function call(action, id = null, payload = {}, eventExternalId = null) {
-        return new Promise((resolve, reject) => {
-          const requestId = `${Date.now()}-${Math.random()}`;
-          pending.set(requestId, { resolve, reject });
-          const message = { requestId, action, id, payload };
-          if (eventExternalId) message.eventExternalId = eventExternalId;
-          Notificapp.request(JSON.stringify(message));
-        });
-      }
-
-      window.notificappReceive = (requestId, raw) => {
-        const waiting = pending.get(requestId);
-        if (!waiting) return;
-        pending.delete(requestId);
-        const response = JSON.parse(raw);
-        if (!response.ok) return waiting.reject(new Error(response.error || 'Error'));
-        const { status, data } = response.data;
-        if (status >= 400) return waiting.reject(new Error((data && data.message) || `Error ${status}`));
-        waiting.resolve(data);
-      };
-
-      const when = iso => new Date(iso).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
-      const setStatus = (text, error = false) => {
-        statusEl.textContent = text;
-        statusEl.className = error ? 'error' : 'muted';
-      };
-
-      async function loadList() {
-        setStatus('Consultando…');
-        try {
-          const { reports } = await call('list');
-          listEl.replaceChildren(
-            ...reports.map(report =>
-              el('button', { type: 'button', className: 'item card', onclick: () => openReport(report.id) }, [
-                el('div', { className: 'row' }, [
-                  el('strong', { text: `«${report.publication.name}»` }),
-                  el('span', { className: `badge ${report.state}`, text: STATES[report.state] || report.state }),
+        const { reports } = await call('list');
+        listEl.replaceChildren(
+          ...reports.map(report =>
+            el('button', { type: 'button', className: `item card${report.state === 'pendiente' ? ' warn' : ''}`, onclick: () => openReport(report.id) }, [
+              el('div', { className: 'row' }, [
+                stateKind(report.state),
+                el('div', { className: 'grow' }, [
+                  el('div', { className: 'name', text: `«${report.publication.name}»` }),
+                  el('div', { className: 'muted meta', text: `${report.reasonName} · ${when(report.createdAt)}` }),
+                  stateLabel(report.state),
                 ]),
-                el('span', { className: 'muted', text: `${report.reasonName} · ${when(report.createdAt)}` }),
               ]),
-            ),
-          );
-          setStatus(reports.length ? '' : 'No hay denuncias.');
-        } catch (error) {
-          setStatus(error.message, true);
-        }
-      }
-
-      async function openReport(id) {
-        setStatus('Consultando…');
-        try {
-          const { report } = await call('detail', String(id));
-          renderDetail(report);
-          setStatus('');
-        } catch (error) {
-          setStatus(error.message, true);
-        }
-      }
-
-      async function loadCases() {
-        if (cases) return cases;
-        try {
-          cases = (await call('cases')).cases || [];
-        } catch (_) {
-          cases = [];
-        }
-        return cases;
-      }
-
-      async function renderDetail(report) {
-        detailEl.hidden = false;
-        const p = report.publication;
-        const children = [
-          el('div', { className: 'row' }, [
-            el('h2', { text: `«${p.name}»` }),
-            el('span', { className: `badge ${report.state}`, text: STATES[report.state] || report.state }),
-          ]),
-          el('div', {
-            className: 'muted',
-            text: `${p.nodeCount} nodos · ${p.relationCount} relaciones · ${report.pendingOnPublication} denuncia(s) pendiente(s) · cuenta ${p.author}`,
-          }),
-          el('div', { className: 'muted', text: `Enlace: ${report.url}` }),
-          el('p', { className: 'body', text: `Motivo: ${report.reasonName}\n${report.body || 'Sin más detalle.'}` }),
-        ];
-        if (report.state !== 'pendiente') {
-          children.push(el('p', { className: 'muted', text: `Resuelta el ${when(report.resolvedAt)}${report.note ? `: ${report.note}` : ''}.` }));
-          detailEl.replaceChildren(...children);
-          return;
-        }
-        const note = el('textarea', { placeholder: 'Motivo de la decisión (lo ve la persona si se retira)' });
-        const caseSelect = el('select', {}, [el('option', { value: '', text: 'Sin aviso a la cuenta' })]);
-        const message = el('textarea', { placeholder: 'Mensaje del aviso a la cuenta' });
-        const retire = el('button', { type: 'button', className: 'danger', text: 'Retirar el proyecto' });
-        const dismiss = el('button', { type: 'button', text: 'Desestimar' });
-        const busy = value => {
-          retire.disabled = value;
-          dismiss.disabled = value;
-        };
-        const externalId = `report-${report.id}`;
-        retire.addEventListener('click', async () => {
-          if (caseSelect.value && !message.value.trim()) return setStatus('Escribe el mensaje del aviso.', true);
-          busy(true);
-          try {
-            const payload = { note: note.value.trim() || undefined };
-            if (caseSelect.value) Object.assign(payload, { caso: caseSelect.value, mensaje: message.value.trim() });
-            const result = await call('retire', String(report.id), payload, externalId);
-            setStatus(result.incident && result.incident !== 'registrado' ? `Retirado; el aviso falló (${result.incident}).` : 'Retirado.');
-            renderDetail(result.report);
-            loadList();
-          } catch (error) {
-            setStatus(error.message, true);
-          } finally {
-            busy(false);
-          }
-        });
-        dismiss.addEventListener('click', async () => {
-          busy(true);
-          try {
-            const result = await call('dismiss', String(report.id), { note: note.value.trim() || undefined }, externalId);
-            setStatus('Desestimada.');
-            renderDetail(result.report);
-            loadList();
-          } catch (error) {
-            setStatus(error.message, true);
-          } finally {
-            busy(false);
-          }
-        });
-        children.push(
-          el('label', {}, ['Nota', note]),
-          el('label', {}, ['Aviso a la cuenta (escalera de la plataforma)', caseSelect]),
-          el('label', {}, ['Mensaje del aviso', message]),
-          el('div', { className: 'actions' }, [retire, dismiss]),
+            ]),
+          ),
         );
-        detailEl.replaceChildren(...children);
-        for (const item of await loadCases())
-          caseSelect.append(el('option', { value: item.clave, text: item.nombre || item.clave }));
+        setStatus(reports.length ? '' : 'No hay denuncias.');
+      } catch (error) {
+        setStatus(error.message, true);
       }
+    }
 
-      document.getElementById('refresh').addEventListener('click', loadList);
-      loadList();
+    async function openReport(id) {
+      setStatus('Consultando…');
       try {
-        const launch = JSON.parse(Notificapp.getLaunchEvent());
-        // Las APK anteriores a la 0.3.13 no traen `data`: el id va también en el externalId.
-        const id = launch && ((launch.data && launch.data.report) || (/^report-(\d+)$/.exec(launch.externalId || '') || [])[1]);
-        if (id) openReport(id);
-      } catch (_) {}
-    </script>
-  </body>
+        const { report } = await call('detail', String(id));
+        renderDetail(report);
+        setStatus('');
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function loadCases() {
+      if (cases) return cases;
+      try {
+        cases = (await call('cases')).cases || [];
+      } catch (_) {
+        cases = [];
+      }
+      return cases;
+    }
+
+    async function renderDetail(report) {
+      detailEl.hidden = false;
+      detailEl.classList.toggle('warn', report.state === 'pendiente');
+      const p = report.publication;
+      const children = [
+        el('div', { className: 'row detail-head' }, [
+          stateKind(report.state),
+          el('div', { className: 'grow' }, [el('h2', { text: `«${p.name}»` }), stateLabel(report.state)]),
+        ]),
+        el('div', {
+          className: 'muted meta',
+          text: `${p.nodeCount} nodos · ${p.relationCount} relaciones · ${report.pendingOnPublication} denuncia(s) pendiente(s) · cuenta ${p.author}`,
+        }),
+        el('div', { className: 'muted meta', text: `Enlace: ${report.url}` }),
+        el('p', { className: 'body', text: `Motivo: ${report.reasonName}\n${report.body || 'Sin más detalle.'}` }),
+      ];
+      if (report.state !== 'pendiente') {
+        children.push(el('p', { className: 'muted meta', text: `Resuelta el ${when(report.resolvedAt)}${report.note ? `: ${report.note}` : ''}.` }));
+        detailEl.replaceChildren(...children);
+        return;
+      }
+      const note = el('textarea', { placeholder: 'Motivo de la decisión (lo ve la persona si se retira)' });
+      const caseSelect = el('select', {}, [el('option', { value: '', text: 'Sin aviso a la cuenta' })]);
+      const message = el('textarea', { placeholder: 'Mensaje del aviso a la cuenta' });
+      const retire = el('button', { type: 'button', className: 'danger', text: 'Retirar el proyecto' });
+      const dismiss = el('button', { type: 'button', text: 'Desestimar' });
+      const busy = value => {
+        retire.disabled = value;
+        dismiss.disabled = value;
+      };
+      const externalId = `report-${report.id}`;
+      retire.addEventListener('click', async () => {
+        if (caseSelect.value && !message.value.trim()) return setStatus('Escribe el mensaje del aviso.', true);
+        busy(true);
+        try {
+          const payload = { note: note.value.trim() || undefined };
+          if (caseSelect.value) Object.assign(payload, { caso: caseSelect.value, mensaje: message.value.trim() });
+          const result = await call('retire', String(report.id), payload, externalId);
+          setStatus(result.incident && result.incident !== 'registrado' ? `Retirado; el aviso falló (${result.incident}).` : 'Retirado.');
+          renderDetail(result.report);
+          loadList();
+        } catch (error) {
+          setStatus(error.message, true);
+        } finally {
+          busy(false);
+        }
+      });
+      dismiss.addEventListener('click', async () => {
+        busy(true);
+        try {
+          const result = await call('dismiss', String(report.id), { note: note.value.trim() || undefined }, externalId);
+          setStatus('Desestimada.');
+          renderDetail(result.report);
+          loadList();
+        } catch (error) {
+          setStatus(error.message, true);
+        } finally {
+          busy(false);
+        }
+      });
+      const field = (text, control) => el('label', { className: 'field' }, [el('span', { className: 'label', text }), control]);
+      children.push(
+        field('Nota', note),
+        field('Aviso a la cuenta (escalera de la plataforma)', caseSelect),
+        field('Mensaje del aviso', message),
+        el('div', { className: 'actions' }, [retire, dismiss]),
+      );
+      detailEl.replaceChildren(...children);
+      for (const item of await loadCases())
+        caseSelect.append(el('option', { value: item.clave, text: item.nombre || item.clave }));
+    }
+
+    document.getElementById('refresh').addEventListener('click', loadList);
+    loadList();
+    try {
+      const launch = JSON.parse(Notificapp.getLaunchEvent());
+      // Las APK anteriores a la 0.3.13 no traen `data`: el id va también en el externalId.
+      const id = launch && ((launch.data && launch.data.report) || (/^report-(\d+)$/.exec(launch.externalId || '') || [])[1]);
+      if (id) openReport(id);
+    } catch (_) {}
+  </script>
+</body>
 </html>

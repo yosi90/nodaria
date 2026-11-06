@@ -22,6 +22,11 @@ export interface AccountUser {
   id: string;
   alias: string;
   email: string | null;
+  /**
+   * Con el correo sin confirmar (kit 1.80), nada social: ni publicar proyectos, ni denunciar, ni comentar
+   * en un grupo. La plataforma lo aplica a lo suyo; lo propio de Nodaria lo limita la web.
+   */
+  emailUnverified: boolean;
 }
 
 /** `unavailable`: la plataforma no responde o su SDK no ha cargado; Nodaria sigue en local. */
@@ -44,6 +49,12 @@ interface AuthContextValue {
    * sesión: para lo que no se puede hacer sin ella. `purpose` completa el texto («publicar»).
    */
   requireToken: (purpose?: string) => Promise<string>;
+  /**
+   * Como `requireToken`, para lo social propio de Nodaria (publicar, denunciar, comentar, crear un grupo):
+   * con el correo sin confirmar (kit 1.80) abre antes su confirmación y, si se cierra, falla con
+   * `403 correo_sin_confirmar` («Confirma tu correo para…»).
+   */
+  requireSocialToken: (purpose: string) => Promise<string>;
   /** La identidad vigente (generación y cuenta), para atar a ella una operación larga. */
   identity: () => Identity;
   /** Si la identidad con la que empezó una operación sigue siendo la vigente. */
@@ -57,6 +68,8 @@ interface AuthContextValue {
   chooseAccount: (session: string) => Promise<void>;
   addAccount: () => Promise<boolean>;
   signOutAll: () => Promise<void>;
+  /** Abre la confirmación del correo del SDK; `true` si queda confirmado. */
+  confirmEmail: () => Promise<boolean>;
 }
 
 const Context = createContext<AuthContextValue | null>(null);
@@ -67,7 +80,12 @@ function fromState(state: PlatformState | null): Pick<AuthContextValue, 'status'
   if (state.tipo !== 'con_sesion') return { status: 'signed-out', user: null, restrictions: null };
   return {
     status: 'signed-in',
-    user: { id: state.cuenta.id.toLowerCase(), alias: state.cuenta.alias, email: state.cuenta.correo ?? null },
+    user: {
+      id: state.cuenta.id.toLowerCase(),
+      alias: state.cuenta.alias,
+      email: state.cuenta.correo ?? null,
+      emailUnverified: state.cuenta.correoVerificado === false,
+    },
     restrictions: state.restricciones
       ? { scopes: state.restricciones.alcances, until: state.restricciones.hasta }
       : null,
@@ -145,11 +163,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else await found?.salir();
   }, []);
 
+  const confirmEmail = useCallback(async () => (await sdk()?.confirmarCorreo?.()) ?? false, []);
+  const requireSocialToken = useCallback(
+    async (purpose: string) => {
+      const token = await requireToken(purpose);
+      const state = sdk()?.estado;
+      if (state?.tipo !== 'con_sesion' || state.cuenta.correoVerificado !== false) return token;
+      if (!(await confirmEmail()))
+        throw new ApiError(
+          403,
+          'correo_sin_confirmar',
+          `Confirma tu correo para ${purpose}. Hasta entonces, tu cuenta no puede usar lo social de Yosiftware.`,
+        );
+      // Al confirmarlo, el SDK renueva la sesión: el token nuevo ya lo dice.
+      return requireToken(purpose);
+    },
+    [requireToken, confirmEmail],
+  );
+
   const value = useMemo(
     () => ({
       ...snapshot,
       getToken,
       requireToken,
+      requireSocialToken,
       identity,
       isCurrent,
       tokenFor,
@@ -159,11 +196,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       chooseAccount,
       addAccount,
       signOutAll,
+      confirmEmail,
     }),
     [
       snapshot,
       getToken,
       requireToken,
+      requireSocialToken,
       identity,
       isCurrent,
       tokenFor,
@@ -173,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       chooseAccount,
       addAccount,
       signOutAll,
+      confirmEmail,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;

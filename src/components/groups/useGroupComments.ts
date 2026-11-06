@@ -12,7 +12,7 @@ import { useGroups } from '../../state/groups';
  */
 export function useGroupComments(group: GroupInfo) {
   const { project } = useApp();
-  const { getToken, requireToken } = useAuth();
+  const { getToken, requireSocialToken } = useAuth();
   const { commentsTick } = useGroups();
   const [comments, setComments] = useState<GroupComment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export function useGroupComments(group: GroupInfo) {
     setBusy(true);
     setError(null);
     try {
-      await work(await requireToken());
+      await work(await requireSocialToken('comentar'));
       await load();
     } catch (failure) {
       setError(groupErrorMessage(failure));

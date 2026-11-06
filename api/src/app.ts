@@ -8,7 +8,7 @@ import type { ConversationStore } from './ai/conversations.ts';
 import type { AuthProvider } from './auth/platform.ts';
 import { createAuthenticate, HttpError } from './auth/plugin.ts';
 import type { AppConfig } from './config.ts';
-import type { Database } from './db/pool.ts';
+import type { Database, DatabaseLink } from './db/pool.ts';
 import type { GroupStore } from './groups/repository.ts';
 import type { CommentStore } from './groups/comments.ts';
 import type { CommunityStore } from './community/repository.ts';
@@ -27,6 +27,8 @@ import type { UserStore } from './users/repository.ts';
 export interface AppDependencies {
   config: AppConfig;
   db: Pick<Database, 'request'>;
+  /** Si la base puede faltar al arrancar: sin ella, las rutas que la usan responden 503 y reintentan. */
+  database?: Pick<DatabaseLink, 'connected' | 'ensure'>;
   auth: AuthProvider;
   users: UserStore;
   projects: ProjectStore;
@@ -82,6 +84,7 @@ function loggerOptions(config: AppConfig): FastifyServerOptions['logger'] {
 export async function buildApp({
   config,
   db,
+  database,
   auth,
   users,
   projects,
@@ -150,7 +153,21 @@ export async function buildApp({
     reply.status(404).send({ error: 'not_found', message: 'Ruta no encontrada.' }),
   );
 
-  await app.register(healthRoutes, { prefix: '/api', db });
+  // Sin la base (SQL Server aún arrancando), cada petición que la necesita vuelve a intentar la
+  // conexión; si tampoco, 503 en vez de un error a medias. La salud no espera: dice que falta.
+  if (database) {
+    app.addHook('onRequest', async (request, reply) => {
+      const route = request.routeOptions.url;
+      if (!route || route === '/api/health' || database.connected()) return;
+      if (await database.ensure()) return;
+      return reply.status(503).send({
+        error: 'base_no_disponible',
+        message: 'El servicio está arrancando. Inténtalo de nuevo en unos segundos.',
+      });
+    });
+  }
+
+  await app.register(healthRoutes, { prefix: '/api', db, database });
   // Los proyectos públicos se leen sin sesión; el panel de moderación de Notificapp, con su credencial.
   await app.register(publicRoutes, { prefix: '/api', community, config });
   await app.register(shareRoutes, { community, config });
