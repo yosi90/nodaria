@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from 'node:fs';
+import { rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { createGatewayAssistant } from './ai/assistant.ts';
 import { createSqlConversationStore } from './ai/conversations.ts';
@@ -108,10 +108,21 @@ process.once('SIGTERM', () => void shutdown('SIGTERM'));
 // Un despliegue pide reinicio creando este archivo (ops/restart-api.ps1): la API sale
 // limpiamente y el vigilante arranca el build nuevo. No hacen falta permisos sobre el proceso,
 // que corre en la sesión propia de la tarea programada de Windows.
+// Solo cuenta una marca más nueva que este arranque, y no depende de poder borrarla
+// (ecosistema-kit/SERVIDOR.md, punto 8): si no se puede, lo anota y sale igual una sola vez.
 const restartRequest = path.join(config.logDir || 'logs', 'restart.request');
+const startedAt = Date.now();
+let restarting = false;
 setInterval(() => {
-  if (!existsSync(restartRequest)) return;
-  rmSync(restartRequest, { force: true });
+  if (restarting) return;
+  const marked = statSync(restartRequest, { throwIfNoEntry: false })?.mtimeMs;
+  if (marked === undefined || marked <= startedAt) return;
+  restarting = true;
+  try {
+    rmSync(restartRequest, { force: true });
+  } catch (error) {
+    app.log.warn({ err: error }, 'No se ha podido borrar la marca de reinicio; se ignora en el próximo arranque.');
+  }
   void shutdown('Reinicio solicitado');
 }, 2_000).unref();
 
