@@ -106,7 +106,8 @@ while ($true) {
     Write-Log "La API terminó con código $($process.ExitCode)."
 
     # Reinicio con espera creciente si cae nada más arrancar (p. ej. SQL aún no está listo).
-    if (((Get-Date) - $started).TotalMinutes -gt 5) { $delay = 5 } else { $delay = [Math]::Min($delay * 2, 300) }
+    # Una salida limpia (código 0, un reinicio pedido) no cuenta como caída.
+    if ($process.ExitCode -eq 0 -or ((Get-Date) - $started).TotalMinutes -gt 5) { $delay = 5 } else { $delay = [Math]::Min($delay * 2, 300) }
     Write-Log "Reinicio en $delay s."
     Start-Sleep -Seconds $delay
 }
